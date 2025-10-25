@@ -1,4 +1,5 @@
 import { ValidationError } from "@/shared/errors/DomainError";
+import { isEqual } from "es-toolkit/compat";
 
 /**
  * 社員番号値オブジェクト
@@ -57,7 +58,7 @@ export class EmployeeId {
   }
 
   equals(other: EmployeeId): boolean {
-    return this._value === other._value;
+    return isEqual(this._value, other._value);
   }
 
   /**
