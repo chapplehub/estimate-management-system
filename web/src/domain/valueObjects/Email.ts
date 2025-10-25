@@ -36,11 +36,4 @@ export class Email {
   equals(other: Email): boolean {
     return this._value === other._value;
   }
-
-  /**
-   * 文字列表現
-   */
-  toString(): string {
-    return this._value;
-  }
 }
