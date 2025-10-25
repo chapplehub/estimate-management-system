@@ -1,9 +1,7 @@
 import { ValidationError } from "@/shared/errors/DomainError";
+import { isEqual } from "es-toolkit/compat";
 
-/**
- * メールアドレス値オブジェクト
- */
-export class Email {
+export class MailAddress {
   private readonly _value: string;
 
   constructor(value: string) {
@@ -15,25 +13,18 @@ export class Email {
     return this._value;
   }
 
-  /**
-   * バリデーション
-   */
   private validate(value: string): void {
     if (!value || value.trim().length === 0) {
       throw new ValidationError("メールアドレスは必須です");
     }
 
-    // 基本的なメール形式チェック
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(value)) {
       throw new ValidationError("メールアドレスの形式が正しくありません");
     }
   }
 
-  /**
-   * 等価性チェック
-   */
-  equals(other: Email): boolean {
-    return this._value === other._value;
+  equals(other: MailAddress): boolean {
+    return isEqual(this._value, other._value);
   }
 }
