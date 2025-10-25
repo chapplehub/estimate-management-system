@@ -8,51 +8,80 @@ import { ValidationError } from "@/shared/errors/DomainError";
  */
 export class EmployeeId {
   private readonly _value: string;
-  private static readonly PREFIX: "EMP";
-  private static readonly NUMERIC_LENGTH: 6;
-  private static readonly PATTERN = /^EMP\d{6}$/i;
+  private static readonly PREFIX = "EMP";
+  private static readonly NUMERIC_LENGTH = 6;
+  private static readonly MIN_NUMBER = 1;
+  private static readonly MAX_NUMBER =
+    Math.pow(10, EmployeeId.NUMERIC_LENGTH) - 1;
+  private static readonly PATTERN = new RegExp(
+    `^${EmployeeId.PREFIX}\\d{${EmployeeId.NUMERIC_LENGTH}}$`,
+    "i"
+  );
 
   constructor(value: string) {
     this.validate(value);
-    const paddingValue = value.padStart(6, "0");
-    this._value = EmployeeId.PREFIX.concat(paddingValue).trim();
+    this._value = value.toUpperCase().trim();
   }
 
   get value(): string {
     return this._value;
   }
 
-  /* 数値部分を取得*/
   get numericPart(): number {
-    const prefixLength = EmployeeId.PREFIX.length;
-    return parseInt(this._value.slice(prefixLength), 10);
+    return EmployeeId.extractNumericPart(this._value);
   }
 
-  /**
-   * バリデーション
-   */
   private validate(value: string): void {
     if (!value || value.trim().length === 0) {
-      throw new ValidationError("EmployeeIdは必須です");
+      throw new ValidationError("社員番号は必須です");
     }
 
-    // 基本的なメール形式チェック
-    if (!EmployeeId.PATTERN.test(value)) {
-      throw new ValidationError("EmployeeIdの形式が正しくありません");
+    const trimmedValue = value.trim().toUpperCase();
+
+    // 形式チェック（EMP + 6桁の数字）
+    if (!EmployeeId.PATTERN.test(trimmedValue)) {
+      if (!trimmedValue.startsWith(EmployeeId.PREFIX)) {
+        throw new ValidationError("社員番号は EMP で始まる必要があります");
+      }
+      throw new ValidationError(
+        "社員番号は EMP + 6桁の数字である必要があります"
+      );
+    }
+
+    const numericPart = EmployeeId.extractNumericPart(trimmedValue);
+    if (numericPart < EmployeeId.MIN_NUMBER) {
+      throw new ValidationError(
+        `社員番号は ${EmployeeId.MIN_NUMBER} 以上である必要があります`
+      );
     }
   }
 
-  /**
-   * 等価性チェック
-   */
   equals(other: EmployeeId): boolean {
     return this._value === other._value;
   }
 
   /**
-   * 文字列表現
+   * 文字列から数値部分を抽出（内部用ヘルパー）
+   * @param value 社員番号文字列（例: "EMP000123"）
+   * @returns 数値部分（例: 123）
    */
-  toString(): string {
-    return this._value;
+  private static extractNumericPart(value: string): number {
+    return parseInt(value.substring(EmployeeId.PREFIX.length), 10);
+  }
+
+  /**
+   * 数値から社員番号を生成（ユーティリティメソッド）
+   */
+  private static fromNumber(num: number): EmployeeId {
+    if (num < EmployeeId.MIN_NUMBER || num > EmployeeId.MAX_NUMBER) {
+      throw new ValidationError(
+        `社員番号は ${EmployeeId.MIN_NUMBER} 〜 ${EmployeeId.MAX_NUMBER} の範囲である必要があります`
+      );
+    }
+
+    const paddedNumber = num
+      .toString()
+      .padStart(EmployeeId.NUMERIC_LENGTH, "0");
+    return new EmployeeId(`${EmployeeId.PREFIX}${paddedNumber}`);
   }
 }
