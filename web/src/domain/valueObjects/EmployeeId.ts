@@ -1,5 +1,5 @@
 import { ValidationError } from "@/shared/errors/DomainError";
-import { isEqual } from "es-toolkit/compat";
+import { ValueObject } from "@/shared/ValueObject";
 
 /**
  * 社員番号値オブジェクト
@@ -7,21 +7,20 @@ import { isEqual } from "es-toolkit/compat";
  * 形式: EMP + 6桁の数字（例: EMP000001）
  * 範囲: EMP000001 〜 EMP999999
  */
-export class EmployeeId {
-  private readonly _value: string;
+type EmployeeIdValue = string;
+export class EmployeeId extends ValueObject<EmployeeIdValue, "EmployeeId"> {
   private static readonly PREFIX = "EMP";
   private static readonly NUMERIC_LENGTH = 6;
-  private static readonly MIN_NUMBER = 1;
-  private static readonly MAX_NUMBER =
+  private static readonly MIN_LENGTH = 1;
+  private static readonly MAX_LENGTH =
     Math.pow(10, EmployeeId.NUMERIC_LENGTH) - 1;
   private static readonly PATTERN = new RegExp(
     `^${EmployeeId.PREFIX}\\d{${EmployeeId.NUMERIC_LENGTH}}$`,
     "i"
   );
 
-  constructor(value: string) {
-    this.validate(value);
-    this._value = value.toUpperCase().trim();
+  constructor(value: EmployeeIdValue) {
+    super(value.toUpperCase().trim());
   }
 
   get value(): string {
@@ -32,7 +31,7 @@ export class EmployeeId {
     return EmployeeId.extractNumericPart(this._value);
   }
 
-  private validate(value: string): void {
+  protected validate(value: string): void {
     if (!value || value.trim().length === 0) {
       throw new ValidationError("社員番号は必須です");
     }
@@ -50,15 +49,11 @@ export class EmployeeId {
     }
 
     const numericPart = EmployeeId.extractNumericPart(trimmedValue);
-    if (numericPart < EmployeeId.MIN_NUMBER) {
+    if (numericPart < EmployeeId.MIN_LENGTH) {
       throw new ValidationError(
-        `社員番号は ${EmployeeId.MIN_NUMBER} 以上である必要があります`
+        `社員番号は ${EmployeeId.MIN_LENGTH} 以上である必要があります`
       );
     }
-  }
-
-  equals(other: EmployeeId): boolean {
-    return isEqual(this._value, other._value);
   }
 
   /**
@@ -74,9 +69,9 @@ export class EmployeeId {
    * 数値から社員番号を生成（ユーティリティメソッド）
    */
   private static fromNumber(num: number): EmployeeId {
-    if (num < EmployeeId.MIN_NUMBER || num > EmployeeId.MAX_NUMBER) {
+    if (num < EmployeeId.MIN_LENGTH || num > EmployeeId.MAX_LENGTH) {
       throw new ValidationError(
-        `社員番号は ${EmployeeId.MIN_NUMBER} 〜 ${EmployeeId.MAX_NUMBER} の範囲である必要があります`
+        `社員番号は ${EmployeeId.MIN_LENGTH} 〜 ${EmployeeId.MAX_LENGTH} の範囲である必要があります`
       );
     }
 

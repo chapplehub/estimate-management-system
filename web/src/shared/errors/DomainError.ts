@@ -10,9 +10,12 @@ export class DomainError extends Error {
   }
 }
 
-/**
- * バリデーションエラー
- */
+export class InvalidArgumentError extends DomainError {
+  constructor(message: string) {
+    super(message);
+  }
+}
+
 export class ValidationError extends DomainError {
   constructor(message: string) {
     super(message);
