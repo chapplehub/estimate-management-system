@@ -1,24 +1,20 @@
-import { ValidationError } from "@/shared/errors/DomainError";
-import { ValueObject } from "@/shared/ValueObject";
+import { StringValueObject } from "@/shared/StringValueObject";
 
-type MailAddressValue = string;
-export class MailAddress extends ValueObject<MailAddressValue, "MailAddress"> {
+export class MailAddress extends StringValueObject<"MailAddress"> {
+  protected static readonly REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  protected static readonly MIN_LENGTH = 1;
+  protected static readonly ERROR_MESSAGE_TOO_SHORT = "メールアドレスは必須です";
+  protected static readonly ERROR_MESSAGE_INVALID_FORMAT =
+    "メールアドレスの形式が正しくありません";
+
   constructor(value: string) {
     super(value.toLowerCase().trim());
   }
 
-  get value(): MailAddressValue {
-    return this._value;
-  }
+  protected validate(value: string): void {
+    // 基本的な長さチェックと正規表現チェックは親クラスで実行
+    super.validate(value);
 
-  protected validate(value: MailAddressValue): void {
-    if (!value || value.trim().length === 0) {
-      throw new ValidationError("メールアドレスは必須です");
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(value)) {
-      throw new ValidationError("メールアドレスの形式が正しくありません");
-    }
+    // MailAddress固有のバリデーション（追加があればここに記述）
   }
 }

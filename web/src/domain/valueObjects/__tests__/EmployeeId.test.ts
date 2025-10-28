@@ -56,7 +56,7 @@ describe("EmployeeId 値オブジェクト", () => {
     it("EMP で始まらない場合はエラー", () => {
       expect(() => new EmployeeId("ABC000001")).toThrow(ValidationError);
       expect(() => new EmployeeId("ABC000001")).toThrow(
-        "社員番号は EMP で始まる必要があります"
+        "社員番号は EMP + 6桁の数字である必要があります"
       );
     });
 
