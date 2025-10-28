@@ -15,31 +15,31 @@ datasource db {
 }
 
 // ========================================
-// ユーザー関連
+// 従業員関連
 // ========================================
 
-model User {
+model Employee {
   id            String    @id @default(cuid())
   employeeId    String    @unique @map("employee_id") // EMP000001 形式
   email         String    @unique
   name          String
   passwordHash  String    @map("password_hash")
   role          Role      @default(USER)
-  
+
   // アカウントロック機能
   failedLoginAttempts Int      @default(0) @map("failed_login_attempts")
   lockedUntil        DateTime? @map("locked_until")
   lastLoginAt        DateTime? @map("last_login_at")
-  
+
   // タイムスタンプ
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
-  
+
   // リレーション
   sessions Session[]
   accounts Account[]
-  
-  @@map("users")
+
+  @@map("employees")
 }
 
 enum Role {
@@ -53,7 +53,7 @@ enum Role {
 
 model Account {
   id                String  @id @default(cuid())
-  userId            String  @map("user_id")
+  employeeId        String  @map("employee_id")
   type              String
   provider          String
   providerAccountId String  @map("provider_account_id")
@@ -64,9 +64,9 @@ model Account {
   scope             String?
   id_token          String? @db.Text
   session_state     String?
-  
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
   @@unique([provider, providerAccountId])
   @@map("accounts")
 }
@@ -74,11 +74,11 @@ model Account {
 model Session {
   id           String   @id @default(cuid())
   sessionToken String   @unique @map("session_token")
-  userId       String   @map("user_id")
+  employeeId   String   @map("employee_id")
   expires      DateTime
-  
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
   @@map("sessions")
 }
 
