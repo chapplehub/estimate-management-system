@@ -1,19 +1,17 @@
 import { ValidationError } from "@/shared/errors/DomainError";
-import { isEqual } from "es-toolkit/compat";
+import { ValueObject } from "@/shared/ValueObject";
 
-export class MailAddress {
-  private readonly _value: string;
-
+type MailAddressValue = string;
+export class MailAddress extends ValueObject<MailAddressValue, "MailAddress"> {
   constructor(value: string) {
-    this.validate(value);
-    this._value = value.toLowerCase().trim();
+    super(value.toLowerCase().trim());
   }
 
-  get value(): string {
+  get value(): MailAddressValue {
     return this._value;
   }
 
-  private validate(value: string): void {
+  protected validate(value: MailAddressValue): void {
     if (!value || value.trim().length === 0) {
       throw new ValidationError("メールアドレスは必須です");
     }
@@ -22,9 +20,5 @@ export class MailAddress {
     if (!emailRegex.test(value)) {
       throw new ValidationError("メールアドレスの形式が正しくありません");
     }
-  }
-
-  equals(other: MailAddress): boolean {
-    return isEqual(this._value, other._value);
   }
 }
