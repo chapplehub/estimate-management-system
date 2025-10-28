@@ -20,7 +20,7 @@ datasource db {
 
 model Employee {
   id            String    @id @default(cuid())
-  employeeId    String    @unique @map("employee_id") // EMP000001 形式
+  employeeCd    String    @unique @map("employee_cd") // EMP000001 形式
   email         String    @unique
   name          String
   passwordHash  String    @map("password_hash")

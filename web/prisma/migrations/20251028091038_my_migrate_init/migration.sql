@@ -2,9 +2,9 @@
 CREATE TYPE "Role" AS ENUM ('ADMIN', 'USER');
 
 -- CreateTable
-CREATE TABLE "users" (
+CREATE TABLE "employees" (
     "id" TEXT NOT NULL,
-    "employee_id" TEXT NOT NULL,
+    "employee_cd" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "password_hash" TEXT NOT NULL,
@@ -15,13 +15,13 @@ CREATE TABLE "users" (
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "users_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "employees_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "accounts" (
     "id" TEXT NOT NULL,
-    "user_id" TEXT NOT NULL,
+    "employee_id" TEXT NOT NULL,
     "type" TEXT NOT NULL,
     "provider" TEXT NOT NULL,
     "provider_account_id" TEXT NOT NULL,
@@ -40,7 +40,7 @@ CREATE TABLE "accounts" (
 CREATE TABLE "sessions" (
     "id" TEXT NOT NULL,
     "session_token" TEXT NOT NULL,
-    "user_id" TEXT NOT NULL,
+    "employee_id" TEXT NOT NULL,
     "expires" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "sessions_pkey" PRIMARY KEY ("id")
@@ -54,10 +54,10 @@ CREATE TABLE "verification_tokens" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "users_employee_id_key" ON "users"("employee_id");
+CREATE UNIQUE INDEX "employees_employee_cd_key" ON "employees"("employee_cd");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
+CREATE UNIQUE INDEX "employees_email_key" ON "employees"("email");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "accounts_provider_provider_account_id_key" ON "accounts"("provider", "provider_account_id");
@@ -72,7 +72,7 @@ CREATE UNIQUE INDEX "verification_tokens_token_key" ON "verification_tokens"("to
 CREATE UNIQUE INDEX "verification_tokens_identifier_token_key" ON "verification_tokens"("identifier", "token");
 
 -- AddForeignKey
-ALTER TABLE "accounts" ADD CONSTRAINT "accounts_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "accounts" ADD CONSTRAINT "accounts_employee_id_fkey" FOREIGN KEY ("employee_id") REFERENCES "employees"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "sessions" ADD CONSTRAINT "sessions_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "sessions" ADD CONSTRAINT "sessions_employee_id_fkey" FOREIGN KEY ("employee_id") REFERENCES "employees"("id") ON DELETE CASCADE ON UPDATE CASCADE;
