@@ -3,7 +3,12 @@ import { StringValueObject } from "@/shared/StringValueObject";
 export class MailAddress extends StringValueObject<"MailAddress"> {
   protected static readonly REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   protected static readonly MIN_LENGTH = 1;
-  protected static readonly ERROR_MESSAGE_TOO_SHORT = "メールアドレスは必須です";
+  /**
+   * メールアドレスの最大文字数（RFC 5321に基づく）
+   */
+  protected static readonly MAX_LENGTH = 254;
+  protected static readonly ERROR_MESSAGE_TOO_SHORT =
+    "メールアドレスは必須です";
   protected static readonly ERROR_MESSAGE_INVALID_FORMAT =
     "メールアドレスの形式が正しくありません";
 
