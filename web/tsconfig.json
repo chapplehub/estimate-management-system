@@ -22,13 +22,15 @@
       "@/*": ["./src/*"]
     }
   },
+  // TODO: プロジェクトのソースに含むかどうか？
   "include": [
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
-    "**/*.mts"
+    "**/*.mts",
+    "generated/**/*.ts"
   ],
   "exclude": ["node_modules"]
 }
