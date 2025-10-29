@@ -74,49 +74,61 @@ Infrastructure Layer (Prisma Repositories, Mappers)
 
 ### Directory Structure
 
+**Important:** This is a **fullstack application** using Next.js. The directory structure separates **frontend** and **backend** concerns as follows:
+
 ```
 web/
 ├── src/
-│   ├── app/                    # Next.js App Router (Presentation Layer)
-│   │   ├── layout.tsx
-│   │   ├── page.tsx
-│   │   ├── api/               # API Routes (future)
-│   │   └── actions/           # Server Actions (future)
+│   ├── app/                    # Presentation Layer (Next.js App Router)
+│   │   │                       # Contains BOTH frontend and backend entry points:
+│   │   ├── (routes)/          # 【Frontend】 Pages, layouts, UI components
+│   │   │   ├── layout.tsx
+│   │   │   └── page.tsx
+│   │   ├── api/               # 【Backend】 API Routes (future)
+│   │   └── actions/           # 【Backend】 Server Actions (future)
 │   │
-│   ├── application/           # Application Layer (future)
-│   │   └── usecases/         # Use case classes (CreateUserUseCase, etc.)
+│   ├── application/           # 【Backend】 Application Layer (future)
+│   │   └── usecases/         # Use case classes (CreateEmployeeUseCase, etc.)
 │   │
-│   ├── domain/               # Domain Layer ⚠️ NO external dependencies!
-│   │   ├── entities/         # Business entities (User, etc.)
-│   │   ├── valueObjects/     # Value objects (Email, EmployeeId, etc.)
+│   ├── domain/               # 【Backend】 Domain Layer ⚠️ NO external dependencies!
+│   │   ├── entities/         # Business entities (Employee, etc.)
+│   │   ├── valueObjects/     # Value objects (Email, EmployeeCd, etc.)
 │   │   ├── services/         # Domain services
 │   │   └── repositories/     # Repository interfaces ONLY
 │   │
-│   ├── infrastructure/       # Infrastructure Layer (future)
+│   ├── infrastructure/       # 【Backend】 Infrastructure Layer (future)
 │   │   ├── repositories/     # Prisma repository implementations
 │   │   └── mappers/          # Prisma ↔ Domain model mappers
 │   │
-│   └── shared/              # Shared utilities
+│   └── shared/              # Shared utilities (can be used by both frontend/backend)
 │       ├── errors/          # Custom error classes
 │       └── utils/           # Utility functions
 │
 ├── prisma/
 │   ├── schema.prisma        # Database schema
+│   ├── seed.ts             # Database seed script
 │   └── migrations/          # Migration history
 │
 └── generated/
     └── prisma/             # Generated Prisma Client (custom output path)
 ```
 
-**Note:** The Prisma Client is generated to `web/generated/prisma/` (not the default `node_modules/.prisma/client`).
+**Key Points:**
+
+- **Frontend:** Only `src/app/(routes)/` contains UI pages and React components
+- **Backend:** Everything else (`domain/`, `application/`, `infrastructure/`, `app/api/`, `app/actions/`) is backend logic
+- **DDD Layers:** `domain/`, `application/`, and `infrastructure/` implement the backend's layered architecture
+- **Shared:** `shared/` contains utilities that can be used by both frontend and backend code
+
+**Note:** The Prisma Client is generated to `web/generated/prisma/` (not the default `node_modules/.prisma/client`). Import it from `@/generated/prisma/client`.
 
 ## Domain Model
 
-### User Entity
+### Employee Entity
 
 The main entity with the following features:
 
-- Fields: `id`, `employeeId` (format: `EMP000001`), `email`, `name`, `passwordHash`, `role` (ADMIN/USER)
+- Fields: `id`, `employeeCd` (format: `EMP000001`), `email`, `name`, `passwordHash`, `role` (ADMIN/USER)
 - Account locking: tracks failed login attempts, locks account after failures
 - Relations: `sessions[]`, `accounts[]` (for Auth.js)
 
@@ -149,12 +161,12 @@ export class Email {
 
 ### Naming
 
-- **Entities:** PascalCase singular nouns (`User`, `Department`)
-- **Value Objects:** PascalCase nouns (`Email`, `EmployeeId`)
-- **Use Cases:** `VerbNounUseCase` pattern (`CreateUserUseCase`, `GetUsersUseCase`)
-- **Repository Interfaces:** `IEntityRepository` pattern (`IUserRepository`)
-- **Repository Implementations:** `TechEntityRepository` pattern (`PrismaUserRepository`)
-- **Mappers:** `EntityMapper` pattern (`UserMapper`)
+- **Entities:** PascalCase singular nouns (`Employee`, `Department`)
+- **Value Objects:** PascalCase nouns (`Email`, `EmployeeCd`)
+- **Use Cases:** `VerbNounUseCase` pattern (`CreateEmployeeUseCase`, `GetEmployeesUseCase`)
+- **Repository Interfaces:** `IEntityRepository` pattern (`IEmployeeRepository`)
+- **Repository Implementations:** `TechEntityRepository` pattern (`PrismaEmployeeRepository`)
+- **Mappers:** `EntityMapper` pattern (`EmployeeMapper`)
 - **Tests:** `__tests__/FileName.test.ts` within each directory
 
 ### Error Handling
@@ -202,11 +214,11 @@ Test placement: `__tests__/` subdirectory within each module
 **Interface (Domain Layer):**
 
 ```typescript
-// domain/repositories/IUserRepository.ts
-export interface IUserRepository {
-  findById(id: string): Promise<User | null>;
-  findByEmail(email: Email): Promise<User | null>;
-  save(user: User): Promise<void>;
+// domain/repositories/IEmployeeRepository.ts
+export interface IEmployeeRepository {
+  findById(id: string): Promise<Employee | null>;
+  findByEmail(email: Email): Promise<Employee | null>;
+  save(employee: Employee): Promise<void>;
   delete(id: string): Promise<void>;
 }
 ```
@@ -214,41 +226,42 @@ export interface IUserRepository {
 **Implementation (Infrastructure Layer):**
 
 ```typescript
-// infrastructure/repositories/PrismaUserRepository.ts
-export class PrismaUserRepository implements IUserRepository {
-  async findById(id: string): Promise<User | null> {
-    const prismaUser = await prisma.user.findUnique({ where: { id } });
-    return prismaUser ? UserMapper.toDomain(prismaUser) : null;
+// infrastructure/repositories/PrismaEmployeeRepository.ts
+export class PrismaEmployeeRepository implements IEmployeeRepository {
+  async findById(id: string): Promise<Employee | null> {
+    const prismaEmployee = await prisma.employee.findUnique({ where: { id } });
+    return prismaEmployee ? EmployeeMapper.toDomain(prismaEmployee) : null;
   }
-  // ... uses UserMapper to convert between Prisma models and Domain entities
+  // ... uses EmployeeMapper to convert between Prisma models and Domain entities
 }
 ```
 
 ### Use Case Pattern
 
 ```typescript
-// application/usecases/CreateUserUseCase.ts
-export class CreateUserUseCase {
+// application/usecases/CreateEmployeeUseCase.ts
+export class CreateEmployeeUseCase {
   constructor(
-    private readonly userRepository: IUserRepository // Depends on interface!
+    private readonly employeeRepository: IEmployeeRepository // Depends on interface!
   ) {}
 
-  async execute(input: CreateUserInput): Promise<CreateUserOutput> {
+  async execute(input: CreateEmployeeInput): Promise<CreateEmployeeOutput> {
     // 1. Create value objects (validates input)
     const email = new Email(input.email);
+    const employeeCd = new EmployeeCd(input.employeeCd);
 
     // 2. Check application rules (e.g., uniqueness)
-    const existing = await this.userRepository.findByEmail(email);
+    const existing = await this.employeeRepository.findByEmail(email);
     if (existing) throw new BusinessRuleViolationError("Email already exists");
 
     // 3. Create entity (validates business rules)
-    const user = User.create({ name: input.name, email });
+    const employee = Employee.create({ name: input.name, email, employeeCd });
 
     // 4. Persist
-    await this.userRepository.save(user);
+    await this.employeeRepository.save(employee);
 
     // 5. Return DTO
-    return { id: user.id, name: user.name, email: user.email.value };
+    return { id: employee.id, name: employee.name, email: employee.email.value };
   }
 }
 ```
@@ -290,7 +303,7 @@ This is in **early development**. The domain layer foundation is being establish
 
 - ✅ Value objects (Email)
 - ✅ Error hierarchy
-- ✅ Prisma schema with User model
+- ✅ Prisma schema with Employee model
 - ⏳ Entities, repositories, use cases (in progress)
 - ⏳ API routes, authentication (future)
 
@@ -299,8 +312,8 @@ This is in **early development**. The domain layer foundation is being establish
 1. **Always follow DDD layering** - check dependency direction before importing
 2. **Domain layer is pure** - no Prisma, no Next.js, no external libraries
 3. **Write tests first** for domain layer (TDD)
-4. **Use value objects** for validated primitive types (Email, EmployeeId, etc.)
-5. **Factory methods** for entity creation (`User.create()` for new, `User.reconstruct()` for DB)
+4. **Use value objects** for validated primitive types (Email, EmployeeCd, etc.)
+5. **Factory methods** for entity creation (`Employee.create()` for new, `Employee.reconstruct()` for DB)
 6. **Explicit error handling** - use custom error classes, never swallow errors
 7. **Type safety** - no `any`, enable all strict TypeScript checks
 8. **Immutability** - value objects and entity properties should be readonly where appropriate
