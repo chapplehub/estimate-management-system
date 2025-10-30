@@ -3,7 +3,7 @@ import { EmployeeCd } from "@/domain/valueObjects/EmployeeCd";
 import { MailAddress } from "@/domain/valueObjects/MailAddress";
 import { describe, expect, it, beforeEach } from "vitest";
 import { Employee } from "../Employee";
-import { Role } from "../Role";
+import { Role } from "@/domain/types/Role";
 
 describe("Employee エンティティ", () => {
   let employeeCd: EmployeeCd;

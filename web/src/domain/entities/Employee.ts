@@ -1,7 +1,7 @@
 import { BusinessRuleViolationError } from "@/shared/errors/DomainError";
 import { EmployeeCd } from "@/domain/valueObjects/EmployeeCd";
 import { MailAddress } from "@/domain/valueObjects/MailAddress";
-import { Role } from "./Role";
+import { Role } from "@/domain/types/Role";
 
 /**
  * 従業員エンティティ
