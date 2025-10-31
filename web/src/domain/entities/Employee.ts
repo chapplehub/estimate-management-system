@@ -1,7 +1,7 @@
-import { BusinessRuleViolationError } from "@/shared/errors/DomainError";
+import { Role } from "@/domain/types/Role";
 import { EmployeeCd } from "@/domain/valueObjects/EmployeeCd";
 import { MailAddress } from "@/domain/valueObjects/MailAddress";
-import { Role } from "@/domain/types/Role";
+import { BusinessRuleViolationError } from "@/shared/errors/DomainError";
 
 /**
  * 従業員エンティティ
@@ -20,9 +20,9 @@ export class Employee {
     private readonly _id: string,
     private readonly _employeeCd: EmployeeCd,
     private _email: MailAddress,
-    private readonly _name: string,
+    private _name: string,
     private _passwordHash: string,
-    private readonly _role: Role,
+    private _role: Role,
     private _failedLoginAttempts: number,
     private _lockedUntil: Date | null,
     private _lastLoginAt: Date | null,
@@ -156,9 +156,7 @@ export class Employee {
 
     // 閾値を超えた場合はロック
     if (this._failedLoginAttempts >= Employee.MAX_FAILED_LOGIN_ATTEMPTS) {
-      this._lockedUntil = new Date(
-        Date.now() + Employee.LOCK_DURATION_MS
-      );
+      this._lockedUntil = new Date(Date.now() + Employee.LOCK_DURATION_MS);
     }
   }
 
@@ -189,12 +187,32 @@ export class Employee {
   }
 
   /**
+   * 名前を変更
+   *
+   * @param newName
+   */
+  changeName(newName: string): void {
+    this._name = newName;
+    this._updatedAt = new Date();
+  }
+
+  /**
    * メールアドレスを変更
    *
-   * @param newEmail 新しいメールアドレス
+   * @param newEmail
    */
   changeEmail(newEmail: MailAddress): void {
     this._email = newEmail;
+    this._updatedAt = new Date();
+  }
+
+  /**
+   * 役割を変更
+   *
+   * @param newRole
+   */
+  changeRole(newRole: Role): void {
+    this._role = newRole;
     this._updatedAt = new Date();
   }
 

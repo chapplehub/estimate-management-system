@@ -305,6 +305,30 @@ describe("Employee エンティティ", () => {
     });
   });
 
+  describe("名前変更", () => {
+    it("名前を変更できる", () => {
+      const employee = Employee.create(employeeCd, email, name, passwordHash);
+      const newName = "鈴木花子";
+
+      employee.changeName(newName);
+
+      expect(employee.name).toBe("鈴木花子");
+    });
+
+    it("更新日時が更新される", () => {
+      const employee = Employee.create(employeeCd, email, name, passwordHash);
+      const oldUpdatedAt = employee.updatedAt;
+      const newName = "鈴木花子";
+
+      setTimeout(() => {
+        employee.changeName(newName);
+        expect(employee.updatedAt.getTime()).toBeGreaterThanOrEqual(
+          oldUpdatedAt.getTime()
+        );
+      }, 10);
+    });
+  });
+
   describe("メールアドレス変更", () => {
     it("メールアドレスを変更できる", () => {
       const employee = Employee.create(employeeCd, email, name, passwordHash);
@@ -347,6 +371,48 @@ describe("Employee エンティティ", () => {
 
       setTimeout(() => {
         employee.changePassword(newPasswordHash);
+        expect(employee.updatedAt.getTime()).toBeGreaterThanOrEqual(
+          oldUpdatedAt.getTime()
+        );
+      }, 10);
+    });
+  });
+
+  describe("役割変更", () => {
+    it("役割を変更できる（USERからADMINへ）", () => {
+      const employee = Employee.create(
+        employeeCd,
+        email,
+        name,
+        passwordHash,
+        Role.USER
+      );
+
+      employee.changeRole(Role.ADMIN);
+
+      expect(employee.role).toBe(Role.ADMIN);
+    });
+
+    it("役割を変更できる（ADMINからUSERへ）", () => {
+      const employee = Employee.create(
+        employeeCd,
+        email,
+        name,
+        passwordHash,
+        Role.ADMIN
+      );
+
+      employee.changeRole(Role.USER);
+
+      expect(employee.role).toBe(Role.USER);
+    });
+
+    it("更新日時が更新される", () => {
+      const employee = Employee.create(employeeCd, email, name, passwordHash);
+      const oldUpdatedAt = employee.updatedAt;
+
+      setTimeout(() => {
+        employee.changeRole(Role.ADMIN);
         expect(employee.updatedAt.getTime()).toBeGreaterThanOrEqual(
           oldUpdatedAt.getTime()
         );
