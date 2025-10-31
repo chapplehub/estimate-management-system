@@ -320,56 +320,82 @@ This is in **early development**. The domain layer foundation is being establish
 
 Refer to `docs/system-design-doc.md` and `docs/dev-guidelines.md` for comprehensive architecture and coding standards.
 
-## Learning Documentation
+## Learning Documentation & Issue Management
 
-When the user asks to summarize a specific topic they've discussed, create a markdown file in the `learning/` directory with the topic summary. This helps track web development concepts learned during app development.
+**開発中に出てきた重要な学びや技術的な議論は、自動的に `learning/` ディレクトリにドキュメント化する。**
 
-## Learning & Issue Management
+### 自動ドキュメント化のトリガー
 
-開発中に出てきた疑問・設計上の問題を体系的に管理するためのワークフロー。
+以下のような状況では、**ユーザーの明示的な指示なしに**自動的にlearningドキュメントを作成：
 
-### 運用ルール
+- 技術的な概念や仕組みについて深堀りした議論があった
+- 問題解決のプロセスで新しい知見が得られた
+- DDDやアーキテクチャパターンについて学んだ
+- ライブラリやツールの使い方について詳しく説明した
+- 設計上の判断や比較検討を行った
+- エラーや問題の原因を特定・解決した際に学びがあった
 
-**2つの管理方法：**
+### 自動化の動作
 
-1. **通常の学びのまとめ**（issue化しない）
-   - トリガー：ユーザーが「この学びをまとめて」「まとめて」等と指示
-   - アクション：`learning/` ディレクトリにドキュメント作成のみ
-   - 用途：一般的な技術知識、コンセプトの整理
+1. 会話の中で上記のような学びがあったと判断したら、**会話の最後に**自動的にlearningドキュメントを作成
+2. ファイル名：`topic-name.md`（わかりやすいトピック名を使用、日本語でも可）
+3. ユーザーに「learning/xxx.mdに保存しました」と簡潔に通知
+4. **ユーザーの承認は不要** - 不要なら後で削除してもらえばよい
 
-2. **設計・アーキテクチャの疑問管理**（issue化する）
-   - トリガー：ユーザーが**明示的に**「issueにして」「issueにまとめて」等と指示
-   - 対象：プロジェクトの設計・アーキテクチャに関わる意思決定が必要な疑問・問題
-   - アクション：learningドキュメント作成 + GitHub issue作成
+### ドキュメント化の基準
 
-### Issue化ワークフロー（A案：ドキュメント先行）
+**自動作成する：**
+- 明確な技術的知見や学びがあった場合
+- 問題解決のプロセスで再利用できる情報
+- 3回以上のメッセージのやり取りがあった技術的議論
+
+**自動作成しない：**
+- 単純な質疑応答（1-2往復で完結）
+- ファイルの読み書きだけの単純作業
+- 既存のドキュメントに書かれている内容の確認
+
+### Issue化のルール
+
+**設計・アーキテクチャの疑問管理については、ユーザーが明示的に「issueにして」と指示した場合のみ**issue化する。
 
 ユーザーが「issueにして」と明示的に指示した場合のみ、以下の手順で進める：
 
 1. **learningドキュメント作成**
    - ファイル名：`topic-name-{issue番号}.md`
    - 例：`ddd-mapper-pattern-001.md`
-   - テンプレートを使用（下記参照）
+   - 疑問・問題形式のテンプレートを使用
 
 2. **GitHub issue作成**
    - ラベル：`question`
    - タイトル：`[Learning] トピック名`
    - 本文：learningドキュメントへのリンクを含める
-   - 例：
-     ```markdown
-     ## 概要
-     （疑問・問題の簡潔な説明）
-
-     ## 詳細
-     詳細は以下のドキュメントを参照：
-     [learning/ddd-mapper-pattern-001.md](../learning/ddd-mapper-pattern-001.md)
-     ```
 
 3. **解決後**
    - learningドキュメントの「解決策」セクションに追記
    - issueをclose
 
-### Learningドキュメントテンプレート
+### Learningドキュメントのテンプレート
+
+**通常の学びまとめ用（自動作成）：**
+
+```markdown
+# タイトル
+
+## 概要
+
+（何について学んだか、何を解決したか）
+
+## 詳細
+
+（技術的な説明、コード例、考え方など）
+
+## 参考
+
+- 関連ファイル
+- 外部リンク等
+```
+
+**Issue化が必要な疑問・問題用（ユーザー指示時）：**
 
 ```markdown
 # タイトル
@@ -395,21 +421,3 @@ When the user asks to summarize a specific topic they've discussed, create a mar
 
 - #（GitHub issue番号）
 ```
-
-### 使い分けの例
-
-❌ **Issue化しない例：**
-- 「ReactのuseEffectの使い方をまとめて」
-- 「Prismaのマイグレーションの仕組みを学んだのでまとめて」
-- 「TDDのサイクルについて整理して」
-
-✅ **Issue化する例：**
-- 「Mapperパターンを使うべきかどうか、設計判断が必要なのでissueにして」
-- 「認証の実装方法について迷ってる。issueにまとめて」
-- 「この設計上の疑問をissueにして後で検討したい」
-
-### 重要な注意事項
-
-- **明示的な指示がない限り、issue化しない**
-- issue化の判断基準：プロジェクトの設計・アーキテクチャに影響する意思決定が必要か
-- 通常の技術知識の整理は `learning/` ディレクトリのみで管理
