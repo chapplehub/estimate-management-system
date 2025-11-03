@@ -3,12 +3,11 @@ import { Role } from "@/domain/types/Role";
 import { EmployeeCd } from "@/domain/valueObjects/EmployeeCd";
 import { MailAddress } from "@/domain/valueObjects/MailAddress";
 import { PrismaEmployeeRepository } from "@/Infrastructure/Prisma/Employee/PrismaEmployeeRepository";
-import prisma from "@/lib/prisma";
+import prisma from "@lib/prisma";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 describe("PrismaEmployeeRepository", () => {
   let repository: PrismaEmployeeRepository;
-  let testEmployeeId: string;
 
   beforeEach(async () => {
     repository = new PrismaEmployeeRepository();
@@ -43,7 +42,15 @@ describe("PrismaEmployeeRepository", () => {
         Role.USER
       );
 
-      await repository.save(employee);
+      const savedEmployee = await repository.save(employee);
+
+      // 保存されたエンティティを確認
+      expect(savedEmployee).not.toBeNull();
+      expect(savedEmployee.id).toBeTruthy();
+      expect(savedEmployee.employeeCd.value).toBe("EMP999001");
+      expect(savedEmployee.email.value).toBe("test-save@example.com");
+      expect(savedEmployee.name).toBe("テスト太郎");
+      expect(savedEmployee.role).toBe(Role.USER);
 
       // DBから取得して確認
       const saved = await prisma.employee.findUnique({
@@ -58,7 +65,7 @@ describe("PrismaEmployeeRepository", () => {
     });
   });
 
-  describe("update", () => {
+  describe("save (update)", () => {
     it("既存従業員を更新できる", async () => {
       // まず保存
       const employee = Employee.create(
@@ -68,31 +75,15 @@ describe("PrismaEmployeeRepository", () => {
         "hashed_password_123",
         Role.USER
       );
-      await repository.save(employee);
-
-      // DBから取得して再構築
-      const saved = await prisma.employee.findUnique({
-        where: { employeeCd: "EMP999001" },
-      });
-      expect(saved).not.toBeNull();
-
-      const reconstructed = Employee.reconstruct(
-        saved!.id,
-        new EmployeeCd(saved!.employeeCd),
-        new MailAddress(saved!.email),
-        saved!.name,
-        saved!.passwordHash,
-        saved!.role as Role,
-        saved!.failedLoginAttempts,
-        saved!.lockedUntil,
-        saved!.lastLoginAt,
-        saved!.createdAt,
-        saved!.updatedAt
-      );
+      const savedEmployee = await repository.save(employee);
 
       // 名前を変更
-      reconstructed.changeName("更新後の名前");
-      await repository.update(reconstructed);
+      savedEmployee.changeName("更新後の名前");
+      const updatedEmployee = await repository.save(savedEmployee);
+
+      // 更新されたエンティティを確認
+      expect(updatedEmployee.name).toBe("更新後の名前");
+      expect(updatedEmployee.id).toBe(savedEmployee.id);
 
       // DBから再取得して確認
       const updated = await prisma.employee.findUnique({
@@ -113,20 +104,14 @@ describe("PrismaEmployeeRepository", () => {
         "hashed_password_123",
         Role.USER
       );
-      await repository.save(employee);
-
-      const saved = await prisma.employee.findUnique({
-        where: { employeeCd: "EMP999001" },
-      });
-      expect(saved).not.toBeNull();
-      testEmployeeId = saved!.id;
+      const savedEmployee = await repository.save(employee);
 
       // 削除
-      await repository.delete(testEmployeeId);
+      await repository.delete(savedEmployee.id);
 
       // 削除されたことを確認
       const deleted = await prisma.employee.findUnique({
-        where: { id: testEmployeeId },
+        where: { id: savedEmployee.id },
       });
       expect(deleted).toBeNull();
     });
@@ -142,19 +127,13 @@ describe("PrismaEmployeeRepository", () => {
         "hashed_password_123",
         Role.USER
       );
-      await repository.save(employee);
-
-      const saved = await prisma.employee.findUnique({
-        where: { employeeCd: "EMP999001" },
-      });
-      expect(saved).not.toBeNull();
-      testEmployeeId = saved!.id;
+      const savedEmployee = await repository.save(employee);
 
       // findByIdで検索
-      const found = await repository.findById(testEmployeeId);
+      const found = await repository.findById(savedEmployee.id);
 
       expect(found).not.toBeNull();
-      expect(found?.id).toBe(testEmployeeId);
+      expect(found?.id).toBe(savedEmployee.id);
       expect(found?.name).toBe("ID検索テスト");
       expect(found?.email.value).toBe("test-findbyid@example.com");
       expect(found?.employeeCd.value).toBe("EMP999001");
