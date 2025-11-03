@@ -4,7 +4,8 @@ import { EmployeeDuplicationCheckDomainService } from "@/domain/services/Employe
 import { Role } from "@/domain/types/Role";
 import { EmployeeCd } from "@/domain/valueObjects/EmployeeCd";
 import { MailAddress } from "@/domain/valueObjects/MailAddress";
-import { NotFoundError, ValidationError } from "@/shared/errors/DomainError";
+import { NotFoundEntityError } from "@/shared/errors/ApplicationError";
+import { ValidationError } from "@/shared/errors/DomainError";
 
 // TODO: これどこかほかのところに置きたい
 export type RegisterEmployeeCommand = {
@@ -51,7 +52,9 @@ export class EmployeeApplicationService {
   async change(command: ChangeEmployeeCommand): Promise<void> {
     const targetEmployee = await this.employeeRepository.findById(command.id);
     if (!targetEmployee) {
-      throw new NotFoundError(Employee, { employeeCd: command.employeeCd });
+      throw new NotFoundEntityError(Employee, {
+        employeeCd: command.employeeCd,
+      });
     }
 
     targetEmployee.changeName(command.name);
