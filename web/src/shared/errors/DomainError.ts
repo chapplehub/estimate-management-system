@@ -1,5 +1,6 @@
 /**
  * ドメイン層のベースエラークラス
+ * TODO: どういうエラーが必要か考える
  */
 export class DomainError extends Error {
   constructor(message: string) {
