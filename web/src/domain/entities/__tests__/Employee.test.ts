@@ -28,6 +28,8 @@ describe("Employee エンティティ", () => {
           passwordHash
         );
 
+        expect(employee.id).toBeTruthy(); // IDが生成されている
+        expect(employee.id).not.toBe(""); // 空文字ではない
         expect(employee.employeeCd.value).toBe("EMP000001");
         expect(employee.email.value).toBe("test@example.com");
         expect(employee.name).toBe("山田太郎");
@@ -60,6 +62,23 @@ describe("Employee エンティティ", () => {
 
         expect(employee.createdAt).toBeInstanceOf(Date);
         expect(employee.updatedAt).toBeInstanceOf(Date);
+      });
+
+      it("作成するたびに一意のIDが生成される", () => {
+        const employee1 = Employee.create(
+          employeeCd,
+          email,
+          name,
+          passwordHash
+        );
+        const employee2 = Employee.create(
+          employeeCd,
+          email,
+          name,
+          passwordHash
+        );
+
+        expect(employee1.id).not.toBe(employee2.id);
       });
     });
 

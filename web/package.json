@@ -15,6 +15,7 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@paralleldrive/cuid2": "^3.0.4",
     "@prisma/extension-accelerate": "^2.0.2",
     "argon2": "^0.44.0",
     "dotenv": "^17.2.3",

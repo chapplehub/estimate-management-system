@@ -1,3 +1,4 @@
+import { createId } from "@paralleldrive/cuid2";
 import { Role } from "@/domain/types/Role";
 import { EmployeeCd } from "@/domain/valueObjects/EmployeeCd";
 import { MailAddress } from "@/domain/valueObjects/MailAddress";
@@ -55,8 +56,7 @@ export class Employee {
     const now = new Date();
 
     return new Employee(
-      // TODO: よく考えたらこの実装が外部機能(Prisma)に依存してる。cuidはプログラム側で作るべき
-      "", // idはPrismaが自動生成するため空文字
+      createId(), // CUIDを生成
       employeeCd,
       email,
       name,

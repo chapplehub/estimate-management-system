@@ -19,7 +19,7 @@ datasource db {
 // ========================================
 
 model Employee {
-  id            String    @id @default(cuid())
+  id            String    @id // ドメイン層でCUID生成
   employeeCd    String    @unique @map("employee_cd") // EMP000001 形式
   email         String    @unique
   name          String

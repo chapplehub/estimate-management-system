@@ -43,6 +43,7 @@ export class EmployeeMapper {
    */
   static toPrismaCreate(employee: Employee) {
     return {
+      id: employee.id,
       employeeCd: employee.employeeCd.value,
       email: employee.email.value,
       name: employee.name,
