@@ -31,3 +31,30 @@ export class BusinessRuleViolationError extends DomainError {
     super(message);
   }
 }
+
+/**
+ * エンティティが見つからないエラー
+ */
+export class NotFoundError extends DomainError {
+  constructor(message: string);
+  constructor(
+    entityClass: { ENTITY_NAME: string },
+    identifier: Record<string, unknown>
+  );
+  constructor(
+    messageOrEntityClass: string | { ENTITY_NAME: string },
+    identifier?: Record<string, unknown>
+  ) {
+    if (typeof messageOrEntityClass === "string") {
+      // 従来の使い方: new NotFoundError("メッセージ")
+      super(messageOrEntityClass);
+    } else {
+      // 新しい使い方: new NotFoundError(Employee, { id: "xxx" })
+      const entityName = messageOrEntityClass.ENTITY_NAME;
+      const identifierStr = Object.entries(identifier!)
+        .map(([key, value]) => `${key.toUpperCase()}=${value}`)
+        .join(", ");
+      super(`${entityName}が見つかりません: ${identifierStr}`);
+    }
+  }
+}

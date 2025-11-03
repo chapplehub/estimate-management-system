@@ -4,8 +4,9 @@ import { EmployeeDuplicationCheckDomainService } from "@/domain/services/Employe
 import { Role } from "@/domain/types/Role";
 import { EmployeeCd } from "@/domain/valueObjects/EmployeeCd";
 import { MailAddress } from "@/domain/valueObjects/MailAddress";
-import { ValidationError } from "@/shared/errors/DomainError";
+import { NotFoundError, ValidationError } from "@/shared/errors/DomainError";
 
+// TODO: これどこかほかのところに置きたい
 export type RegisterEmployeeCommand = {
   employeeCd: string;
   email: string;
@@ -34,7 +35,7 @@ export class EmployeeApplicationService {
     const isDuplicated =
       await this.employeeDuplicationCheckDomainService.execute(employeeCd);
     if (isDuplicated) {
-      throw new ValidationError("既に存在する雇用者CDです");
+      throw new ValidationError(`既に存在する従業員CDです: CD=${employeeCd}`);
     }
     const newEmployee = Employee.create(
       employeeCd,
@@ -50,7 +51,7 @@ export class EmployeeApplicationService {
   async change(command: ChangeEmployeeCommand): Promise<void> {
     const targetEmployee = await this.employeeRepository.findById(command.id);
     if (!targetEmployee) {
-      throw new Error(`雇用者が存在しません", ${command.employeeCd}`);
+      throw new NotFoundError(Employee, { employeeCd: command.employeeCd });
     }
 
     targetEmployee.changeName(command.name);

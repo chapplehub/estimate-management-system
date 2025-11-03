@@ -11,6 +11,9 @@ import { BusinessRuleViolationError } from "@/shared/errors/DomainError";
  * - ロックされたアカウントは一定時間経過後に自動解除される
  */
 export class Employee {
+  /** エンティティ名（エラーメッセージ用） */
+  static readonly ENTITY_NAME = "従業員";
+
   /** アカウントロックの閾値 */
   private static readonly MAX_FAILED_LOGIN_ATTEMPTS = 5;
   /** アカウントロック期間（ミリ秒） */
@@ -52,6 +55,7 @@ export class Employee {
     const now = new Date();
 
     return new Employee(
+      // TODO: よく考えたらこの実装が外部機能(Prisma)に依存してる。cuidはプログラム側で作るべき
       "", // idはPrismaが自動生成するため空文字
       employeeCd,
       email,
