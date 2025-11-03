@@ -1,5 +1,8 @@
 import { defineConfig } from "vitest/config";
 import path from "path";
+import { config } from "dotenv";
+
+config(); // .envを読み込む
 
 export default defineConfig({
   test: {
@@ -8,9 +11,9 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      "@lib": path.resolve(__dirname, "./lib"),
+      "@generated": path.resolve(__dirname, "./generated"),
       "@": path.resolve(__dirname, "./src"),
-      "@/lib": path.resolve(__dirname, "./lib"),
-      "@/generated": path.resolve(__dirname, "./generated"),
     },
   },
 });

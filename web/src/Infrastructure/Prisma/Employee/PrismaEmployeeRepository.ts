@@ -2,7 +2,7 @@ import { Employee } from "@/domain/entities/Employee";
 import { IEmployeeRepository } from "@/domain/repositories/IEmployeeRepository";
 import { EmployeeCd } from "@/domain/valueObjects/EmployeeCd";
 import { EmployeeMapper } from "@/Infrastructure/mappers/EmployeeMapper";
-import prisma from "@/lib/prisma";
+import prisma from "@lib/prisma";
 
 export class PrismaEmployeeRepository implements IEmployeeRepository {
   // ClientManagerをDIする

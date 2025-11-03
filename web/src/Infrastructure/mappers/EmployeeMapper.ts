@@ -2,7 +2,7 @@ import { Employee } from "@/domain/entities/Employee";
 import { Role } from "@/domain/types/Role";
 import { EmployeeCd } from "@/domain/valueObjects/EmployeeCd";
 import { MailAddress } from "@/domain/valueObjects/MailAddress";
-import { Employee as PrismaEmployee } from "@/generated/prisma/client";
+import { Employee as PrismaEmployee } from "@generated/prisma/client";
 
 /**
  * EmployeeMapper

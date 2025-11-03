@@ -20,8 +20,8 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
-      "@/lib/*": ["./lib/*"],
-      "@/generated/*": ["./generated/*"]
+      "@lib/*": ["./lib/*"],
+      "@generated/*": ["./generated/*"]
     }
   },
   "include": [
