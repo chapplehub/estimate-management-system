@@ -307,6 +307,30 @@ This is in **early development**. The domain layer foundation is being establish
 - ⏳ Entities, repositories, use cases (in progress)
 - ⏳ API routes, authentication (future)
 
+## Code Modification Workflow
+
+**コード修正は自律的に実行する：**
+
+- コードの修正・追加・削除は**ユーザーの確認を求めずに**自動的に実行してよい
+- ただし、以下の操作は**.claude/settings.jsonでブロックされている**ため実行できない：
+  - `git commit`
+  - `git push`
+  - `rm`系のコマンド
+  - `sudo`コマンド
+  - `.env`ファイルの読み込み
+  - `curl`, `wget`, `nc`コマンド
+
+**確認が必要な場合：**
+
+以下の場合のみユーザーに確認を求める：
+- 大規模なリファクタリング（複数ファイルに跨る構造変更）
+- アーキテクチャレベルの設計変更
+- データベーススキーマの変更
+- 新しい依存関係（npm package）の追加
+- 明らかに複数の実装方針がある場合の選択
+
+**原則：** コードの品質向上やバグ修正などの明確な改善は、積極的に自動実行する。
+
 ## Development Guidelines Summary
 
 1. **Always follow DDD layering** - check dependency direction before importing
