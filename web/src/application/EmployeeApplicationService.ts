@@ -7,7 +7,7 @@ import { MailAddress } from "@/domain/valueObjects/MailAddress";
 import { NotFoundEntityError } from "@/shared/errors/ApplicationError";
 import { ValidationError } from "@/shared/errors/DomainError";
 
-// TODO: これどこかほかのところに置きたい
+// TODO: これどこに置くか決める。そもそも、各サービスをファイルに分けるか決める。
 export type RegisterEmployeeCommand = {
   employeeCd: string;
   email: string;
