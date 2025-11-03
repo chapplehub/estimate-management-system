@@ -1,7 +1,7 @@
 import { IEmployeeRepository } from "@/domain/repositories/IEmployeeRepository";
 import { EmployeeCd } from "@/domain/valueObjects/EmployeeCd";
 
-export class EmployeeDuplicationCheckDomainService {
+export class EmployeeCdDuplicationCheckDomainService {
   constructor(private employeeRepository: IEmployeeRepository) {}
 
   async execute(employeeCd: EmployeeCd): Promise<boolean> {

@@ -1,6 +1,7 @@
 import { Employee } from "@/domain/entities/Employee";
 import { IEmployeeRepository } from "@/domain/repositories/IEmployeeRepository";
 import { EmployeeCd } from "@/domain/valueObjects/EmployeeCd";
+import { MailAddress } from "@/domain/valueObjects/MailAddress";
 import { randomUUID } from "crypto";
 
 export class InMemoryEmployeeRepository implements IEmployeeRepository {
@@ -45,6 +46,14 @@ export class InMemoryEmployeeRepository implements IEmployeeRepository {
   async findByEmployeeCd(employeeCd: EmployeeCd): Promise<Employee | null> {
     const employee = Object.values(this.DB).find((emp) =>
       emp.employeeCd.equals(employeeCd)
+    );
+
+    return employee || null;
+  }
+
+  async findByEmail(email: MailAddress): Promise<Employee | null> {
+    const employee = Object.values(this.DB).find((emp) =>
+      emp.email.equals(email)
     );
 
     return employee || null;

@@ -1,6 +1,7 @@
 import { Employee } from "@/domain/entities/Employee";
 import { IEmployeeRepository } from "@/domain/repositories/IEmployeeRepository";
 import { EmployeeCd } from "@/domain/valueObjects/EmployeeCd";
+import { MailAddress } from "@/domain/valueObjects/MailAddress";
 import { EmployeeMapper } from "@/Infrastructure/mappers/EmployeeMapper";
 import prisma from "@lib/prisma";
 
@@ -67,6 +68,20 @@ export class PrismaEmployeeRepository implements IEmployeeRepository {
   async findByEmployeeCd(employeeCd: EmployeeCd): Promise<Employee | null> {
     const prismaEmployee = await prisma.employee.findUnique({
       where: { employeeCd: employeeCd.value },
+    });
+
+    return prismaEmployee ? EmployeeMapper.toDomain(prismaEmployee) : null;
+  }
+
+  /**
+   * メールアドレスで従業員を検索
+   *
+   * @param email
+   * @returns 従業員エンティティ（見つからない場合はnull）
+   */
+  async findByEmail(email: MailAddress): Promise<Employee | null> {
+    const prismaEmployee = await prisma.employee.findUnique({
+      where: { email: email.value },
     });
 
     return prismaEmployee ? EmployeeMapper.toDomain(prismaEmployee) : null;
