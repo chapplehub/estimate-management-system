@@ -309,18 +309,38 @@ This is in **early development**. The domain layer foundation is being establish
 
 ## Code Modification Workflow
 
-**コード修正は自律的に実行する：**
+**コード修正・ドキュメント管理・Issue管理は自律的に実行する：**
 
-- コードの修正・追加・削除は**ユーザーの確認を求めずに**自動的に実行してよい
-- ただし、以下の操作は**.claude/settings.jsonでブロックされている**ため実行できない：
-  - `git commit`
-  - `git push`
-  - `rm`系のコマンド
-  - `sudo`コマンド
-  - `.env`ファイルの読み込み
-  - `curl`, `wget`, `nc`コマンド
+以下の操作は**ユーザーの確認を求めずに**自動的に実行してよい：
 
-**確認が必要な場合：**
+### 自律的に実行してよい操作
+
+1. **コード修正**
+   - コードの修正・追加・削除
+   - テストの実行と修正
+   - リファクタリング（小規模）
+
+2. **Learningドキュメント管理**
+   - `learning/` ディレクトリへのドキュメント作成
+   - 既存ドキュメントの更新
+   - ユーザーに簡潔に通知するだけでよい（「learning/xxx.mdに保存しました」）
+
+3. **GitHub Issue管理**
+   - ユーザーが「issueにして」と指示した後のissue作成
+   - 問題解決後のissueクローズ
+   - Issue本文やコメントの追加
+
+### ブロックされている操作
+
+以下の操作は**.claude/settings.jsonでブロックされている**ため実行できない：
+- `git commit`
+- `git push`
+- `rm`系のコマンド
+- `sudo`コマンド
+- `.env`ファイルの読み込み
+- `curl`, `wget`, `nc`コマンド
+
+### 確認が必要な場合
 
 以下の場合のみユーザーに確認を求める：
 - 大規模なリファクタリング（複数ファイルに跨る構造変更）
@@ -329,7 +349,7 @@ This is in **early development**. The domain layer foundation is being establish
 - 新しい依存関係（npm package）の追加
 - 明らかに複数の実装方針がある場合の選択
 
-**原則：** コードの品質向上やバグ修正などの明確な改善は、積極的に自動実行する。
+**原則：** コードの品質向上やバグ修正などの明確な改善、learningドキュメントの作成、issue管理は、積極的に自動実行する。
 
 ## Development Guidelines Summary
 
@@ -348,6 +368,8 @@ Refer to `docs/system-design-doc.md` and `docs/dev-guidelines.md` for comprehens
 
 **開発中に出てきた重要な学びや技術的な議論は、自動的に `learning/` ディレクトリにドキュメント化する。**
 
+**重要：これらの操作は全て、ユーザーの確認なしに自律的に実行してよい。**
+
 ### 自動ドキュメント化のトリガー
 
 以下のような状況では、**ユーザーの明示的な指示なしに**自動的にlearningドキュメントを作成：
@@ -364,7 +386,7 @@ Refer to `docs/system-design-doc.md` and `docs/dev-guidelines.md` for comprehens
 1. 会話の中で上記のような学びがあったと判断したら、**会話の最後に**自動的にlearningドキュメントを作成
 2. ファイル名：`topic-name.md`（わかりやすいトピック名を使用、日本語でも可）
 3. ユーザーに「learning/xxx.mdに保存しました」と簡潔に通知
-4. **ユーザーの承認は不要** - 不要なら後で削除してもらえばよい
+4. **ユーザーの確認・承認は不要** - 即座に作成してよい（不要なら後で削除してもらえばよい）
 
 ### ドキュメント化の基準
 
@@ -382,21 +404,25 @@ Refer to `docs/system-design-doc.md` and `docs/dev-guidelines.md` for comprehens
 
 **設計・アーキテクチャの疑問管理については、ユーザーが明示的に「issueにして」と指示した場合のみ**issue化する。
 
-ユーザーが「issueにして」と明示的に指示した場合のみ、以下の手順で進める：
+ユーザーが「issueにして」と明示的に指示した場合、**確認不要で**以下の手順を自律的に進める：
 
 1. **learningドキュメント作成**
    - ファイル名：`topic-name-{issue番号}.md`
    - 例：`ddd-mapper-pattern-001.md`
    - 疑問・問題形式のテンプレートを使用
+   - **確認不要** - 即座に作成
 
 2. **GitHub issue作成**
    - ラベル：`question`
    - タイトル：`[Learning] トピック名`
    - 本文：learningドキュメントへのリンクを含める
+   - **確認不要** - 即座に作成
+   - 作成後にissue番号をユーザーに通知
 
 3. **解決後**
    - learningドキュメントの「解決策」セクションに追記
-   - issueをclose
+   - **確認不要で**issueをcloseしてよい
+   - クローズ後にユーザーに簡潔に通知
 
 ### Learningドキュメントのテンプレート
 
