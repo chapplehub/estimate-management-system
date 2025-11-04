@@ -35,7 +35,8 @@ flowchart TB
         direction TB
         subgraph EntityGroup["Entity"]
             direction TB
-            VO[Value Objects<br/>MailAddress, EmployeeCd]
+            VO["Value Objects<br/>(MailAddress, EmployeeCd)"]
+            MutationMethod["MutationMethod<br/>(changeMailAddress)"]
         end
         DomainService[Domain Services]
         IRepo[IEmployeeRepository Interface]
@@ -46,7 +47,7 @@ flowchart TB
         direction TB
         Repo[PrismaEmployeeRepository]
         QueryService[PrismaEmployeeQueryService]
-        Mapper[EmployeeMapper]
+        Mapper["EmployeeMapper<br/>(toDomain, toPrisma)"]
         Prisma[(Prisma Client)]
     end
 
@@ -54,10 +55,11 @@ flowchart TB
     User -->|"① リクエスト"| API
     API -->|"② 生データ"| InputDTO
     InputDTO -->|"③ Command"| AppService
-    AppService -->|"④ Entity/VO作成"| EntityGroup
+    AppService -->|"④ Entity作成・更新<br/>VO作成"| EntityGroup
     AppService -->|"⑤ 重複チェック"| DomainService
-    AppService -->|"⑥ 永続化/取得"| IRepo
+    AppService -->|"⑥ 永続化"| IRepo
     AppService -->|"⑦ クエリ"| IQuery
+    DomainService --> IRepo
 
     %% 層の順序を強制（見えない矢印）
     EntityGroup ~~~ DomainService
@@ -71,11 +73,6 @@ flowchart TB
     Repo --> Mapper
     QueryService --> Prisma
     Mapper --> Prisma
-
-    %% Infrastructure層内の依存
-    Repo ~~~ Mapper
-    Mapper ~~~ QueryService
-    QueryService ~~~ Prisma
 
     %% レスポンスの流れ（下から上）
     AppService -->|"⑧ DTOに変換"| OutputDTO
