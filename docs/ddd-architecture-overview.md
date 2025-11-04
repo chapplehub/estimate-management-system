@@ -33,12 +33,11 @@ flowchart TB
 
     subgraph Domain["💎 Domain Layer (Pure)"]
         direction TB
-        subgraph EntityGroup[" "]
+        subgraph EntityGroup["Entity"]
             direction TB
-            Entity[Employee Entity]
             VO[Value Objects<br/>MailAddress, EmployeeCd]
         end
-        DomainService[Domain Services<br/>重複チェック]
+        DomainService[Domain Services]
         IRepo[IEmployeeRepository Interface]
         IQuery[IEmployeeQueryService Interface]
     end
@@ -55,7 +54,10 @@ flowchart TB
     User -->|"① リクエスト"| API
     API -->|"② 生データ"| InputDTO
     InputDTO -->|"③ Command"| AppService
-    AppService -->|"④ Domain層を利用"| EntityGroup
+    AppService -->|"④ Entity/VO作成"| EntityGroup
+    AppService -->|"⑤ 重複チェック"| DomainService
+    AppService -->|"⑥ 永続化/取得"| IRepo
+    AppService -->|"⑦ クエリ"| IQuery
 
     %% 層の順序を強制（見えない矢印）
     EntityGroup ~~~ DomainService
@@ -66,6 +68,9 @@ flowchart TB
     %% Infrastructure層の実装関係（下から上への点線）
     Repo -.implements.-> IRepo
     QueryService -.implements.-> IQuery
+    Repo --> Mapper
+    QueryService --> Prisma
+    Mapper --> Prisma
 
     %% Infrastructure層内の依存
     Repo ~~~ Mapper
@@ -73,9 +78,9 @@ flowchart TB
     QueryService ~~~ Prisma
 
     %% レスポンスの流れ（下から上）
-    AppService -->|"⑤ DTOに変換"| OutputDTO
-    OutputDTO -->|"⑥ レスポンス"| API
-    API -->|"⑦ JSON"| User
+    AppService -->|"⑧ DTOに変換"| OutputDTO
+    OutputDTO -->|"⑨ レスポンス"| API
+    API -->|"⑩ JSON"| User
 
     style Domain fill:#fff4e6,stroke:#ff9800,stroke-width:3px
     style Presentation fill:#e3f2fd,stroke:#2196f3
