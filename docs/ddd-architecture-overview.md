@@ -57,14 +57,20 @@ flowchart TB
     InputDTO -->|"③ Command"| AppService
     AppService -->|"④ Domain層を利用"| EntityGroup
 
+    %% 層の順序を強制（見えない矢印）
+    EntityGroup ~~~ DomainService
+    DomainService ~~~ IRepo
+    IRepo ~~~ IQuery
+    IQuery ~~~ Repo
+
     %% Infrastructure層の実装関係（下から上への点線）
     Repo -.implements.-> IRepo
     QueryService -.implements.-> IQuery
 
     %% Infrastructure層内の依存
-    Repo --> Mapper
-    Mapper --> Prisma
-    QueryService --> Prisma
+    Repo ~~~ Mapper
+    Mapper ~~~ QueryService
+    QueryService ~~~ Prisma
 
     %% レスポンスの流れ（下から上）
     AppService -->|"⑤ DTOに変換"| OutputDTO
