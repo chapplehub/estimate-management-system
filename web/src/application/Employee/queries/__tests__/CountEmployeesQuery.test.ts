@@ -1,7 +1,7 @@
 import { EmployeeSearchCriteria } from "@/domain/queries/dto/EmployeeSearchCriteria";
 import { IEmployeeQueryService } from "@/domain/queries/IEmployeeQueryService";
 import { Role } from "@/domain/types/Role";
-import { CountEmployeesQuery } from "@/application/queries/CountEmployeesQuery";
+import { CountEmployeesQuery } from "@/application/Employee/queries/CountEmployeesQuery";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("CountEmployeesQuery", () => {

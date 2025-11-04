@@ -85,31 +85,81 @@ class GetEmployeeByIdQuery {
 
 ## ディレクトリ構造
 
+**Entity単位でディレクトリを切る構造を採用**
+
+```
+application/
+├── Employee/
+│   ├── commands/
+│   │   ├── CreateEmployeeCommand.ts
+│   │   ├── UpdateEmployeeCommand.ts
+│   │   └── __tests__/
+│   │       ├── CreateEmployeeCommand.test.ts
+│   │       └── UpdateEmployeeCommand.test.ts
+│   └── queries/
+│       ├── GetEmployeeByIdQuery.ts
+│       ├── GetEmployeeByEmailQuery.ts
+│       ├── GetEmployeeByEmployeeCdQuery.ts
+│       ├── GetAllEmployeesQuery.ts
+│       ├── SearchEmployeesQuery.ts
+│       ├── CountEmployeesQuery.ts
+│       └── __tests__/
+│           ├── GetEmployeeByIdQuery.test.ts
+│           ├── GetEmployeeByEmailQuery.test.ts
+│           └── ...
+├── Project/          # 将来追加されるエンティティ
+│   ├── commands/
+│   └── queries/
+└── Department/       # 将来追加されるエンティティ
+    ├── commands/
+    └── queries/
+```
+
+### 代替案との比較
+
+**案1: Entity > Command/Query（採用）**
+```
+application/
+├── Employee/
+│   ├── commands/
+│   └── queries/
+```
+
+**案2: Command/Query > Entity（不採用）**
 ```
 application/
 ├── commands/
-│   ├── CreateEmployeeCommand.ts
-│   ├── UpdateEmployeeCommand.ts
-│   └── __tests__/
-│       ├── CreateEmployeeCommand.test.ts
-│       └── UpdateEmployeeCommand.test.ts
+│   ├── Employee/
+│   └── Project/
 └── queries/
-    ├── GetEmployeeByIdQuery.ts
-    ├── GetEmployeeByEmailQuery.ts
-    ├── GetEmployeeByEmployeeCdQuery.ts
-    ├── GetAllEmployeesQuery.ts
-    ├── SearchEmployeesQuery.ts
-    ├── CountEmployeesQuery.ts
-    └── __tests__/
-        ├── GetEmployeeByIdQuery.test.ts
-        ├── GetEmployeeByEmailQuery.test.ts
-        └── ...
+    ├── Employee/
+    └── Project/
 ```
 
-**利点**:
-- Command/Queryが物理的に分離されている
+### Entity単位でディレクトリを切る理由
+
+1. **スケーラビリティ**: エンティティが増えても見通しが良い
+   - `Project`, `Department`, `Estimate` などが増えても、各エンティティ配下で完結
+   - Command/Query別に切ると、エンティティが増えるとフラットに並んで見にくくなる
+
+2. **凝集度**: 関連する操作がまとまっている
+   - Employee関連の全操作（読み書き）が1箇所に集約
+   - チーム開発で「Employeeの担当」が明確
+
+3. **並行開発**: 異なるエンティティを異なる開発者が担当しやすい
+   - マージコンフリクトが起きにくい
+
+4. **削除・移動が容易**: エンティティごとにディレクトリを削除/移動できる
+   - 不要になった機能の削除が簡単
+
+5. **DDDの原則に沿う**: ドメインモデル（Entity）が中心
+   - 技術的な分類（Command/Query）より、ドメイン概念（Employee, Project）が上位
+
+**利点まとめ**:
+- Command/Queryが物理的に分離されている（Entity内で）
 - 依存関係が明確（Commandは書き込み、Queryは読み取り専用）
 - テストも同様に分離
+- エンティティ単位で完結し、スケーラブル
 
 ## 依存関係の違い
 
@@ -224,8 +274,10 @@ export class GetEmployeeByIdQuery {
 
 - **Command**: `{動詞}{Entity}Command` + `execute()` メソッド
 - **Query**: `{動詞}{Entity}By{条件}Query` + `execute()` メソッド
-- **ディレクトリ**: `commands/` と `queries/` で物理的に分離
+- **ディレクトリ**: `application/{Entity}/commands/` と `application/{Entity}/queries/` で**Entity単位**に分離
 - **依存関係**: Command は Repository + DomainService、Query は QueryService のみ
 - **理由**: CQRS パターンを明示的に表現し、責任を明確化するため
 
 この命名規則により、コードを見ただけで「書き込みか読み取りか」「どのエンティティか」「どんな操作か」が一目で分かる。
+
+**Entity単位でディレクトリを切ることで、スケーラビリティと保守性が大幅に向上する。**

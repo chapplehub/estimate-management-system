@@ -1,11 +1,11 @@
 import { EmployeeDTO } from "@/domain/queries/dto/EmployeeDTO";
 import { IEmployeeQueryService } from "@/domain/queries/IEmployeeQueryService";
 import { Role } from "@/domain/types/Role";
-import { GetEmployeeByEmailQuery } from "@/application/queries/GetEmployeeByEmailQuery";
+import { GetEmployeeByIdQuery } from "@/application/Employee/queries/GetEmployeeByIdQuery";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-describe("GetEmployeeByEmailQuery", () => {
-  let query: GetEmployeeByEmailQuery;
+describe("GetEmployeeByIdQuery", () => {
+  let query: GetEmployeeByIdQuery;
   let mockQueryService: IEmployeeQueryService;
 
   const mockEmployeeDTO: EmployeeDTO = {
@@ -31,25 +31,25 @@ describe("GetEmployeeByEmailQuery", () => {
       count: vi.fn(),
     };
 
-    query = new GetEmployeeByEmailQuery(mockQueryService);
+    query = new GetEmployeeByIdQuery(mockQueryService);
   });
 
-  it("メールアドレスで従業員を取得できる", async () => {
-    vi.mocked(mockQueryService.findByEmail).mockResolvedValue(mockEmployeeDTO);
+  it("IDで従業員を取得できる", async () => {
+    vi.mocked(mockQueryService.findById).mockResolvedValue(mockEmployeeDTO);
 
-    const result = await query.execute({ email: "test@example.com" });
+    const result = await query.execute({ id: "test-id-001" });
 
     expect(result).toEqual(mockEmployeeDTO);
-    expect(mockQueryService.findByEmail).toHaveBeenCalledWith(
-      "test@example.com"
-    );
+    expect(mockQueryService.findById).toHaveBeenCalledWith("test-id-001");
+    expect(mockQueryService.findById).toHaveBeenCalledTimes(1);
   });
 
-  it("存在しないメールアドレスの場合nullを返す", async () => {
-    vi.mocked(mockQueryService.findByEmail).mockResolvedValue(null);
+  it("存在しないIDの場合nullを返す", async () => {
+    vi.mocked(mockQueryService.findById).mockResolvedValue(null);
 
-    const result = await query.execute({ email: "nonexistent@example.com" });
+    const result = await query.execute({ id: "non-existent-id" });
 
     expect(result).toBeNull();
+    expect(mockQueryService.findById).toHaveBeenCalledWith("non-existent-id");
   });
 });

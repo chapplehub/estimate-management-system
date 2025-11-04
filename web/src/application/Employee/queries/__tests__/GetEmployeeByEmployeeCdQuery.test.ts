@@ -1,11 +1,11 @@
 import { EmployeeDTO } from "@/domain/queries/dto/EmployeeDTO";
 import { IEmployeeQueryService } from "@/domain/queries/IEmployeeQueryService";
 import { Role } from "@/domain/types/Role";
-import { GetEmployeeByIdQuery } from "@/application/queries/GetEmployeeByIdQuery";
+import { GetEmployeeByEmployeeCdQuery } from "@/application/Employee/queries/GetEmployeeByEmployeeCdQuery";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-describe("GetEmployeeByIdQuery", () => {
-  let query: GetEmployeeByIdQuery;
+describe("GetEmployeeByEmployeeCdQuery", () => {
+  let query: GetEmployeeByEmployeeCdQuery;
   let mockQueryService: IEmployeeQueryService;
 
   const mockEmployeeDTO: EmployeeDTO = {
@@ -31,25 +31,27 @@ describe("GetEmployeeByIdQuery", () => {
       count: vi.fn(),
     };
 
-    query = new GetEmployeeByIdQuery(mockQueryService);
+    query = new GetEmployeeByEmployeeCdQuery(mockQueryService);
   });
 
-  it("IDで従業員を取得できる", async () => {
-    vi.mocked(mockQueryService.findById).mockResolvedValue(mockEmployeeDTO);
+  it("従業員CDで従業員を取得できる", async () => {
+    vi.mocked(mockQueryService.findByEmployeeCd).mockResolvedValue(
+      mockEmployeeDTO
+    );
 
-    const result = await query.execute({ id: "test-id-001" });
+    const result = await query.execute({ employeeCd: "EMP000001" });
 
     expect(result).toEqual(mockEmployeeDTO);
-    expect(mockQueryService.findById).toHaveBeenCalledWith("test-id-001");
-    expect(mockQueryService.findById).toHaveBeenCalledTimes(1);
+    expect(mockQueryService.findByEmployeeCd).toHaveBeenCalledWith(
+      "EMP000001"
+    );
   });
 
-  it("存在しないIDの場合nullを返す", async () => {
-    vi.mocked(mockQueryService.findById).mockResolvedValue(null);
+  it("存在しない従業員CDの場合nullを返す", async () => {
+    vi.mocked(mockQueryService.findByEmployeeCd).mockResolvedValue(null);
 
-    const result = await query.execute({ id: "non-existent-id" });
+    const result = await query.execute({ employeeCd: "EMP999999" });
 
     expect(result).toBeNull();
-    expect(mockQueryService.findById).toHaveBeenCalledWith("non-existent-id");
   });
 });

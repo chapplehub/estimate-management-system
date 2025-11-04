@@ -5,7 +5,7 @@ import { EmployeeCd } from "@/domain/valueObjects/EmployeeCd";
 import { MailAddress } from "@/domain/valueObjects/MailAddress";
 import { NotFoundEntityError } from "@/shared/errors/ApplicationError";
 import { ValidationError } from "@/shared/errors/DomainError";
-import { UpdateEmployeeCommand } from "@/application/commands/UpdateEmployeeCommand";
+import { UpdateEmployeeCommand } from "@/application/Employee/commands/UpdateEmployeeCommand";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("UpdateEmployeeCommand", () => {

@@ -5,7 +5,7 @@ import { Role } from "@/domain/types/Role";
 import { EmployeeCd } from "@/domain/valueObjects/EmployeeCd";
 import { MailAddress } from "@/domain/valueObjects/MailAddress";
 import { ValidationError } from "@/shared/errors/DomainError";
-import { CreateEmployeeCommand } from "@/application/commands/CreateEmployeeCommand";
+import { CreateEmployeeCommand } from "@/application/Employee/commands/CreateEmployeeCommand";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("CreateEmployeeCommand", () => {

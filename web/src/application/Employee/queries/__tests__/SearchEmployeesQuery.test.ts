@@ -5,7 +5,7 @@ import {
 } from "@/domain/queries/dto/EmployeeSearchCriteria";
 import { IEmployeeQueryService } from "@/domain/queries/IEmployeeQueryService";
 import { Role } from "@/domain/types/Role";
-import { SearchEmployeesQuery } from "@/application/queries/SearchEmployeesQuery";
+import { SearchEmployeesQuery } from "@/application/Employee/queries/SearchEmployeesQuery";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("SearchEmployeesQuery", () => {

@@ -2,7 +2,7 @@ import { EmployeeDTO } from "@/domain/queries/dto/EmployeeDTO";
 import { ListOptions } from "@/domain/queries/dto/EmployeeSearchCriteria";
 import { IEmployeeQueryService } from "@/domain/queries/IEmployeeQueryService";
 import { Role } from "@/domain/types/Role";
-import { GetAllEmployeesQuery } from "@/application/queries/GetAllEmployeesQuery";
+import { GetAllEmployeesQuery } from "@/application/Employee/queries/GetAllEmployeesQuery";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("GetAllEmployeesQuery", () => {

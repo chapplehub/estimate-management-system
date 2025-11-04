@@ -1,11 +1,11 @@
 import { EmployeeDTO } from "@/domain/queries/dto/EmployeeDTO";
 import { IEmployeeQueryService } from "@/domain/queries/IEmployeeQueryService";
 import { Role } from "@/domain/types/Role";
-import { GetEmployeeByEmployeeCdQuery } from "@/application/queries/GetEmployeeByEmployeeCdQuery";
+import { GetEmployeeByEmailQuery } from "@/application/Employee/queries/GetEmployeeByEmailQuery";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-describe("GetEmployeeByEmployeeCdQuery", () => {
-  let query: GetEmployeeByEmployeeCdQuery;
+describe("GetEmployeeByEmailQuery", () => {
+  let query: GetEmployeeByEmailQuery;
   let mockQueryService: IEmployeeQueryService;
 
   const mockEmployeeDTO: EmployeeDTO = {
@@ -31,26 +31,24 @@ describe("GetEmployeeByEmployeeCdQuery", () => {
       count: vi.fn(),
     };
 
-    query = new GetEmployeeByEmployeeCdQuery(mockQueryService);
+    query = new GetEmployeeByEmailQuery(mockQueryService);
   });
 
-  it("従業員CDで従業員を取得できる", async () => {
-    vi.mocked(mockQueryService.findByEmployeeCd).mockResolvedValue(
-      mockEmployeeDTO
-    );
+  it("メールアドレスで従業員を取得できる", async () => {
+    vi.mocked(mockQueryService.findByEmail).mockResolvedValue(mockEmployeeDTO);
 
-    const result = await query.execute({ employeeCd: "EMP000001" });
+    const result = await query.execute({ email: "test@example.com" });
 
     expect(result).toEqual(mockEmployeeDTO);
-    expect(mockQueryService.findByEmployeeCd).toHaveBeenCalledWith(
-      "EMP000001"
+    expect(mockQueryService.findByEmail).toHaveBeenCalledWith(
+      "test@example.com"
     );
   });
 
-  it("存在しない従業員CDの場合nullを返す", async () => {
-    vi.mocked(mockQueryService.findByEmployeeCd).mockResolvedValue(null);
+  it("存在しないメールアドレスの場合nullを返す", async () => {
+    vi.mocked(mockQueryService.findByEmail).mockResolvedValue(null);
 
-    const result = await query.execute({ employeeCd: "EMP999999" });
+    const result = await query.execute({ email: "nonexistent@example.com" });
 
     expect(result).toBeNull();
   });
