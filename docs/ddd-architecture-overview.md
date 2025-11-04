@@ -1,65 +1,75 @@
-# DDDアーキテクチャ全体図
+# DDD アーキテクチャ全体図
 
-このドキュメントは、本プロジェクトのDDD（Domain-Driven Design）アーキテクチャ全体を可視化したものです。
+このドキュメントは、本プロジェクトの DDD（Domain-Driven Design）アーキテクチャ全体を可視化したものです。
 
 ## 目次
 
 1. [レイヤードアーキテクチャ](#1-レイヤードアーキテクチャ)
 2. [ディレクトリ構造マップ](#2-ディレクトリ構造マップ)
-3. [データフロー図（Write操作）](#3-データフロー図write操作)
-4. [データフロー図（Read操作 - CQRS）](#4-データフロー図read操作---cqrs)
+3. [データフロー図（Write 操作）](#3-データフロー図write操作)
+4. [データフロー図（Read 操作 - CQRS）](#4-データフロー図read操作---cqrs)
 5. [具体的なクラス構成](#5-具体的なクラス構成)
 
 ---
 
 ## 1. レイヤードアーキテクチャ
 
-本プロジェクトは、4層のレイヤードアーキテクチャを採用しています。
+本プロジェクトは、4 層のレイヤードアーキテクチャを採用しています。
 
 ```mermaid
-graph TB
+flowchart TB
+    User([👤 User])
+
     subgraph Presentation["🎨 Presentation Layer"]
         API[API Routes/Server Actions]
-        ResponseDTO[Response DTO<br/>JSON形式]
     end
 
     subgraph Application["🔧 Application Layer"]
-        AppService[EmployeeApplicationService]
+        direction TB
         InputDTO[Input Command/DTO<br/>プリミティブ型]
+        AppService[EmployeeApplicationService]
         OutputDTO[Output DTO<br/>プリミティブ型]
     end
 
     subgraph Domain["💎 Domain Layer (Pure)"]
-        Entity[Employee Entity]
-        VO[Value Objects<br/>MailAddress, EmployeeCd]
+        direction TB
+        subgraph EntityGroup[" "]
+            direction TB
+            Entity[Employee Entity]
+            VO[Value Objects<br/>MailAddress, EmployeeCd]
+        end
         DomainService[Domain Services<br/>重複チェック]
-        IRepo[IEmployeeRepository<br/>Interface]
-        IQuery[IEmployeeQueryService<br/>Interface]
+        IRepo[IEmployeeRepository Interface]
+        IQuery[IEmployeeQueryService Interface]
     end
 
     subgraph Infrastructure["🗄️ Infrastructure Layer"]
+        direction TB
         Repo[PrismaEmployeeRepository]
         QueryService[PrismaEmployeeQueryService]
         Mapper[EmployeeMapper]
         Prisma[(Prisma Client)]
     end
 
-    API -->|"1. リクエスト<br/>(生データ)"| InputDTO
-    InputDTO -->|"2. Command"| AppService
-    AppService -->|"3. VO作成"| VO
-    AppService -->|"4. Entity操作"| Entity
-    AppService -->|"5. ドメインロジック"| DomainService
-    AppService -->|"6. 永続化/取得"| IRepo
-    AppService -->|"7. クエリ"| IQuery
-    AppService -->|"8. DTOに変換"| OutputDTO
-    OutputDTO -->|"9. レスポンス"| ResponseDTO
-    ResponseDTO -->|"10. JSON"| API
+    %% データの流れ（上から下）
+    User -->|"① リクエスト"| API
+    API -->|"② 生データ"| InputDTO
+    InputDTO -->|"③ Command"| AppService
+    AppService -->|"④ Domain層を利用"| EntityGroup
 
+    %% Infrastructure層の実装関係（下から上への点線）
     Repo -.implements.-> IRepo
     QueryService -.implements.-> IQuery
+
+    %% Infrastructure層内の依存
     Repo --> Mapper
-    QueryService --> Prisma
     Mapper --> Prisma
+    QueryService --> Prisma
+
+    %% レスポンスの流れ（下から上）
+    AppService -->|"⑤ DTOに変換"| OutputDTO
+    OutputDTO -->|"⑥ レスポンス"| API
+    API -->|"⑦ JSON"| User
 
     style Domain fill:#fff4e6,stroke:#ff9800,stroke-width:3px
     style Presentation fill:#e3f2fd,stroke:#2196f3
@@ -69,17 +79,18 @@ graph TB
 
 ### 各層の責務
 
-| 層 | 責務 | 依存方向 |
-|---|---|---|
-| **Presentation** | ユーザーインターフェース、API、Server Actions | Application層に依存 |
-| **Application** | ユースケース実行、トランザクション制御、DTOの変換 | Domain層に依存 |
-| **Domain** | ビジネスロジック、ドメインモデル（Entity、VO、Domain Service） | **他の層に依存しない** |
-| **Infrastructure** | データ永続化、外部サービス連携、Domainインターフェースの実装 | Domain層のインターフェースを実装 |
+| 層                 | 責務                                                           | 依存方向                          |
+| ------------------ | -------------------------------------------------------------- | --------------------------------- |
+| **Presentation**   | ユーザーインターフェース、API、Server Actions                  | Application 層に依存              |
+| **Application**    | ユースケース実行、トランザクション制御、DTO の変換             | Domain 層に依存                   |
+| **Domain**         | ビジネスロジック、ドメインモデル（Entity、VO、Domain Service） | **他の層に依存しない**            |
+| **Infrastructure** | データ永続化、外部サービス連携、Domain インターフェースの実装  | Domain 層のインターフェースを実装 |
 
 **重要な原則：**
-- Domain層は他の層に依存しない（依存性逆転の原則）
-- Infrastructure層はDomain層のインターフェース（`IEmployeeRepository`など）を実装
-- Application層は具象クラスではなく、インターフェースに依存
+
+- Domain 層は他の層に依存しない（依存性逆転の原則）
+- Infrastructure 層は Domain 層のインターフェース（`IEmployeeRepository`など）を実装
+- Application 層は具象クラスではなく、インターフェースに依存
 
 ---
 
@@ -134,22 +145,22 @@ graph LR
 
 ### 主要ファイルの役割
 
-| ファイルパス | 役割 |
-|---|---|
-| `domain/entities/Employee.ts` | Employeeエンティティ（ビジネスロジックの中核） |
-| `domain/valueObjects/MailAddress.ts` | メールアドレスのValue Object（バリデーション含む） |
-| `domain/repositories/IEmployeeRepository.ts` | Repositoryインターフェース（Domain層で定義） |
-| `domain/queries/IEmployeeQueryService.ts` | Query Serviceインターフェース（CQRS） |
-| `application/EmployeeApplicationService.ts` | ユースケース実行（VO変換、トランザクション制御） |
-| `infrastructure/Prisma/PrismaEmployeeRepository.ts` | Prismaを使ったRepository実装 |
-| `infrastructure/mappers/EmployeeMapper.ts` | Prismaモデル ↔ Domainエンティティの変換 |
-| `infrastructure/queries/PrismaEmployeeQueryService.ts` | Prismaを使ったQuery Service実装 |
+| ファイルパス                                           | 役割                                                |
+| ------------------------------------------------------ | --------------------------------------------------- |
+| `domain/entities/Employee.ts`                          | Employee エンティティ（ビジネスロジックの中核）     |
+| `domain/valueObjects/MailAddress.ts`                   | メールアドレスの Value Object（バリデーション含む） |
+| `domain/repositories/IEmployeeRepository.ts`           | Repository インターフェース（Domain 層で定義）      |
+| `domain/queries/IEmployeeQueryService.ts`              | Query Service インターフェース（CQRS）              |
+| `application/EmployeeApplicationService.ts`            | ユースケース実行（VO 変換、トランザクション制御）   |
+| `infrastructure/Prisma/PrismaEmployeeRepository.ts`    | Prisma を使った Repository 実装                     |
+| `infrastructure/mappers/EmployeeMapper.ts`             | Prisma モデル ↔ Domain エンティティの変換           |
+| `infrastructure/queries/PrismaEmployeeQueryService.ts` | Prisma を使った Query Service 実装                  |
 
 ---
 
-## 3. データフロー図（Write操作）
+## 3. データフロー図（Write 操作）
 
-Employee登録を例に、データがどのように変換されながら各層を流れるかを示します。
+Employee 登録を例に、データがどのように変換されながら各層を流れるかを示します。
 
 ```mermaid
 sequenceDiagram
@@ -212,19 +223,19 @@ sequenceDiagram
 1. **API → Application**: プリミティブ型 → Command/DTO
 2. **Application → Domain**: プリミティブ型 → Value Object（`MailAddress`, `EmployeeCd`）
 3. **Application → Domain**: Value Object → Entity（`Employee.create()`）
-4. **Domain → Infrastructure**: Entity → Prismaモデル（`EmployeeMapper.toPrisma()`）
-5. **Infrastructure → DB**: Prismaモデル → DBレコード
+4. **Domain → Infrastructure**: Entity → Prisma モデル（`EmployeeMapper.toPrisma()`）
+5. **Infrastructure → DB**: Prisma モデル → DB レコード
 6. **Application → Presentation**: Entity → DTO（プリミティブ型に戻す）
 7. **Presentation → User**: DTO → JSON
 
 ---
 
-## 4. データフロー図（Read操作 - CQRS）
+## 4. データフロー図（Read 操作 - CQRS）
 
 本プロジェクトでは、**CQRS（Command Query Responsibility Segregation）**パターンを採用しています。
 
-- **Write（Command）**: Repository経由でEntity操作
-- **Read（Query）**: Query Service経由でDTOを直接取得
+- **Write（Command）**: Repository 経由で Entity 操作
+- **Read（Query）**: Query Service 経由で DTO を直接取得
 
 ```mermaid
 sequenceDiagram
@@ -259,14 +270,14 @@ sequenceDiagram
     API-->>User: 200 OK<br/>[{id, email, name, ...}]
 ```
 
-### CQRSの利点
+### CQRS の利点
 
-| 操作 | 経路 | 利点 |
-|---|---|---|
-| **Write** | Repository → Mapper → Entity | ドメインロジックを確実に通す、整合性保証 |
-| **Read** | Query Service → DTO直接 | パフォーマンス向上、不要なオブジェクト生成を回避 |
+| 操作      | 経路                         | 利点                                             |
+| --------- | ---------------------------- | ------------------------------------------------ |
+| **Write** | Repository → Mapper → Entity | ドメインロジックを確実に通す、整合性保証         |
+| **Read**  | Query Service → DTO 直接     | パフォーマンス向上、不要なオブジェクト生成を回避 |
 
-**重要：** Query操作ではValue ObjectやEntityを経由せず、直接DTOを返すことでパフォーマンスを最適化しています。
+**重要：** Query 操作では Value Object や Entity を経由せず、直接 DTO を返すことでパフォーマンスを最適化しています。
 
 ---
 
@@ -380,17 +391,17 @@ classDiagram
 
 ### クラスの対応表
 
-| クラス | 層 | ファイルパス |
-|---|---|---|
-| `Employee` | Domain | `src/domain/entities/Employee.ts` |
-| `MailAddress` | Domain | `src/domain/valueObjects/MailAddress.ts` |
-| `EmployeeCd` | Domain | `src/domain/valueObjects/EmployeeCd.ts` |
-| `IEmployeeRepository` | Domain | `src/domain/repositories/IEmployeeRepository.ts` |
-| `IEmployeeQueryService` | Domain | `src/domain/queries/IEmployeeQueryService.ts` |
-| `EmployeeApplicationService` | Application | `src/application/EmployeeApplicationService.ts` |
-| `PrismaEmployeeRepository` | Infrastructure | `src/infrastructure/Prisma/Employee/PrismaEmployeeRepository.ts` |
-| `EmployeeMapper` | Infrastructure | `src/infrastructure/mappers/EmployeeMapper.ts` |
-| `PrismaEmployeeQueryService` | Infrastructure | `src/infrastructure/queries/PrismaEmployeeQueryService.ts` |
+| クラス                       | 層             | ファイルパス                                                     |
+| ---------------------------- | -------------- | ---------------------------------------------------------------- |
+| `Employee`                   | Domain         | `src/domain/entities/Employee.ts`                                |
+| `MailAddress`                | Domain         | `src/domain/valueObjects/MailAddress.ts`                         |
+| `EmployeeCd`                 | Domain         | `src/domain/valueObjects/EmployeeCd.ts`                          |
+| `IEmployeeRepository`        | Domain         | `src/domain/repositories/IEmployeeRepository.ts`                 |
+| `IEmployeeQueryService`      | Domain         | `src/domain/queries/IEmployeeQueryService.ts`                    |
+| `EmployeeApplicationService` | Application    | `src/application/EmployeeApplicationService.ts`                  |
+| `PrismaEmployeeRepository`   | Infrastructure | `src/infrastructure/Prisma/Employee/PrismaEmployeeRepository.ts` |
+| `EmployeeMapper`             | Infrastructure | `src/infrastructure/mappers/EmployeeMapper.ts`                   |
+| `PrismaEmployeeQueryService` | Infrastructure | `src/infrastructure/queries/PrismaEmployeeQueryService.ts`       |
 
 ---
 
@@ -399,22 +410,26 @@ classDiagram
 ### 重要なポイント
 
 1. **依存性逆転の原則**
-   - Domain層は他の層に依存しない
-   - Infrastructure層がDomain層のインターフェースを実装
+
+   - Domain 層は他の層に依存しない
+   - Infrastructure 層が Domain 層のインターフェースを実装
 
 2. **データ変換の多段階性**
-   - Write: プリミティブ → VO → Entity → Prismaモデル → DB
-   - Read: DB → DTO（VOやEntityを経由しない - CQRS）
 
-3. **CQRS採用**
-   - Command（Write）: Repository経由
-   - Query（Read）: Query Service経由
+   - Write: プリミティブ → VO → Entity → Prisma モデル → DB
+   - Read: DB → DTO（VO や Entity を経由しない - CQRS）
 
-4. **Mapperの役割**
-   - PrismaモデルとDomain Entityの相互変換
-   - Infrastructure層に配置
+3. **CQRS 採用**
 
-5. **Value Objectの重要性**
+   - Command（Write）: Repository 経由
+   - Query（Read）: Query Service 経由
+
+4. **Mapper の役割**
+
+   - Prisma モデルと Domain Entity の相互変換
+   - Infrastructure 層に配置
+
+5. **Value Object の重要性**
    - プリミティブ型をラップしてバリデーション
    - ドメインルールの保護
 
