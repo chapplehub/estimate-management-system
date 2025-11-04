@@ -210,46 +210,6 @@ describe("PrismaEmployeeRepository", () => {
     });
   });
 
-  describe("findAll", () => {
-    it("全従業員を取得できる", async () => {
-      // テストデータを保存
-      const employee1 = Employee.create(
-        new EmployeeCd("EMP999001"),
-        new MailAddress("test1@example.com"),
-        "全取得テスト1",
-        "hashed_password_123",
-        Role.USER
-      );
-      const employee2 = Employee.create(
-        new EmployeeCd("EMP999002"),
-        new MailAddress("test2@example.com"),
-        "全取得テスト2",
-        "hashed_password_456",
-        Role.ADMIN
-      );
-
-      await repository.save(employee1);
-      await repository.save(employee2);
-
-      // 全従業員を取得
-      const all = await repository.findAll();
-
-      // テストデータ以外の従業員も含まれる可能性があるため、最低2件以上あることを確認
-      expect(all.length).toBeGreaterThanOrEqual(2);
-
-      // テストデータが含まれていることを確認
-      const empCodes = all.map((e) => e.employeeCd.value);
-      expect(empCodes).toContain("EMP999001");
-      expect(empCodes).toContain("EMP999002");
-    });
-
-    it("従業員が存在しない場合は空配列を返す", async () => {
-      // 全削除
-      await prisma.employee.deleteMany();
-
-      const all = await repository.findAll();
-
-      expect(all).toEqual([]);
-    });
-  });
+  // findAll は IEmployeeRepository から削除されました
+  // 一覧取得には IEmployeeQueryService を使用してください
 });

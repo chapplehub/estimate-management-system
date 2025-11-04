@@ -87,13 +87,4 @@ export class PrismaEmployeeRepository implements IEmployeeRepository {
     return prismaEmployee ? EmployeeMapper.toDomain(prismaEmployee) : null;
   }
 
-  /**
-   * 全従業員を取得
-   *
-   * @returns 従業員エンティティの配列（空の場合は空配列）
-   */
-  async findAll(): Promise<Array<Employee>> {
-    const prismaEmployees = await prisma.employee.findMany();
-    return prismaEmployees.map((pe) => EmployeeMapper.toDomain(pe));
-  }
 }

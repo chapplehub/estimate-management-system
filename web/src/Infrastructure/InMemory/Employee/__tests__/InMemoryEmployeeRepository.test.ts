@@ -165,24 +165,6 @@ describe("InMemoryEmployeeRepository", () => {
     });
   });
 
-  describe("findAll", () => {
-    it("全従業員を取得できる", async () => {
-      const employee2 = Employee.create(
-        new EmployeeCd("EMP000002"),
-        new MailAddress("test2@example.com"),
-        "鈴木花子",
-        "hashed_password_456",
-        Role.ADMIN
-      );
-
-      await repository.save(employee);
-      await repository.save(employee2);
-
-      const all = await repository.findAll();
-
-      expect(all).toHaveLength(2);
-      expect(all.map((e) => e.name)).toContain("山田太郎");
-      expect(all.map((e) => e.name)).toContain("鈴木花子");
-    });
-  });
+  // findAll は IEmployeeRepository から削除されました
+  // 一覧取得には IEmployeeQueryService を使用してください
 });

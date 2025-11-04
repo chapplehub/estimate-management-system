@@ -1,5 +1,6 @@
 import * as argon2 from "argon2";
 import { PrismaClient } from "../generated/prisma/client";
+import { createId } from "@paralleldrive/cuid2";
 
 const prisma = new PrismaClient();
 
@@ -16,6 +17,7 @@ async function main() {
   // Create admin user
   const admin = await prisma.employee.create({
     data: {
+      id: createId(),
       employeeCd: "EMP000001",
       email: "admin@example.com",
       name: "Admin Taro",
@@ -57,6 +59,7 @@ async function main() {
   for (const userData of users) {
     const user = await prisma.employee.create({
       data: {
+        id: createId(),
         ...userData,
         passwordHash,
         failedLoginAttempts: 0,

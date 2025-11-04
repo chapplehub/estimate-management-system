@@ -58,8 +58,4 @@ export class InMemoryEmployeeRepository implements IEmployeeRepository {
 
     return employee || null;
   }
-
-  async findAll(): Promise<Array<Employee>> {
-    return Object.values(this.DB);
-  }
 }
