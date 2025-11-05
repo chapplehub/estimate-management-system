@@ -1,5 +1,5 @@
 import { Role } from "@/domain/types/Role";
-import { PrismaEmployeeQueryService } from "@/infrastructure/queries/PrismaEmployeeQueryService";
+import { PrismaEmployeeQueryService } from "@/infra/queries/PrismaEmployeeQueryService";
 import prisma from "@lib/prisma";
 import { createId } from "@paralleldrive/cuid2";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";

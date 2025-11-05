@@ -1,5 +1,5 @@
 import { IEmployeeRepository } from "@/domain/repositories/IEmployeeRepository";
-import { MailAddress } from "@/domain/valueObjects/MailAddress";
+import { MailAddress } from "@/domain/value/MailAddress";
 
 export class MailAddressDuplicationCheckDomainService {
   constructor(private employeeRepository: IEmployeeRepository) {}

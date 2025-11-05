@@ -1,7 +1,7 @@
 import { Employee } from "@/domain/entities/Employee";
 import { IEmployeeRepository } from "@/domain/repositories/IEmployeeRepository";
 import { Role } from "@/domain/types/Role";
-import { MailAddress } from "@/domain/valueObjects/MailAddress";
+import { MailAddress } from "@/domain/value/MailAddress";
 import { NotFoundEntityError } from "@/shared/errors/ApplicationError";
 
 export type UpdateEmployeeInput = {

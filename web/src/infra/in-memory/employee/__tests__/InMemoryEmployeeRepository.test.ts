@@ -1,8 +1,8 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import { InMemoryEmployeeRepository } from "../InMemoryEmployeeRepository";
 import { Employee } from "@/domain/entities/Employee";
-import { EmployeeCd } from "@/domain/valueObjects/EmployeeCd";
-import { MailAddress } from "@/domain/valueObjects/MailAddress";
+import { EmployeeCd } from "@/domain/value/EmployeeCd";
+import { MailAddress } from "@/domain/value/MailAddress";
 import { Role } from "@/domain/types/Role";
 
 describe("InMemoryEmployeeRepository", () => {

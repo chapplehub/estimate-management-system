@@ -1,7 +1,7 @@
 import { Employee } from "@/domain/entities/Employee";
 import { IEmployeeRepository } from "@/domain/repositories/IEmployeeRepository";
-import { EmployeeCd } from "@/domain/valueObjects/EmployeeCd";
-import { MailAddress } from "@/domain/valueObjects/MailAddress";
+import { EmployeeCd } from "@/domain/value/EmployeeCd";
+import { MailAddress } from "@/domain/value/MailAddress";
 import { randomUUID } from "crypto";
 
 export class InMemoryEmployeeRepository implements IEmployeeRepository {

@@ -1,5 +1,5 @@
 import { IEmployeeRepository } from "@/domain/repositories/IEmployeeRepository";
-import { EmployeeCd } from "@/domain/valueObjects/EmployeeCd";
+import { EmployeeCd } from "@/domain/value/EmployeeCd";
 
 export class EmployeeCdDuplicationCheckDomainService {
   constructor(private employeeRepository: IEmployeeRepository) {}

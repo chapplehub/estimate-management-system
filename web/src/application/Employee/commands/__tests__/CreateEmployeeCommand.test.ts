@@ -1,9 +1,9 @@
 import { Employee } from "@/domain/entities/Employee";
 import { IEmployeeRepository } from "@/domain/repositories/IEmployeeRepository";
-import { EmployeeCdDuplicationCheckDomainService } from "@/domain/services/Employee/EmployeeCdDuplicationCheckDomainService";
+import { EmployeeCdDuplicationCheckDomainService } from "@/domain/services/employee/EmployeeCdDuplicationCheckDomainService";
 import { Role } from "@/domain/types/Role";
-import { EmployeeCd } from "@/domain/valueObjects/EmployeeCd";
-import { MailAddress } from "@/domain/valueObjects/MailAddress";
+import { EmployeeCd } from "@/domain/value/EmployeeCd";
+import { MailAddress } from "@/domain/value/MailAddress";
 import { ValidationError } from "@/shared/errors/DomainError";
 import { CreateEmployeeCommand } from "@/application/Employee/commands/CreateEmployeeCommand";
 import { beforeEach, describe, expect, it, vi } from "vitest";

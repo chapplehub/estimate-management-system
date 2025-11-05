@@ -1,7 +1,7 @@
 import { Employee } from "@/domain/entities/Employee";
-import { EmployeeCd } from "@/domain/valueObjects/EmployeeCd";
-import { MailAddress } from "@/domain/valueObjects/MailAddress";
-import { InMemoryEmployeeRepository } from "@/Infrastructure/InMemory/Employee/InMemoryEmployeeRepository";
+import { EmployeeCd } from "@/domain/value/EmployeeCd";
+import { MailAddress } from "@/domain/value/MailAddress";
+import { InMemoryEmployeeRepository } from "@/infra/in-memory/employee/InMemoryEmployeeRepository";
 import { beforeEach, describe, expect, test } from "vitest";
 import { EmployeeCdDuplicationCheckDomainService } from "./EmployeeCdDuplicationCheckDomainService";
 

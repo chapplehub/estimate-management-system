@@ -1,8 +1,8 @@
 import { Employee } from "@/domain/entities/Employee";
 import { Role } from "@/domain/types/Role";
-import { EmployeeCd } from "@/domain/valueObjects/EmployeeCd";
-import { MailAddress } from "@/domain/valueObjects/MailAddress";
-import { PrismaEmployeeRepository } from "@/Infrastructure/Prisma/Employee/PrismaEmployeeRepository";
+import { EmployeeCd } from "@/domain/value/EmployeeCd";
+import { MailAddress } from "@/domain/value/MailAddress";
+import { PrismaEmployeeRepository } from "@/infra/prisma/employee/PrismaEmployeeRepository";
 import prisma from "@lib/prisma";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 

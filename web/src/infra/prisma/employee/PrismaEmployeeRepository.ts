@@ -1,8 +1,8 @@
 import { Employee } from "@/domain/entities/Employee";
 import { IEmployeeRepository } from "@/domain/repositories/IEmployeeRepository";
-import { EmployeeCd } from "@/domain/valueObjects/EmployeeCd";
-import { MailAddress } from "@/domain/valueObjects/MailAddress";
-import { EmployeeMapper } from "@/Infrastructure/mappers/EmployeeMapper";
+import { EmployeeCd } from "@/domain/value/EmployeeCd";
+import { MailAddress } from "@/domain/value/MailAddress";
+import { EmployeeMapper } from "@/infra/mappers/EmployeeMapper";
 import prisma from "@lib/prisma";
 
 export class PrismaEmployeeRepository implements IEmployeeRepository {

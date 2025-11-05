@@ -1,6 +1,6 @@
 import { Employee } from "@/domain/entities/Employee";
-import { EmployeeCd } from "@/domain/valueObjects/EmployeeCd";
-import { MailAddress } from "@/domain/valueObjects/MailAddress";
+import { EmployeeCd } from "@/domain/value/EmployeeCd";
+import { MailAddress } from "@/domain/value/MailAddress";
 
 /**
  * 従業員リポジトリインターフェース

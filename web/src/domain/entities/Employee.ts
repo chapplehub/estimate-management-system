@@ -1,7 +1,7 @@
 import { createId } from "@paralleldrive/cuid2";
 import { Role } from "@/domain/types/Role";
-import { EmployeeCd } from "@/domain/valueObjects/EmployeeCd";
-import { MailAddress } from "@/domain/valueObjects/MailAddress";
+import { EmployeeCd } from "@/domain/value/EmployeeCd";
+import { MailAddress } from "@/domain/value/MailAddress";
 import { BusinessRuleViolationError } from "@/shared/errors/DomainError";
 
 /**
