@@ -56,7 +56,9 @@ export default async function EmployeePage() {
 
       {/* 作成フォーム */}
       <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-8">
-        <h2 className="text-xl font-semibold mb-4">新規従業員登録</h2>
+        <h2 className="text-xl font-semibold mb-4 text-gray-500">
+          新規従業員登録
+        </h2>
         <form action={createEmployee} className="space-y-4">
           <div>
             <label
