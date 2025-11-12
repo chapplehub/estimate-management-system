@@ -159,11 +159,11 @@ export default async function EmployeePage() {
       </div>
 
       {/* 一覧表示 */}
-      <div className="bg-white shadow-md rounded px-8 pt-6 pb-8">
+      <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 text-gray-500">
         <h2 className="text-xl font-semibold mb-4">従業員一覧</h2>
         <div className="overflow-x-auto">
           <table className="min-w-full table-auto">
-            <thead className="bg-gray-800">
+            <thead className="bg-gray-200">
               <tr>
                 <th className="px-4 py-2 text-left">従業員コード</th>
                 <th className="px-4 py-2 text-left">名前</th>
@@ -176,17 +176,14 @@ export default async function EmployeePage() {
                 <tr>
                   <td
                     colSpan={4}
-                    className="px-4 py-4 text-center text-gray-800"
+                    className="px-4 py-4 text-center text-gray-500"
                   >
                     従業員が登録されていません
                   </td>
                 </tr>
               ) : (
                 employees.map((employee) => (
-                  <tr
-                    key={employee.id}
-                    className="border-b bg-gray-800 hover:bg-gray-900"
-                  >
+                  <tr key={employee.id} className="border-b hover:bg-gray-60">
                     <td className="px-4 py-2">{employee.employeeCd}</td>
                     <td className="px-4 py-2">{employee.name}</td>
                     <td className="px-4 py-2">{employee.email}</td>
