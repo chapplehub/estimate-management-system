@@ -1,3 +1,4 @@
+import { deleteEmployee } from "@/app/actions/deleteEmployee";
 import { updateEmployee } from "@/app/actions/updateEmployee";
 import { PrismaEmployeeQueryService } from "@/subdomains/employee/infra/queries/PrismaEmployeeQueryService";
 import { GetEmployeeByEmployeeCdQuery } from "@/subdomains/employee/queries/GetEmployeeByEmployeeCdQuery";
@@ -18,7 +19,9 @@ export default async function Page({
     notFound();
   }
 
+  // TODO: idはurlで渡すべきじゃないし追加してるけどこれでいいか確認
   const updateUserWithId = updateEmployee.bind(null, employee.id);
+  const deleteUserWithId = deleteEmployee.bind(null, employee.id);
 
   return (
     <div className="container mx-auto p-8">
@@ -121,11 +124,23 @@ export default async function Page({
             </select>
           </div>
 
+          <div className="flex gap-4">
+            <button
+              type="submit"
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+            >
+              更新
+            </button>
+          </div>
+        </form>
+
+        {/* 削除フォーム */}
+        <form action={deleteUserWithId} className="mt-4">
           <button
             type="submit"
-            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+            className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
           >
-            更新
+            削除
           </button>
         </form>
       </div>
