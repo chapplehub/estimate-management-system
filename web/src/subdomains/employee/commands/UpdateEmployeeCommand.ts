@@ -1,15 +1,15 @@
+import { MailAddress } from "@/shared/domain/values/MailAddress";
+import { NotFoundEntityError } from "@/shared/errors/ApplicationError";
 import { Employee } from "@/subdomains/employee/entities/Employee";
 import { IEmployeeRepository } from "@/subdomains/employee/repositories/IEmployeeRepository";
 import { Role } from "@/subdomains/employee/types/Role";
-import { MailAddress } from "@/shared/domain/values/MailAddress";
-import { NotFoundEntityError } from "@/shared/errors/ApplicationError";
 
 export type UpdateEmployeeInput = {
   id: string;
   employeeCd: string;
   email: string;
   name: string;
-  passwordHash: string;
+  // passwordHash: string;
   role: Role;
 };
 
