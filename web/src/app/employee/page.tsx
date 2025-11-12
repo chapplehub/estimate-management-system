@@ -1,54 +1,12 @@
-import { CreateEmployeeCommand } from "@/subdomains/employee/commands/CreateEmployeeCommand";
-import { PrismaEmployeeRepository } from "@/subdomains/employee/infra/prisma/PrismaEmployeeRepository";
+import { createEmployee } from "@/app/actions/createEmployee";
 import { PrismaEmployeeQueryService } from "@/subdomains/employee/infra/queries/PrismaEmployeeQueryService";
 import { GetAllEmployeesQuery } from "@/subdomains/employee/queries/GetAllEmployeesQuery";
-import { EmployeeCdDuplicationCheckDomainService } from "@/subdomains/employee/services/EmployeeCdDuplicationCheckDomainService";
-import { hash } from "bcrypt";
-import { revalidatePath } from "next/cache";
 
 export default async function EmployeePage() {
   // データ取得（Query側）
   const queryService = new PrismaEmployeeQueryService();
   const getAllQuery = new GetAllEmployeesQuery(queryService);
   const employees = await getAllQuery.execute({});
-
-  // Server Action: 従業員作成
-  async function createEmployee(formData: FormData) {
-    "use server";
-
-    const email = formData.get("email") as string;
-    const name = formData.get("name") as string;
-    const employeeCd = formData.get("employeeCd") as string;
-    const password = formData.get("password") as string;
-    const role = formData.get("role") as "ADMIN" | "USER";
-
-    try {
-      const repository = new PrismaEmployeeRepository();
-      const employeeCdDuplicationCheck =
-        new EmployeeCdDuplicationCheckDomainService(repository);
-
-      const command = new CreateEmployeeCommand(
-        repository,
-        employeeCdDuplicationCheck
-      );
-
-      // パスワードをハッシュ化
-      const passwordHash = await hash(password, 10);
-
-      await command.execute({
-        name,
-        email,
-        employeeCd,
-        passwordHash,
-        role,
-      });
-
-      revalidatePath("/employee");
-    } catch (error) {
-      console.error("Failed to create employee:", error);
-      throw error;
-    }
-  }
 
   return (
     <div className="container mx-auto p-8">
