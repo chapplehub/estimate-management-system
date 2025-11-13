@@ -3,6 +3,7 @@
 import { UpdateEmployeeCommand } from "@/subdomains/employee/commands/UpdateEmployeeCommand";
 import { PrismaEmployeeRepository } from "@/subdomains/employee/infra/prisma/PrismaEmployeeRepository";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 // Server Action: 従業員変更
 export async function updateEmployee(id: string, formData: FormData) {
@@ -28,9 +29,11 @@ export async function updateEmployee(id: string, formData: FormData) {
       role,
     });
 
-    revalidatePath("/employee/[employeeCd]");
+    revalidatePath("/employee");
   } catch (error) {
     console.error("Failed to update employee:", error);
     throw error;
   }
+
+  redirect("/employee");
 }
