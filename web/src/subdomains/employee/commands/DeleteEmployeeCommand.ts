@@ -1,7 +1,6 @@
 import { NotFoundEntityError } from "@/shared/errors/ApplicationError";
 import { Employee } from "@/subdomains/employee/entities/Employee";
 import { IEmployeeRepository } from "@/subdomains/employee/repositories/IEmployeeRepository";
-import { redirect } from "next/navigation";
 
 export type DeleteEmployeeInput = {
   id: string;
@@ -10,7 +9,7 @@ export type DeleteEmployeeInput = {
 /**
  * 従業員情報削除コマンド
  */
-export class deleteEmployeeCommand {
+export class DeleteEmployeeCommand {
   public constructor(
     private readonly employeeRepository: IEmployeeRepository
   ) {}
@@ -24,6 +23,5 @@ export class deleteEmployeeCommand {
     }
 
     await this.employeeRepository.delete(input.id);
-    redirect("/employee");
   }
 }
