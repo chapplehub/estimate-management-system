@@ -1,6 +1,7 @@
 import { createEmployee } from "@/app/actions/createEmployee";
 import { PrismaEmployeeQueryService } from "@/subdomains/employee/infra/queries/PrismaEmployeeQueryService";
 import { GetAllEmployeesQuery } from "@/subdomains/employee/queries/GetAllEmployeesQuery";
+import Link from "next/link";
 
 export default async function EmployeePage() {
   // データ取得（Query側）
@@ -144,7 +145,14 @@ export default async function EmployeePage() {
               ) : (
                 employees.map((employee) => (
                   <tr key={employee.id} className="border-b hover:bg-gray-60">
-                    <td className="px-4 py-2">{employee.employeeCd}</td>
+                    <td className="px-4 py-2">
+                      <Link
+                        href={`/employee/${employee.employeeCd}`}
+                        className="text-blue-600 hover:text-blue-800 hover:underline"
+                      >
+                        {employee.employeeCd}
+                      </Link>
+                    </td>
                     <td className="px-4 py-2">{employee.name}</td>
                     <td className="px-4 py-2">{employee.email}</td>
                     <td className="px-4 py-2">
