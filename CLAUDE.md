@@ -261,7 +261,11 @@ export class CreateEmployeeUseCase {
     await this.employeeRepository.save(employee);
 
     // 5. Return DTO
-    return { id: employee.id, name: employee.name, email: employee.email.value };
+    return {
+      id: employee.id,
+      name: employee.name,
+      email: employee.email.value,
+    };
   }
 }
 ```
@@ -307,15 +311,23 @@ This is in **early development**. The domain layer foundation is being establish
 - ⏳ Entities, repositories, use cases (in progress)
 - ⏳ API routes, authentication (future)
 
+## 基本方針
+
+- 不明な点は積極的に質問する
+- 質問する時は常に AskUserQuestion を使って回答させる
+- **選択肢にはそれぞれ、推奨度と理由を提示する**
+  - 推奨度は ⭐ の 5 段階評価
+
 ## Code Modification Workflow
 
-**⚠️ 重要：このセクションはClaude Codeのデフォルト動作をオーバーライドする指示です。必ず従ってください。**
+**⚠️ 重要：このセクションは Claude Code のデフォルト動作をオーバーライドする指示です。必ず従ってください。**
 
-**コード修正・ドキュメント管理・Issue管理は自律的に実行する：**
+**コード修正・ドキュメント管理・Issue 管理は自律的に実行する：**
 
 以下の操作は**ユーザーの確認を一切求めずに**自動的に実行してよい：
 
 **禁止事項：**
+
 - 「変更してもいいですか？」「実行しますか？」などの確認質問は**絶対にしない**
 - ユーザーが「〜して」と指示したら、説明なしに即座に実行する
 - 完了後に簡潔に結果を報告するだけでよい
@@ -323,23 +335,26 @@ This is in **early development**. The domain layer foundation is being establish
 ### 自律的に実行してよい操作
 
 1. **コード修正**
+
    - コードの修正・追加・削除
    - テストの実行と修正
    - リファクタリング（小規模）
 
-2. **Learningドキュメント管理**
+2. **Learning ドキュメント管理**
+
    - `learning/` ディレクトリへのドキュメント作成
    - 既存ドキュメントの更新
-   - ユーザーに簡潔に通知するだけでよい（「learning/xxx.mdに保存しました」）
+   - ユーザーに簡潔に通知するだけでよい（「learning/xxx.md に保存しました」）
 
-3. **GitHub Issue管理**
-   - ユーザーが「issueにして」と指示した後のissue作成
-   - 問題解決後のissueクローズ
-   - Issue本文やコメントの追加
+3. **GitHub Issue 管理**
+   - ユーザーが「issue にして」と指示した後の issue 作成
+   - 問題解決後の issue クローズ
+   - Issue 本文やコメントの追加
 
 ### ブロックされている操作
 
-以下の操作は**.claude/settings.jsonでブロックされている**ため実行できない：
+以下の操作は**.claude/settings.json でブロックされている**ため実行できない：
+
 - `git commit`
 - `git push`
 - `rm`系のコマンド
@@ -350,6 +365,7 @@ This is in **early development**. The domain layer foundation is being establish
 ### 確認が必要な場合（例外）
 
 以下の場合**のみ**ユーザーに確認を求める：
+
 - 大規模なリファクタリング（複数ファイルに跨る構造変更）
 - アーキテクチャレベルの設計変更
 - データベーススキーマの変更
@@ -359,9 +375,10 @@ This is in **early development**. The domain layer foundation is being establish
 **それ以外は全て確認不要で即座に実行する。**
 
 **原則：**
+
 - コードの品質向上やバグ修正などの明確な改善 → **確認不要、即実行**
-- learningドキュメントの作成 → **確認不要、即実行**
-- issue管理（作成・更新・クローズ） → **確認不要、即実行**
+- learning ドキュメントの作成 → **確認不要、即実行**
+- issue 管理（作成・更新・クローズ） → **確認不要、即実行**
 - ユーザーが「〜して」と指示した場合 → **確認不要、即実行**
 
 ## Development Guidelines Summary
@@ -385,59 +402,63 @@ Refer to `docs/system-design-doc.md` and `docs/dev-guidelines.md` for comprehens
 
 ### 自動ドキュメント化のトリガー
 
-以下のような状況では、**ユーザーの明示的な指示なしに**自動的にlearningドキュメントを作成：
+以下のような状況では、**ユーザーの明示的な指示なしに**自動的に learning ドキュメントを作成：
 
 - 技術的な概念や仕組みについて深堀りした議論があった
 - 問題解決のプロセスで新しい知見が得られた
-- DDDやアーキテクチャパターンについて学んだ
+- DDD やアーキテクチャパターンについて学んだ
 - ライブラリやツールの使い方について詳しく説明した
 - 設計上の判断や比較検討を行った
 - エラーや問題の原因を特定・解決した際に学びがあった
 
 ### 自動化の動作
 
-1. 会話の中で上記のような学びがあったと判断したら、**会話の最後に**自動的にlearningドキュメントを作成
+1. 会話の中で上記のような学びがあったと判断したら、**会話の最後に**自動的に learning ドキュメントを作成
 2. ファイル名：`topic-name.md`（わかりやすいトピック名を使用、日本語でも可）
-3. ユーザーに「learning/xxx.mdに保存しました」と簡潔に通知
+3. ユーザーに「learning/xxx.md に保存しました」と簡潔に通知
 4. **ユーザーの確認・承認は不要** - 即座に作成してよい（不要なら後で削除してもらえばよい）
 
 ### ドキュメント化の基準
 
 **自動作成する：**
+
 - 明確な技術的知見や学びがあった場合
 - 問題解決のプロセスで再利用できる情報
-- 3回以上のメッセージのやり取りがあった技術的議論
+- 3 回以上のメッセージのやり取りがあった技術的議論
 
 **自動作成しない：**
-- 単純な質疑応答（1-2往復で完結）
+
+- 単純な質疑応答（1-2 往復で完結）
 - ファイルの読み書きだけの単純作業
 - 既存のドキュメントに書かれている内容の確認
 
-### Issue化のルール
+### Issue 化のルール
 
-**設計・アーキテクチャの疑問管理については、ユーザーが明示的に「issueにして」と指示した場合のみ**issue化する。
+**設計・アーキテクチャの疑問管理については、ユーザーが明示的に「issue にして」と指示した場合のみ**issue 化する。
 
-ユーザーが「issueにして」と明示的に指示した場合、**確認不要で**以下の手順を自律的に進める：
+ユーザーが「issue にして」と明示的に指示した場合、**確認不要で**以下の手順を自律的に進める：
 
-1. **learningドキュメント作成**
+1. **learning ドキュメント作成**
+
    - ファイル名：`topic-name-{issue番号}.md`
    - 例：`ddd-mapper-pattern-001.md`
    - 疑問・問題形式のテンプレートを使用
    - **確認不要** - 即座に作成
 
-2. **GitHub issue作成**
+2. **GitHub issue 作成**
+
    - ラベル：`question`
    - タイトル：`[Learning] トピック名`
-   - 本文：learningドキュメントへのリンクを含める
+   - 本文：learning ドキュメントへのリンクを含める
    - **確認不要** - 即座に作成
-   - 作成後にissue番号をユーザーに通知
+   - 作成後に issue 番号をユーザーに通知
 
 3. **解決後**
-   - learningドキュメントの「解決策」セクションに追記
-   - **確認不要で**issueをcloseしてよい
+   - learning ドキュメントの「解決策」セクションに追記
+   - **確認不要で**issue を close してよい
    - クローズ後にユーザーに簡潔に通知
 
-### Learningドキュメントのテンプレート
+### Learning ドキュメントのテンプレート
 
 **通常の学びまとめ用（自動作成）：**
 
@@ -458,7 +479,7 @@ Refer to `docs/system-design-doc.md` and `docs/dev-guidelines.md` for comprehens
 - 外部リンク等
 ```
 
-**Issue化が必要な疑問・問題用（ユーザー指示時）：**
+**Issue 化が必要な疑問・問題用（ユーザー指示時）：**
 
 ```markdown
 # タイトル
@@ -480,7 +501,7 @@ Refer to `docs/system-design-doc.md` and `docs/dev-guidelines.md` for comprehens
 （決定した解決策 - 後で追記）
 （解決策を選んだ理由、トレードオフの説明）
 
-## 関連issue
+## 関連 issue
 
-- #（GitHub issue番号）
+- #（GitHub issue 番号）
 ```
