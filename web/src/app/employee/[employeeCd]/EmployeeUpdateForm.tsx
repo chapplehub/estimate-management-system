@@ -16,7 +16,7 @@ type Props = {
 };
 
 export function EmployeeUpdateForm({ employee }: Props) {
-  const [state, formAction, isPending] = useActionState(updateEmployee, {
+  const [updateState, formAction, isPending] = useActionState(updateEmployee, {
     success: true,
   });
 
@@ -25,13 +25,13 @@ export function EmployeeUpdateForm({ employee }: Props) {
       <h2 className="text-xl font-semibold mb-4 text-gray-500">従業員変更</h2>
 
       {/* エラーメッセージ表示 */}
-      {!state.success && (
+      {!updateState.success && (
         <div
           className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4"
           role="alert"
         >
           <p className="font-bold">エラー</p>
-          <p>{state.error}</p>
+          <p>{updateState.error}</p>
         </div>
       )}
 

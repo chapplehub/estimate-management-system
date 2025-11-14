@@ -8,20 +8,20 @@ type Props = {
 };
 
 export function EmployeeDeleteForm({ employeeId }: Props) {
-  const [state, formAction, isPending] = useActionState(deleteEmployee, {
+  const [deleteState, formAction, isPending] = useActionState(deleteEmployee, {
     success: true,
   });
 
   return (
     <div className="mt-4">
       {/* エラーメッセージ表示 */}
-      {!state.success && (
+      {!deleteState.success && (
         <div
           className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4"
           role="alert"
         >
           <p className="font-bold">エラー</p>
-          <p>{state.error}</p>
+          <p>{deleteState.error}</p>
         </div>
       )}
 
