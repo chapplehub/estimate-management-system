@@ -7,24 +7,10 @@ type Props = {
   employeeId: string;
 };
 
-type ActionState =
-  | { success: true }
-  | { success: false; error: string };
-
 export function EmployeeDeleteForm({ employeeId }: Props) {
-  // useActionState 用のラッパー関数
-  // 第1引数に state を受け取り、第2引数に FormData を受け取る
-  const deleteEmployeeWithId = async (
-    _prevState: ActionState,
-    _formData: FormData
-  ): Promise<ActionState> => {
-    return await deleteEmployee(employeeId);
-  };
-
-  const [state, formAction, isPending] = useActionState(
-    deleteEmployeeWithId,
-    { success: true }
-  );
+  const [state, formAction, isPending] = useActionState(deleteEmployee, {
+    success: true,
+  });
 
   return (
     <div className="mt-4">
@@ -40,6 +26,9 @@ export function EmployeeDeleteForm({ employeeId }: Props) {
       )}
 
       <form action={formAction}>
+        {/* hidden inputでIDを渡す */}
+        <input type="hidden" name="id" value={employeeId} />
+
         <button
           type="submit"
           disabled={isPending}

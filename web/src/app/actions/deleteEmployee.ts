@@ -19,7 +19,19 @@ type DeleteEmployeeResult =
   | { success: false; error: string };
 
 // Server Action: 従業員削除
-export async function deleteEmployee(id: string): Promise<DeleteEmployeeResult> {
+export async function deleteEmployee(
+  _prevState: DeleteEmployeeResult,
+  formData: FormData
+): Promise<DeleteEmployeeResult> {
+  const id = formData.get("id") as string;
+
+  // TODO: Auth.js導入後に権限チェックを追加
+  // const session = await auth();
+  // if (!session) redirect('/login');
+  // if (session.user.id !== id && session.user.role !== 'ADMIN') {
+  //   return { success: false, error: '権限がありません' };
+  // }
+
   try {
     const repository = new PrismaEmployeeRepository();
     const command = new DeleteEmployeeCommand(repository);

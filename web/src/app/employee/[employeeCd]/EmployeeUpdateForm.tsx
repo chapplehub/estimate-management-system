@@ -15,24 +15,10 @@ type Props = {
   employee: Employee;
 };
 
-type ActionState =
-  | { success: true }
-  | { success: false; error: string };
-
 export function EmployeeUpdateForm({ employee }: Props) {
-  // useActionState 用のラッパー関数
-  // 第1引数に state を受け取り、第2引数に FormData を受け取る
-  const updateEmployeeWithId = async (
-    _prevState: ActionState,
-    formData: FormData
-  ): Promise<ActionState> => {
-    return await updateEmployee(employee.id, formData);
-  };
-
-  const [state, formAction, isPending] = useActionState(
-    updateEmployeeWithId,
-    { success: true }
-  );
+  const [state, formAction, isPending] = useActionState(updateEmployee, {
+    success: true,
+  });
 
   return (
     <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-8">
@@ -50,6 +36,9 @@ export function EmployeeUpdateForm({ employee }: Props) {
       )}
 
       <form action={formAction} className="space-y-4">
+        {/* hidden inputでIDを渡す */}
+        <input type="hidden" name="id" value={employee.id} />
+
         <div>
           <label
             htmlFor="name"
