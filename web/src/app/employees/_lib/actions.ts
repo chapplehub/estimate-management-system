@@ -1,5 +1,6 @@
 "use server";
 
+import { MailAddressDuplicationCheckDomainService } from "@/shared/domain/services/MailAddressDuplicationCheckDomainService";
 import {
   NotFoundEntityError,
   NotFoundError,
@@ -27,6 +28,7 @@ export async function createEmployee(
   _prevState: ActionResult,
   formData: FormData
 ): Promise<ActionResult> {
+  // TODO: どうやらObject.fromEntries()一括でオブジェクト化できる？その場合、型情報はどうするの？
   const email = formData.get("email") as string;
   const name = formData.get("name") as string;
   const employeeCd = formData.get("employeeCd") as string;
@@ -41,14 +43,17 @@ export async function createEmployee(
   // }
 
   try {
-    // TODO: ここにバックエンドのロジックが入り込んではいけないはず
+    // TODO: ここでDIしたくない。一括でDIできる共通処理、事前処理を実装したい。
     const repository = new PrismaEmployeeRepository();
     const employeeCdDuplicationCheck =
       new EmployeeCdDuplicationCheckDomainService(repository);
+    const mailAddressDuplicationCheck =
+      new MailAddressDuplicationCheckDomainService(repository);
 
     const command = new CreateEmployeeCommand(
       repository,
-      employeeCdDuplicationCheck
+      employeeCdDuplicationCheck,
+      mailAddressDuplicationCheck
     );
 
     // パスワードをハッシュ化
@@ -126,7 +131,12 @@ export async function updateEmployee(
 
   try {
     const repository = new PrismaEmployeeRepository();
-    const command = new UpdateEmployeeCommand(repository);
+    const mailAddressDuplicationCheck =
+      new MailAddressDuplicationCheckDomainService(repository);
+    const command = new UpdateEmployeeCommand(
+      repository,
+      mailAddressDuplicationCheck
+    );
 
     await command.execute({
       id,

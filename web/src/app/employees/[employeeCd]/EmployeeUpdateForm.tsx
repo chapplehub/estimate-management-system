@@ -36,8 +36,9 @@ export function EmployeeUpdateForm({ employee }: Props) {
       )}
 
       <form action={formAction} className="space-y-4">
-        {/* hidden inputでIDを渡す */}
+        {/* hidden inputでIDと従業員コードを渡す */}
         <input type="hidden" name="id" value={employee.id} />
+        <input type="hidden" name="employeeCd" value={employee.employeeCd} />
 
         <div>
           <label
@@ -77,19 +78,17 @@ export function EmployeeUpdateForm({ employee }: Props) {
 
         <div>
           <label
-            htmlFor="employeeCd"
+            htmlFor="employeeCd-display"
             className="block text-gray-700 text-sm font-bold mb-2"
           >
             従業員コード
           </label>
           <input
             type="text"
-            id="employeeCd"
-            name="employeeCd"
-            defaultValue={employee.employeeCd}
+            id="employeeCd-display"
+            value={employee.employeeCd}
             disabled
-            required
-            pattern="EMP[0-9]{6}"
+            readOnly
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline bg-gray-100"
           />
           <p className="text-gray-600 text-xs mt-1">
