@@ -1,6 +1,6 @@
 "use client";
 
-import { updateEmployee } from "@/app/actions/updateEmployee";
+import { updateEmployee } from "../_lib/actions";
 import { useActionState } from "react";
 
 type Employee = {
