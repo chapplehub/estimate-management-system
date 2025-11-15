@@ -9,6 +9,7 @@ import {
   BusinessRuleViolationError,
   ValidationError,
 } from "@/shared/errors/DomainError";
+import type { ActionResult } from "@/shared/types/ActionResult";
 import { CreateEmployeeCommand } from "@/subdomains/employee/commands/CreateEmployeeCommand";
 import { DeleteEmployeeCommand } from "@/subdomains/employee/commands/DeleteEmployeeCommand";
 import { UpdateEmployeeCommand } from "@/subdomains/employee/commands/UpdateEmployeeCommand";
@@ -17,9 +18,6 @@ import { EmployeeCdDuplicationCheckDomainService } from "@/subdomains/employee/s
 import { hash } from "bcrypt";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-
-// Server Actionの戻り値の型
-type ActionResult = { success: true } | { success: false; error: string };
 
 // ========================================
 // 従業員作成

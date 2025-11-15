@@ -1,6 +1,7 @@
 "use client";
 
 import { deleteEmployee } from "../_lib/actions";
+import type { ActionResult } from "@/shared/types/ActionResult";
 import { useActionState } from "react";
 
 type Props = {

@@ -1,6 +1,7 @@
 "use client";
 
 import { createEmployee } from "../_lib/actions";
+import type { ActionResult } from "@/shared/types/ActionResult";
 import { useActionState } from "react";
 
 export function EmployeeCreateForm() {
