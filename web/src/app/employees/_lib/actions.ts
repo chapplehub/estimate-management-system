@@ -1,14 +1,6 @@
 "use server";
 
 import { MailAddressDuplicationCheckDomainService } from "@/shared/domain/services/MailAddressDuplicationCheckDomainService";
-import {
-  NotFoundEntityError,
-  NotFoundError,
-} from "@/shared/errors/ApplicationError";
-import {
-  BusinessRuleViolationError,
-  ValidationError,
-} from "@/shared/errors/DomainError";
 import type { ActionResult } from "@/shared/types/ActionResult";
 import { CreateEmployeeCommand } from "@/subdomains/employee/commands/CreateEmployeeCommand";
 import { DeleteEmployeeCommand } from "@/subdomains/employee/commands/DeleteEmployeeCommand";
@@ -18,6 +10,7 @@ import { EmployeeCdDuplicationCheckDomainService } from "@/subdomains/employee/s
 import { hash } from "bcrypt";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { handleCommandError } from "./error-handler";
 
 // ========================================
 // 従業員作成
@@ -67,40 +60,7 @@ export async function createEmployee(
 
     revalidatePath("/employees");
   } catch (error) {
-    console.error("Failed to create employee:", error);
-
-    // Domain層からのエラー: 入力値の検証エラー
-    if (error instanceof ValidationError) {
-      return {
-        success: false,
-        error: `入力内容に誤りがあります: ${error.message}`,
-      };
-    }
-
-    // Domain層からのエラー: ビジネスルール違反
-    if (error instanceof BusinessRuleViolationError) {
-      return {
-        success: false,
-        error: error.message,
-      };
-    }
-
-    // Application層からのエラー: リソースが見つからない
-    if (
-      error instanceof NotFoundEntityError ||
-      error instanceof NotFoundError
-    ) {
-      return {
-        success: false,
-        error: "指定された従業員が見つかりません",
-      };
-    }
-
-    // それ以外の予期しないエラー（インフラ層のエラー、ネットワークエラーなど）
-    return {
-      success: false,
-      error: "従業員の作成に失敗しました。しばらくしてから再度お試しください。",
-    };
+    return handleCommandError(error);
   }
 
   // 成功時は一覧ページにリダイレクト
@@ -147,40 +107,7 @@ export async function updateEmployee(
     revalidatePath("/employees");
     revalidatePath(`/employees/${employeeCd}`);
   } catch (error) {
-    console.error("Failed to update employee:", error);
-
-    // Domain層からのエラー: 入力値の検証エラー
-    if (error instanceof ValidationError) {
-      return {
-        success: false,
-        error: `入力内容に誤りがあります: ${error.message}`,
-      };
-    }
-
-    // Domain層からのエラー: ビジネスルール違反
-    if (error instanceof BusinessRuleViolationError) {
-      return {
-        success: false,
-        error: error.message,
-      };
-    }
-
-    // Application層からのエラー: リソースが見つからない
-    if (
-      error instanceof NotFoundEntityError ||
-      error instanceof NotFoundError
-    ) {
-      return {
-        success: false,
-        error: "指定された従業員が見つかりません",
-      };
-    }
-
-    // それ以外の予期しないエラー（インフラ層のエラー、ネットワークエラーなど）
-    return {
-      success: false,
-      error: "従業員の更新に失敗しました。しばらくしてから再度お試しください。",
-    };
+    return handleCommandError(error);
   }
 
   // 成功時は詳細ページにリダイレクト
@@ -213,40 +140,7 @@ export async function deleteEmployee(
 
     revalidatePath("/employees");
   } catch (error) {
-    console.error("Failed to delete employee:", error);
-
-    // Domain層からのエラー: 入力値の検証エラー
-    if (error instanceof ValidationError) {
-      return {
-        success: false,
-        error: `入力内容に誤りがあります: ${error.message}`,
-      };
-    }
-
-    // Domain層からのエラー: ビジネスルール違反
-    if (error instanceof BusinessRuleViolationError) {
-      return {
-        success: false,
-        error: error.message,
-      };
-    }
-
-    // Application層からのエラー: リソースが見つからない
-    if (
-      error instanceof NotFoundEntityError ||
-      error instanceof NotFoundError
-    ) {
-      return {
-        success: false,
-        error: "指定された従業員が見つかりません",
-      };
-    }
-
-    // それ以外の予期しないエラー（インフラ層のエラー、ネットワークエラーなど）
-    return {
-      success: false,
-      error: "従業員の削除に失敗しました。しばらくしてから再度お試しください。",
-    };
+    return handleCommandError(error);
   }
 
   // 成功時は一覧ページにリダイレクト
