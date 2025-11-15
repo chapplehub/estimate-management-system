@@ -45,7 +45,7 @@ npm run db:seed        # Run seed script (uses tsx)
 
 - PostgreSQL running on `localhost:5432`
 - Database name: `estimate_management_dev`
-- Connection string in `web/.env`
+- Connection string in `web/.env.local` (see `.env.example` for template)
 
 ## Architecture & Structure
 
@@ -296,10 +296,10 @@ Validation happens at multiple layers:
 
 Uses **Auth.js (NextAuth v5+)** with:
 
-- Credentials provider (email + password)
+- Credentials provider (employeeCd + password)
 - Database sessions (stored in PostgreSQL)
-- Password hashing with argon2
-- Account locking after failed attempts
+- Password hashing with bcrypt
+- Account locking after failed attempts (future)
 
 ### Current Development Stage
 
@@ -313,10 +313,66 @@ This is in **early development**. The domain layer foundation is being establish
 
 ## 基本方針
 
+### 設計・実装の原則
+
+**最優先事項：標準に従う**
+
+アプリケーションの設計・実装は、以下の優先順位で標準的な方法を採用する：
+
+1. **Web標準** - W3C、WHATWG等の標準仕様
+2. **言語標準** - TypeScript/JavaScript（ECMAScript）の標準仕様
+3. **フレームワーク標準** - Next.js、React公式ドキュメントの推奨パターン
+4. **ライブラリ標準** - 使用するライブラリの公式ドキュメントの推奨実装
+
+**禁止事項：**
+- アドホックな解決策の提案（その場しのぎの実装）
+- アンチパターンの提案（コミュニティで非推奨とされる実装）
+- 公式ドキュメントに反する実装
+
+**実装前の確認プロセス：**
+
+新しい機能や問題解決の実装を提案する前に、必ず以下を確認する：
+
+1. **公式ドキュメントの確認**
+   - Next.js、React、使用ライブラリの公式ドキュメントを確認
+   - 推奨パターンがあればそれに従う
+
+2. **代替案の検討**
+   - 複数の実装方法がある場合、それぞれのメリット・デメリットを比較
+   - 標準的でない方法を提案する場合、明確な理由を示す
+
+3. **ユーザーへの確認**
+   - 実装方法に複数の選択肢がある場合、AskUserQuestionで確認
+   - 選択肢には必ず以下を含める：
+     - 推奨度（⭐ 5段階評価）
+     - 標準に従っているか（Web/言語/フレームワーク/ライブラリ標準）
+     - メリット・デメリット
+     - 将来的な保守性への影響
+
+**例：**
+```
+質問: "フォームエラー時に入力値を保持する方法は？"
+
+選択肢A: formRefでクライアント側で管理
+- ⭐⭐⭐⭐⭐ 推奨
+- React公式推奨パターン
+- メリット: 責任の分離、ネットワーク効率
+- デメリット: 少し複雑（useRefが必要）
+
+選択肢B: Server ActionからformDataを返す
+- ⭐⭐⭐ シンプルだが非推奨
+- React標準に反する
+- メリット: 実装が簡単
+- デメリット: 保守性、ネットワーク効率が悪い
+```
+
+### コミュニケーション方針
+
 - 不明な点は積極的に質問する
 - 質問する時は常に AskUserQuestion を使って回答させる
 - **選択肢にはそれぞれ、推奨度と理由を提示する**
   - 推奨度は ⭐ の 5 段階評価
+  - 標準に従っているかを明記
 
 ## Code Modification Workflow
 
@@ -370,7 +426,8 @@ This is in **early development**. The domain layer foundation is being establish
 - アーキテクチャレベルの設計変更
 - データベーススキーマの変更
 - 新しい依存関係（npm package）の追加
-- 明らかに複数の実装方針がある場合の選択
+- **複数の実装方針がある場合（特に標準 vs 非標準の選択）**
+- **引継ぎ資料（HANDOFF.md等）の内容が公式ドキュメントと矛盾する場合**
 
 **それ以外は全て確認不要で即座に実行する。**
 
@@ -391,8 +448,66 @@ This is in **early development**. The domain layer foundation is being establish
 6. **Explicit error handling** - use custom error classes, never swallow errors
 7. **Type safety** - no `any`, enable all strict TypeScript checks
 8. **Immutability** - value objects and entity properties should be readonly where appropriate
+9. **Follow standards first** - Web/Language/Framework/Library standards take precedence over custom solutions
+10. **Verify handoff materials** - HANDOFF.md is reference, not absolute instruction. Validate against official docs.
 
 Refer to `docs/system-design-doc.md` and `docs/dev-guidelines.md` for comprehensive architecture and coding standards.
+
+## 引継ぎ資料の扱い
+
+### HANDOFF.md等の引継ぎ資料について
+
+**重要：引継ぎ資料は参考情報であり、絶対的な指示ではない**
+
+HANDOFF.mdやlearning/ディレクトリの資料は前セッションの記録だが、以下の点に注意する：
+
+1. **検証が必要**
+   - 引継ぎ資料の内容が標準的な実装かどうか検証する
+   - 公式ドキュメントと矛盾がないか確認する
+
+2. **優先順位**
+   ```
+   1. 公式ドキュメント（Next.js、React、ライブラリ）
+   2. CLAUDE.md（このファイル）の原則
+   3. HANDOFF.md等の引継ぎ資料
+   ```
+
+3. **矛盾がある場合**
+   - 引継ぎ資料が非標準的な実装を提案している場合、ユーザーに確認する
+   - AskUserQuestionで標準的な方法と比較して提示する
+   - 引継ぎ資料の修正を提案する
+
+**例：**
+```
+HANDOFF.mdに「ActionResultにformDataを含める」と書かれている
+↓
+公式ドキュメントを確認
+↓
+React公式は「formRefでクライアント側で管理」を推奨
+↓
+ユーザーに両方の選択肢を提示
+↓
+標準的な方法を選択
+↓
+HANDOFF.mdの該当箇所を修正
+```
+
+### 引継ぎ資料の更新
+
+非標準的な実装が引継ぎ資料に含まれていた場合、以下を実施する：
+
+1. **HANDOFF.mdの修正**
+   - 誤った実装提案を標準的な方法に修正
+   - 修正理由をコメントで記載
+
+2. **learningドキュメントの作成**
+   - なぜその実装がアンチパターンなのか
+   - 標準的な実装方法は何か
+   - どのような経緯で気づいたか
+
+3. **ユーザーへの報告**
+   - 引継ぎ資料の誤りを修正したことを報告
+   - 修正内容を簡潔に説明
 
 ## Learning Documentation & Issue Management
 
