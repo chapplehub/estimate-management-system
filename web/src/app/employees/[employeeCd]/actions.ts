@@ -34,6 +34,7 @@ export async function updateEmployee(
     return {
       success: false,
       errors: fieldErrors,
+      data: rawData, // エラー時に入力値を返す（フォームの値保持用）
     };
   }
 

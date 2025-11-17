@@ -63,10 +63,17 @@
 
 ### ✅ Issue #7: フォーム送信エラー時に入力値が失われる（解決済み）
 - **問題:** バリデーションエラー発生時、ユーザー入力値がリセットされる
-- **解決策:** React公式推奨の `formRef` パターンを採用
-  - `defaultValue` でフォーム値を保持（`ActionResult.formData` は返さない）
-  - Server Actionsでは `errors` のみ返却
-- **参考:** `learning/validation-layer-responsibilities.md`
+- **解決策:** Next.jsコミュニティの標準パターンを採用
+  - Server Actionから入力値を返却（`ActionResult.data`）
+  - フォームコンポーネントで `defaultValue` に設定
+  - エラー時: `defaultValue={!state.success ? state.data?.fieldName : ""}`
+- **実装ファイル:**
+  - `shared/types/ActionResult.ts` - `data` フィールドを追加
+  - `app/employees/new/actions.ts` - エラー時に `data: rawData` を返却
+  - `app/employees/[employeeCd]/actions.ts` - 同上
+  - `app/employees/new/EmployeeCreateForm.tsx` - 各フィールドに `defaultValue` 設定
+  - `app/employees/[employeeCd]/EmployeeUpdateForm.tsx` - 同上
+- **参考:** `learning/form-input-preservation-issue-7.md`
 
 ### ✅ Issue #8: 複数のバリデーションエラーを同時に表示したい（解決済み）
 - **問題:** 複数エラーがあっても最初の1つしか表示されない
@@ -100,8 +107,8 @@
 ├─ ✅ Zod導入
 ├─ ✅ employee CRUDフォームのバリデーション強化
 ├─ ✅ フィールドごとのエラー表示
-├─ ✅ Issue #8の解決（複数エラー表示）
-└─ ⚠️ Issue #7の解決（formRefパターン採用、formData返却は見送り）
+├─ ✅ Issue #7の解決（Server Actionからデータ返却パターン採用）
+└─ ✅ Issue #8の解決（複数エラー表示）
 
 📋 [Auth.jsフェーズ] (次のタスク)
 ├─ Prismaシードの整備（テストアカウント）
@@ -146,7 +153,7 @@ NEXTAUTH_URL="http://localhost:3000"
 **実施内容:**
 - `web/src/shared/types/ActionResult.ts` を作成
 - 複数エラー対応（`errors` フィールド）
-- **注意:** `formData` フィールドは含めない（React公式推奨パターンに従う）
+- フォーム入力値保持用（`data` フィールド）
 
 **作成したファイル:**
 ```typescript
@@ -157,6 +164,7 @@ export type ActionResult<T = void> =
       success: false;
       error?: string; // 単一エラーメッセージ
       errors?: Record<string, string[]>; // フィールドごとのエラー配列（Zod用）
+      data?: Record<string, unknown>; // フォーム入力値の保持用
     };
 ```
 
@@ -304,7 +312,7 @@ export async function createEmployee(
 
 **実施内容:**
 - フィールドごとのエラーメッセージ表示
-- **formData保持は実装せず**（React公式推奨の formRef パターンを採用）
+- バリデーションエラー時の入力値保持（`defaultValue`で設定）
 
 **実装例:**
 ```typescript
@@ -316,7 +324,15 @@ export function EmployeeCreateForm() {
 
   return (
     <form action={formAction}>
-      <input type="text" name="name" />
+      <input
+        type="text"
+        name="name"
+        defaultValue={
+          !createState.success
+            ? (createState.data?.name as string) || ""
+            : ""
+        }
+      />
       {!createState.success && createState.errors?.name && (
         <p className="text-red-500 text-xs mt-1">
           {createState.errors.name[0]}
@@ -328,10 +344,11 @@ export function EmployeeCreateForm() {
 ```
 
 **重要な変更点:**
-- ❌ `formData` フィールドは返さない
-- ✅ フィールドごとのエラー表示のみ実装
+- ✅ Server Actionから `data` フィールドを返却（入力値保持用）
+- ✅ フィールドごとのエラー表示実装
+- ✅ `defaultValue` で入力値を復元
+- ✅ Issue #7（入力値保持）解決
 - ✅ Issue #8（複数エラー表示）解決
-- ⚠️ Issue #7（入力値保持）は formRef パターンで対応（別途実装が必要）
 
 ---
 
@@ -855,8 +872,8 @@ const [state, formAction, isPending] = useActionState(serverAction, { success: t
 - [x] Server Actionsにバリデーション追加（create/update）
 - [x] フォームコンポーネントの修正（フィールドエラー表示）
 - [x] Zod v4対応（`z.flattenError()` 使用）
+- [x] Issue #7のクローズ（入力値保持実装完了）
 - [x] Issue #8のクローズ（複数エラー表示）
-- [ ] Issue #7のクローズ（formRef パターン実装は別途）
 
 ### 📋 Auth.jsフェーズ（次のタスク）
 - [ ] `prisma/seed.ts` にテストアカウント追加
@@ -954,8 +971,10 @@ npm run db:seed
 - Zodスキーマ定義、バリデーション実装
 - Zod v4対応（`z.flattenError()`）
 - フィールドごとのエラー表示
+- **Issue #7解決**: バリデーションエラー時の入力値保持（`defaultValue`パターン）
 
 📚 **Learning作成**
 - `learning/zod-flatten-deprecation.md` - Zod v4移行の記録
 - `learning/validation-layer-responsibilities.md` - バリデーション層の責務分担
 - `learning/server-actions-file-structure.md` - コロケーション採用の経緯
+- `learning/form-input-preservation-issue-7.md` - フォーム入力値保持の実装調査

@@ -51,7 +51,11 @@ export function EmployeeUpdateForm({ employee }: Props) {
             type="text"
             id="name"
             name="name"
-            defaultValue={employee.name}
+            defaultValue={
+              !updateState.success && updateState.data?.name
+                ? (updateState.data.name as string)
+                : employee.name
+            }
             required
             disabled={isPending}
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
@@ -74,7 +78,11 @@ export function EmployeeUpdateForm({ employee }: Props) {
             type="email"
             id="email"
             name="email"
-            defaultValue={employee.email}
+            defaultValue={
+              !updateState.success && updateState.data?.email
+                ? (updateState.data.email as string)
+                : employee.email
+            }
             required
             disabled={isPending}
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
@@ -117,7 +125,11 @@ export function EmployeeUpdateForm({ employee }: Props) {
             id="role"
             name="role"
             required
-            defaultValue={employee.role}
+            defaultValue={
+              !updateState.success && updateState.data?.role
+                ? (updateState.data.role as string)
+                : employee.role
+            }
             disabled={isPending}
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
           >

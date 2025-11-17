@@ -33,6 +33,11 @@ export function EmployeeCreateForm() {
             type="text"
             id="name"
             name="name"
+            defaultValue={
+              !createState.success
+                ? (createState.data?.name as string) || ""
+                : ""
+            }
             required
             disabled={isPending}
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
@@ -56,6 +61,11 @@ export function EmployeeCreateForm() {
             type="email"
             id="email"
             name="email"
+            defaultValue={
+              !createState.success
+                ? (createState.data?.email as string) || ""
+                : ""
+            }
             required
             disabled={isPending}
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
@@ -79,6 +89,11 @@ export function EmployeeCreateForm() {
             type="text"
             id="employeeCd"
             name="employeeCd"
+            defaultValue={
+              !createState.success
+                ? (createState.data?.employeeCd as string) || ""
+                : ""
+            }
             required
             disabled={isPending}
             pattern="EMP[0-9]{6}"
@@ -107,6 +122,11 @@ export function EmployeeCreateForm() {
             type="password"
             id="password"
             name="password"
+            defaultValue={
+              !createState.success
+                ? (createState.data?.password as string) || ""
+                : ""
+            }
             required
             disabled={isPending}
             minLength={8}
@@ -130,6 +150,11 @@ export function EmployeeCreateForm() {
           <select
             id="role"
             name="role"
+            defaultValue={
+              !createState.success
+                ? (createState.data?.role as string) || "USER"
+                : "USER"
+            }
             required
             disabled={isPending}
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
