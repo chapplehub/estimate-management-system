@@ -55,12 +55,45 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 誤った手順（やってはいけない）：
 - ❌ 記憶や推測でURLを構築する
+- ❌ 記憶や推測でAPI・メソッドの使い方を実装する
 - ❌ WebFetch結果のURLをそのまま提示する（リダイレクトの可能性）
 - ❌ 古いバージョンのドキュメントを参照する
 
+#### 4. APIレベルの実装ルール
+
+ライブラリの個別のAPI・メソッドを使用する際も、以下を遵守する：
+
+1. **使用前に必ずドキュメント確認**
+   - 記憶に頼らず、使用バージョンの公式ドキュメントを確認
+   - 特に以下の場合は必須：
+     - 新しいライブラリを初めて使う
+     - メジャーバージョンが上がっている（v3 → v4など）
+     - 非推奨警告が出ている
+
+2. **確認の手順**
+   - package.jsonでバージョン確認
+   - WebFetchで公式ドキュメントの該当ページを参照
+   - 推奨パターンを確認してから実装
+
+3. **実装例**
+
+   ❌ 悪い例：
+   ```typescript
+   // 記憶に基づいて実装（Zod v3のパターン）
+   const errors = result.error.flatten().fieldErrors;
+   ```
+
+   ✓ 良い例：
+   ```typescript
+   // 1. package.jsonでZod v4を確認
+   // 2. https://zod.dev/error-formatting で推奨方法を確認
+   // 3. 確認した方法で実装
+   const { fieldErrors } = z.flattenError(result.error);
+   ```
+
 ### 実装前の確認プロセス
 
-新しい機能や問題解決の実装を提案する前に、必ず以下を確認する：
+新しい機能や問題解決の実装を提案する前に、**および個別のAPI・メソッドを使用する前に**、必ず以下を確認する：
 
 1. **使用バージョンの確認**
    - 依存関係管理ファイル（例: `package.json`）で使用している技術スタックのバージョンを確認
