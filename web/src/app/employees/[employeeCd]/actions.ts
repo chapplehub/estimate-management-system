@@ -8,6 +8,8 @@ import { PrismaEmployeeRepository } from "@/subdomains/employee/infra/prisma/Pri
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { handleCommandError } from "../_lib/error-handler";
+import { updateEmployeeSchema } from "./schema";
+import { z } from "zod";
 
 // ========================================
 // 従業員更新
@@ -16,11 +18,26 @@ export async function updateEmployee(
   _prevState: ActionResult,
   formData: FormData
 ): Promise<ActionResult> {
-  const id = formData.get("id") as string;
-  const email = formData.get("email") as string;
-  const name = formData.get("name") as string;
-  const employeeCd = formData.get("employeeCd") as string;
-  const role = formData.get("role") as "ADMIN" | "USER";
+  // フォームデータをオブジェクト化
+  const rawData = {
+    id: formData.get("id"),
+    name: formData.get("name"),
+    email: formData.get("email"),
+    employeeCd: formData.get("employeeCd"),
+    role: formData.get("role"),
+  };
+
+  // Zodバリデーション
+  const validationResult = updateEmployeeSchema.safeParse(rawData);
+  if (!validationResult.success) {
+    const { fieldErrors } = z.flattenError(validationResult.error);
+    return {
+      success: false,
+      errors: fieldErrors,
+    };
+  }
+
+  const { id, name, email, employeeCd, role } = validationResult.data;
 
   // TODO: Auth.js導入後に権限チェックを追加
   // const session = await auth();

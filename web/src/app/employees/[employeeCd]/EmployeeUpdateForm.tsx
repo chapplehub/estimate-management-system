@@ -1,7 +1,6 @@
 "use client";
 
 import { updateEmployee } from "./actions";
-import type { ActionResult } from "@/shared/types/ActionResult";
 import { useActionState } from "react";
 
 type Employee = {
@@ -25,8 +24,8 @@ export function EmployeeUpdateForm({ employee }: Props) {
     <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-8">
       <h2 className="text-xl font-semibold mb-4 text-gray-500">従業員変更</h2>
 
-      {/* エラーメッセージ表示 */}
-      {!updateState.success && (
+      {/* 全体エラーメッセージ表示 */}
+      {!updateState.success && updateState.error && (
         <div
           className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4"
           role="alert"
@@ -57,6 +56,11 @@ export function EmployeeUpdateForm({ employee }: Props) {
             disabled={isPending}
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
           />
+          {!updateState.success && updateState.errors?.name && (
+            <p className="text-red-500 text-xs mt-1">
+              {updateState.errors.name[0]}
+            </p>
+          )}
         </div>
 
         <div>
@@ -75,6 +79,11 @@ export function EmployeeUpdateForm({ employee }: Props) {
             disabled={isPending}
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
           />
+          {!updateState.success && updateState.errors?.email && (
+            <p className="text-red-500 text-xs mt-1">
+              {updateState.errors.email[0]}
+            </p>
+          )}
         </div>
 
         <div>
@@ -115,6 +124,11 @@ export function EmployeeUpdateForm({ employee }: Props) {
             <option value="USER">一般ユーザー</option>
             <option value="ADMIN">管理者</option>
           </select>
+          {!updateState.success && updateState.errors?.role && (
+            <p className="text-red-500 text-xs mt-1">
+              {updateState.errors.role[0]}
+            </p>
+          )}
         </div>
 
         <div className="flex gap-4">

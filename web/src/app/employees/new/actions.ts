@@ -9,6 +9,8 @@ import { hash } from "bcrypt";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { handleCommandError } from "../_lib/error-handler";
+import { createEmployeeSchema } from "./schema";
+import { z } from "zod";
 
 // ========================================
 // 従業員作成
@@ -17,12 +19,26 @@ export async function createEmployee(
   _prevState: ActionResult,
   formData: FormData
 ): Promise<ActionResult> {
-  // TODO: どうやらObject.fromEntries()一括でオブジェクト化できる？その場合、型情報はどうするの？
-  const email = formData.get("email") as string;
-  const name = formData.get("name") as string;
-  const employeeCd = formData.get("employeeCd") as string;
-  const password = formData.get("password") as string;
-  const role = formData.get("role") as "ADMIN" | "USER";
+  // フォームデータをオブジェクト化
+  const rawData = {
+    name: formData.get("name"),
+    email: formData.get("email"),
+    employeeCd: formData.get("employeeCd"),
+    password: formData.get("password"),
+    role: formData.get("role"),
+  };
+
+  // Zodバリデーション
+  const validationResult = createEmployeeSchema.safeParse(rawData);
+  if (!validationResult.success) {
+    const { fieldErrors } = z.flattenError(validationResult.error);
+    return {
+      success: false,
+      errors: fieldErrors,
+    };
+  }
+
+  const { name, email, employeeCd, password, role } = validationResult.data;
 
   // TODO: Auth.js導入後に権限チェックを追加
   // const session = await auth();

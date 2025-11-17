@@ -1,7 +1,6 @@
 "use client";
 
 import { createEmployee } from "./actions";
-import type { ActionResult } from "@/shared/types/ActionResult";
 import { useActionState } from "react";
 
 export function EmployeeCreateForm() {
@@ -11,8 +10,8 @@ export function EmployeeCreateForm() {
 
   return (
     <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-8">
-      {/* エラーメッセージ表示 */}
-      {!createState.success && (
+      {/* 全体エラーメッセージ表示 */}
+      {!createState.success && createState.error && (
         <div
           className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4"
           role="alert"
@@ -39,6 +38,11 @@ export function EmployeeCreateForm() {
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
             placeholder="山田太郎"
           />
+          {!createState.success && createState.errors?.name && (
+            <p className="text-red-500 text-xs mt-1">
+              {createState.errors.name[0]}
+            </p>
+          )}
         </div>
 
         <div>
@@ -57,6 +61,11 @@ export function EmployeeCreateForm() {
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
             placeholder="yamada@example.com"
           />
+          {!createState.success && createState.errors?.email && (
+            <p className="text-red-500 text-xs mt-1">
+              {createState.errors.email[0]}
+            </p>
+          )}
         </div>
 
         <div>
@@ -76,9 +85,15 @@ export function EmployeeCreateForm() {
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
             placeholder="EMP000001"
           />
-          <p className="text-gray-600 text-xs mt-1">
-            形式: EMP + 6桁の数字（例: EMP000001）
-          </p>
+          {!createState.success && createState.errors?.employeeCd ? (
+            <p className="text-red-500 text-xs mt-1">
+              {createState.errors.employeeCd[0]}
+            </p>
+          ) : (
+            <p className="text-gray-600 text-xs mt-1">
+              形式: EMP + 6桁の数字（例: EMP000001）
+            </p>
+          )}
         </div>
 
         <div>
@@ -98,6 +113,11 @@ export function EmployeeCreateForm() {
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
             placeholder="8文字以上"
           />
+          {!createState.success && createState.errors?.password && (
+            <p className="text-red-500 text-xs mt-1">
+              {createState.errors.password[0]}
+            </p>
+          )}
         </div>
 
         <div>
@@ -117,6 +137,11 @@ export function EmployeeCreateForm() {
             <option value="USER">一般ユーザー</option>
             <option value="ADMIN">管理者</option>
           </select>
+          {!createState.success && createState.errors?.role && (
+            <p className="text-red-500 text-xs mt-1">
+              {createState.errors.role[0]}
+            </p>
+          )}
         </div>
 
         <div className="flex gap-4">
