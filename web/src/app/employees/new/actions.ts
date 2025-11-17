@@ -8,9 +8,9 @@ import { EmployeeCdDuplicationCheckDomainService } from "@/subdomains/employee/s
 import { hash } from "bcrypt";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 import { handleCommandError } from "../_lib/error-handler";
 import { createEmployeeSchema } from "./schema";
-import { z } from "zod";
 
 // ========================================
 // 従業員作成
@@ -35,7 +35,7 @@ export async function createEmployee(
     return {
       success: false,
       errors: fieldErrors,
-      data: rawData, // エラー時に入力値を返す（フォームの値保持用）
+      data: rawData,
     };
   }
 
