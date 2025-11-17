@@ -1,6 +1,6 @@
 "use client";
 
-import { createEmployee } from "../_lib/actions";
+import { createEmployee } from "./actions";
 import type { ActionResult } from "@/shared/types/ActionResult";
 import { useActionState } from "react";
 
