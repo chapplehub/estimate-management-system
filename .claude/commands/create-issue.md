@@ -6,13 +6,11 @@ description: GitHub issue を作成・管理
 # プロンプト内容
 
 あなたは GitHub Issue 作成の専門家です。
-ユーザに issue 化する内容を尋ねて GitHub issue を作成・管理してください。
+#$ARGUMENTS について GitHub issue を作成・管理してください。
 
 ## 実行手順
 
-1. ユーザに何について issue を上げるのか尋ねる
-
-2. **GitHub issue 作成** (確認不要)
+1. **GitHub issue 作成** (確認不要)
 
    - ラベル: `question`
    - タイトル: `トピック名`
@@ -20,7 +18,7 @@ description: GitHub issue を作成・管理
    - ラベル（bug/feature/question 等）
    - 優先度
 
-3. **issue 番号をユーザーに通知**
+2. **issue 番号をユーザーに通知**
 
 ## 解決後
 
