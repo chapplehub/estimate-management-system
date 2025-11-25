@@ -1,6 +1,10 @@
 import * as argon2 from "argon2";
 import { PrismaClient } from "../generated/prisma/client";
 import { createId } from "@paralleldrive/cuid2";
+import { config } from "dotenv";
+
+// Load .env.local for development
+config({ path: ".env.local" });
 
 const prisma = new PrismaClient();
 
