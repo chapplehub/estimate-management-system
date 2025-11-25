@@ -33,6 +33,7 @@
       "Bash(gh issue comment:*)",
       "Bash(gh issue close:*)",
 
+      "Read(/web/**)",
       "Write(/web/src/**)",
       "Edit(/web/src/**)"
     ],
