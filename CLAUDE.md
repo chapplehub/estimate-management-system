@@ -167,11 +167,10 @@ This is an **estimate management system** - an internal business application bui
 
 ### Development Commands
 
-All commands should be run from the `web/` directory:
+All commands should be run from the project root directory:
 
 ```bash
 # Development
-cd web
 npm run dev              # Start dev server (http://localhost:3000)
 
 # Build & Production
@@ -196,7 +195,7 @@ npm run db:seed        # Run seed script (uses tsx)
 
 - PostgreSQL running on `localhost:5432`
 - Database name: `estimate_management_dev`
-- Connection string in `web/.env.local` (see `.env.example` for template)
+- Connection string in `.env.local` (see `.env.example` for template)
 
 ### Architecture & Structure
 
@@ -237,7 +236,7 @@ Infrastructure Layer (Prisma Repositories, Mappers)
 - `src/infrastructure/` - Infrastructure Layer (Prisma Repositories, Mappers)
 - `src/shared/` - Shared utilities
 
-**Note:** Prisma Client は `web/generated/prisma/` に生成される（デフォルトの `node_modules/.prisma/client` ではない）。`@/generated/prisma/client` から import すること。
+**Note:** Prisma Client は `generated/prisma/` に生成される（デフォルトの `node_modules/.prisma/client` ではない）。`@generated/prisma` から import すること。
 
 ### Domain Model
 

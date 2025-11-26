@@ -3,7 +3,7 @@ import { EmployeeCd } from "@/subdomains/employee/values/EmployeeCd";
 import { MailAddress } from "@/shared/domain/values/MailAddress";
 import { InMemoryEmployeeRepository } from "@/subdomains/employee/infra/in-memory/InMemoryEmployeeRepository";
 import { beforeEach, describe, expect, test } from "vitest";
-import { MailAddressDuplicationCheckDomainService } from "./MailAddressDuplicationCheckDomainService";
+import { MailAddressDuplicationCheckDomainService } from "@/shared/domain/services/MailAddressDuplicationCheckDomainService";
 
 describe("MailAddressDuplicationCheckDomainService", () => {
   let mailAddressDuplicationCheckDomainService: MailAddressDuplicationCheckDomainService;

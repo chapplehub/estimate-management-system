@@ -157,18 +157,18 @@
 ### 1. 環境変数の整理 ✅
 
 **実施内容:**
-- `web/.env.local` 作成（Gitにコミットしない）
-- `web/.env.example` 作成（Gitにコミットする）
+- `.env.local` 作成（Gitにコミットしない）
+- `.env.example` 作成（Gitにコミットする）
 - `.gitignore` で `.env.local` を除外、`.env.example` のみコミット可能に設定
 
 **作成したファイル:**
 ```bash
-# web/.env.local
+# .env.local
 DATABASE_URL="postgresql://dev_user:dev_password@localhost:5432/estimate_management_dev?schema=public"
 AUTH_SECRET="iDfHPJn0KTe7F4bzUvkRfJZYgAentfv8//Owa44rqls="
 NEXTAUTH_URL="http://localhost:3000"
 
-# web/.env.example
+# .env.example
 DATABASE_URL="postgresql://user:password@localhost:5432/estimate_management_dev?schema=public"
 AUTH_SECRET="your-secret-here"
 NEXTAUTH_URL="http://localhost:3000"
@@ -179,13 +179,13 @@ NEXTAUTH_URL="http://localhost:3000"
 ### 2. ActionResult型の共通化 ✅
 
 **実施内容:**
-- `web/src/shared/types/ActionResult.ts` を作成
+- `src/shared/types/ActionResult.ts` を作成
 - 複数エラー対応（`errors` フィールド）
 - フォーム入力値保持用（`data` フィールド）
 
 **作成したファイル:**
 ```typescript
-// web/src/shared/types/ActionResult.ts
+// src/shared/types/ActionResult.ts
 export type ActionResult<T = void> =
   | { success: true; data?: T }
   | {
@@ -208,12 +208,12 @@ export type ActionResult<T = void> =
 ### 3. エラーハンドリングの共通化 ✅
 
 **実施内容:**
-- `web/src/app/employees/_lib/error-handler.ts` を作成
+- `src/app/employees/_lib/error-handler.ts` を作成
 - 75行のコード削減（DRY原則の適用）
 
 **作成したファイル:**
 ```typescript
-// web/src/app/employees/_lib/error-handler.ts
+// src/app/employees/_lib/error-handler.ts
 import {
   NotFoundEntityError,
   NotFoundError,
@@ -275,12 +275,12 @@ export async function createEmployee(...) {
 - コロケーション方式でスキーマファイルを作成
 
 **作成したファイル:**
-- `web/src/app/employees/new/schema.ts` - 新規登録スキーマ
-- `web/src/app/employees/[employeeCd]/schema.ts` - 更新スキーマ
+- `src/app/employees/new/schema.ts` - 新規登録スキーマ
+- `src/app/employees/[employeeCd]/schema.ts` - 更新スキーマ
 
 **実装例:**
 ```typescript
-// web/src/app/employees/new/schema.ts
+// src/app/employees/new/schema.ts
 import { z } from "zod";
 
 export const createEmployeeSchema = z.object({
@@ -384,7 +384,7 @@ export function EmployeeCreateForm() {
 
 ### 1. Prismaシードの整備
 
-**変更ファイル:** `web/prisma/seed.ts`
+**変更ファイル:** `prisma/seed.ts`
 
 ```typescript
 import { PrismaClient } from "@/generated/prisma";
@@ -459,7 +459,7 @@ npm install next-auth@beta @auth/prisma-adapter
 **ファイル作成:**
 
 ```typescript
-// web/src/auth.ts
+// src/auth.ts
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
@@ -534,7 +534,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 **型定義拡張:**
 
 ```typescript
-// web/src/types/next-auth.d.ts
+// src/types/next-auth.d.ts
 import { DefaultSession } from "next-auth";
 
 declare module "next-auth" {
@@ -560,7 +560,7 @@ declare module "next-auth" {
 **ファイル作成:**
 
 ```typescript
-// web/middleware.ts (プロジェクトルート)
+// middleware.ts (プロジェクトルート)
 import { auth } from "@/auth";
 
 export default auth((req) => {
@@ -590,7 +590,7 @@ export const config = {
 **ファイル作成:**
 
 ```typescript
-// web/src/app/api/auth/[...nextauth]/route.ts
+// src/app/api/auth/[...nextauth]/route.ts
 import { handlers } from "@/auth";
 
 export const { GET, POST } = handlers;
@@ -605,7 +605,7 @@ export const { GET, POST } = handlers;
 **ファイル作成:**
 
 ```typescript
-// web/src/app/login/page.tsx
+// src/app/login/page.tsx
 import { LoginForm } from "./LoginForm";
 
 export default function LoginPage() {
@@ -621,7 +621,7 @@ export default function LoginPage() {
 ```
 
 ```typescript
-// web/src/app/login/LoginForm.tsx
+// src/app/login/LoginForm.tsx
 "use client";
 
 import { useActionState } from "react";
@@ -687,7 +687,7 @@ export function LoginForm() {
 ```
 
 ```typescript
-// web/src/app/login/_lib/actions.ts
+// src/app/login/_lib/actions.ts
 "use server";
 
 import { signIn } from "@/auth";
@@ -727,7 +727,7 @@ export async function authenticate(
 **ヘッダーコンポーネント作成:**
 
 ```typescript
-// web/src/app/_components/Header.tsx
+// src/app/_components/Header.tsx
 import { auth, signOut } from "@/auth";
 import Link from "next/link";
 
@@ -776,7 +776,7 @@ export async function Header() {
 **レイアウトに追加:**
 
 ```typescript
-// web/src/app/layout.tsx
+// src/app/layout.tsx
 import { Header } from "./_components/Header";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -955,15 +955,7 @@ import { PrismaClient } from "@prisma/client";
 
 ## 現在のgitステータス
 
-```
-M web/package-lock.json
-M web/package.json
-?? learning/bff-architecture-with-nextjs.md
-?? learning/directory-structure-comparison.md
-?? learning/pragmatic-approach-first-implementation.md
-```
-
-**注意:** ディレクトリ構成は既にRESTful準拠（`app/employees/`）に変更済み。
+**注意:** `web/` ディレクトリ構成は廃止され、ルートディレクトリに統合されました。
 
 ---
 
@@ -978,7 +970,6 @@ M web/package.json
 
 **開発サーバー起動:**
 ```bash
-cd web
 npm run dev
 # http://localhost:3000
 ```

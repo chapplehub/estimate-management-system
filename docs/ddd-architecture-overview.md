@@ -106,7 +106,7 @@ flowchart TB
 
 ```mermaid
 graph LR
-    subgraph src["web/src/"]
+    subgraph src["src/"]
         direction TB
 
         subgraph app["app/ (Presentation)"]
