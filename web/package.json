@@ -19,6 +19,7 @@
     "@prisma/extension-accelerate": "^2.0.2",
     "argon2": "^0.44.0",
     "bcrypt": "^6.0.0",
+    "better-auth": "^1.4.1",
     "dotenv": "^17.2.3",
     "next": "16.0.0",
     "react": "19.2.0",
