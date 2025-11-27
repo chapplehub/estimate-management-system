@@ -263,6 +263,44 @@ Infrastructure Layer (Prisma Repositories, Mappers)
 - **TypeScript:** strict mode 有効、`any` 禁止
 - **Testing:** TDD（Red-Green-Refactor）, Domain 層 90%+カバレッジ目標
 
+### Testing Guidelines
+
+#### Given-When-Then 構文の徹底
+
+すべてのテストは **Given-When-Then** 構文でコメントを付けて構造化すること：
+
+```typescript
+it("should update employee email", async () => {
+  // Given - 前提条件を整える
+  const existingEmployee = Employee.reconstruct({ id: "test-id", email: "old@example.com" });
+  vi.mocked(mockRepository.findById).mockResolvedValue(existingEmployee);
+  vi.mocked(mockMailDuplicationCheckService.execute).mockResolvedValue(false);
+
+  // When - テスト対象を実行
+  await command.execute();
+
+  // Then - 結果を検証
+  expect(mockRepository.save).toHaveBeenCalledWith(
+    expect.objectContaining({ email: "new@example.com" })
+  );
+});
+```
+
+| フェーズ | 役割 | 例 |
+|---------|------|---|
+| **Given** | テストの前提条件を整える | モックの戻り値設定、テストデータ作成 |
+| **When** | テスト対象を実行 | `command.execute()`, `useCase.run()` |
+| **Then** | 結果を検証 | `expect()` による assertion |
+
+#### テストデータ戦略（レイヤー別）
+
+| 対象 | データソース | 理由 |
+|------|-------------|------|
+| Value Object / Entity | インメモリ | 永続化は責務外。ビジネスルールのみをテスト |
+| Application層（UseCase） | モック | Repository インターフェースをモックし、ビジネスロジックに集中 |
+| Repository実装 | 実DB | SQL/Prisma クエリが正しく動くか検証が必要 |
+| 統合テスト / E2E | 実DB | レイヤー間の連携、実際のデータフローを検証 |
+
 ### Key Implementation Patterns
 
 **実装パターンの詳細:** `docs/dev-guidelines.md` の「5. DDD アーキテクチャ実装規則」を参照
