@@ -34,9 +34,17 @@
       "Bash(gh issue comment:*)",
       "Bash(gh issue close:*)",
 
+      "Bash(cat:*)",
+      "Bash(tree:*)",
+      "Bash(wc:*)",
+
       "Read(/web/**)",
       "Write(/web/src/**)",
-      "Edit(/web/src/**)"
+      "Edit(/web/src/**)",
+      "Write(/learn/**)",
+      "Edit(/learn/**)",
+
+      "SlashCommand(/learn:*)"
     ],
     "deny": [
       "Bash(git commit:*)",
