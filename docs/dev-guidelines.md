@@ -1,11 +1,12 @@
 # 開発ガイドライン
 
 ## 目次
+
 1. [コーディング規約](#1-コーディング規約)
 2. [命名規則](#2-命名規則)
 3. [エラーハンドリング](#3-エラーハンドリング)
-4. [TypeScript使用規則](#4-typescript使用規則)
-5. [DDDアーキテクチャ実装規則](#5-dddアーキテクチャ実装規則)
+4. [TypeScript 使用規則](#4-typescript使用規則)
+5. [DDD アーキテクチャ実装規則](#5-dddアーキテクチャ実装規則)
 6. [コメント規則](#6-コメント規則)
 7. [テストコード規則](#7-テストコード規則)
 
@@ -16,35 +17,37 @@
 ### 1.1 基本原則
 
 #### コードスタイル
-- **インデント**: スペース2個
+
+- **インデント**: スペース 2 個
 - **セミコロン**: 必須
 - **クォート**: シングルクォート (`'`) を使用
 - **末尾カンマ**: 複数行の場合は必須
-- **行の長さ**: 最大100文字（ESLintで自動チェック）
+- **行の長さ**: 最大 100 文字（ESLint で自動チェック）
 
 ```typescript
 // ✅ Good
 const user = {
-  name: 'John',
-  email: 'john@example.com',
+  name: "John",
+  email: "john@example.com",
 };
 
 // ❌ Bad
 const user = {
   name: "John",
-  email: "john@example.com"
-}
+  email: "john@example.com",
+};
 ```
 
 #### ファイル構成
+
 ```typescript
 // 1. 外部ライブラリのインポート
-import { useState } from 'react';
-import { z } from 'zod';
+import { useState } from "react";
+import { z } from "zod";
 
 // 2. 内部モジュールのインポート（aliasを使用）
-import { User } from '@/domain/entities/User';
-import { UserRepository } from '@/infrastructure/repositories/PrismaUserRepository';
+import { User } from "@/domain/entities/User";
+import { UserRepository } from "@/infrastructure/repositories/PrismaUserRepository";
 
 // 3. 型定義
 type UserFormData = {
@@ -64,16 +67,17 @@ export class CreateUserUseCase {
 ### 1.2 関数・メソッド規則
 
 #### 関数の長さ
-- 1関数は最大50行まで
+
+- 1 関数は最大 50 行まで
 - 責務が明確で単一機能に絞る
-- 50行を超える場合は分割を検討
+- 50 行を超える場合は分割を検討
 
 ```typescript
 // ✅ Good - 責務が明確で短い
 async function validateUser(data: UserInput): Promise<ValidationResult> {
   const emailValidation = validateEmail(data.email);
   const passwordValidation = validatePassword(data.password);
-  
+
   return {
     isValid: emailValidation.isValid && passwordValidation.isValid,
     errors: [...emailValidation.errors, ...passwordValidation.errors],
@@ -90,10 +94,11 @@ async function createUserAndSendEmail(data: UserInput) {
 ```
 
 #### アロー関数 vs 通常関数
+
 ```typescript
 // ✅ コールバック、短い関数 → アロー関数
-const users = data.map(user => user.name);
-const doubled = numbers.map(n => n * 2);
+const users = data.map((user) => user.name);
+const doubled = numbers.map((n) => n * 2);
 
 // ✅ クラスメソッド、複雑なロジック → 通常関数
 class UserService {
@@ -103,21 +108,20 @@ class UserService {
 }
 
 // ✅ ユースケース → 通常関数（thisが不要でも可読性重視）
-export async function executeCreateUser(
-  input: CreateUserInput
-): Promise<User> {
+export async function executeCreateUser(input: CreateUserInput): Promise<User> {
   // ...
 }
 ```
 
 #### 早期リターン
+
 ```typescript
 // ✅ Good - 早期リターンで階層を浅く
 function processUser(user: User | null): string {
-  if (!user) return 'User not found';
-  if (!user.isActive) return 'User is inactive';
-  if (!user.email) return 'Email required';
-  
+  if (!user) return "User not found";
+  if (!user.isActive) return "User is inactive";
+  if (!user.email) return "Email required";
+
   return `Welcome ${user.name}`;
 }
 
@@ -128,20 +132,21 @@ function processUser(user: User | null): string {
       if (user.email) {
         return `Welcome ${user.name}`;
       } else {
-        return 'Email required';
+        return "Email required";
       }
     } else {
-      return 'User is inactive';
+      return "User is inactive";
     }
   } else {
-    return 'User not found';
+    return "User not found";
   }
 }
 ```
 
 ### 1.3 コード構造
 
-#### DRY原則（Don't Repeat Yourself）
+#### DRY 原則（Don't Repeat Yourself）
+
 ```typescript
 // ✅ Good - 共通処理を関数化
 function validateEmail(email: string): boolean {
@@ -150,32 +155,33 @@ function validateEmail(email: string): boolean {
 }
 
 function registerUser(email: string) {
-  if (!validateEmail(email)) throw new Error('Invalid email');
+  if (!validateEmail(email)) throw new Error("Invalid email");
   // ...
 }
 
 function updateUserEmail(email: string) {
-  if (!validateEmail(email)) throw new Error('Invalid email');
+  if (!validateEmail(email)) throw new Error("Invalid email");
   // ...
 }
 
 // ❌ Bad - 同じロジックを繰り返し
 function registerUser(email: string) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    throw new Error('Invalid email');
+    throw new Error("Invalid email");
   }
 }
 
 function updateUserEmail(email: string) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    throw new Error('Invalid email');
+    throw new Error("Invalid email");
   }
 }
 ```
 
-#### SOLID原則の適用
+#### SOLID 原則の適用
 
 **単一責任の原則（SRP）**
+
 ```typescript
 // ✅ Good - 各クラスが単一の責務
 class UserValidator {
@@ -192,10 +198,18 @@ class UserRepository {
 
 // ❌ Bad - 複数の責務
 class UserManager {
-  validate(user: User) { /* ... */ }
-  save(user: User) { /* ... */ }
-  sendEmail(user: User) { /* ... */ }
-  generateReport(user: User) { /* ... */ }
+  validate(user: User) {
+    /* ... */
+  }
+  save(user: User) {
+    /* ... */
+  }
+  sendEmail(user: User) {
+    /* ... */
+  }
+  generateReport(user: User) {
+    /* ... */
+  }
 }
 ```
 
@@ -205,21 +219,22 @@ class UserManager {
 
 ### 2.1 基本命名規則
 
-| 種類 | 規則 | 例 |
-|-----|------|-----|
-| ファイル | PascalCase（クラス/コンポーネント）<br>camelCase（関数/ユーティリティ） | `User.ts`<br>`userUtils.ts` |
-| クラス | PascalCase | `CreateUserUseCase` |
-| インターフェース | PascalCase（I接頭辞） | `IUserRepository` |
-| 型エイリアス | PascalCase | `UserFormData` |
-| 変数・関数 | camelCase | `userName`, `getUser()` |
-| 定数 | UPPER_SNAKE_CASE | `MAX_LOGIN_ATTEMPTS` |
-| Private変数 | _接頭辞 + camelCase | `_userId` |
-| React Component | PascalCase | `UserList.tsx` |
-| カスタムフック | use接頭辞 + camelCase | `useUsers.ts` |
+| 種類             | 規則                                                                    | 例                          |
+| ---------------- | ----------------------------------------------------------------------- | --------------------------- |
+| ファイル         | PascalCase（クラス/コンポーネント）<br>camelCase（関数/ユーティリティ） | `User.ts`<br>`userUtils.ts` |
+| クラス           | PascalCase                                                              | `CreateUserUseCase`         |
+| インターフェース | PascalCase（I 接頭辞）                                                  | `IUserRepository`           |
+| 型エイリアス     | PascalCase                                                              | `UserFormData`              |
+| 変数・関数       | camelCase                                                               | `userName`, `getUser()`     |
+| 定数             | UPPER_SNAKE_CASE                                                        | `MAX_LOGIN_ATTEMPTS`        |
+| Private 変数     | \_接頭辞 + camelCase                                                    | `_userId`                   |
+| React Component  | PascalCase                                                              | `UserList.tsx`              |
+| カスタムフック   | use 接頭辞 + camelCase                                                  | `useUsers.ts`               |
 
 ### 2.2 レイヤー別命名規則
 
 #### ドメイン層
+
 ```typescript
 // エンティティ: 名詞（単数形）
 export class User {
@@ -231,7 +246,7 @@ export class User {
 // 値オブジェクト: 名詞
 export class Email {
   private readonly _value: string;
-  
+
   constructor(value: string) {
     if (!this.isValid(value)) {
       throw new InvalidEmailError(value);
@@ -256,6 +271,7 @@ export class UserDuplicationCheckService {
 ```
 
 #### アプリケーション層
+
 ```typescript
 // ユースケース: 動詞 + 名詞 + UseCase
 export class CreateUserUseCase {
@@ -285,6 +301,7 @@ export type CreateUserOutput = {
 ```
 
 #### インフラストラクチャ層
+
 ```typescript
 // リポジトリ実装: 技術名 + エンティティ名 + Repository
 export class PrismaUserRepository implements IUserRepository {
@@ -298,7 +315,7 @@ export class UserMapper {
   static toDomain(prismaUser: PrismaUser): User {
     // ...
   }
-  
+
   static toPrisma(user: User): PrismaUser {
     // ...
   }
@@ -306,30 +323,32 @@ export class UserMapper {
 ```
 
 #### プレゼンテーション層
+
 ```typescript
 // API Route: HTTPメソッド大文字
 // src/app/api/users/route.ts
-export async function GET(request: Request) { }
-export async function POST(request: Request) { }
+export async function GET(request: Request) {}
+export async function POST(request: Request) {}
 
 // src/app/api/users/[id]/route.ts
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
-) { }
+) {}
 
 // React Component: PascalCase
-export function UserList() { }
-export function UserForm() { }
+export function UserList() {}
+export function UserForm() {}
 
 // カスタムフック: use接頭辞
-export function useUsers() { }
-export function useCreateUser() { }
+export function useUsers() {}
+export function useCreateUser() {}
 ```
 
 ### 2.3 変数・関数命名のベストプラクティス
 
-#### Boolean変数
+#### Boolean 変数
+
 ```typescript
 // ✅ Good - is/has/can/should接頭辞
 const isActive = true;
@@ -343,6 +362,7 @@ const permission = false;
 ```
 
 #### 配列・リスト
+
 ```typescript
 // ✅ Good - 複数形
 const users = [...];
@@ -355,19 +375,21 @@ const userArray = [...];
 ```
 
 #### 関数名
+
 ```typescript
 // ✅ Good - 動詞で始まる
-async function getUser(id: string) { }
-async function createUser(data: UserInput) { }
-async function validateEmail(email: string) { }
-async function isUserActive(userId: string) { }
+async function getUser(id: string) {}
+async function createUser(data: UserInput) {}
+async function validateEmail(email: string) {}
+async function isUserActive(userId: string) {}
 
 // ❌ Bad - 名詞のみ
-async function user(id: string) { }
-async function email(email: string) { }
+async function user(id: string) {}
+async function email(email: string) {}
 ```
 
 #### 一時変数・ループ変数
+
 ```typescript
 // ✅ Good - 意味のある名前
 for (const user of users) {
@@ -400,7 +422,7 @@ for (const u of users) {
 export abstract class AppError extends Error {
   abstract readonly statusCode: number;
   abstract readonly code: string;
-  
+
   constructor(message: string) {
     super(message);
     this.name = this.constructor.name;
@@ -412,7 +434,7 @@ export abstract class AppError extends Error {
 export class DomainError extends AppError {
   readonly statusCode = 400;
   readonly code: string;
-  
+
   constructor(code: string, message: string) {
     super(message);
     this.code = code;
@@ -422,16 +444,16 @@ export class DomainError extends AppError {
 // ビジネスルール違反
 export class BusinessRuleViolationError extends DomainError {
   constructor(message: string) {
-    super('BUSINESS_RULE_VIOLATION', message);
+    super("BUSINESS_RULE_VIOLATION", message);
   }
 }
 
 // バリデーションエラー
 export class ValidationError extends DomainError {
   readonly errors: ValidationErrorDetail[];
-  
+
   constructor(errors: ValidationErrorDetail[]) {
-    super('VALIDATION_ERROR', 'Validation failed');
+    super("VALIDATION_ERROR", "Validation failed");
     this.errors = errors;
   }
 }
@@ -444,8 +466,8 @@ type ValidationErrorDetail = {
 // リソースが見つからない（404）
 export class NotFoundError extends AppError {
   readonly statusCode = 404;
-  readonly code = 'NOT_FOUND';
-  
+  readonly code = "NOT_FOUND";
+
   constructor(resource: string, id: string) {
     super(`${resource} with id ${id} not found`);
   }
@@ -454,9 +476,9 @@ export class NotFoundError extends AppError {
 // 認証エラー（401）
 export class UnauthorizedError extends AppError {
   readonly statusCode = 401;
-  readonly code = 'UNAUTHORIZED';
-  
-  constructor(message = 'Unauthorized') {
+  readonly code = "UNAUTHORIZED";
+
+  constructor(message = "Unauthorized") {
     super(message);
   }
 }
@@ -464,9 +486,9 @@ export class UnauthorizedError extends AppError {
 // 権限エラー（403）
 export class ForbiddenError extends AppError {
   readonly statusCode = 403;
-  readonly code = 'FORBIDDEN';
-  
-  constructor(message = 'Forbidden') {
+  readonly code = "FORBIDDEN";
+
+  constructor(message = "Forbidden") {
     super(message);
   }
 }
@@ -474,8 +496,8 @@ export class ForbiddenError extends AppError {
 // インフラエラー（500系）
 export class InfrastructureError extends AppError {
   readonly statusCode = 500;
-  readonly code = 'INFRASTRUCTURE_ERROR';
-  
+  readonly code = "INFRASTRUCTURE_ERROR";
+
   constructor(message: string, public readonly originalError?: Error) {
     super(message);
   }
@@ -485,20 +507,21 @@ export class InfrastructureError extends AppError {
 ### 3.2 レイヤー別エラーハンドリング
 
 #### ドメイン層
+
 ```typescript
 // 値オブジェクトでのバリデーション
 export class Email {
   private readonly _value: string;
-  
+
   constructor(value: string) {
     if (!this.isValid(value)) {
       throw new ValidationError([
-        { field: 'email', message: 'Invalid email format' }
+        { field: "email", message: "Invalid email format" },
       ]);
     }
     this._value = value;
   }
-  
+
   private isValid(value: string): boolean {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
   }
@@ -509,7 +532,7 @@ export class User {
   updateEmail(newEmail: Email): void {
     if (this._isLocked) {
       throw new BusinessRuleViolationError(
-        'Cannot update email for locked account'
+        "Cannot update email for locked account"
       );
     }
     this._email = newEmail;
@@ -518,60 +541,58 @@ export class User {
 ```
 
 #### アプリケーション層
+
 ```typescript
 export class CreateUserUseCase {
   constructor(
     private readonly userRepository: IUserRepository,
     private readonly duplicationChecker: UserDuplicationCheckService
   ) {}
-  
+
   async execute(input: CreateUserInput): Promise<CreateUserOutput> {
     try {
       // 値オブジェクト生成（バリデーションエラーがthrowされる可能性）
       const email = new Email(input.email);
       const employeeId = new EmployeeId(input.employeeId);
-      
+
       // 重複チェック
       const isDuplicated = await this.duplicationChecker.isDuplicated(email);
       if (isDuplicated) {
         throw new BusinessRuleViolationError(
-          'User with this email already exists'
+          "User with this email already exists"
         );
       }
-      
+
       // エンティティ作成
       const user = User.create({
         name: input.name,
         email,
         employeeId,
       });
-      
+
       // 永続化
       await this.userRepository.save(user);
-      
+
       return {
         id: user.id,
         name: user.name,
         email: user.email.value,
       };
-      
     } catch (error) {
       // ドメインエラーはそのまま再throw
       if (error instanceof AppError) {
         throw error;
       }
-      
+
       // 予期しないエラーはInfrastructureErrorでラップ
-      throw new InfrastructureError(
-        'Failed to create user',
-        error as Error
-      );
+      throw new InfrastructureError("Failed to create user", error as Error);
     }
   }
 }
 ```
 
 #### インフラストラクチャ層
+
 ```typescript
 export class PrismaUserRepository implements IUserRepository {
   async findById(id: string): Promise<User | null> {
@@ -579,11 +600,10 @@ export class PrismaUserRepository implements IUserRepository {
       const prismaUser = await prisma.user.findUnique({
         where: { id },
       });
-      
+
       if (!prismaUser) return null;
-      
+
       return UserMapper.toDomain(prismaUser);
-      
     } catch (error) {
       throw new InfrastructureError(
         `Failed to find user by id: ${id}`,
@@ -591,37 +611,34 @@ export class PrismaUserRepository implements IUserRepository {
       );
     }
   }
-  
+
   async save(user: User): Promise<void> {
     try {
       const prismaUser = UserMapper.toPrisma(user);
-      
+
       await prisma.user.upsert({
         where: { id: user.id },
         update: prismaUser,
         create: prismaUser,
       });
-      
     } catch (error) {
       // Prisma固有のエラーを変換
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2002') {
+        if (error.code === "P2002") {
           throw new BusinessRuleViolationError(
-            'User with this email already exists'
+            "User with this email already exists"
           );
         }
       }
-      
-      throw new InfrastructureError(
-        'Failed to save user',
-        error as Error
-      );
+
+      throw new InfrastructureError("Failed to save user", error as Error);
     }
   }
 }
 ```
 
 #### プレゼンテーション層（API Routes）
+
 ```typescript
 // エラーレスポンスヘルパー
 export function errorResponse(error: unknown) {
@@ -641,17 +658,17 @@ export function errorResponse(error: unknown) {
       { status: error.statusCode }
     );
   }
-  
+
   // Zodエラーの場合
   if (error instanceof z.ZodError) {
     return Response.json(
       {
         success: false,
         error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Validation failed',
-          errors: error.errors.map(e => ({
-            field: e.path.join('.'),
+          code: "VALIDATION_ERROR",
+          message: "Validation failed",
+          errors: error.errors.map((e) => ({
+            field: e.path.join("."),
             message: e.message,
           })),
         },
@@ -659,15 +676,15 @@ export function errorResponse(error: unknown) {
       { status: 400 }
     );
   }
-  
+
   // 予期しないエラー
-  console.error('Unexpected error:', error);
+  console.error("Unexpected error:", error);
   return Response.json(
     {
       success: false,
       error: {
-        code: 'INTERNAL_SERVER_ERROR',
-        message: 'An unexpected error occurred',
+        code: "INTERNAL_SERVER_ERROR",
+        message: "An unexpected error occurred",
       },
     },
     { status: 500 }
@@ -678,23 +695,19 @@ export function errorResponse(error: unknown) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    
+
     // バリデーション
     const input = createUserSchema.parse(body);
-    
+
     // ユースケース実行
     const useCase = new CreateUserUseCase(
       new PrismaUserRepository(),
       new UserDuplicationCheckService(new PrismaUserRepository())
     );
-    
+
     const result = await useCase.execute(input);
-    
-    return Response.json(
-      { success: true, data: result },
-      { status: 201 }
-    );
-    
+
+    return Response.json({ success: true, data: result }, { status: 201 });
   } catch (error) {
     return errorResponse(error);
   }
@@ -709,7 +722,7 @@ export class Logger {
   static error(message: string, error: Error, context?: object) {
     console.error({
       timestamp: new Date().toISOString(),
-      level: 'error',
+      level: "error",
       message,
       error: {
         name: error.name,
@@ -719,20 +732,20 @@ export class Logger {
       ...context,
     });
   }
-  
+
   static warn(message: string, context?: object) {
     console.warn({
       timestamp: new Date().toISOString(),
-      level: 'warn',
+      level: "warn",
       message,
       ...context,
     });
   }
-  
+
   static info(message: string, context?: object) {
     console.info({
       timestamp: new Date().toISOString(),
-      level: 'info',
+      level: "info",
       message,
       ...context,
     });
@@ -743,21 +756,22 @@ export class Logger {
 try {
   await userRepository.save(user);
 } catch (error) {
-  Logger.error('Failed to save user', error as Error, {
+  Logger.error("Failed to save user", error as Error, {
     userId: user.id,
-    operation: 'save',
+    operation: "save",
   });
-  throw new InfrastructureError('Failed to save user', error as Error);
+  throw new InfrastructureError("Failed to save user", error as Error);
 }
 ```
 
 ---
 
-## 4. TypeScript使用規則
+## 4. TypeScript 使用規則
 
 ### 4.1 型定義の原則
 
-#### any型の禁止
+#### any 型の禁止
+
 ```typescript
 // ✅ Good
 function processUser(user: User): string {
@@ -771,24 +785,22 @@ function processUser(user: any): any {
 
 // ⚠️ 許容（型が本当に不明な場合のみ）
 function processUnknown(data: unknown): string {
-  if (typeof data === 'object' && data !== null && 'name' in data) {
+  if (typeof data === "object" && data !== null && "name" in data) {
     return String(data.name);
   }
-  return 'Unknown';
+  return "Unknown";
 }
 ```
 
 #### 明示的な型アノテーション
+
 ```typescript
 // ✅ Good - 推論が明確
 const count = 10; // number型と推論
 const users = await getUsers(); // Promise<User[]>と推論
 
 // ✅ Good - パブリックAPI、関数引数・戻り値は明示
-export function createUser(
-  name: string,
-  email: string
-): Promise<User> {
+export function createUser(name: string, email: string): Promise<User> {
   // ...
 }
 
@@ -796,12 +808,11 @@ export function createUser(
 const data = await fetchComplexData(); // 型が不明瞭
 ```
 
-#### Union型とNarrowing
+#### Union 型と Narrowing
+
 ```typescript
 // ✅ Good - 型ガード使用
-type Result<T> = 
-  | { success: true; data: T }
-  | { success: false; error: string };
+type Result<T> = { success: true; data: T } | { success: false; error: string };
 
 function processResult(result: Result<User>): string {
   if (result.success) {
@@ -813,27 +824,27 @@ function processResult(result: Result<User>): string {
 
 // ✅ Good - 判別可能なUnion型
 type Shape =
-  | { kind: 'circle'; radius: number }
-  | { kind: 'rectangle'; width: number; height: number };
+  | { kind: "circle"; radius: number }
+  | { kind: "rectangle"; width: number; height: number };
 
 function getArea(shape: Shape): number {
   switch (shape.kind) {
-    case 'circle':
+    case "circle":
       return Math.PI * shape.radius ** 2;
-    case 'rectangle':
+    case "rectangle":
       return shape.width * shape.height;
   }
 }
 ```
 
-### 4.2 Utility Types活用
+### 4.2 Utility Types 活用
 
 ```typescript
 // Pick - 特定プロパティのみ抽出
-type UserCredentials = Pick<User, 'email' | 'password'>;
+type UserCredentials = Pick<User, "email" | "password">;
 
 // Omit - 特定プロパティを除外
-type UserWithoutPassword = Omit<User, 'password'>;
+type UserWithoutPassword = Omit<User, "password">;
 
 // Partial - 全プロパティをオプショナルに
 type UpdateUserInput = Partial<User>;
@@ -857,38 +868,35 @@ type UserResult = ReturnType<typeof getUser>;
 // ✅ Good - 再利用可能な型安全な関数
 export class Repository<T> {
   constructor(private readonly model: string) {}
-  
+
   async findById(id: string): Promise<T | null> {
     // ...
   }
-  
+
   async findAll(): Promise<T[]> {
     // ...
   }
-  
+
   async save(entity: T): Promise<void> {
     // ...
   }
 }
 
 // 使用例
-const userRepo = new Repository<User>('user');
-const departmentRepo = new Repository<Department>('department');
+const userRepo = new Repository<User>("user");
+const departmentRepo = new Repository<Department>("department");
 
 // ✅ Good - 制約付きジェネリクス
 interface HasId {
   id: string;
 }
 
-function findById<T extends HasId>(
-  items: T[],
-  id: string
-): T | undefined {
-  return items.find(item => item.id === id);
+function findById<T extends HasId>(items: T[], id: string): T | undefined {
+  return items.find((item) => item.id === id);
 }
 ```
 
-### 4.4 strictモード設定
+### 4.4 strict モード設定
 
 ```json
 // tsconfig.json
@@ -912,7 +920,7 @@ function findById<T extends HasId>(
 
 ---
 
-## 5. DDDアーキテクチャ実装規則
+## 5. DDD アーキテクチャ実装規則
 
 ### 5.1 レイヤー間の依存関係ルール
 
@@ -925,6 +933,7 @@ Infrastructure → Application → Domain
 ```
 
 **絶対禁止事項:**
+
 - ドメイン層がアプリケーション層やインフラ層に依存
 - アプリケーション層がプレゼンテーション層やインフラ層に依存
 
@@ -975,7 +984,7 @@ export class User {
   private _employeeId: EmployeeId;
   private readonly _createdAt: Date;
   private _updatedAt: Date;
-  
+
   // コンストラクタはprivate（ファクトリーメソッド使用）
   private constructor(props: UserProps) {
     this._id = props.id;
@@ -985,16 +994,16 @@ export class User {
     this._createdAt = props.createdAt;
     this._updatedAt = props.updatedAt;
   }
-  
+
   // ファクトリーメソッド（新規作成）
   static create(props: CreateUserProps): User {
     // ビジネスルール検証
     if (props.name.length < 2) {
       throw new ValidationError([
-        { field: 'name', message: 'Name must be at least 2 characters' }
+        { field: "name", message: "Name must be at least 2 characters" },
       ]);
     }
-    
+
     return new User({
       id: generateId(),
       name: props.name,
@@ -1004,41 +1013,41 @@ export class User {
       updatedAt: new Date(),
     });
   }
-  
+
   // ファクトリーメソッド（再構築）
   static reconstruct(props: UserProps): User {
     return new User(props);
   }
-  
+
   // ゲッター（イミュータブル）
   get id(): string {
     return this._id;
   }
-  
+
   get name(): string {
     return this._name;
   }
-  
+
   get email(): Email {
     return this._email;
   }
-  
+
   // ビジネスロジック（振る舞い）
   updateName(newName: string): void {
     if (newName.length < 2) {
       throw new ValidationError([
-        { field: 'name', message: 'Name must be at least 2 characters' }
+        { field: "name", message: "Name must be at least 2 characters" },
       ]);
     }
     this._name = newName;
     this._updatedAt = new Date();
   }
-  
+
   updateEmail(newEmail: Email): void {
     this._email = newEmail;
     this._updatedAt = new Date();
   }
-  
+
   // エンティティの等価性判定
   equals(other: User): boolean {
     return this._id === other._id;
@@ -1054,7 +1063,7 @@ type UserProps = {
   updatedAt: Date;
 };
 
-type CreateUserProps = Omit<UserProps, 'id' | 'createdAt' | 'updatedAt'>;
+type CreateUserProps = Omit<UserProps, "id" | "createdAt" | "updatedAt">;
 ```
 
 ### 5.3 値オブジェクト実装規則
@@ -1063,34 +1072,34 @@ type CreateUserProps = Omit<UserProps, 'id' | 'createdAt' | 'updatedAt'>;
 // ✅ Good - イミュータブルな値オブジェクト
 export class Email {
   private readonly _value: string;
-  
+
   constructor(value: string) {
     // 不変条件の検証
     if (!this.isValid(value)) {
       throw new ValidationError([
-        { field: 'email', message: 'Invalid email format' }
+        { field: "email", message: "Invalid email format" },
       ]);
     }
     this._value = value.toLowerCase().trim();
   }
-  
+
   get value(): string {
     return this._value;
   }
-  
+
   private isValid(value: string): boolean {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(value);
   }
-  
+
   // 値オブジェクトの等価性（値で比較）
   equals(other: Email): boolean {
     return this._value === other._value;
   }
-  
+
   // 変更は新しいインスタンスを返す
   changeDomain(newDomain: string): Email {
-    const [localPart] = this._value.split('@');
+    const [localPart] = this._value.split("@");
     return new Email(`${localPart}@${newDomain}`);
   }
 }
@@ -1098,14 +1107,14 @@ export class Email {
 // ❌ Bad - ミュータブルな実装
 export class Email {
   value: string; // public & mutable
-  
+
   constructor(value: string) {
     this.value = value;
   }
-  
+
   // NG: 状態を変更している
   changeDomain(newDomain: string): void {
-    const [localPart] = this.value.split('@');
+    const [localPart] = this.value.split("@");
     this.value = `${localPart}@${newDomain}`;
   }
 }
@@ -1130,9 +1139,8 @@ export class PrismaUserRepository implements IUserRepository {
       const prismaUser = await prisma.user.findUnique({
         where: { id },
       });
-      
+
       return prismaUser ? UserMapper.toDomain(prismaUser) : null;
-      
     } catch (error) {
       throw new InfrastructureError(
         `Failed to find user by id: ${id}`,
@@ -1140,22 +1148,18 @@ export class PrismaUserRepository implements IUserRepository {
       );
     }
   }
-  
+
   async save(user: User): Promise<void> {
     try {
       const prismaUser = UserMapper.toPrisma(user);
-      
+
       await prisma.user.upsert({
         where: { id: user.id },
         update: prismaUser,
         create: prismaUser,
       });
-      
     } catch (error) {
-      throw new InfrastructureError(
-        'Failed to save user',
-        error as Error
-      );
+      throw new InfrastructureError("Failed to save user", error as Error);
     }
   }
 }
@@ -1165,14 +1169,14 @@ export class UserRepository {
   async save(userData: any) {
     // NG: バリデーションはドメイン層の責務
     if (userData.email.length < 5) {
-      throw new Error('Invalid email');
+      throw new Error("Invalid email");
     }
-    
+
     // NG: ビジネスロジックはドメイン層の責務
     if (userData.age < 18) {
-      throw new Error('User must be 18 or older');
+      throw new Error("User must be 18 or older");
     }
-    
+
     await prisma.user.create({ data: userData });
   }
 }
@@ -1187,30 +1191,30 @@ export class CreateUserUseCase {
     private readonly userRepository: IUserRepository,
     private readonly duplicationChecker: UserDuplicationCheckService
   ) {}
-  
+
   async execute(input: CreateUserInput): Promise<CreateUserOutput> {
     // 1. 値オブジェクト生成
     const email = new Email(input.email);
     const employeeId = new EmployeeId(input.employeeId);
-    
+
     // 2. アプリケーション固有のチェック（重複確認）
     const isDuplicated = await this.duplicationChecker.isDuplicated(email);
     if (isDuplicated) {
       throw new BusinessRuleViolationError(
-        'User with this email already exists'
+        "User with this email already exists"
       );
     }
-    
+
     // 3. エンティティ生成（ドメインロジック実行）
     const user = User.create({
       name: input.name,
       email,
       employeeId,
     });
-    
+
     // 4. 永続化
     await this.userRepository.save(user);
-    
+
     // 5. 出力DTOに変換して返却
     return {
       id: user.id,
@@ -1235,10 +1239,18 @@ export type CreateUserOutput = {
 
 // ❌ Bad - 複数の責務を持つユースケース
 export class UserUseCase {
-  async createUser(data: any) { /* ... */ }
-  async updateUser(data: any) { /* ... */ }
-  async deleteUser(id: string) { /* ... */ }
-  async sendEmail(userId: string) { /* ... */ }
+  async createUser(data: any) {
+    /* ... */
+  }
+  async updateUser(data: any) {
+    /* ... */
+  }
+  async deleteUser(id: string) {
+    /* ... */
+  }
+  async sendEmail(userId: string) {
+    /* ... */
+  }
   // → 分割すべき
 }
 ```
@@ -1250,24 +1262,26 @@ export class UserUseCase {
 ### 6.1 コメントの原則
 
 **コメントを書くべき場合:**
+
 - Why（なぜそうしたか）を説明
 - 複雑なビジネスロジックの意図
 - 外部仕様・制約の説明
-- TODO・FIXME・NOTEの記載
+- TODO・FIXME・NOTE の記載
 
 **コメント不要な場合:**
+
 - What（何をしているか）はコードで表現
 - 自明なコード
 
-### 6.2 JSDoc形式
+### 6.2 JSDoc 形式
 
-```typescript
+````typescript
 /**
  * ユーザーを作成するユースケース
- * 
+ *
  * メールアドレスと社員番号の重複チェックを行い、
  * 新規ユーザーをシステムに登録します。
- * 
+ *
  * @throws {ValidationError} 入力値が不正な場合
  * @throws {BusinessRuleViolationError} メールアドレスまたは社員番号が重複している場合
  * @throws {InfrastructureError} データベース操作が失敗した場合
@@ -1277,13 +1291,13 @@ export class CreateUserUseCase {
     private readonly userRepository: IUserRepository,
     private readonly duplicationChecker: UserDuplicationCheckService
   ) {}
-  
+
   /**
    * ユースケースを実行します
-   * 
+   *
    * @param input - ユーザー作成に必要な入力データ
    * @returns 作成されたユーザーの情報
-   * 
+   *
    * @example
    * ```typescript
    * const useCase = new CreateUserUseCase(repository, checker);
@@ -1299,7 +1313,7 @@ export class CreateUserUseCase {
     // 実装
   }
 }
-```
+````
 
 ### 6.3 インラインコメント
 
@@ -1313,7 +1327,7 @@ export class User {
     this._isVerified = false;
     this._updatedAt = new Date();
   }
-  
+
   calculateDiscount(): number {
     // BUSINESS_RULE: 社員歴3年以上の場合、10%割引を適用
     // 参考: 人事規定第12条
@@ -1380,68 +1394,72 @@ src/
 
 ```typescript
 // ✅ Good - describe / it パターン
-describe('User', () => {
-  describe('create', () => {
-    it('should create user with valid input', () => {
+describe("User", () => {
+  describe("create", () => {
+    it("should create user with valid input", () => {
       // Arrange
       const props = {
-        name: 'John Doe',
-        email: new Email('john@example.com'),
-        employeeId: new EmployeeId('EMP000001'),
+        name: "John Doe",
+        email: new Email("john@example.com"),
+        employeeId: new EmployeeId("EMP000001"),
       };
-      
+
       // Act
       const user = User.create(props);
-      
+
       // Assert
-      expect(user.name).toBe('John Doe');
-      expect(user.email.value).toBe('john@example.com');
+      expect(user.name).toBe("John Doe");
+      expect(user.email.value).toBe("john@example.com");
     });
-    
-    it('should throw ValidationError when name is too short', () => {
+
+    it("should throw ValidationError when name is too short", () => {
       const props = {
-        name: 'J', // 短すぎる
-        email: new Email('john@example.com'),
-        employeeId: new EmployeeId('EMP000001'),
+        name: "J", // 短すぎる
+        email: new Email("john@example.com"),
+        employeeId: new EmployeeId("EMP000001"),
       };
-      
+
       expect(() => User.create(props)).toThrow(ValidationError);
     });
   });
-  
-  describe('updateEmail', () => {
-    it('should update email and reset verification status', () => {
+
+  describe("updateEmail", () => {
+    it("should update email and reset verification status", () => {
       // ...
     });
   });
 });
 
 // ❌ Bad - 不明瞭なテスト名
-describe('User', () => {
-  it('test1', () => { /* ... */ });
-  it('test2', () => { /* ... */ });
+describe("User", () => {
+  it("test1", () => {
+    /* ... */
+  });
+  it("test2", () => {
+    /* ... */
+  });
 });
 ```
 
 ### 7.3 AAA (Arrange-Act-Assert) パターン
 
 ```typescript
-it('should create user with valid input', () => {
+it("should create user with valid input", () => {
   // Arrange - テストデータの準備
-  const email = new Email('test@example.com');
-  const employeeId = new EmployeeId('EMP000001');
+  const email = new Email("test@example.com");
+  const employeeId = new EmployeeId("EMP000001");
   const props = {
-    name: 'Test User',
+    name: "Test User",
     email,
     employeeId,
   };
-  
+
   // Act - テスト対象の実行
   const user = User.create(props);
-  
+
   // Assert - 結果の検証
   expect(user).toBeDefined();
-  expect(user.name).toBe('Test User');
+  expect(user.name).toBe("Test User");
   expect(user.email).toBe(email);
   expect(user.employeeId).toBe(employeeId);
 });
@@ -1450,11 +1468,11 @@ it('should create user with valid input', () => {
 ### 7.4 モック・スタブの使用
 
 ```typescript
-describe('CreateUserUseCase', () => {
+describe("CreateUserUseCase", () => {
   let mockUserRepository: jest.Mocked<IUserRepository>;
   let mockDuplicationChecker: jest.Mocked<UserDuplicationCheckService>;
   let useCase: CreateUserUseCase;
-  
+
   beforeEach(() => {
     // モックの作成
     mockUserRepository = {
@@ -1463,48 +1481,45 @@ describe('CreateUserUseCase', () => {
       save: jest.fn(),
       delete: jest.fn(),
     } as any;
-    
+
     mockDuplicationChecker = {
       isDuplicated: jest.fn(),
     } as any;
-    
-    useCase = new CreateUserUseCase(
-      mockUserRepository,
-      mockDuplicationChecker
-    );
+
+    useCase = new CreateUserUseCase(mockUserRepository, mockDuplicationChecker);
   });
-  
-  it('should create user successfully', async () => {
+
+  it("should create user successfully", async () => {
     // Arrange
     mockDuplicationChecker.isDuplicated.mockResolvedValue(false);
     mockUserRepository.save.mockResolvedValue(undefined);
-    
+
     const input: CreateUserInput = {
-      name: 'John Doe',
-      email: 'john@example.com',
-      employeeId: 'EMP000001',
+      name: "John Doe",
+      email: "john@example.com",
+      employeeId: "EMP000001",
     };
-    
+
     // Act
     const result = await useCase.execute(input);
-    
+
     // Assert
     expect(result).toBeDefined();
-    expect(result.name).toBe('John Doe');
+    expect(result.name).toBe("John Doe");
     expect(mockDuplicationChecker.isDuplicated).toHaveBeenCalledTimes(1);
     expect(mockUserRepository.save).toHaveBeenCalledTimes(1);
   });
-  
-  it('should throw error when email is duplicated', async () => {
+
+  it("should throw error when email is duplicated", async () => {
     // Arrange
     mockDuplicationChecker.isDuplicated.mockResolvedValue(true);
-    
+
     const input: CreateUserInput = {
-      name: 'John Doe',
-      email: 'john@example.com',
-      employeeId: 'EMP000001',
+      name: "John Doe",
+      email: "john@example.com",
+      employeeId: "EMP000001",
     };
-    
+
     // Act & Assert
     await expect(useCase.execute(input)).rejects.toThrow(
       BusinessRuleViolationError
@@ -1522,32 +1537,41 @@ describe('CreateUserUseCase', () => {
 // - 境界値テスト必須
 // - 異常系テスト必須
 
-describe('Email', () => {
+describe("Email", () => {
   // 正常系
-  it('should accept valid email', () => {
-    expect(() => new Email('test@example.com')).not.toThrow();
+  it("should accept valid email", () => {
+    expect(() => new Email("test@example.com")).not.toThrow();
   });
-  
+
   // 境界値テスト
-  it('should accept email with maximum length', () => {
-    const longEmail = 'a'.repeat(64) + '@' + 'b'.repeat(63) + '.com';
+  it("should accept email with maximum length", () => {
+    const longEmail = "a".repeat(64) + "@" + "b".repeat(63) + ".com";
     expect(() => new Email(longEmail)).not.toThrow();
   });
-  
+
   // 異常系テスト
-  it('should reject email without @', () => {
-    expect(() => new Email('invalid.email.com')).toThrow(ValidationError);
+  it("should reject email without @", () => {
+    expect(() => new Email("invalid.email.com")).toThrow(ValidationError);
   });
-  
-  it('should reject empty email', () => {
-    expect(() => new Email('')).toThrow(ValidationError);
+
+  it("should reject empty email", () => {
+    expect(() => new Email("")).toThrow(ValidationError);
   });
-  
-  it('should reject email with spaces', () => {
-    expect(() => new Email('test @example.com')).toThrow(ValidationError);
+
+  it("should reject email with spaces", () => {
+    expect(() => new Email("test @example.com")).toThrow(ValidationError);
   });
 });
 ```
+
+### 7.6 テストデータ戦略（レイヤー別）
+
+| 対象                      | データソース | 理由                                                          |
+| ------------------------- | ------------ | ------------------------------------------------------------- |
+| Value Object / Entity     | インメモリ   | 永続化は責務外。ビジネスルールのみをテスト                    |
+| Application 層（UseCase） | モック       | Repository インターフェースをモックし、ビジネスロジックに集中 |
+| Repository 実装           | 実 DB        | SQL/Prisma クエリが正しく動くか検証が必要                     |
+| 統合テスト / E2E          | 実 DB        | レイヤー間の連携、実際のデータフローを検証                    |
 
 ---
 
@@ -1556,45 +1580,52 @@ describe('Email', () => {
 ### 8.1 レビュー観点
 
 #### アーキテクチャ
+
 - [ ] レイヤー間の依存関係は正しいか
 - [ ] ドメイン層が外部ライブラリに依存していないか
 - [ ] 責務が適切なレイヤーに配置されているか
 
 #### コード品質
+
 - [ ] 命名規則に従っているか
-- [ ] 関数が50行以内に収まっているか
-- [ ] DRY原則に従っているか
-- [ ] SOLID原則に従っているか
+- [ ] 関数が 50 行以内に収まっているか
+- [ ] DRY 原則に従っているか
+- [ ] SOLID 原則に従っているか
 
 #### 型安全性
-- [ ] any型を使用していないか
+
+- [ ] any 型を使用していないか
 - [ ] 適切な型アノテーションがあるか
-- [ ] null/undefinedの扱いが適切か
+- [ ] null/undefined の扱いが適切か
 
 #### エラーハンドリング
+
 - [ ] 適切なエラークラスを使用しているか
 - [ ] エラーメッセージは明確か
 - [ ] エラーログは適切に出力されているか
 
 #### テスト
+
 - [ ] ユニットテストが書かれているか
 - [ ] 正常系・異常系・境界値をテストしているか
 - [ ] テストカバレッジが目標値を達成しているか
 
 #### セキュリティ
-- [ ] SQLインジェクション対策ができているか
-- [ ] XSS対策ができているか
+
+- [ ] SQL インジェクション対策ができているか
+- [ ] XSS 対策ができているか
 - [ ] 認証・認可チェックが適切か
 - [ ] 機密情報がログに出力されていないか
 
 #### パフォーマンス
-- [ ] N+1問題が発生していないか
+
+- [ ] N+1 問題が発生していないか
 - [ ] 不要なデータベースクエリがないか
 - [ ] 適切にインデックスが設定されているか
 
 ---
 
-## 9. 実装例：完全なCRUD操作
+## 9. 実装例：完全な CRUD 操作
 
 ### 9.1 ドメイン層
 
@@ -1608,7 +1639,7 @@ export class User {
   private _role: Role;
   private readonly _createdAt: Date;
   private _updatedAt: Date;
-  
+
   private constructor(props: UserProps) {
     this._id = props.id;
     this._name = props.name;
@@ -1618,14 +1649,14 @@ export class User {
     this._createdAt = props.createdAt;
     this._updatedAt = props.updatedAt;
   }
-  
+
   static create(props: CreateUserProps): User {
     if (props.name.length < 2) {
       throw new ValidationError([
-        { field: 'name', message: 'Name must be at least 2 characters' }
+        { field: "name", message: "Name must be at least 2 characters" },
       ]);
     }
-    
+
     return new User({
       id: generateId(),
       name: props.name,
@@ -1636,41 +1667,55 @@ export class User {
       updatedAt: new Date(),
     });
   }
-  
+
   static reconstruct(props: UserProps): User {
     return new User(props);
   }
-  
+
   // Getters
-  get id(): string { return this._id; }
-  get name(): string { return this._name; }
-  get email(): Email { return this._email; }
-  get employeeId(): EmployeeId { return this._employeeId; }
-  get role(): Role { return this._role; }
-  get createdAt(): Date { return this._createdAt; }
-  get updatedAt(): Date { return this._updatedAt; }
-  
+  get id(): string {
+    return this._id;
+  }
+  get name(): string {
+    return this._name;
+  }
+  get email(): Email {
+    return this._email;
+  }
+  get employeeId(): EmployeeId {
+    return this._employeeId;
+  }
+  get role(): Role {
+    return this._role;
+  }
+  get createdAt(): Date {
+    return this._createdAt;
+  }
+  get updatedAt(): Date {
+    return this._updatedAt;
+  }
+
   // Business logic
   updateName(newName: string): void {
     if (newName.length < 2) {
       throw new ValidationError([
-        { field: 'name', message: 'Name must be at least 2 characters' }
+        { field: "name", message: "Name must be at least 2 characters" },
       ]);
     }
     this._name = newName;
     this._updatedAt = new Date();
   }
-  
+
   updateEmail(newEmail: Email): void {
     this._email = newEmail;
     this._updatedAt = new Date();
   }
-  
+
   promoteToAdmin(): void {
     this._role = Role.ADMIN;
     this._updatedAt = new Date();
   }
-  
+
   equals(other: User): boolean {
     return this._id === other._id;
   }
@@ -1695,26 +1740,26 @@ export class CreateUserUseCase {
     private readonly userRepository: IUserRepository,
     private readonly duplicationChecker: UserDuplicationCheckService
   ) {}
-  
+
   async execute(input: CreateUserInput): Promise<CreateUserOutput> {
     const email = new Email(input.email);
     const employeeId = new EmployeeId(input.employeeId);
-    
+
     const isDuplicated = await this.duplicationChecker.isDuplicated(email);
     if (isDuplicated) {
       throw new BusinessRuleViolationError(
-        'User with this email already exists'
+        "User with this email already exists"
       );
     }
-    
+
     const user = User.create({
       name: input.name,
       email,
       employeeId,
     });
-    
+
     await this.userRepository.save(user);
-    
+
     return {
       id: user.id,
       name: user.name,
@@ -1740,7 +1785,7 @@ export class PrismaUserRepository implements IUserRepository {
       );
     }
   }
-  
+
   async save(user: User): Promise<void> {
     try {
       const prismaUser = UserMapper.toPrisma(user);
@@ -1750,7 +1795,7 @@ export class PrismaUserRepository implements IUserRepository {
         create: prismaUser,
       });
     } catch (error) {
-      throw new InfrastructureError('Failed to save user', error as Error);
+      throw new InfrastructureError("Failed to save user", error as Error);
     }
   }
 }
@@ -1764,18 +1809,15 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const input = createUserSchema.parse(body);
-    
+
     const useCase = new CreateUserUseCase(
       new PrismaUserRepository(),
       new UserDuplicationCheckService(new PrismaUserRepository())
     );
-    
+
     const result = await useCase.execute(input);
-    
-    return Response.json(
-      { success: true, data: result },
-      { status: 201 }
-    );
+
+    return Response.json({ success: true, data: result }, { status: 201 });
   } catch (error) {
     return errorResponse(error);
   }
@@ -1789,13 +1831,15 @@ export async function POST(request: Request) {
 このガイドラインは、高品質で保守性の高いコードを書くための基準です。
 
 ### 重要原則
-1. **型安全性**: TypeScriptの型システムを最大限活用
-2. **レイヤー分離**: DDDアーキテクチャの依存関係を厳守
+
+1. **型安全性**: TypeScript の型システムを最大限活用
+2. **レイヤー分離**: DDD アーキテクチャの依存関係を厳守
 3. **エラーハンドリング**: 適切なエラークラスと処理
 4. **テスタビリティ**: テストしやすい設計
 5. **可読性**: 明確な命名とコメント
 
 ### 継続的改善
+
 - コードレビューでの指摘事項を反映
 - チーム内での議論を通じた改善
 - 新しいベストプラクティスの取り込み
@@ -1804,6 +1848,6 @@ export async function POST(request: Request) {
 
 **更新履歴**
 
-| バージョン | 日付 | 変更内容 |
-|-----------|------|---------|
-| 1.0 | 2025-10-07 | 初版作成 |
+| バージョン | 日付       | 変更内容 |
+| ---------- | ---------- | -------- |
+| 1.0        | 2025-10-07 | 初版作成 |
