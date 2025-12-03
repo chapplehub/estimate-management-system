@@ -1,0 +1,108 @@
+"use client";
+
+import { authClient } from "@lib/auth-client";
+import { SigninFormSchema } from "@/app/auth/_lib/definitions";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { z } from "zod";
+
+type FormErrors = {
+  name?: string[];
+  email?: string[];
+  password?: string[];
+  general?: string;
+};
+
+export function SigninForm() {
+  const router = useRouter();
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [pending, setPending] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setErrors({});
+    setPending(true);
+
+    const formData = new FormData(e.currentTarget);
+    const rawData = {
+      name: formData.get("name"),
+      email: formData.get("email"),
+      password: formData.get("password"),
+    };
+
+    // クライアントサイドバリデーション
+    const validatedFields = SigninFormSchema.safeParse(rawData);
+
+    if (!validatedFields.success) {
+      setErrors(z.flattenError(validatedFields.error).fieldErrors);
+      setPending(false);
+      return;
+    }
+
+    // Better Auth でサインイン
+    const { error } = await authClient.signIn.email(
+      {
+        email: validatedFields.data.email,
+        password: validatedFields.data.password,
+        callbackURL: "/dashboard",
+      },
+      {
+        onSuccess: () => {
+          router.push("/dashboard");
+        },
+        onError: (ctx) => {
+          setErrors({ general: ctx.error.message });
+        },
+      }
+    );
+
+    setPending(false);
+
+    if (error) {
+      setErrors({ general: error.message });
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div>
+        <label htmlFor="name">名前</label>
+        <input id="name" name="name" placeholder="名前" />
+      </div>
+      {errors.name && <p>{errors.name}</p>}
+
+      <div>
+        <label htmlFor="email">メールアドレス</label>
+        <input
+          id="email"
+          name="email"
+          type="email"
+          placeholder="メールアドレス"
+        />
+      </div>
+      {errors.email && <p>{errors.email}</p>}
+
+      <div>
+        <label htmlFor="password">パスワード</label>
+        <input id="password" name="password" type="password" />
+      </div>
+
+      {errors.password && (
+        <div>
+          <p>パスワードは以下を含む必要があります：</p>
+          <ul>
+            {errors.password.map((error) => (
+              <li key={error}>- {error}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {errors.general && <p style={{ color: "red" }}>{errors.general}</p>}
+
+      <button disabled={pending} type="submit">
+        サインイン
+      </button>
+    </form>
+  );
+}

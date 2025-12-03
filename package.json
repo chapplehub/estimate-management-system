@@ -27,7 +27,7 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@prisma/client": "^6.18.0",
+    "@prisma/client": "^7.0.1",
     "@tailwindcss/postcss": "^4",
     "@types/bcrypt": "^6.0.0",
     "@types/node": "^20",
@@ -37,7 +37,7 @@
     "es-toolkit": "^1.41.0",
     "eslint": "^9",
     "eslint-config-next": "16.0.0",
-    "prisma": "^6.18.0",
+    "prisma": "^7.0.1",
     "tailwindcss": "^4",
     "tsx": "^4.20.6",
     "typescript": "^5",
