@@ -1,9 +1,9 @@
 "use client";
 
-import { authClient } from "@lib/auth-client";
 import { SigninFormSchema } from "@/app/auth/_lib/definitions";
-import { useState } from "react";
+import { authClient } from "@lib/auth-client";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { z } from "zod";
 
 type FormErrors = {
@@ -44,11 +44,11 @@ export function SigninForm() {
       {
         email: validatedFields.data.email,
         password: validatedFields.data.password,
-        callbackURL: "/dashboard",
+        callbackURL: "/employees",
       },
       {
         onSuccess: () => {
-          router.push("/dashboard");
+          router.push("/employees");
         },
         onError: (ctx) => {
           setErrors({ general: ctx.error.message });
