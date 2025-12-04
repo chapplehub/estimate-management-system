@@ -7,6 +7,7 @@
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
+  engineType      = "client"
 }
 
 datasource db {
@@ -18,21 +19,18 @@ datasource db {
 // ========================================
 
 model Employee {
-  id           String @id // ドメイン層でCUID生成
-  employeeCd   String @unique @map("employee_cd") // EMP000001 形式
-  email        String @unique
-  name         String
-  passwordHash String @map("password_hash")
-  role         Role   @default(USER)
-
-  // アカウントロック機能
-  failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
-  lockedUntil         DateTime? @map("locked_until")
-  lastLoginAt         DateTime? @map("last_login_at")
+  id         String @id // ドメイン層でCUID生成
+  employeeCd String @unique @map("employee_cd") // EMP000001 形式
+  email      String @unique
+  name       String
+  role       Role   @default(USER)
 
   // タイムスタンプ
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+
+  // 認証ユーザーとの逆参照（Employee はこの関係を知らない設計だが、Prisma の制約上必要）
+  user User?
 
   @@map("employees")
 }
@@ -52,6 +50,10 @@ model User {
   updatedAt     DateTime  @updatedAt
   sessions      Session[]
   accounts      Account[]
+
+  // 従業員との関連（認証ユーザー → ドメインエンティティ）
+  employeeId String?   @unique @map("employee_id")
+  employee   Employee? @relation(fields: [employeeId], references: [id])
 
   @@unique([email])
   @@map("user")

@@ -52,9 +52,7 @@ describe("PrismaEmployeeQueryService", () => {
           employeeCd: "EMP999901",
           email: "query-findbyid@example.com",
           name: "QueryFindById",
-          passwordHash: "hashed_password",
           role: Role.USER,
-          failedLoginAttempts: 0,
         },
       });
 
@@ -83,9 +81,7 @@ describe("PrismaEmployeeQueryService", () => {
           employeeCd: "EMP999902",
           email: "query-email@example.com",
           name: "QueryEmail",
-          passwordHash: "hashed_password",
           role: Role.ADMIN,
-          failedLoginAttempts: 0,
         },
       });
 
@@ -111,9 +107,7 @@ describe("PrismaEmployeeQueryService", () => {
           employeeCd: "EMP999903",
           email: "query-cd@example.com",
           name: "QueryEmployeeCd",
-          passwordHash: "hashed_password",
           role: Role.USER,
-          failedLoginAttempts: 0,
         },
       });
 
@@ -149,40 +143,28 @@ describe("PrismaEmployeeQueryService", () => {
             employeeCd: "EMP999901",
             email: "search-tanaka@example.com",
             name: "田中太郎",
-            passwordHash: "hashed_password",
             role: Role.USER,
-            failedLoginAttempts: 0,
-            lockedUntil: null,
           },
           {
             id: createId(),
             employeeCd: "EMP999902",
             email: "search-yamada@example.com",
             name: "山田花子",
-            passwordHash: "hashed_password",
             role: Role.ADMIN,
-            failedLoginAttempts: 3,
-            lockedUntil: null,
           },
           {
             id: createId(),
             employeeCd: "EMP999903",
             email: "search-suzuki@example.com",
             name: "鈴木一郎",
-            passwordHash: "hashed_password",
             role: Role.USER,
-            failedLoginAttempts: 5,
-            lockedUntil: new Date(Date.now() + 3600000), // 1時間後までロック
           },
           {
             id: createId(),
             employeeCd: "EMP999904",
             email: "search-sato@example.com",
             name: "佐藤次郎",
-            passwordHash: "hashed_password",
             role: Role.USER,
-            failedLoginAttempts: 0,
-            lockedUntil: null,
           },
         ],
       });
@@ -223,38 +205,19 @@ describe("PrismaEmployeeQueryService", () => {
       expect(names).toContain("山田花子");
     });
 
-    it("ロック中の従業員のみ取得できる", async () => {
-      const results = await queryService.search({ isLocked: true });
-
-      expect(results.length).toBe(1);
-      expect(results[0].name).toBe("鈴木一郎");
-      expect(results[0].lockedUntil).not.toBeNull();
-    });
-
-    it("ロックされていない従業員のみ取得できる", async () => {
-      const results = await queryService.search({ isLocked: false });
-
-      // ロックされていない従業員は3人
-      expect(results.length).toBeGreaterThanOrEqual(3);
-      const names = results.map((r) => r.name);
-      expect(names).toContain("田中太郎");
-      expect(names).toContain("山田花子");
-      expect(names).toContain("佐藤次郎");
-    });
+    // NOTE: isLocked 検索は認証を better-auth に移行したため削除
 
     it("複数条件の組み合わせで検索できる", async () => {
       const results = await queryService.search({
         role: Role.USER,
-        isLocked: false,
+        name: "田中",
       });
 
-      // USER かつ ロックされていない従業員
-      expect(results.length).toBeGreaterThanOrEqual(2);
+      // USER かつ 田中 が名前に含まれる従業員
+      expect(results.length).toBeGreaterThanOrEqual(1);
       results.forEach((r) => {
         expect(r.role).toBe(Role.USER);
-        expect(
-          r.lockedUntil === null || r.lockedUntil <= new Date()
-        ).toBeTruthy();
+        expect(r.name).toContain("田中");
       });
     });
 
@@ -329,18 +292,14 @@ describe("PrismaEmployeeQueryService", () => {
             employeeCd: "EMP999901",
             email: "findall1@example.com",
             name: "全取得1",
-            passwordHash: "hashed_password",
             role: Role.USER,
-            failedLoginAttempts: 0,
           },
           {
             id: createId(),
             employeeCd: "EMP999902",
             email: "findall2@example.com",
             name: "全取得2",
-            passwordHash: "hashed_password",
             role: Role.ADMIN,
-            failedLoginAttempts: 0,
           },
         ],
       });
@@ -393,27 +352,21 @@ describe("PrismaEmployeeQueryService", () => {
             employeeCd: "EMP999901",
             email: "count1@example.com",
             name: "カウント1",
-            passwordHash: "hashed_password",
             role: Role.USER,
-            failedLoginAttempts: 0,
           },
           {
             id: createId(),
             employeeCd: "EMP999902",
             email: "count2@example.com",
             name: "カウント2",
-            passwordHash: "hashed_password",
             role: Role.USER,
-            failedLoginAttempts: 0,
           },
           {
             id: createId(),
             employeeCd: "EMP999903",
             email: "count3@example.com",
             name: "カウント3",
-            passwordHash: "hashed_password",
             role: Role.ADMIN,
-            failedLoginAttempts: 0,
           },
         ],
       });

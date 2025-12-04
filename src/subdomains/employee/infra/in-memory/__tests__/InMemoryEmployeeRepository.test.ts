@@ -15,7 +15,6 @@ describe("InMemoryEmployeeRepository", () => {
       new EmployeeCd("EMP000001"),
       new MailAddress("test@example.com"),
       "山田太郎",
-      "hashed_password_123",
       Role.USER
     );
   });
@@ -34,7 +33,6 @@ describe("InMemoryEmployeeRepository", () => {
         new EmployeeCd("EMP000002"),
         new MailAddress("test2@example.com"),
         "鈴木花子",
-        "hashed_password_456",
         Role.ADMIN
       );
 
@@ -137,7 +135,6 @@ describe("InMemoryEmployeeRepository", () => {
         new EmployeeCd("EMP000002"),
         new MailAddress("test2@example.com"),
         "鈴木花子",
-        "hashed_password_456",
         Role.ADMIN
       );
 

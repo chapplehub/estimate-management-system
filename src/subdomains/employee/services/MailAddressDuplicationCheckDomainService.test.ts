@@ -28,8 +28,7 @@ describe("MailAddressDuplicationCheckDomainService", () => {
     const employeeCd = new EmployeeCd("EMP000001");
     const mailAddress = new MailAddress("test@example.com");
     const name = "山田太郎";
-    const passwordHash = "hashed_password_123";
-    const employee = Employee.create(employeeCd, mailAddress, name, passwordHash);
+    const employee = Employee.create(employeeCd, mailAddress, name);
 
     await inMemoryEmployeeRepository.save(employee);
 
@@ -44,13 +43,7 @@ describe("MailAddressDuplicationCheckDomainService", () => {
     const existingMailAddress = new MailAddress("existing@example.com");
     const newMailAddress = new MailAddress("new@example.com");
     const name = "山田太郎";
-    const passwordHash = "hashed_password_123";
-    const employee = Employee.create(
-      employeeCd,
-      existingMailAddress,
-      name,
-      passwordHash
-    );
+    const employee = Employee.create(employeeCd, existingMailAddress, name);
 
     await inMemoryEmployeeRepository.save(employee);
 

@@ -28,8 +28,7 @@ describe("EmployeeCdDuplicationCheckDomainService", () => {
     const employeeCd = new EmployeeCd("EMP000001");
     const email = new MailAddress("test@example.com");
     const name = "山田太郎";
-    const passwordHash = "hashed_password_123";
-    const employee = Employee.create(employeeCd, email, name, passwordHash);
+    const employee = Employee.create(employeeCd, email, name);
 
     await inMemoryEmployeeRepository.save(employee);
 
@@ -44,13 +43,7 @@ describe("EmployeeCdDuplicationCheckDomainService", () => {
     const newEmployeeCd = new EmployeeCd("EMP000002");
     const email = new MailAddress("test@example.com");
     const name = "山田太郎";
-    const passwordHash = "hashed_password_123";
-    const employee = Employee.create(
-      existingEmployeeCd,
-      email,
-      name,
-      passwordHash
-    );
+    const employee = Employee.create(existingEmployeeCd, email, name);
 
     await inMemoryEmployeeRepository.save(employee);
 

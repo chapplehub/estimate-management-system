@@ -14,9 +14,6 @@ describe("GetEmployeeByEmailQuery", () => {
     email: "test@example.com",
     name: "テスト太郎",
     role: Role.USER,
-    failedLoginAttempts: 0,
-    lockedUntil: null,
-    lastLoginAt: null,
     createdAt: new Date("2025-01-01"),
     updatedAt: new Date("2025-01-01"),
   };

@@ -47,7 +47,6 @@ describe("CreateEmployeeCommand", () => {
       employeeCd: "EMP000001",
       email: "test@example.com",
       name: "テスト太郎",
-      passwordHash: "hashedPassword123",
       role: Role.USER,
     });
 
@@ -69,7 +68,6 @@ describe("CreateEmployeeCommand", () => {
         employeeCd: "EMP000001",
         email: "test@example.com",
         name: "テスト太郎",
-        passwordHash: "hashedPassword123",
         role: Role.USER,
       })
     ).rejects.toThrow(ValidationError);
@@ -85,7 +83,6 @@ describe("CreateEmployeeCommand", () => {
         employeeCd: "EMP000001",
         email: "invalid-email",
         name: "テスト太郎",
-        passwordHash: "hashedPassword123",
         role: Role.USER,
       })
     ).rejects.toThrow(ValidationError);
@@ -99,7 +96,6 @@ describe("CreateEmployeeCommand", () => {
         employeeCd: "INVALID",
         email: "test@example.com",
         name: "テスト太郎",
-        passwordHash: "hashedPassword123",
         role: Role.USER,
       })
     ).rejects.toThrow(ValidationError);

@@ -25,11 +25,7 @@ export class EmployeeMapper {
       employeeCd,
       email,
       prismaEmployee.name,
-      prismaEmployee.passwordHash,
       prismaEmployee.role as Role,
-      prismaEmployee.failedLoginAttempts,
-      prismaEmployee.lockedUntil,
-      prismaEmployee.lastLoginAt,
       prismaEmployee.createdAt,
       prismaEmployee.updatedAt
     );
@@ -47,11 +43,7 @@ export class EmployeeMapper {
       employeeCd: employee.employeeCd.value,
       email: employee.email.value,
       name: employee.name,
-      passwordHash: employee.passwordHash,
       role: employee.role,
-      failedLoginAttempts: employee.failedLoginAttempts,
-      lockedUntil: employee.lockedUntil,
-      lastLoginAt: employee.lastLoginAt,
     };
   }
 
@@ -65,11 +57,7 @@ export class EmployeeMapper {
     return {
       email: employee.email.value,
       name: employee.name,
-      passwordHash: employee.passwordHash,
       role: employee.role,
-      failedLoginAttempts: employee.failedLoginAttempts,
-      lockedUntil: employee.lockedUntil,
-      lastLoginAt: employee.lastLoginAt,
       updatedAt: employee.updatedAt,
     };
   }

@@ -1,12 +1,15 @@
-import * as argon2 from "argon2";
-import { PrismaClient } from "../generated/prisma/client";
 import { createId } from "@paralleldrive/cuid2";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { config } from "dotenv";
+import { PrismaClient } from "../generated/prisma/client";
 
-// Load .env.local for development
-config({ path: ".env.local" });
+config({ path: ".env" });
 
-const prisma = new PrismaClient();
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL,
+});
+
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   console.log("Start seeding...");
@@ -15,9 +18,6 @@ async function main() {
   await prisma.employee.deleteMany();
   console.log("Deleted existing employees");
 
-  // Hash password
-  const passwordHash = await argon2.hash("password123");
-
   // Create admin user
   const admin = await prisma.employee.create({
     data: {
@@ -25,9 +25,7 @@ async function main() {
       employeeCd: "EMP000001",
       email: "admin@example.com",
       name: "Admin Taro",
-      passwordHash,
       role: "ADMIN",
-      failedLoginAttempts: 0,
     },
   });
   console.log(`Created admin: ${admin.name} (${admin.employeeCd})`);
@@ -65,8 +63,6 @@ async function main() {
       data: {
         id: createId(),
         ...userData,
-        passwordHash,
-        failedLoginAttempts: 0,
       },
     });
     console.log(`Created user: ${user.name} (${user.employeeCd})`);

@@ -17,8 +17,8 @@ export type EmployeeSearchCriteria = {
   /** ロールでのフィルタ */
   role?: Role;
 
-  /** アカウントロック状態でのフィルタ（true: ロック中のみ, false: ロックされていないのみ） */
-  isLocked?: boolean;
+  // NOTE: isLocked は認証を better-auth に移行したため削除
+  // 将来的に User テーブルの ban 状態で検索する場合は別途実装
 
   /** この日時以降に作成された従業員 */
   createdAfter?: Date;

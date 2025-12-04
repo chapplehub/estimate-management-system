@@ -38,7 +38,6 @@ describe("PrismaEmployeeRepository", () => {
         new EmployeeCd("EMP999001"),
         new MailAddress("test-save@example.com"),
         "テスト太郎",
-        "hashed_password_123",
         Role.USER
       );
 
@@ -72,7 +71,6 @@ describe("PrismaEmployeeRepository", () => {
         new EmployeeCd("EMP999001"),
         new MailAddress("test-update@example.com"),
         "更新前の名前",
-        "hashed_password_123",
         Role.USER
       );
       const savedEmployee = await repository.save(employee);
@@ -101,7 +99,6 @@ describe("PrismaEmployeeRepository", () => {
         new EmployeeCd("EMP999001"),
         new MailAddress("test-delete@example.com"),
         "削除テスト",
-        "hashed_password_123",
         Role.USER
       );
       const savedEmployee = await repository.save(employee);
@@ -124,7 +121,6 @@ describe("PrismaEmployeeRepository", () => {
         new EmployeeCd("EMP999001"),
         new MailAddress("test-findbyid@example.com"),
         "ID検索テスト",
-        "hashed_password_123",
         Role.USER
       );
       const savedEmployee = await repository.save(employee);
@@ -153,7 +149,6 @@ describe("PrismaEmployeeRepository", () => {
         new EmployeeCd("EMP999002"),
         new MailAddress("test-findbycd@example.com"),
         "社員コード検索テスト",
-        "hashed_password_123",
         Role.ADMIN
       );
       await repository.save(employee);
@@ -184,14 +179,12 @@ describe("PrismaEmployeeRepository", () => {
         new EmployeeCd("EMP999002"),
         new MailAddress("test1@example.com"),
         "テスト1",
-        "hashed_password_123",
         Role.USER
       );
       const employee2 = Employee.create(
         new EmployeeCd("EMP999003"),
         new MailAddress("test2@example.com"),
         "テスト2",
-        "hashed_password_456",
         Role.ADMIN
       );
 

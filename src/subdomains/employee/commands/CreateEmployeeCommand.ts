@@ -11,7 +11,6 @@ export type CreateEmployeeInput = {
   employeeCd: string;
   email: string;
   name: string;
-  passwordHash: string;
   role: Role;
 };
 
@@ -49,7 +48,6 @@ export class CreateEmployeeCommand {
       employeeCd,
       mailAddress,
       input.name,
-      input.passwordHash,
       input.role
     );
 

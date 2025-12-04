@@ -100,19 +100,8 @@ export class PrismaEmployeeQueryService implements IEmployeeQueryService {
       where.role = criteria.role;
     }
 
-    if (criteria.isLocked !== undefined) {
-      // isLocked は lockedUntil の有無と現在時刻で判断
-      if (criteria.isLocked) {
-        // ロック中: lockedUntil が現在時刻より未来
-        where.lockedUntil = { gt: new Date() };
-      } else {
-        // ロックされていない: lockedUntil が null または過去
-        where.OR = [
-          { lockedUntil: null },
-          { lockedUntil: { lte: new Date() } },
-        ];
-      }
-    }
+    // NOTE: isLocked 検索は認証を better-auth に移行したため削除
+    // 将来的に User テーブルの ban 状態で検索する場合は別途実装
 
     if (criteria.createdAfter || criteria.createdBefore) {
       where.createdAt = {};
@@ -153,9 +142,6 @@ export class PrismaEmployeeQueryService implements IEmployeeQueryService {
       email: true,
       name: true,
       role: true,
-      failedLoginAttempts: true,
-      lockedUntil: true,
-      lastLoginAt: true,
       createdAt: true,
       updatedAt: true,
     } as const;
@@ -170,9 +156,6 @@ export class PrismaEmployeeQueryService implements IEmployeeQueryService {
     email: string;
     name: string;
     role: string;
-    failedLoginAttempts: number;
-    lockedUntil: Date | null;
-    lastLoginAt: Date | null;
     createdAt: Date;
     updatedAt: Date;
   }): EmployeeDTO {
@@ -182,9 +165,6 @@ export class PrismaEmployeeQueryService implements IEmployeeQueryService {
       email: employee.email,
       name: employee.name,
       role: employee.role as "ADMIN" | "USER",
-      failedLoginAttempts: employee.failedLoginAttempts,
-      lockedUntil: employee.lockedUntil,
-      lastLoginAt: employee.lastLoginAt,
       createdAt: employee.createdAt,
       updatedAt: employee.updatedAt,
     };

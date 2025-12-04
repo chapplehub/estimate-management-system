@@ -10,9 +10,6 @@ export type EmployeeDTO = {
   email: string;
   name: string;
   role: Role;
-  failedLoginAttempts: number;
-  lockedUntil: Date | null;
-  lastLoginAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };

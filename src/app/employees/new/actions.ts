@@ -5,7 +5,6 @@ import type { ActionResult } from "@/shared/types/ActionResult";
 import { CreateEmployeeCommand } from "@/subdomains/employee/commands/CreateEmployeeCommand";
 import { PrismaEmployeeRepository } from "@/subdomains/employee/infra/prisma/PrismaEmployeeRepository";
 import { EmployeeCdDuplicationCheckDomainService } from "@/subdomains/employee/services/EmployeeCdDuplicationCheckDomainService";
-import { hash } from "bcrypt";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -39,9 +38,9 @@ export async function createEmployee(
     };
   }
 
-  const { name, email, employeeCd, password, role } = validationResult.data;
+  const { name, email, employeeCd, role } = validationResult.data;
 
-  // TODO: Auth.js導入後に権限チェックを追加
+  // TODO: better-auth導入後に権限チェックを追加
   // const session = await auth();
   // if (!session) redirect('/login');
   // if (session.user.role !== 'ADMIN') {
@@ -62,14 +61,13 @@ export async function createEmployee(
       mailAddressDuplicationCheck
     );
 
-    // パスワードをハッシュ化
-    const passwordHash = await hash(password, 10);
+    // NOTE: パスワードは better-auth (User/Account) で管理
+    // 従業員作成後、別途 better-auth の API で認証情報を登録する
 
     await command.execute({
       name,
       email,
       employeeCd,
-      passwordHash,
       role,
     });
 

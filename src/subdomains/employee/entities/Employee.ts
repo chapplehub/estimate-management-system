@@ -2,34 +2,23 @@ import { createId } from "@paralleldrive/cuid2";
 import { Role } from "@/subdomains/employee/types/Role";
 import { EmployeeCd } from "@/subdomains/employee/values/EmployeeCd";
 import { MailAddress } from "@/shared/domain/values/MailAddress";
-import { BusinessRuleViolationError } from "@/shared/errors/DomainError";
 
 /**
  * 従業員エンティティ
  *
- * ビジネスルール：
- * - ログイン失敗が一定回数を超えるとアカウントがロックされる
- * - ロックされたアカウントは一定時間経過後に自動解除される
+ * 業務ドメインにおける従業員を表す。
+ * 認証関連の責務は better-auth (User/Account) に委譲。
  */
 export class Employee {
   /** エンティティ名（エラーメッセージ用） */
   static readonly ENTITY_NAME = "従業員";
-
-  /** アカウントロックの閾値 */
-  private static readonly MAX_FAILED_LOGIN_ATTEMPTS = 5;
-  /** アカウントロック期間（ミリ秒） */
-  private static readonly LOCK_DURATION_MS = 30 * 60 * 1000; // 30分
 
   private constructor(
     private readonly _id: string,
     private readonly _employeeCd: EmployeeCd,
     private _email: MailAddress,
     private _name: string,
-    private _passwordHash: string,
     private _role: Role,
-    private _failedLoginAttempts: number,
-    private _lockedUntil: Date | null,
-    private _lastLoginAt: Date | null,
     private readonly _createdAt: Date,
     private _updatedAt: Date
   ) {}
@@ -40,17 +29,13 @@ export class Employee {
    * @param employeeCd 社員コード
    * @param email メールアドレス
    * @param name 氏名
-   * @param passwordHash ハッシュ化済みパスワード
    * @param role 役割（デフォルト：USER）
    * @returns 従業員エンティティ
-   *
-   * 注意：パスワードのハッシュ化はアプリケーション層で行う
    */
   static create(
     employeeCd: EmployeeCd,
     email: MailAddress,
     name: string,
-    passwordHash: string,
     role: Role = Role.USER
   ): Employee {
     const now = new Date();
@@ -60,11 +45,7 @@ export class Employee {
       employeeCd,
       email,
       name,
-      passwordHash,
       role,
-      0, // 初期値：ログイン失敗回数
-      null, // 初期値：ロックなし
-      null, // 初期値：最終ログイン日時なし
       now,
       now
     );
@@ -77,11 +58,7 @@ export class Employee {
    * @param employeeCd 社員コード
    * @param email メールアドレス
    * @param name 氏名
-   * @param passwordHash ハッシュ化済みパスワード
    * @param role 役割
-   * @param failedLoginAttempts ログイン失敗回数
-   * @param lockedUntil アカウントロック期限
-   * @param lastLoginAt 最終ログイン日時
    * @param createdAt 作成日時
    * @param updatedAt 更新日時
    * @returns 従業員エンティティ
@@ -91,104 +68,16 @@ export class Employee {
     employeeCd: EmployeeCd,
     email: MailAddress,
     name: string,
-    passwordHash: string,
     role: Role,
-    failedLoginAttempts: number,
-    lockedUntil: Date | null,
-    lastLoginAt: Date | null,
     createdAt: Date,
     updatedAt: Date
   ): Employee {
-    return new Employee(
-      id,
-      employeeCd,
-      email,
-      name,
-      passwordHash,
-      role,
-      failedLoginAttempts,
-      lockedUntil,
-      lastLoginAt,
-      createdAt,
-      updatedAt
-    );
+    return new Employee(id, employeeCd, email, name, role, createdAt, updatedAt);
   }
 
   // ========================================
   // ビジネスロジック
   // ========================================
-
-  /**
-   * アカウントがロックされているか判定
-   *
-   * @returns ロックされている場合true
-   */
-  isAccountLocked(): boolean {
-    if (!this._lockedUntil) {
-      return false;
-    }
-
-    const now = new Date();
-    if (now >= this._lockedUntil) {
-      // ロック期限切れの場合は自動的にロック解除
-      this._lockedUntil = null;
-      this._failedLoginAttempts = 0;
-      return false;
-    }
-
-    return true;
-  }
-
-  /**
-   * ログイン失敗を記録
-   *
-   * ビジネスルール：
-   * - 失敗回数をインクリメント
-   * - 閾値を超えた場合はアカウントをロック
-   *
-   * @throws {BusinessRuleViolationError} アカウントが既にロックされている場合
-   */
-  recordFailedLogin(): void {
-    if (this.isAccountLocked()) {
-      throw new BusinessRuleViolationError(
-        `アカウントは ${this._lockedUntil!.toLocaleString()} までロックされています`
-      );
-    }
-
-    this._failedLoginAttempts += 1;
-    this._updatedAt = new Date();
-
-    // 閾値を超えた場合はロック
-    if (this._failedLoginAttempts >= Employee.MAX_FAILED_LOGIN_ATTEMPTS) {
-      this._lockedUntil = new Date(Date.now() + Employee.LOCK_DURATION_MS);
-    }
-  }
-
-  /**
-   * ログイン成功時に失敗回数をリセット
-   *
-   * ビジネスルール：
-   * - 最終ログイン日時を更新
-   * - ログイン失敗回数をリセット
-   * - ロックを解除
-   */
-  recordSuccessfulLogin(): void {
-    this._lastLoginAt = new Date();
-    this._failedLoginAttempts = 0;
-    this._lockedUntil = null;
-    this._updatedAt = new Date();
-  }
-
-  /**
-   * アカウントロックを強制解除
-   *
-   * 管理者による手動ロック解除を想定
-   */
-  unlockAccount(): void {
-    this._lockedUntil = null;
-    this._failedLoginAttempts = 0;
-    this._updatedAt = new Date();
-  }
 
   /**
    * 名前を変更
@@ -221,18 +110,6 @@ export class Employee {
   }
 
   /**
-   * パスワードを変更
-   *
-   * @param newPasswordHash 新しいハッシュ化済みパスワード
-   *
-   * 注意：パスワードのハッシュ化はアプリケーション層で行う
-   */
-  changePassword(newPasswordHash: string): void {
-    this._passwordHash = newPasswordHash;
-    this._updatedAt = new Date();
-  }
-
-  /**
    * 管理者かどうか判定
    *
    * @returns 管理者の場合true
@@ -261,24 +138,8 @@ export class Employee {
     return this._name;
   }
 
-  get passwordHash(): string {
-    return this._passwordHash;
-  }
-
   get role(): Role {
     return this._role;
-  }
-
-  get failedLoginAttempts(): number {
-    return this._failedLoginAttempts;
-  }
-
-  get lockedUntil(): Date | null {
-    return this._lockedUntil;
-  }
-
-  get lastLoginAt(): Date | null {
-    return this._lastLoginAt;
   }
 
   get createdAt(): Date {

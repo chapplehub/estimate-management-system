@@ -18,9 +18,6 @@ describe("SearchEmployeesQuery", () => {
     email: "test@example.com",
     name: "テスト太郎",
     role: Role.USER,
-    failedLoginAttempts: 0,
-    lockedUntil: null,
-    lastLoginAt: null,
     createdAt: new Date("2025-01-01"),
     updatedAt: new Date("2025-01-01"),
   };
@@ -57,7 +54,6 @@ describe("SearchEmployeesQuery", () => {
   it("検索条件とオプションを指定して検索できる", async () => {
     const criteria: EmployeeSearchCriteria = {
       role: Role.ADMIN,
-      isLocked: false,
     };
 
     const options: ListOptions = {
@@ -95,7 +91,6 @@ describe("SearchEmployeesQuery", () => {
       name: "テスト",
       email: "test",
       role: Role.USER,
-      isLocked: false,
     };
 
     vi.mocked(mockQueryService.search).mockResolvedValue([mockEmployeeDTO]);
