@@ -20,7 +20,9 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
-      "@lib/*": ["./lib/*"],
+      "@server/*": ["./src/server/*"],
+      "@shared/*": ["./src/shared/*"],
+      "@subdomains/*": ["./src/server/subdomains/*"],
       "@generated/*": ["./generated/*"]
     }
   },

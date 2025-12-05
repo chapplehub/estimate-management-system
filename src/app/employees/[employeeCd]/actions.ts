@@ -1,10 +1,10 @@
 "use server";
 
-import { MailAddressDuplicationCheckDomainService } from "@/shared/domain/services/MailAddressDuplicationCheckDomainService";
-import type { ActionResult } from "@/shared/types/ActionResult";
-import { DeleteEmployeeCommand } from "@/subdomains/employee/commands/DeleteEmployeeCommand";
-import { UpdateEmployeeCommand } from "@/subdomains/employee/commands/UpdateEmployeeCommand";
-import { PrismaEmployeeRepository } from "@/subdomains/employee/infra/prisma/PrismaEmployeeRepository";
+import { MailAddressDuplicationCheckDomainService } from "@subdomains/employee/domain/services/MailAddressDuplicationCheckDomainService";
+import type { ActionResult } from "@shared/types/ActionResult";
+import { DeleteEmployeeCommand } from "@subdomains/employee/application/commands/DeleteEmployeeCommand";
+import { UpdateEmployeeCommand } from "@subdomains/employee/application/commands/UpdateEmployeeCommand";
+import { PrismaEmployeeRepository } from "@subdomains/employee/infrastructure/prisma/PrismaEmployeeRepository";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -46,6 +46,10 @@ export async function updateEmployee(
   // if (session.user.id !== id && session.user.role !== 'ADMIN') {
   //   return { success: false, error: '権限がありません' };
   // }
+
+  // TODO: フロントでprismarepositoryを使ってるのは明らかにおかしい。
+  // ここでドメイン側のserviceを呼ぶだけにしたい。
+  // facadeにする
 
   try {
     const repository = new PrismaEmployeeRepository();

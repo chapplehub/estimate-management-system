@@ -1,5 +1,5 @@
-import { PrismaEmployeeQueryService } from "@/subdomains/employee/infra/queries/PrismaEmployeeQueryService";
-import { GetEmployeeByEmployeeCdQuery } from "@/subdomains/employee/queries/GetEmployeeByEmployeeCdQuery";
+import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
+import { GetEmployeeByEmployeeCdQuery } from "@subdomains/employee/application/queries/GetEmployeeByEmployeeCdQuery";
 import { notFound } from "next/navigation";
 import { EmployeeUpdateForm } from "./EmployeeUpdateForm";
 import { EmployeeDeleteForm } from "./EmployeeDeleteForm";

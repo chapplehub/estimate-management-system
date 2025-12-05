@@ -1,0 +1,15 @@
+import { Role } from "@subdomains/employee/domain/types/Role";
+
+/**
+ * 従業員データ転送オブジェクト
+ * 読み取り専用のデータ表現（軽量）
+ */
+export type EmployeeDTO = {
+  id: string;
+  employeeCd: string;
+  email: string;
+  name: string;
+  role: Role;
+  createdAt: Date;
+  updatedAt: Date;
+};

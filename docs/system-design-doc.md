@@ -146,111 +146,113 @@
 ```
 project-root/
 ├── src/
-│   ├── app/                        # Next.js App Router
-│   │   ├── (auth)/                # 認証関連ルート
-│   │   │   ├── login/
-│   │   │   └── register/
-│   │   ├── (dashboard)/           # ダッシュボード
-│   │   │   ├── users/
-│   │   │   │   ├── page.tsx      # ユーザー一覧
-│   │   │   │   ├── [id]/
-│   │   │   │   │   └── page.tsx  # ユーザー詳細
-│   │   │   │   └── new/
-│   │   │   │       └── page.tsx  # ユーザー作成
-│   │   │   └── layout.tsx
-│   │   ├── api/                   # API Routes
-│   │   │   ├── auth/
-│   │   │   │   └── [...nextauth]/
-│   │   │   │       └── route.ts
-│   │   │   └── users/
-│   │   │       ├── route.ts       # GET, POST /api/users
-│   │   │       └── [id]/
-│   │   │           └── route.ts   # GET, PUT, DELETE /api/users/:id
-│   │   ├── actions/               # Server Actions
-│   │   │   └── user.ts
-│   │   ├── providers.tsx          # React Context Providers
+│   ├── app/                              # Presentation Layer (Next.js App Router)
+│   │   ├── _lib/
+│   │   │   └── auth-client.ts           # クライアントサイド認証
+│   │   ├── api/auth/[...all]/
+│   │   │   └── route.ts                 # better-auth ハンドラ
+│   │   ├── auth/
+│   │   │   └── signin-form.tsx
+│   │   ├── employees/
+│   │   │   ├── page.tsx                 # 従業員一覧
+│   │   │   ├── _lib/
+│   │   │   │   └── error-handler.ts     # エラーハンドリング
+│   │   │   ├── new/
+│   │   │   │   ├── page.tsx
+│   │   │   │   ├── actions.ts           # Server Actions
+│   │   │   │   └── schema.ts            # Zodスキーマ
+│   │   │   └── [employeeCd]/
+│   │   │       ├── page.tsx
+│   │   │       ├── actions.ts
+│   │   │       └── schema.ts
 │   │   ├── layout.tsx
 │   │   └── page.tsx
 │   │
-│   ├── application/               # アプリケーション層
-│   │   └── usecases/
-│   │       ├── CreateUserUseCase.ts
-│   │       ├── GetUserUseCase.ts
-│   │       ├── GetUsersUseCase.ts
-│   │       ├── UpdateUserUseCase.ts
-│   │       └── DeleteUserUseCase.ts
+│   ├── server/                           # バックエンドロジック
+│   │   ├── auth.ts                      # better-auth 設定
+│   │   ├── prisma.ts                    # Prisma Client singleton
+│   │   │
+│   │   ├── subdomains/                  # DDDサブドメイン
+│   │   │   └── employee/
+│   │   │       ├── domain/              # Domain Layer
+│   │   │       │   ├── entities/
+│   │   │       │   │   └── Employee.ts
+│   │   │       │   ├── values/
+│   │   │       │   │   ├── EmployeeCd.ts
+│   │   │       │   │   └── Password.ts
+│   │   │       │   ├── types/
+│   │   │       │   │   └── Role.ts
+│   │   │       │   ├── repositories/
+│   │   │       │   │   └── IEmployeeRepository.ts
+│   │   │       │   └── services/
+│   │   │       │       ├── EmployeeCdDuplicationCheckDomainService.ts
+│   │   │       │       └── MailAddressDuplicationCheckDomainService.ts
+│   │   │       │
+│   │   │       ├── application/         # Application Layer
+│   │   │       │   ├── commands/
+│   │   │       │   │   ├── CreateEmployeeCommand.ts
+│   │   │       │   │   ├── UpdateEmployeeCommand.ts
+│   │   │       │   │   └── DeleteEmployeeCommand.ts
+│   │   │       │   └── queries/
+│   │   │       │       ├── dto/
+│   │   │       │       │   ├── EmployeeDTO.ts
+│   │   │       │       │   └── EmployeeSearchCriteria.ts
+│   │   │       │       ├── IEmployeeQueryService.ts
+│   │   │       │       ├── GetAllEmployeesQuery.ts
+│   │   │       │       ├── GetEmployeeByIdQuery.ts
+│   │   │       │       └── ...
+│   │   │       │
+│   │   │       └── infrastructure/      # Infrastructure Layer
+│   │   │           ├── prisma/
+│   │   │           │   └── PrismaEmployeeRepository.ts
+│   │   │           ├── in-memory/
+│   │   │           │   └── InMemoryEmployeeRepository.ts
+│   │   │           ├── queries/
+│   │   │           │   └── PrismaEmployeeQueryService.ts
+│   │   │           └── mappers/
+│   │   │               └── EmployeeMapper.ts
+│   │   │
+│   │   └── shared/                      # サーバーサイド共有
+│   │       ├── domain/values/
+│   │       │   └── MailAddress.ts
+│   │       ├── errors/
+│   │       │   ├── DomainError.ts
+│   │       │   └── ApplicationError.ts
+│   │       ├── ValueObject.ts
+│   │       └── StringValueObject.ts
 │   │
-│   ├── domain/                    # ドメイン層
-│   │   ├── entities/
-│   │   │   ├── User.ts
-│   │   │   └── __tests__/
-│   │   │       └── User.test.ts
-│   │   ├── valueObjects/
-│   │   │   ├── Email.ts
-│   │   │   ├── EmployeeId.ts
-│   │   │   └── __tests__/
-│   │   ├── services/              # ドメインサービス
-│   │   └── repositories/          # リポジトリインターフェース
-│   │       └── IUserRepository.ts
-│   │
-│   ├── infrastructure/            # インフラ層
-│   │   ├── prisma/
-│   │   │   ├── schema.prisma
-│   │   │   └── client.ts
-│   │   ├── repositories/          # リポジトリ実装
-│   │   │   ├── PrismaUserRepository.ts
-│   │   │   └── __tests__/
-│   │   └── mappers/               # マッパー
-│   │       └── UserMapper.ts
-│   │
-│   ├── lib/                       # 共通ライブラリ
-│   │   ├── api/
-│   │   │   ├── client.ts          # APIクライアント
-│   │   │   ├── response.ts        # レスポンスヘルパー
-│   │   │   └── withAuth.ts        # 認証ミドルウェア
-│   │   ├── auth.ts                # Auth.js設定
-│   │   └── validation/            # バリデーション
-│   │       ├── common.ts          # 共通バリデーションルール
-│   │       └── schemas/
-│   │           ├── user.ts
-│   │           └── auth.ts
-│   │
-│   ├── components/                # Reactコンポーネント
-│   │   ├── ui/                    # shadcn/uiコンポーネント
-│   │   ├── forms/                 # フォームコンポーネント
-│   │   └── layouts/               # レイアウトコンポーネント
-│   │
-│   ├── hooks/                     # カスタムフック
-│   │   ├── useUsers.ts            # TanStack Query hooks
-│   │   └── useAuth.ts
-│   │
-│   ├── store/                     # Zustand stores
-│   │   └── useUIStore.ts
-│   │
-│   ├── types/                     # 型定義
-│   │   ├── api.ts
-│   │   └── next-auth.d.ts
-│   │
-│   └── shared/                    # 共有ユーティリティ
-│       ├── errors/                # カスタムエラー
-│       │   └── DomainError.ts
-│       └── utils/                 # ユーティリティ関数
+│   └── shared/                          # フロント/バック共通
+│       └── types/
+│           └── ActionResult.ts
 │
-├── test/                          # テスト設定
-│   └── setup.ts
+├── generated/
+│   └── prisma/                          # Prisma Client生成先
 │
-├── public/                        # 静的ファイル
-├── .github/
-│   └── workflows/                 # CI/CD (将来)
-├── docker/                        # Docker設定 (Phase 2)
-├── .env.local                     # 環境変数(ローカル)
-├── .env.example                   # 環境変数サンプル
-├── vitest.config.ts              # Vitestの設定
-├── next.config.js                # Next.jsの設定
-├── tailwind.config.ts            # Tailwindの設定
-├── tsconfig.json                 # TypeScript設定
-├── package.json
-└── README.md
+├── prisma/
+│   ├── schema.prisma
+│   ├── migrations/
+│   └── seed.ts
+│
+├── .env.local                           # 環境変数
+├── vitest.config.ts                     # Vitest設定
+├── tsconfig.json                        # TypeScript設定（パスエイリアス）
+└── package.json
+```
+
+### パスエイリアス
+
+```json
+{
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"],
+      "@server/*": ["./src/server/*"],
+      "@shared/*": ["./src/shared/*"],
+      "@subdomains/*": ["./src/server/subdomains/*"],
+      "@generated/*": ["./generated/*"]
+    }
+  }
+}
 ```
 
 ---

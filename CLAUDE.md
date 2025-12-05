@@ -230,11 +230,22 @@ Infrastructure Layer (Prisma Repositories, Mappers)
 
 **主要レイヤー:**
 
-- `src/app/` - Presentation Layer (Next.js App Router)
-- `src/application/` - Application Layer (Use Cases)
-- `src/domain/` - Domain Layer ⚠️ **NO external dependencies!**
-- `src/infrastructure/` - Infrastructure Layer (Prisma Repositories, Mappers)
-- `src/shared/` - Shared utilities
+- `src/app/` - Presentation Layer (Next.js App Router, Server Actions)
+- `src/server/` - バックエンドロジック
+  - `src/server/subdomains/[name]/domain/` - Domain Layer ⚠️ **NO external dependencies!**
+  - `src/server/subdomains/[name]/application/` - Application Layer (Commands, Queries)
+  - `src/server/subdomains/[name]/infrastructure/` - Infrastructure Layer (Prisma Repositories, Mappers)
+  - `src/server/shared/` - サーバーサイド共有コード（エラー、ValueObject基底クラス）
+  - `src/server/auth.ts` - better-auth設定
+  - `src/server/prisma.ts` - Prisma Client singleton
+- `src/shared/` - フロント/バック共通（ActionResult型など）
+- `src/app/_lib/` - クライアントサイド専用ライブラリ（auth-client.ts）
+
+**パスエイリアス:**
+- `@server/*` → `./src/server/*`
+- `@subdomains/*` → `./src/server/subdomains/*`
+- `@shared/*` → `./src/shared/*`
+- `@generated/*` → `./generated/*`
 
 **Note:** Prisma Client は `generated/prisma/` に生成される（デフォルトの `node_modules/.prisma/client` ではない）。`@generated/prisma` から import すること。
 

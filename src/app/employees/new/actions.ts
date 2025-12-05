@@ -1,10 +1,10 @@
 "use server";
 
-import { MailAddressDuplicationCheckDomainService } from "@/shared/domain/services/MailAddressDuplicationCheckDomainService";
-import type { ActionResult } from "@/shared/types/ActionResult";
-import { CreateEmployeeCommand } from "@/subdomains/employee/commands/CreateEmployeeCommand";
-import { PrismaEmployeeRepository } from "@/subdomains/employee/infra/prisma/PrismaEmployeeRepository";
-import { EmployeeCdDuplicationCheckDomainService } from "@/subdomains/employee/services/EmployeeCdDuplicationCheckDomainService";
+import { MailAddressDuplicationCheckDomainService } from "@subdomains/employee/domain/services/MailAddressDuplicationCheckDomainService";
+import type { ActionResult } from "@shared/types/ActionResult";
+import { CreateEmployeeCommand } from "@subdomains/employee/application/commands/CreateEmployeeCommand";
+import { PrismaEmployeeRepository } from "@subdomains/employee/infrastructure/prisma/PrismaEmployeeRepository";
+import { EmployeeCdDuplicationCheckDomainService } from "@subdomains/employee/domain/services/EmployeeCdDuplicationCheckDomainService";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";

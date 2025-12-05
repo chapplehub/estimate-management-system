@@ -1,5 +1,5 @@
-import { PrismaEmployeeQueryService } from "@/subdomains/employee/infra/queries/PrismaEmployeeQueryService";
-import { GetAllEmployeesQuery } from "@/subdomains/employee/queries/GetAllEmployeesQuery";
+import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
+import { GetAllEmployeesQuery } from "@subdomains/employee/application/queries/GetAllEmployeesQuery";
 import Link from "next/link";
 
 export default async function EmployeePage() {

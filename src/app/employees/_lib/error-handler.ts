@@ -1,12 +1,12 @@
 import {
   NotFoundEntityError,
   NotFoundError,
-} from "@/shared/errors/ApplicationError";
+} from "@server/shared/errors/ApplicationError";
 import {
   BusinessRuleViolationError,
   ValidationError,
-} from "@/shared/errors/DomainError";
-import type { ActionResult } from "@/shared/types/ActionResult";
+} from "@server/shared/errors/DomainError";
+import type { ActionResult } from "@shared/types/ActionResult";
 
 /**
  * Server Action内で発生したエラーを適切なActionResultに変換する

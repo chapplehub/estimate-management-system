@@ -1,7 +1,7 @@
 "use client";
 
 import { SigninFormSchema } from "@/app/auth/_lib/definitions";
-import { authClient } from "@lib/auth-client";
+import { authClient } from "@/app/_lib/auth-client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { z } from "zod";
