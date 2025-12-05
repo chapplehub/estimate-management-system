@@ -10,6 +10,3 @@ export const auth = betterAuth({
     enabled: true,
   },
 });
-
-// T3 Stack pattern: export handlers for route.ts
-export const handlers = auth.handler;
