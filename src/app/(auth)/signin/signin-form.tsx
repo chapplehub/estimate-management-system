@@ -1,6 +1,6 @@
 "use client";
 
-import { SigninFormSchema } from "@/app/(auth)/signin/_lib/definitions";
+import { SigninFormSchema } from "@/app/(auth)/signin/schema";
 import { authClient } from "@/app/_lib/auth-client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -18,6 +18,7 @@ export function SigninForm() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [pending, setPending] = useState(false);
 
+  // TODO: hookとして分離する
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrors({});

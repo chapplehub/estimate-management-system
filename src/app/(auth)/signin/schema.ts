@@ -16,14 +16,3 @@ export const SigninFormSchema = z.object({
     })
     .trim(),
 });
-
-export type FormState =
-  | {
-      errors?: {
-        name?: string[];
-        email?: string[];
-        password?: string[];
-      };
-      message?: string;
-    }
-  | undefined;
