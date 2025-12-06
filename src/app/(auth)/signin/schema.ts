@@ -1,10 +1,6 @@
 import * as z from "zod";
 
 export const SigninFormSchema = z.object({
-  name: z
-    .string()
-    .min(2, { error: "名前は2文字以上である必要があります。" })
-    .trim(),
   email: z.email({ error: "有効なメールアドレスを入力してください。" }).trim(),
   password: z
     .string()

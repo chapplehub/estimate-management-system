@@ -26,7 +26,6 @@ export function SigninForm() {
 
     const formData = new FormData(e.currentTarget);
     const rawData = {
-      name: formData.get("name"),
       email: formData.get("email"),
       password: formData.get("password"),
     };
@@ -66,12 +65,6 @@ export function SigninForm() {
 
   return (
     <form onSubmit={handleSubmit}>
-      <div>
-        <label htmlFor="name">名前</label>
-        <input id="name" name="name" placeholder="名前" />
-      </div>
-      {errors.name && <p>{errors.name}</p>}
-
       <div>
         <label htmlFor="email">メールアドレス</label>
         <input
