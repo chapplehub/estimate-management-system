@@ -1,6 +1,6 @@
 "use client";
 
-import { SigninFormSchema } from "@/app/(auth)/signin/schema";
+import { SigninFormSchema } from "@/app/(features)/(auth)/signin/schema";
 import { authClient } from "@/app/_lib/auth-client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
