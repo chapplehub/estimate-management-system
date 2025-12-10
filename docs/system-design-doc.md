@@ -143,28 +143,61 @@
 
 ## 4. ディレクトリ構成
 
+### 4.1 app/ ディレクトリの構成方針
+
+Next.js App Router の規約に加え、以下のルールを採用：
+
+- **`_` プレフィックス**: ルーティング不要のディレクトリ（例：`_components`, `_lib`, `_hooks`）
+- **`()` 括弧（Route Groups）**: URLパスに影響しないグループ化（例：`(features)`, `(auth)`）
+
+### 4.2 ディレクトリ構成
+
 ```
 project-root/
 ├── src/
 │   ├── app/                              # Presentation Layer (Next.js App Router)
-│   │   ├── _lib/
-│   │   │   └── auth-client.ts           # クライアントサイド認証
-│   │   ├── api/auth/[...all]/
-│   │   │   └── route.ts                 # better-auth ハンドラ
-│   │   ├── auth/
-│   │   │   └── signin-form.tsx
-│   │   ├── employees/
-│   │   │   ├── page.tsx                 # 従業員一覧
-│   │   │   ├── _lib/
-│   │   │   │   └── error-handler.ts     # エラーハンドリング
-│   │   │   ├── new/
-│   │   │   │   ├── page.tsx
-│   │   │   │   ├── actions.ts           # Server Actions
-│   │   │   │   └── schema.ts            # Zodスキーマ
-│   │   │   └── [employeeCd]/
-│   │   │       ├── page.tsx
-│   │   │       ├── actions.ts
-│   │   │       └── schema.ts
+│   │   ├── _components/                  # 横断的に使用する共通コンポーネント
+│   │   │   └── shadcnui/                # shadcn/ui コンポーネント
+│   │   │       ├── button.tsx
+│   │   │       ├── card.tsx
+│   │   │       └── badge.tsx
+│   │   │
+│   │   ├── _lib/                        # クライアントサイド共通ライブラリ
+│   │   │   ├── auth-client.ts           # 認証クライアント
+│   │   │   └── utils.ts                 # ユーティリティ関数
+│   │   │
+│   │   ├── _hooks/                      # 横断的に使用するカスタムフック（今後追加予定）
+│   │   │
+│   │   ├── api/                         # API ルート
+│   │   │   └── auth/[...all]/
+│   │   │       └── route.ts             # better-auth ハンドラ
+│   │   │
+│   │   ├── (features)/                  # 機能別グループ（Route Groups: URLに含まれない）
+│   │   │   │
+│   │   │   ├── (auth)/                  # 認証関連機能
+│   │   │   │   └── signin/
+│   │   │   │       ├── page.tsx
+│   │   │   │       ├── schema.ts
+│   │   │   │       └── signin-form.tsx
+│   │   │   │
+│   │   │   └── employees/               # 従業員管理機能
+│   │   │       ├── page.tsx             # 一覧ページ (/employees)
+│   │   │       ├── _lib/
+│   │   │       │   └── error-handler.ts # 機能固有のエラーハンドリング
+│   │   │       ├── new/
+│   │   │       │   ├── page.tsx         # 新規作成ページ (/employees/new)
+│   │   │       │   ├── actions.ts       # Server Actions
+│   │   │       │   ├── schema.ts        # Zodスキーマ
+│   │   │       │   └── EmployeeCreateForm.tsx
+│   │   │       └── [employeeCd]/
+│   │   │           ├── page.tsx         # 詳細ページ (/employees/:employeeCd)
+│   │   │           ├── actions.ts
+│   │   │           ├── schema.ts
+│   │   │           ├── EmployeeUpdateForm.tsx
+│   │   │           └── EmployeeDeleteForm.tsx
+│   │   │
+│   │   ├── globals.css
+│   │   ├── fonts.ts
 │   │   ├── layout.tsx
 │   │   └── page.tsx
 │   │
