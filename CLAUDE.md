@@ -164,6 +164,7 @@ This is an **estimate management system** - an internal business application bui
 - **React**: https://react.dev/
 - **Prisma**: https://www.prisma.io/docs
 - **Auth.js**: https://authjs.dev/
+- **shadcn**: https://ui.shadcn.com/docs/cli/
 
 ### Development Commands
 
@@ -235,13 +236,14 @@ Infrastructure Layer (Prisma Repositories, Mappers)
   - `src/server/subdomains/[name]/domain/` - Domain Layer ⚠️ **NO external dependencies!**
   - `src/server/subdomains/[name]/application/` - Application Layer (Commands, Queries)
   - `src/server/subdomains/[name]/infrastructure/` - Infrastructure Layer (Prisma Repositories, Mappers)
-  - `src/server/shared/` - サーバーサイド共有コード（エラー、ValueObject基底クラス）
-  - `src/server/auth.ts` - better-auth設定
+  - `src/server/shared/` - サーバーサイド共有コード（エラー、ValueObject 基底クラス）
+  - `src/server/auth.ts` - better-auth 設定
   - `src/server/prisma.ts` - Prisma Client singleton
-- `src/shared/` - フロント/バック共通（ActionResult型など）
+- `src/shared/` - フロント/バック共通（ActionResult 型など）
 - `src/app/_lib/` - クライアントサイド専用ライブラリ（auth-client.ts）
 
 **パスエイリアス:**
+
 - `@server/*` → `./src/server/*`
 - `@subdomains/*` → `./src/server/subdomains/*`
 - `@shared/*` → `./src/shared/*`
