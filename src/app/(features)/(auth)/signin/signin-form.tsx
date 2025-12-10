@@ -1,7 +1,6 @@
 "use client";
 
-import { SigninFormSchema } from "@/app/(features)/(auth)/signin/schema";
-import { authClient } from "@/app/_lib/auth-client";
+import { useSignin } from "@/app/(features)/(auth)/signin/use-signin";
 import { Button } from "@app/_components/shadcnui/button";
 import {
   Card,
@@ -13,64 +12,9 @@ import {
 import { Input } from "@app/_components/shadcnui/input";
 import { Label } from "@app/_components/shadcnui/label";
 import { AlertCircle, Loader2, Lock, Mail } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { z } from "zod";
-
-type FormErrors = {
-  email?: string[];
-  password?: string[];
-  general?: string;
-};
 
 export function SigninForm() {
-  const router = useRouter();
-  const [errors, setErrors] = useState<FormErrors>({});
-  const [pending, setPending] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setErrors({});
-    setPending(true);
-
-    const formData = new FormData(e.currentTarget);
-    const rawData = {
-      email: formData.get("email"),
-      password: formData.get("password"),
-    };
-
-    // クライアントサイドバリデーション
-    const validatedFields = SigninFormSchema.safeParse(rawData);
-
-    if (!validatedFields.success) {
-      setErrors(z.flattenError(validatedFields.error).fieldErrors);
-      setPending(false);
-      return;
-    }
-
-    // Better Auth でサインイン
-    const { error } = await authClient.signIn.email(
-      {
-        email: validatedFields.data.email,
-        password: validatedFields.data.password,
-        callbackURL: "/employees",
-      },
-      {
-        onSuccess: () => {
-          router.push("/employees");
-        },
-        onError: (ctx) => {
-          setErrors({ general: ctx.error.message });
-        },
-      }
-    );
-
-    setPending(false);
-
-    if (error) {
-      setErrors({ general: error.message });
-    }
-  };
+  const { errors, pending, handleSubmit } = useSignin();
 
   return (
     <Card className="w-full max-w-md">
