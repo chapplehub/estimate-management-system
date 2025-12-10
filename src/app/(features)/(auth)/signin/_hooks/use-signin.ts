@@ -1,12 +1,11 @@
 "use client";
 
+import { DEFAULT_CALLBACK_URL } from "@/app/(features)/(auth)/signin/consts";
 import { SigninFormSchema } from "@/app/(features)/(auth)/signin/schema";
 import { authClient } from "@/app/_lib/auth-client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { z } from "zod";
-
-const DEFAULT_CALLBACK_URL = "/employees";
 
 export type SigninFormErrors = {
   email?: string[];

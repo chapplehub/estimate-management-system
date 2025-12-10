@@ -1,6 +1,6 @@
 "use client";
 
-import { useSignin } from "@/app/(features)/(auth)/signin/use-signin";
+import { useSignin } from "@/app/(features)/(auth)/signin/_hooks/use-signin";
 import { Button } from "@app/_components/shadcnui/button";
 import {
   Card,
