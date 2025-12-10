@@ -2,12 +2,22 @@
 
 import { SigninFormSchema } from "@/app/(features)/(auth)/signin/schema";
 import { authClient } from "@/app/_lib/auth-client";
+import { Button } from "@app/_components/shadcnui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@app/_components/shadcnui/card";
+import { Input } from "@app/_components/shadcnui/input";
+import { Label } from "@app/_components/shadcnui/label";
+import { AlertCircle, Loader2, Lock, Mail } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { z } from "zod";
 
 type FormErrors = {
-  name?: string[];
   email?: string[];
   password?: string[];
   general?: string;
@@ -18,7 +28,6 @@ export function SigninForm() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [pending, setPending] = useState(false);
 
-  // TODO: hookとして分離する
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrors({});
@@ -64,39 +73,83 @@ export function SigninForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <div>
-        <label htmlFor="email">メールアドレス</label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          placeholder="メールアドレス"
-        />
-      </div>
-      {errors.email && <p>{errors.email}</p>}
+    <Card className="w-full max-w-md">
+      <CardHeader className="text-center">
+        <CardTitle className="text-2xl font-bold">サインイン</CardTitle>
+        <CardDescription>
+          メールアドレスとパスワードを入力してください
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email">メールアドレス</Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="example@company.com"
+                className="pl-10"
+                aria-invalid={errors.email ? "true" : "false"}
+              />
+            </div>
+            {errors.email && (
+              <p className="text-sm text-destructive flex items-center gap-1">
+                <AlertCircle className="h-4 w-4" />
+                {errors.email[0]}
+              </p>
+            )}
+          </div>
 
-      <div>
-        <label htmlFor="password">パスワード</label>
-        <input id="password" name="password" type="password" />
-      </div>
+          <div className="space-y-2">
+            <Label htmlFor="password">パスワード</Label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="パスワードを入力"
+                className="pl-10"
+                aria-invalid={errors.password ? "true" : "false"}
+              />
+            </div>
+            {errors.password && (
+              <div className="text-sm text-destructive">
+                <p className="flex items-center gap-1 mb-1">
+                  <AlertCircle className="h-4 w-4" />
+                  パスワードは以下を含む必要があります：
+                </p>
+                <ul className="list-disc list-inside ml-5 space-y-0.5">
+                  {errors.password.map((error) => (
+                    <li key={error}>{error}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
 
-      {errors.password && (
-        <div>
-          <p>パスワードは以下を含む必要があります：</p>
-          <ul>
-            {errors.password.map((error) => (
-              <li key={error}>- {error}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+          {errors.general && (
+            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{errors.general}</span>
+            </div>
+          )}
 
-      {errors.general && <p style={{ color: "red" }}>{errors.general}</p>}
-
-      <button disabled={pending} type="submit">
-        サインイン
-      </button>
-    </form>
+          <Button type="submit" className="w-full" disabled={pending}>
+            {pending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                サインイン中...
+              </>
+            ) : (
+              "サインイン"
+            )}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
   );
 }
