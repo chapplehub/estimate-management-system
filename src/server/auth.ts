@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
+import { headers } from "next/headers";
 import prisma from "./prisma";
 
 export const auth = betterAuth({
@@ -21,3 +22,12 @@ export const auth = betterAuth({
     },
   },
 });
+
+/**
+ * Server Component / Server Action でセッションを取得する
+ */
+export async function getUserSession() {
+  return auth.api.getSession({
+    headers: await headers(),
+  });
+}
