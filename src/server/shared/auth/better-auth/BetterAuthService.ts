@@ -41,6 +41,7 @@ export class BetterAuthService implements IAuthService {
           email: input.email,
           password: input.password,
         },
+        headers: await headers(),
       });
 
       if (!result || !result.user) {

@@ -41,6 +41,3 @@ export async function signOut() {
   return authService.signOut();
 }
 
-// API Route Handler 用に auth インスタンスをエクスポート
-// /api/auth/[...all]/route.ts で使用
-export { auth } from "./better-auth/auth";
