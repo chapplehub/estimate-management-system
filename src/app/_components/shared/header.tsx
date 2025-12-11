@@ -1,7 +1,7 @@
-import { getUserSession } from "@/server/auth";
+import { getCurrentSession } from "@server/shared/auth";
 
 export const Header = async () => {
-  const session = await getUserSession();
+  const session = await getCurrentSession();
 
   // TODO: どこかのファイルで一括で画面名を管理して、ルーティングに応じて画面名を出せるようにしたい。
   return (

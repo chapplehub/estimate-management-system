@@ -1,4 +1,4 @@
-import { auth } from "@server/auth";
+import { auth } from "@server/shared/auth";
 import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 const publicRoutes = ["/signin", "/"];

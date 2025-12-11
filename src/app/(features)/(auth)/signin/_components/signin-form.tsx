@@ -14,7 +14,7 @@ import { Label } from "@app/_components/shadcnui/label";
 import { AlertCircle, Loader2, Lock, Mail } from "lucide-react";
 
 export function SigninForm() {
-  const { errors, pending, handleSubmit } = useSignin();
+  const { errors, pending, formAction } = useSignin();
 
   return (
     <Card className="w-full max-w-md">
@@ -25,7 +25,7 @@ export function SigninForm() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form action={formAction} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">メールアドレス</Label>
             <div className="relative">

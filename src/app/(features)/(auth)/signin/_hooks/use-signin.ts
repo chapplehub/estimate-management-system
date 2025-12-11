@@ -1,11 +1,9 @@
 "use client";
 
-import { DEFAULT_CALLBACK_URL } from "@/app/(features)/(auth)/signin/consts";
-import { SigninFormSchema } from "@/app/(features)/(auth)/signin/schema";
-import { authClient } from "@/app/_lib/auth-client";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { z } from "zod";
+import { useActionState, useEffect } from "react";
+import { signinAction, type SigninActionResult } from "../actions";
+import { DEFAULT_CALLBACK_URL } from "../consts";
 
 export type SigninFormErrors = {
   email?: string[];
@@ -13,55 +11,27 @@ export type SigninFormErrors = {
   general?: string;
 };
 
+const initialState: SigninActionResult = {
+  success: false,
+  errors: {},
+};
+
 export function useSignin() {
   const router = useRouter();
-  const [errors, setErrors] = useState<SigninFormErrors>({});
-  const [pending, setPending] = useState(false);
+  const [state, formAction, pending] = useActionState(signinAction, initialState);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setErrors({});
-    setPending(true);
-
-    const formData = new FormData(e.currentTarget);
-    const rawData = {
-      email: formData.get("email"),
-      password: formData.get("password"),
-    };
-
-    // クライアントサイドバリデーション
-    const validatedFields = SigninFormSchema.safeParse(rawData);
-
-    if (!validatedFields.success) {
-      setErrors(z.flattenError(validatedFields.error).fieldErrors);
-      setPending(false);
-      return;
+  // サインイン成功時にリダイレクト
+  useEffect(() => {
+    if (state.success) {
+      router.push(DEFAULT_CALLBACK_URL);
     }
+  }, [state.success, router]);
 
-    // Better Auth でサインイン
-    const { error } = await authClient.signIn.email(
-      {
-        email: validatedFields.data.email,
-        password: validatedFields.data.password,
-        callbackURL: DEFAULT_CALLBACK_URL,
-      },
-      {
-        onSuccess: () => {
-          router.push(DEFAULT_CALLBACK_URL);
-        },
-      }
-    );
-
-    setPending(false);
-
-    if (error) {
-      setErrors({ general: error.message });
-    }
-  };
+  const errors: SigninFormErrors = state.success ? {} : state.errors;
 
   return {
     errors,
     pending,
-    handleSubmit,
+    formAction,
   };
 }
