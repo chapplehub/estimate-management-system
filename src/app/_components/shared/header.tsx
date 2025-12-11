@@ -1,3 +1,4 @@
+import { SignoutButton } from "@/app/(features)/(auth)/signout/signout-button";
 import { getCurrentSession } from "@server/shared/auth";
 
 export const Header = async () => {
@@ -18,6 +19,7 @@ export const Header = async () => {
             <span className="text-sm text-foreground">{session.user.name}</span>
           )}
         </div>
+        <SignoutButton />
       </div>
     </header>
   );
