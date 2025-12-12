@@ -1,10 +1,11 @@
 "use server";
 
-import { MailAddressDuplicationCheckDomainService } from "@subdomains/employee/domain/services/MailAddressDuplicationCheckDomainService";
+import { verifyAdmin } from "@server/shared/auth";
 import type { ActionResult } from "@shared/types/ActionResult";
 import { CreateEmployeeCommand } from "@subdomains/employee/application/commands/CreateEmployeeCommand";
-import { PrismaEmployeeRepository } from "@subdomains/employee/infrastructure/prisma/PrismaEmployeeRepository";
 import { EmployeeCdDuplicationCheckDomainService } from "@subdomains/employee/domain/services/EmployeeCdDuplicationCheckDomainService";
+import { MailAddressDuplicationCheckDomainService } from "@subdomains/employee/domain/services/MailAddressDuplicationCheckDomainService";
+import { PrismaEmployeeRepository } from "@subdomains/employee/infrastructure/prisma/PrismaEmployeeRepository";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -18,6 +19,9 @@ export async function createEmployee(
   _prevState: ActionResult,
   formData: FormData
 ): Promise<ActionResult> {
+  // TODO: const isVerified = await verifyAdmin();みたいな感じにして、isVerifiedでその後の処理を実行するか、エラーにするか判断する。
+  await verifyAdmin();
+
   // フォームデータをオブジェクト化
   const rawData = {
     name: formData.get("name"),
@@ -39,13 +43,6 @@ export async function createEmployee(
   }
 
   const { name, email, employeeCd, role } = validationResult.data;
-
-  // TODO: better-auth導入後に権限チェックを追加
-  // const session = await auth();
-  // if (!session) redirect('/login');
-  // if (session.user.role !== 'ADMIN') {
-  //   return { success: false, error: '権限がありません' };
-  // }
 
   try {
     // TODO: ここでDIしたくない。一括でDIできる共通処理、事前処理を実装したい。

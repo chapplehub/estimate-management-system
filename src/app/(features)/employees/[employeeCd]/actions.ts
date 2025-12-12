@@ -5,6 +5,7 @@ import type { ActionResult } from "@shared/types/ActionResult";
 import { DeleteEmployeeCommand } from "@subdomains/employee/application/commands/DeleteEmployeeCommand";
 import { UpdateEmployeeCommand } from "@subdomains/employee/application/commands/UpdateEmployeeCommand";
 import { PrismaEmployeeRepository } from "@subdomains/employee/infrastructure/prisma/PrismaEmployeeRepository";
+import { verifyAdmin, verifyOwnerOrAdmin } from "@server/shared/auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -40,12 +41,8 @@ export async function updateEmployee(
 
   const { id, name, email, employeeCd, role } = validationResult.data;
 
-  // TODO: Auth.js導入後に権限チェックを追加
-  // const session = await auth();
-  // if (!session) redirect('/login');
-  // if (session.user.id !== id && session.user.role !== 'ADMIN') {
-  //   return { success: false, error: '権限がありません' };
-  // }
+  // 認可チェック: 本人または管理者のみ
+  await verifyOwnerOrAdmin(id);
 
   // TODO: フロントでprismarepositoryを使ってるのは明らかにおかしい。
   // ここでドメイン側のserviceを呼ぶだけにしたい。
@@ -85,14 +82,10 @@ export async function deleteEmployee(
   _prevState: ActionResult,
   formData: FormData
 ): Promise<ActionResult> {
-  const id = formData.get("id") as string;
+  // 認可チェック: 管理者のみ
+  await verifyAdmin();
 
-  // TODO: Auth.js導入後に権限チェックを追加
-  // const session = await auth();
-  // if (!session) redirect('/login');
-  // if (session.user.id !== id && session.user.role !== 'ADMIN') {
-  //   return { success: false, error: '権限がありません' };
-  // }
+  const id = formData.get("id") as string;
 
   try {
     const repository = new PrismaEmployeeRepository();

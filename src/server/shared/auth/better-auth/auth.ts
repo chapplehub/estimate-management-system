@@ -1,7 +1,8 @@
+import prisma from "@server/prisma";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
-import prisma from "@server/prisma";
+import { customSession } from "better-auth/plugins";
 
 /**
  * Better Auth の設定
@@ -26,6 +27,25 @@ export const auth = betterAuth({
     },
   },
   plugins: [
+    customSession(async ({ user, session }) => {
+      // User から Employee を取得して employeeId と role をセッションに追加
+      // NOTE: better-authの実装が直接prismaに依存しているが、以下の２つが理由で許容。依存が増えてきたら要検討
+      // better-auth自体がprismaAdapterでprismaに依存していること
+      // 依存範囲がここだけなのでインターフェース等の実装は不要と判断
+      const dbUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        include: { employee: true },
+      });
+
+      return {
+        session,
+        user: {
+          ...user,
+          employeeId: dbUser?.employeeId ?? null,
+          role: dbUser?.employee?.role ?? null,
+        },
+      };
+    }),
     nextCookies(), // Server Action でクッキーを自動設定（配列の最後に置く）
   ],
 });

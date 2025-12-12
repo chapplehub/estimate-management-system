@@ -101,6 +101,8 @@ export class BetterAuthService implements IAuthService {
     emailVerified: boolean;
     createdAt: Date;
     updatedAt: Date;
+    employeeId?: string | null;
+    role?: string | null;
   }): AuthUser {
     return {
       id: user.id,
@@ -109,6 +111,8 @@ export class BetterAuthService implements IAuthService {
       emailVerified: user.emailVerified,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
+      employeeId: user.employeeId ?? null,
+      role: (user.role as AuthUser["role"]) ?? null,
     };
   }
 }

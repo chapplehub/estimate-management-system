@@ -1,3 +1,5 @@
+import type { Role } from "@generated/prisma/client";
+
 /**
  * 認証サービスで使用する型定義
  * Better Auth への依存を避け、アプリケーション独自の型を定義
@@ -13,6 +15,10 @@ export type AuthUser = {
   emailVerified: boolean;
   createdAt: Date;
   updatedAt: Date;
+  /** 紐づく従業員ID（認可チェック用） */
+  employeeId: string | null;
+  /** 従業員のロール（認可チェック用） */
+  role: Role | null;
 };
 
 /**

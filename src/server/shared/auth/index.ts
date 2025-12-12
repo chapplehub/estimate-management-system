@@ -14,6 +14,10 @@ export type {
 } from "./types";
 export type { IAuthService } from "./IAuthService";
 
+// 認証・認可ヘルパー関数（DALパターン）
+export { verifySession } from "./verify/authentication";
+export { verifyAdmin, verifyOwnerOrAdmin } from "./verify/authorization";
+
 // デフォルトの認証サービスインスタンス
 import { BetterAuthService } from "./better-auth/BetterAuthService";
 
