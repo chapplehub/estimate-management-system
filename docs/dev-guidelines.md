@@ -7,6 +7,7 @@
 3. [エラーハンドリング](#3-エラーハンドリング)
 4. [TypeScript 使用規則](#4-typescript使用規則)
 5. [DDD アーキテクチャ実装規則](#5-dddアーキテクチャ実装規則)
+   - [5.6 認証・認可実装規則](#56-認証認可実装規則)
 6. [コメント規則](#6-コメント規則)
 7. [テストコード規則](#7-テストコード規則)
 
@@ -1255,6 +1256,279 @@ export class UserUseCase {
 }
 ```
 
+### 5.6 認証・認可実装規則
+
+#### 基本方針
+
+認証・認可は以下の原則に従って実装する：
+
+1. **認証（Authentication）**: 「誰か？」を確認 → Presentation層で実装
+2. **認可（Authorization）**: 「権限があるか？」を確認 → 性質により適切な層で実装
+
+#### 認証の実装（Presentation層）
+
+認証チェックはServer Actionで**DALパターン**を使用する（Next.js公式推奨）。
+
+```typescript
+// src/server/shared/auth/session.ts
+import { auth } from "@server/shared/auth/better-auth/auth";
+import { headers } from "next/headers";
+import { unauthorized } from "next/navigation";
+
+export type Session = NonNullable<
+  Awaited<ReturnType<typeof auth.api.getSession>>
+>;
+
+/**
+ * セッション検証（認証のみ）
+ */
+export async function verifySession(): Promise<Session> {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session) {
+    unauthorized();
+  }
+
+  return session;
+}
+
+/**
+ * 管理者権限を検証（認証 + 管理者認可）
+ */
+export async function verifyAdmin(): Promise<Session> {
+  const session = await verifySession();
+
+  if (session.user.role !== "ADMIN") {
+    unauthorized();
+  }
+
+  return session;
+}
+
+/**
+ * リソース所有権を検証（本人または管理者）
+ */
+export async function verifyOwnerOrAdmin(
+  resourceOwnerId: string
+): Promise<Session> {
+  const session = await verifySession();
+
+  if (session.user.role === "ADMIN") {
+    return session;
+  }
+
+  if (session.user.id !== resourceOwnerId) {
+    unauthorized();
+  }
+
+  return session;
+}
+```
+
+**Server Actionでの使用例：**
+
+```typescript
+// src/app/(features)/employees/new/actions.ts
+"use server";
+
+import { verifyAdmin } from "@server/shared/auth/session";
+
+export async function createEmployee(
+  _prevState: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  // 認証 + 管理者権限チェック
+  await verifyAdmin();
+
+  // ビジネスロジック...
+}
+```
+
+#### 認可の配置（層による使い分け）
+
+認可の性質によって適切な層に配置する：
+
+| 認可の種類 | 配置場所 | 例 |
+|-----------|---------|-----|
+| ロールベース（RBAC） | Presentation層 | `verifyAdmin()` |
+| リソース所有権（シンプル） | Presentation層 | `verifyOwnerOrAdmin(id)` |
+| ビジネスルール依存 | Application層 | 「承認済みは編集不可」 |
+| ドメイン不変条件 | Domain層 | `Employee.canBeUpdatedBy(actor)` |
+
+**判断フローチャート：**
+
+```
+認可ルールの判断
+    │
+    ├─ セッション/ロールのみで判断可能？
+    │   └─ Yes → Presentation層
+    │
+    ├─ エンティティの状態に依存？
+    │   └─ Yes → Application層 or Domain層
+    │
+    └─ ビジネスルールの中核？
+        └─ Yes → Domain層（Entity/Value Object）
+```
+
+#### ビジネスルールに基づく認可（Application層 + Domain層）
+
+エンティティの状態に依存する認可はApplication層で呼び出し、ロジック自体はDomain層に持たせる。
+
+```typescript
+// Domain層: src/server/subdomains/employee/domain/entities/Employee.ts
+export class Employee {
+  /**
+   * この従業員を更新できるか判定
+   */
+  canBeUpdatedBy(actor: Actor): boolean {
+    return actor.role === "ADMIN" || actor.id === this.id;
+  }
+
+  /**
+   * この従業員を削除できるか判定
+   */
+  canBeDeletedBy(actor: Actor): boolean {
+    // 自分自身は削除不可
+    if (actor.id === this.id) return false;
+    // 管理者のみ削除可能
+    return actor.role === "ADMIN";
+  }
+}
+```
+
+```typescript
+// Application層: src/server/subdomains/employee/application/commands/UpdateEmployeeCommand.ts
+export class UpdateEmployeeCommand {
+  async execute(input: UpdateEmployeeInput, actor: Actor) {
+    const employee = await this.repository.findById(input.id);
+
+    if (!employee) {
+      throw new NotFoundError("Employee", input.id);
+    }
+
+    // Domain層の認可ロジックを呼び出す
+    if (!employee.canBeUpdatedBy(actor)) {
+      throw new AuthorizationError("更新権限がありません");
+    }
+
+    // ロール変更は管理者のみ
+    if (input.role !== employee.role && actor.role !== "ADMIN") {
+      throw new AuthorizationError("ロール変更は管理者のみ可能です");
+    }
+
+    // 更新処理...
+  }
+}
+```
+
+```typescript
+// Presentation層: Server Action
+"use server";
+
+export async function updateEmployee(...) {
+  const session = await verifySession(); // 認証のみ
+
+  // Application層に委譲（actorを渡す）
+  await command.execute(input, {
+    id: session.user.id,
+    role: session.user.role as Role,
+  });
+}
+```
+
+#### Actor型の設計
+
+Application層・Domain層で使う「操作者」の型を定義する。セッション全体ではなく必要な情報のみを渡すことで、Domain層がHTTP層に依存しない設計にする。
+
+```typescript
+// src/server/shared/types/Actor.ts
+export type Actor = {
+  id: string;
+  role: Role;
+};
+```
+
+#### アンチパターン
+
+**❌ Domain層でSessionを参照**
+
+```typescript
+// ❌ Domain層がHTTP層の概念に依存
+class Employee {
+  canBeUpdatedBy(session: Session): boolean { // NG
+    return session.user.id === this.id;
+  }
+}
+```
+
+```typescript
+// ✅ Actor型を使う
+class Employee {
+  canBeUpdatedBy(actor: Actor): boolean {
+    return actor.id === this.id;
+  }
+}
+```
+
+**❌ 認可ロジックの重複**
+
+```typescript
+// ❌ 同じロジックがPresentation層とApplication層に重複
+// actions.ts
+if (session.user.id !== employeeId && session.user.role !== "ADMIN") { ... }
+
+// UpdateEmployeeCommand.ts
+if (actor.id !== input.id && actor.role !== "ADMIN") { ... }
+```
+
+```typescript
+// ✅ Domain層に集約
+class Employee {
+  canBeUpdatedBy(actor: Actor): boolean {
+    return actor.role === "ADMIN" || actor.id === this.id;
+  }
+}
+
+// 各層から呼び出す
+if (!employee.canBeUpdatedBy(actor)) { ... }
+```
+
+**❌ 全ての認可をPresentation層で処理**
+
+ビジネスルールに依存する認可をPresentation層に書くと、ドメイン知識が漏れる。
+
+```typescript
+// ❌ ビジネスルールがPresentation層に漏れている
+export async function updateEstimate(...) {
+  await verifySession();
+
+  // これはビジネスルール、Presentation層に書くべきではない
+  const estimate = await repository.findById(id);
+  if (estimate.status === "APPROVED") {
+    return { error: "承認済みは編集できません" };
+  }
+}
+```
+
+```typescript
+// ✅ Application層に委譲
+export async function updateEstimate(...) {
+  const session = await verifySession();
+  await command.execute(input, {
+    id: session.user.id,
+    role: session.user.role,
+  });
+}
+```
+
+#### 参考資料
+
+- `learning/server-action-auth-patterns.md` - Server Actionでの認証処理パターン比較
+- `learning/resource-based-authorization.md` - リソースベース認可の実装パターン
+- `learning/ddd-auth-layer-placement.md` - DDDの観点から認証・認可の配置
+
 ---
 
 ## 6. コメント規則
@@ -1851,3 +2125,4 @@ export async function POST(request: Request) {
 | バージョン | 日付       | 変更内容 |
 | ---------- | ---------- | -------- |
 | 1.0        | 2025-10-07 | 初版作成 |
+| 1.1        | 2025-12-12 | 5.6 認証・認可実装規則を追加 |
