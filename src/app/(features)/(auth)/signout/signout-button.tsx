@@ -5,7 +5,8 @@ import { signOutAction } from "./actions";
 
 export function SignoutButton() {
   return (
-    <Button onClick={() => signOutAction()} variant="destructive">
+    // <Button onClick={() => signOutAction()} variant="destructive">
+    <Button onClick={signOutAction} variant="destructive">
       サインアウト
     </Button>
   );
