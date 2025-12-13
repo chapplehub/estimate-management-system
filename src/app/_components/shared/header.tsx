@@ -1,9 +1,7 @@
 import { SignoutButton } from "@/app/(features)/(auth)/signout/signout-button";
-import { getCurrentSession } from "@server/shared/auth";
+import { UserDisplay } from "./user-display";
 
-export const Header = async () => {
-  const session = await getCurrentSession();
-
+export const Header = () => {
   // TODO: どこかのファイルで一括で画面名を管理して、ルーティングに応じて画面名を出せるようにしたい。
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
@@ -15,9 +13,7 @@ export const Header = async () => {
           </span>
         </div>
         <div className="flex items-center gap-4">
-          {session?.user && (
-            <span className="text-sm text-foreground">{session.user.name}</span>
-          )}
+          <UserDisplay />
         </div>
         <SignoutButton />
       </div>
