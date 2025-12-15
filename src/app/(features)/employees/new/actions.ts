@@ -2,10 +2,7 @@
 
 import { verifyAdmin } from "@server/shared/auth";
 import type { ActionResult } from "@shared/types/ActionResult";
-import { CreateEmployeeCommand } from "@subdomains/employee/application/commands/CreateEmployeeCommand";
-import { EmployeeCdDuplicationCheckDomainService } from "@subdomains/employee/domain/services/EmployeeCdDuplicationCheckDomainService";
-import { MailAddressDuplicationCheckDomainService } from "@subdomains/employee/domain/services/MailAddressDuplicationCheckDomainService";
-import { PrismaEmployeeRepository } from "@subdomains/employee/infrastructure/prisma/PrismaEmployeeRepository";
+import { createEmployeeCommandFactory } from "@subdomains/employee/application/factories/createEmployeeCommandFactory";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -31,7 +28,7 @@ export async function createEmployee(
     role: formData.get("role"),
   };
 
-  // Zodバリデーション
+  // Zodバリデーション（プレゼンテーション層の責務）
   const validationResult = createEmployeeSchema.safeParse(rawData);
   if (!validationResult.success) {
     const { fieldErrors } = z.flattenError(validationResult.error);
@@ -45,18 +42,8 @@ export async function createEmployee(
   const { name, email, employeeCd, role } = validationResult.data;
 
   try {
-    // TODO: ここでDIしたくない。一括でDIできる共通処理、事前処理を実装したい。
-    const repository = new PrismaEmployeeRepository();
-    const employeeCdDuplicationCheck =
-      new EmployeeCdDuplicationCheckDomainService(repository);
-    const mailAddressDuplicationCheck =
-      new MailAddressDuplicationCheckDomainService(repository);
-
-    const command = new CreateEmployeeCommand(
-      repository,
-      employeeCdDuplicationCheck,
-      mailAddressDuplicationCheck
-    );
+    // DIはファクトリで解決（インフラ層への依存をserver/側に閉じ込める）
+    const command = createEmployeeCommandFactory();
 
     // NOTE: パスワードは better-auth (User/Account) で管理
     // 従業員作成後、別途 better-auth の API で認証情報を登録する

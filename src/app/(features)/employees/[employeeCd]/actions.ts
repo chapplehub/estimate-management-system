@@ -1,10 +1,8 @@
 "use server";
 
-import { MailAddressDuplicationCheckDomainService } from "@subdomains/employee/domain/services/MailAddressDuplicationCheckDomainService";
 import type { ActionResult } from "@shared/types/ActionResult";
-import { DeleteEmployeeCommand } from "@subdomains/employee/application/commands/DeleteEmployeeCommand";
-import { UpdateEmployeeCommand } from "@subdomains/employee/application/commands/UpdateEmployeeCommand";
-import { PrismaEmployeeRepository } from "@subdomains/employee/infrastructure/prisma/PrismaEmployeeRepository";
+import { deleteEmployeeCommandFactory } from "@subdomains/employee/application/factories/deleteEmployeeCommandFactory";
+import { updateEmployeeCommandFactory } from "@subdomains/employee/application/factories/updateEmployeeCommandFactory";
 import { verifyAdmin, verifyOwnerOrAdmin } from "@server/shared/auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -28,7 +26,7 @@ export async function updateEmployee(
     role: formData.get("role"),
   };
 
-  // Zodバリデーション
+  // Zodバリデーション（プレゼンテーション層の責務）
   const validationResult = updateEmployeeSchema.safeParse(rawData);
   if (!validationResult.success) {
     const { fieldErrors } = z.flattenError(validationResult.error);
@@ -44,18 +42,9 @@ export async function updateEmployee(
   // 認可チェック: 本人または管理者のみ
   await verifyOwnerOrAdmin(id);
 
-  // TODO: フロントでprismarepositoryを使ってるのは明らかにおかしい。
-  // ここでドメイン側のserviceを呼ぶだけにしたい。
-  // facadeにする
-
   try {
-    const repository = new PrismaEmployeeRepository();
-    const mailAddressDuplicationCheck =
-      new MailAddressDuplicationCheckDomainService(repository);
-    const command = new UpdateEmployeeCommand(
-      repository,
-      mailAddressDuplicationCheck
-    );
+    // DIはファクトリで解決（インフラ層への依存をserver/側に閉じ込める）
+    const command = updateEmployeeCommandFactory();
 
     await command.execute({
       id,
@@ -88,8 +77,8 @@ export async function deleteEmployee(
   const id = formData.get("id") as string;
 
   try {
-    const repository = new PrismaEmployeeRepository();
-    const command = new DeleteEmployeeCommand(repository);
+    // DIはファクトリで解決（インフラ層への依存をserver/側に閉じ込める）
+    const command = deleteEmployeeCommandFactory();
 
     await command.execute({
       id,
