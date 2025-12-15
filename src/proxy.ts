@@ -7,6 +7,7 @@ export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isPublicRoute = publicRoutes.includes(path);
 
+  // LEARN: better-auth-proxy-session-validation
   const session = await getCurrentSession();
 
   // TODO: セッションが無効だった場合、その旨のトーストを出したい。
