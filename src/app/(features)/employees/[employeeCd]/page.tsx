@@ -1,7 +1,8 @@
-import { getCurrentSession } from "@server/shared/auth";
+import { REDIRECT_REASON } from "@/shared/constants/redirect-reasons";
+import { getCurrentSession, isAdmin, isOwner } from "@server/shared/auth";
 import { GetEmployeeByEmployeeCdQuery } from "@subdomains/employee/application/queries/GetEmployeeByEmployeeCdQuery";
 import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { EmployeeDeleteForm } from "./EmployeeDeleteForm";
 import { EmployeeUpdateForm } from "./EmployeeUpdateForm";
 
@@ -13,7 +14,11 @@ export default async function Page({
   const { employeeCd } = await params;
 
   // TODO:各ページでいちいちgetCurrentSessionを書くのを何とかしたい
+  // propsとして渡すべきなきがする。
   const session = await getCurrentSession();
+  if (!session) {
+    redirect(`/signin?reason=${REDIRECT_REASON.SESSION_EXPIRED}`);
+  }
 
   // データ取得（Query側）
   const queryService = new PrismaEmployeeQueryService();
@@ -24,11 +29,8 @@ export default async function Page({
   }
 
   // 権限判定
-  // TODO: isAdminとかはいろんなところで使うのでutilsとかに移したい。
-  const isAdmin = session?.user.role === "ADMIN";
-  const isOwner = session?.user.employeeId === employee.id;
-  const canUpdate = isAdmin || isOwner;
-  const canDelete = isAdmin;
+  const canUpdate = isAdmin(session) || isOwner(session, employee.id);
+  const canDelete = isAdmin(session);
 
   return (
     <div className="container mx-auto p-8">
