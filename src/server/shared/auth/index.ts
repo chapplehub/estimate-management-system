@@ -5,6 +5,7 @@
  * 実装の詳細（Better Auth）は隠蔽される。
  */
 
+export type { IAuthService } from "./IAuthService";
 export type {
   AuthSession,
   AuthUser,
@@ -12,11 +13,10 @@ export type {
   SignInResult,
   SignOutResult,
 } from "./types";
-export type { IAuthService } from "./IAuthService";
 
 // 認証・認可ヘルパー関数（DALパターン）
 export { verifySession } from "./verify/authentication";
-export { verifyAdmin, verifyOwnerOrAdmin } from "./verify/authorization";
+export { verifyAdmin, verifyOwner } from "./verify/authorization";
 
 // デフォルトの認証サービスインスタンス
 import { BetterAuthService } from "./better-auth/BetterAuthService";
@@ -44,4 +44,3 @@ export async function signIn(input: { email: string; password: string }) {
 export async function signOut() {
   return authService.signOut();
 }
-

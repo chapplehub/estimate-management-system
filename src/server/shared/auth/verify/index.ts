@@ -5,4 +5,4 @@
  */
 
 export { verifySession } from "./authentication";
-export { verifyAdmin, verifyOwnerOrAdmin } from "./authorization";
+export { verifyAdmin, verifyOwner } from "./authorization";

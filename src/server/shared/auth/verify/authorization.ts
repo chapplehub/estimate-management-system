@@ -10,7 +10,6 @@
 
 import { unauthorized } from "next/navigation";
 import type { AuthSession } from "../types";
-import { verifySession } from "./authentication";
 
 /**
  * 管理者権限を検証（認可のみ）
@@ -38,37 +37,30 @@ export async function verifyAdmin(session: AuthSession): Promise<void> {
 }
 
 /**
- * リソース所有権を検証（本人または管理者）
+ * リソース所有権を検証（認可のみ・本人チェック）
  *
- * 対象リソースの所有者または管理者であることを確認する。
- * 条件を満たさない場合は 401 を返す。
+ * セッションのユーザーが対象リソースの所有者であることを確認する。
+ * 認証チェック（verifySession）は呼び出し元で行うこと。
+ * 管理者チェックが必要な場合は verifyAdmin を別途使用する。
  *
+ * @param session 認証済みセッション
  * @param resourceEmployeeId リソースの所有者の従業員ID
- * @returns 検証済みセッション
- * @throws unauthorized() - 本人でも管理者でもない場合
+ * @throws unauthorized() - 本人でない場合
  *
  * @example
  * ```typescript
  * export async function updateEmployee(employeeId: string, ...) {
- *   await verifyOwnerOrAdmin(employeeId);
- *   // 本人または管理者のみがここに到達
+ *   const session = await verifySession(); // 認証
+ *   await verifyOwner(session, employeeId); // 認可（本人のみ）
+ *   // 本人のみがここに到達
  * }
  * ```
  */
-export async function verifyOwnerOrAdmin(
+export async function verifyOwner(
+  session: AuthSession,
   resourceEmployeeId: string
-): Promise<AuthSession> {
-  const session = await verifySession();
-
-  // 管理者は全てのリソースにアクセス可能
-  if (session.user.role === "ADMIN") {
-    return session;
-  }
-
-  // 本人のリソースのみアクセス可能
+): Promise<void> {
   if (session.user.employeeId !== resourceEmployeeId) {
     unauthorized();
   }
-
-  return session;
 }

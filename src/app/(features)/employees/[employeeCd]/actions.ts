@@ -1,13 +1,13 @@
 "use server";
 
+import {
+  verifyAdmin,
+  verifyOwner,
+  verifySession,
+} from "@server/shared/auth";
 import type { ActionResult } from "@shared/types/ActionResult";
 import { deleteEmployeeCommandFactory } from "@subdomains/employee/application/factories/deleteEmployeeCommandFactory";
 import { updateEmployeeCommandFactory } from "@subdomains/employee/application/factories/updateEmployeeCommandFactory";
-import {
-  verifyAdmin,
-  verifyOwnerOrAdmin,
-  verifySession,
-} from "@server/shared/auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -43,8 +43,14 @@ export async function updateEmployee(
 
   const { id, name, email, employeeCd, role } = validationResult.data;
 
-  // 認可チェック: 本人または管理者のみ
-  await verifyOwnerOrAdmin(id);
+  // 認証チェック
+  const session = await verifySession();
+  // 認可チェック: 本人または管理者
+  try {
+    await verifyOwner(session, id);
+  } catch {
+    await verifyAdmin(session);
+  }
 
   try {
     // DIはファクトリで解決（インフラ層への依存をserver/側に閉じ込める）
