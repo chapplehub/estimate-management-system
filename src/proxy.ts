@@ -1,4 +1,5 @@
 import { getCurrentSession } from "@server/shared/auth";
+import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
 import { NextRequest, NextResponse } from "next/server";
 
 const publicRoutes = ["/signin", "/"];
@@ -10,9 +11,10 @@ export async function proxy(request: NextRequest) {
   // LEARN: better-auth-proxy-session-validation
   const session = await getCurrentSession();
 
-  // TODO: セッションが無効だった場合、その旨のトーストを出したい。
   if (!isPublicRoute && !session) {
-    return NextResponse.redirect(new URL("/signin", request.url));
+    return NextResponse.redirect(
+      new URL(`/signin?reason=${REDIRECT_REASON.SESSION_EXPIRED}`, request.url)
+    );
   }
   return NextResponse.next();
 }
