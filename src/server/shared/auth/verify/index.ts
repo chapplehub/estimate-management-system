@@ -1,8 +1,7 @@
 /**
- * 認証・認可検証ヘルパー
+ * 認可チェックヘルパー
  *
- * Server Action で認証・認可チェックを行う際に使用する。
+ * Server Action で認可チェックを行う際に使用する。
  */
 
-export { verifySession } from "./authentication";
-export { verifyAdmin, verifyOwner } from "./authorization";
+export { isAdmin, isOwner } from "./authorization";

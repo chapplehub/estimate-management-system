@@ -14,9 +14,8 @@ export type {
   SignOutResult,
 } from "./types";
 
-// 認証・認可ヘルパー関数（DALパターン）
-export { verifySession } from "./verify/authentication";
-export { verifyAdmin, verifyOwner } from "./verify/authorization";
+// 認可チェックヘルパー関数
+export { isAdmin, isOwner } from "./verify/authorization";
 
 // デフォルトの認証サービスインスタンス
 import { BetterAuthService } from "./better-auth/BetterAuthService";

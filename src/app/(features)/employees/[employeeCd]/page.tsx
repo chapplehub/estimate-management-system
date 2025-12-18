@@ -24,6 +24,7 @@ export default async function Page({
   }
 
   // 権限判定
+  // TODO: isAdminとかはいろんなところで使うのでutilsとかに移したい。
   const isAdmin = session?.user.role === "ADMIN";
   const isOwner = session?.user.employeeId === employee.id;
   const canUpdate = isAdmin || isOwner;

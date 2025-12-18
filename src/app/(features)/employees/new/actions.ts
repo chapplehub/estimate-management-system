@@ -1,7 +1,8 @@
 "use server";
 
-import { verifyAdmin, verifySession } from "@server/shared/auth";
+import { getCurrentSession, isAdmin } from "@server/shared/auth";
 import type { ActionResult } from "@shared/types/ActionResult";
+import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
 import { createEmployeeCommandFactory } from "@subdomains/employee/application/factories/createEmployeeCommandFactory";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -17,9 +18,14 @@ export async function createEmployee(
   formData: FormData
 ): Promise<ActionResult> {
   // 認証チェック
-  const session = await verifySession();
+  const session = await getCurrentSession();
+  if (!session) {
+    redirect(`/signin?reason=${REDIRECT_REASON.SESSION_EXPIRED}`);
+  }
   // 認可チェック
-  await verifyAdmin(session);
+  if (!isAdmin(session)) {
+    redirect(`/signin?reason=${REDIRECT_REASON.FORBIDDEN}`);
+  }
 
   // フォームデータをオブジェクト化
   const rawData = {
