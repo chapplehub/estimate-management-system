@@ -19,7 +19,7 @@ const FLASH_MESSAGES: Record<RedirectReason, FlashMessage> = {
   },
 };
 
-function FlashMessageHandlerInner() {
+function RedirectReasonToastInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -40,11 +40,11 @@ function FlashMessageHandlerInner() {
   return null;
 }
 
-export function FlashMessageHandler() {
+export function RedirectReasonToast() {
   return (
-    // NOTE: FlashMessageHandlerInnerでuseSearchParamsを使っているのでSuspenseで囲む必要がある。https://nextjs.org/docs/messages/missing-suspense-with-csr-bailout
+    // NOTE: RedirectReasonToastInnerでuseSearchParamsを使っているのでSuspenseで囲む必要がある。https://nextjs.org/docs/messages/missing-suspense-with-csr-bailout
     <Suspense fallback={null}>
-      <FlashMessageHandlerInner />
+      <RedirectReasonToastInner />
     </Suspense>
   );
 }
