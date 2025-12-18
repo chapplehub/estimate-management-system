@@ -13,16 +13,19 @@ type Employee = {
 
 type Props = {
   employee: Employee;
+  canUpdate: boolean;
 };
 
-export function EmployeeUpdateForm({ employee }: Props) {
+export function EmployeeUpdateForm({ employee, canUpdate }: Props) {
   const [updateState, formAction, isPending] = useActionState(updateEmployee, {
     success: true,
   });
 
   return (
     <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-8">
-      <h2 className="text-xl font-semibold mb-4 text-gray-500">従業員変更</h2>
+      <h2 className="text-xl font-semibold mb-4 text-gray-500">
+        {canUpdate ? "従業員変更" : "従業員詳細"}
+      </h2>
 
       {/* 全体エラーメッセージ表示 */}
       {!updateState.success && updateState.error && (
@@ -57,7 +60,7 @@ export function EmployeeUpdateForm({ employee }: Props) {
                 : employee.name
             }
             required
-            disabled={isPending}
+            disabled={isPending || !canUpdate}
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
           />
           {!updateState.success && updateState.errors?.name && (
@@ -84,7 +87,7 @@ export function EmployeeUpdateForm({ employee }: Props) {
                 : employee.email
             }
             required
-            disabled={isPending}
+            disabled={isPending || !canUpdate}
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
           />
           {!updateState.success && updateState.errors?.email && (
@@ -130,7 +133,7 @@ export function EmployeeUpdateForm({ employee }: Props) {
                 ? (updateState.data.role as string)
                 : employee.role
             }
-            disabled={isPending}
+            disabled={isPending || !canUpdate}
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
           >
             <option value="USER">一般ユーザー</option>
@@ -143,15 +146,17 @@ export function EmployeeUpdateForm({ employee }: Props) {
           )}
         </div>
 
-        <div className="flex gap-4">
-          <button
-            type="submit"
-            disabled={isPending}
-            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
-            {isPending ? "更新中..." : "更新"}
-          </button>
-        </div>
+        {canUpdate && (
+          <div className="flex gap-4">
+            <button
+              type="submit"
+              disabled={isPending}
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              {isPending ? "更新中..." : "更新"}
+            </button>
+          </div>
+        )}
       </form>
     </div>
   );

@@ -1,8 +1,9 @@
-import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
+import { getCurrentSession } from "@server/shared/auth";
 import { GetEmployeeByEmployeeCdQuery } from "@subdomains/employee/application/queries/GetEmployeeByEmployeeCdQuery";
+import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
 import { notFound } from "next/navigation";
-import { EmployeeUpdateForm } from "./EmployeeUpdateForm";
 import { EmployeeDeleteForm } from "./EmployeeDeleteForm";
+import { EmployeeUpdateForm } from "./EmployeeUpdateForm";
 
 export default async function Page({
   params,
@@ -10,6 +11,9 @@ export default async function Page({
   params: Promise<{ employeeCd: string }>;
 }) {
   const { employeeCd } = await params;
+
+  // TODO:各ページでいちいちgetCurrentSessionを書くのを何とかしたい
+  const session = await getCurrentSession();
 
   // データ取得（Query側）
   const queryService = new PrismaEmployeeQueryService();
@@ -19,15 +23,21 @@ export default async function Page({
     notFound();
   }
 
+  // 権限判定
+  const isAdmin = session?.user.role === "ADMIN";
+  const isOwner = session?.user.employeeId === employee.id;
+  const canUpdate = isAdmin || isOwner;
+  const canDelete = isAdmin;
+
   return (
     <div className="container mx-auto p-8">
       <h1 className="text-3xl font-bold mb-8">従業員管理</h1>
 
       {/* 更新フォーム（Client Component） */}
-      <EmployeeUpdateForm employee={employee} />
+      <EmployeeUpdateForm employee={employee} canUpdate={canUpdate} />
 
       {/* 削除フォーム（Client Component） */}
-      <EmployeeDeleteForm employeeId={employee.id} />
+      {canDelete && <EmployeeDeleteForm employeeId={employee.id} />}
     </div>
   );
 }

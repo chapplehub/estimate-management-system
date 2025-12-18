@@ -1,8 +1,12 @@
-import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
+import { getCurrentSession } from "@server/shared/auth";
 import { GetAllEmployeesQuery } from "@subdomains/employee/application/queries/GetAllEmployeesQuery";
+import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
 import Link from "next/link";
 
 export default async function EmployeePage() {
+  // TODO:各ページでいちいちgetCurrentSessionを書くのを何とかしたい
+  const session = await getCurrentSession();
+  const isAdmin = session?.user.role === "ADMIN";
   // データ取得（Query側）
   const queryService = new PrismaEmployeeQueryService();
   const getAllQuery = new GetAllEmployeesQuery(queryService);
@@ -12,12 +16,14 @@ export default async function EmployeePage() {
     <div className="container mx-auto p-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">従業員管理</h1>
-        <Link
-          href="/employees/new"
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-        >
-          新規登録
-        </Link>
+        {isAdmin && (
+          <Link
+            href="/employees/new"
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+          >
+            新規登録
+          </Link>
+        )}
       </div>
 
       {/* 一覧表示 */}
