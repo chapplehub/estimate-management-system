@@ -1,12 +1,11 @@
-import { getCurrentSession } from "@server/shared/auth";
+import { getRequiredSession } from "@server/shared/auth";
 import { GetAllEmployeesQuery } from "@subdomains/employee/application/queries/GetAllEmployeesQuery";
 import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
 import Link from "next/link";
 
 export default async function EmployeePage() {
-  // TODO:各ページでいちいちgetCurrentSessionを書くのを何とかしたい
-  const session = await getCurrentSession();
-  const isAdmin = session?.user.role === "ADMIN";
+  const session = await getRequiredSession();
+  const isAdmin = session.user.role === "ADMIN";
   // データ取得（Query側）
   const queryService = new PrismaEmployeeQueryService();
   const getAllQuery = new GetAllEmployeesQuery(queryService);

@@ -1,6 +1,6 @@
 "use server";
 
-import { getCurrentSession, isAdmin, isOwner } from "@server/shared/auth";
+import { getRequiredSession, isAdmin, isOwner } from "@server/shared/auth";
 import type { ActionResult } from "@shared/types/ActionResult";
 import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
 import { deleteEmployeeCommandFactory } from "@subdomains/employee/application/factories/deleteEmployeeCommandFactory";
@@ -40,12 +40,8 @@ export async function updateEmployee(
 
   const { id, name, email, employeeCd, role } = validationResult.data;
 
-  // 認証チェック
-  const session = await getCurrentSession();
-  if (!session) {
-    redirect(`/signin?reason=${REDIRECT_REASON.SESSION_EXPIRED}`);
-  }
-  // 認可チェック: 本人または管理者
+  // 認証・認可チェック: 本人または管理者
+  const session = await getRequiredSession();
   if (!isOwner(session, id) && !isAdmin(session)) {
     redirect(`/signin?reason=${REDIRECT_REASON.FORBIDDEN}`);
   }
@@ -79,12 +75,8 @@ export async function deleteEmployee(
   _prevState: ActionResult,
   formData: FormData
 ): Promise<ActionResult> {
-  // 認証チェック
-  const session = await getCurrentSession();
-  if (!session) {
-    redirect(`/signin?reason=${REDIRECT_REASON.SESSION_EXPIRED}`);
-  }
-  // 認可チェック: 管理者のみ
+  // 認証・認可チェック: 管理者のみ
+  const session = await getRequiredSession();
   if (!isAdmin(session)) {
     redirect(`/signin?reason=${REDIRECT_REASON.FORBIDDEN}`);
   }

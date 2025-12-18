@@ -1,8 +1,7 @@
-import { REDIRECT_REASON } from "@/shared/constants/redirect-reasons";
-import { getCurrentSession, isAdmin, isOwner } from "@server/shared/auth";
+import { getRequiredSession, isAdmin, isOwner } from "@server/shared/auth";
 import { GetEmployeeByEmployeeCdQuery } from "@subdomains/employee/application/queries/GetEmployeeByEmployeeCdQuery";
 import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { EmployeeDeleteForm } from "./EmployeeDeleteForm";
 import { EmployeeUpdateForm } from "./EmployeeUpdateForm";
 
@@ -13,12 +12,7 @@ export default async function Page({
 }) {
   const { employeeCd } = await params;
 
-  // TODO:各ページでいちいちgetCurrentSessionを書くのを何とかしたい
-  // propsとして渡すべきなきがする。
-  const session = await getCurrentSession();
-  if (!session) {
-    redirect(`/signin?reason=${REDIRECT_REASON.SESSION_EXPIRED}`);
-  }
+  const session = await getRequiredSession();
 
   // データ取得（Query側）
   const queryService = new PrismaEmployeeQueryService();
