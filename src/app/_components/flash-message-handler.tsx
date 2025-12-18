@@ -11,7 +11,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect } from "react";
 import { toast } from "sonner";
 
-// TODO: いったんここに置いておくが、量が増えてきたら別の場所に移す
+// TODO: メッセージが増えてきたら、定数ファイルとして別の場所に移す。
 const FLASH_MESSAGES: Record<RedirectReason, FlashMessage> = {
   [REDIRECT_REASON.SESSION_EXPIRED]: {
     type: FLASH_MESSAGE_TYPE.WARNING,
