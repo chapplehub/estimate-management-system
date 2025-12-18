@@ -42,6 +42,7 @@ function FlashMessageHandlerInner() {
 
 export function FlashMessageHandler() {
   return (
+    // NOTE: FlashMessageHandlerInnerでuseSearchParamsを使っているのでSuspenseで囲む必要がある。https://nextjs.org/docs/messages/missing-suspense-with-csr-bailout
     <Suspense fallback={null}>
       <FlashMessageHandlerInner />
     </Suspense>
