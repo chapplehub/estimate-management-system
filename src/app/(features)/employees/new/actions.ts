@@ -1,6 +1,6 @@
 "use server";
 
-import { verifyAdmin } from "@server/shared/auth";
+import { verifyAdmin, verifySession } from "@server/shared/auth";
 import type { ActionResult } from "@shared/types/ActionResult";
 import { createEmployeeCommandFactory } from "@subdomains/employee/application/factories/createEmployeeCommandFactory";
 import { revalidatePath } from "next/cache";
@@ -16,8 +16,10 @@ export async function createEmployee(
   _prevState: ActionResult,
   formData: FormData
 ): Promise<ActionResult> {
-  // TODO: const isVerified = await verifyAdmin();みたいな感じにして、isVerifiedでその後の処理を実行するか、エラーにするか判断する。
-  await verifyAdmin();
+  // 認証チェック
+  const session = await verifySession();
+  // 認可チェック
+  await verifyAdmin(session);
 
   // フォームデータをオブジェクト化
   const rawData = {

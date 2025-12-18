@@ -3,7 +3,11 @@
 import type { ActionResult } from "@shared/types/ActionResult";
 import { deleteEmployeeCommandFactory } from "@subdomains/employee/application/factories/deleteEmployeeCommandFactory";
 import { updateEmployeeCommandFactory } from "@subdomains/employee/application/factories/updateEmployeeCommandFactory";
-import { verifyAdmin, verifyOwnerOrAdmin } from "@server/shared/auth";
+import {
+  verifyAdmin,
+  verifyOwnerOrAdmin,
+  verifySession,
+} from "@server/shared/auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -71,8 +75,10 @@ export async function deleteEmployee(
   _prevState: ActionResult,
   formData: FormData
 ): Promise<ActionResult> {
+  // 認証チェック
+  const session = await verifySession();
   // 認可チェック: 管理者のみ
-  await verifyAdmin();
+  await verifyAdmin(session);
 
   const id = formData.get("id") as string;
 

@@ -13,31 +13,28 @@ import type { AuthSession } from "../types";
 import { verifySession } from "./authentication";
 
 /**
- * 管理者権限を検証（認証 + 管理者認可）
+ * 管理者権限を検証（認可のみ）
  *
- * 管理者としてログイン済みであることを確認する。
- * 未ログインまたは管理者でない場合は 401 を返す。
+ * セッションのユーザーが管理者であることを確認する。
+ * 認証チェック（verifySession）は呼び出し元で行うこと。
  *
- * @returns 検証済みセッション
- * @throws unauthorized() - 未ログインまたは管理者でない場合
+ * @param session 認証済みセッション
+ * @throws unauthorized() - 管理者でない場合
  *
  * @example
  * ```typescript
  * export async function createEmployee(...) {
- *   await verifyAdmin();
+ *   const session = await verifySession(); // 認証
+ *   await verifyAdmin(session);            // 認可
  *   // 管理者のみがここに到達
  * }
  * ```
  */
-export async function verifyAdmin(): Promise<AuthSession> {
-  const session = await verifySession();
-
+export async function verifyAdmin(session: AuthSession): Promise<void> {
   if (session.user.role !== "ADMIN") {
     // TODO: サーバ側のロジックで画面を操作するようなunauthorized()を使うんじゃなくて、あくまで認証認可チェックの結果だけを返してフロント側で画面制御をさせたい。
     unauthorized();
   }
-
-  return session;
 }
 
 /**
