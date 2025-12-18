@@ -17,6 +17,10 @@ const FLASH_MESSAGES: Record<RedirectReason, FlashMessage> = {
     type: FLASH_MESSAGE_TYPE.WARNING,
     message: "セッションの有効期限が切れました。再度ログインしてください。",
   },
+  [REDIRECT_REASON.FORBIDDEN]: {
+    type: FLASH_MESSAGE_TYPE.ERROR,
+    message: "この操作を行う権限がありません。",
+  },
 };
 
 function RedirectReasonToastInner() {

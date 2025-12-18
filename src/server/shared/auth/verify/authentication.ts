@@ -7,7 +7,8 @@
  * @see learning/server-action-auth-patterns.md
  */
 
-import { unauthorized } from "next/navigation";
+import { redirect } from "next/navigation";
+import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
 import { getCurrentSession } from "../index";
 import type { AuthSession } from "../types";
 
@@ -15,10 +16,10 @@ import type { AuthSession } from "../types";
  * セッション検証（認証のみ）
  *
  * ログイン済みであることを確認する。
- * 未ログインの場合は 401 を返す。
+ * 未ログインの場合はサインインページにリダイレクトする。
  *
  * @returns 検証済みセッション
- * @throws unauthorized() - 未ログインの場合
+ * @throws redirect() - 未ログインの場合
  *
  * @example
  * ```typescript
@@ -32,7 +33,7 @@ export async function verifySession(): Promise<AuthSession> {
   const session = await getCurrentSession();
 
   if (!session) {
-    unauthorized();
+    redirect(`/signin?reason=${REDIRECT_REASON.SESSION_EXPIRED}`);
   }
 
   return session;

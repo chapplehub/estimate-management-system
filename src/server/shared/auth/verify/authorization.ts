@@ -8,7 +8,8 @@
  * @see learning/ddd-auth-layer-placement.md
  */
 
-import { unauthorized } from "next/navigation";
+import { redirect, unauthorized } from "next/navigation";
+import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
 import type { AuthSession } from "../types";
 
 /**
@@ -16,9 +17,10 @@ import type { AuthSession } from "../types";
  *
  * セッションのユーザーが管理者であることを確認する。
  * 認証チェック（verifySession）は呼び出し元で行うこと。
+ * 管理者でない場合はサインインページにリダイレクトする。
  *
  * @param session 認証済みセッション
- * @throws unauthorized() - 管理者でない場合
+ * @throws redirect() - 管理者でない場合
  *
  * @example
  * ```typescript
@@ -31,8 +33,7 @@ import type { AuthSession } from "../types";
  */
 export async function verifyAdmin(session: AuthSession): Promise<void> {
   if (session.user.role !== "ADMIN") {
-    // TODO: サーバ側のロジックで画面を操作するようなunauthorized()を使うんじゃなくて、あくまで認証認可チェックの結果だけを返してフロント側で画面制御をさせたい。
-    unauthorized();
+    redirect(`/signin?reason=${REDIRECT_REASON.FORBIDDEN}`);
   }
 }
 

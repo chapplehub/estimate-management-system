@@ -4,6 +4,7 @@
  */
 export const REDIRECT_REASON = {
   SESSION_EXPIRED: "session_expired",
+  FORBIDDEN: "forbidden",
 } as const;
 
 export type RedirectReason =
