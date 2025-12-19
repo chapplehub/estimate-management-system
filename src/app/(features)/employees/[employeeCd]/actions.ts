@@ -1,9 +1,9 @@
 "use server";
 
-import { getRequiredSession } from "@/app/_lib/getRequiredSession";
+import { verifySession } from "@/app/_lib/getRequiredSession";
 import { isAdmin, isOwner } from "@server/shared/auth";
-import type { ActionResult } from "@shared/types/ActionResult";
 import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
+import type { ActionResult } from "@shared/types/ActionResult";
 import { deleteEmployeeCommandFactory } from "@subdomains/employee/application/factories/deleteEmployeeCommandFactory";
 import { updateEmployeeCommandFactory } from "@subdomains/employee/application/factories/updateEmployeeCommandFactory";
 import { revalidatePath } from "next/cache";
@@ -42,7 +42,7 @@ export async function updateEmployee(
   const { id, name, email, employeeCd, role } = validationResult.data;
 
   // 認証・認可チェック: 本人または管理者
-  const session = await getRequiredSession();
+  const session = await verifySession();
   if (!isOwner(session, id) && !isAdmin(session)) {
     redirect(`/signin?reason=${REDIRECT_REASON.FORBIDDEN}`);
   }
@@ -77,7 +77,7 @@ export async function deleteEmployee(
   formData: FormData
 ): Promise<ActionResult> {
   // 認証・認可チェック: 管理者のみ
-  const session = await getRequiredSession();
+  const session = await verifySession();
   if (!isAdmin(session)) {
     redirect(`/signin?reason=${REDIRECT_REASON.FORBIDDEN}`);
   }

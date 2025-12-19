@@ -1,7 +1,4 @@
-import {
-  getCurrentSession,
-  type AuthSession,
-} from "@server/shared/auth";
+import { getCurrentSession, type AuthSession } from "@server/shared/auth";
 import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
 import { redirect } from "next/navigation";
 import { cache } from "react";
@@ -15,7 +12,7 @@ import { cache } from "react";
  *
  * @returns AuthSession（null なし）
  */
-export const getRequiredSession = cache(async (): Promise<AuthSession> => {
+export const verifySession = cache(async (): Promise<AuthSession> => {
   const session = await getCurrentSession();
   if (!session) {
     // proxy を通過しているはずなので、ここに来るのは異常系

@@ -1,6 +1,6 @@
 "use server";
 
-import { getRequiredSession } from "@/app/_lib/getRequiredSession";
+import { verifySession } from "@/app/_lib/getRequiredSession";
 import { isAdmin } from "@server/shared/auth";
 import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
 import type { ActionResult } from "@shared/types/ActionResult";
@@ -19,7 +19,7 @@ export async function createEmployee(
   formData: FormData
 ): Promise<ActionResult> {
   // 認証・認可チェック
-  const session = await getRequiredSession();
+  const session = await verifySession();
   if (!isAdmin(session)) {
     redirect(`/signin?reason=${REDIRECT_REASON.FORBIDDEN}`);
   }

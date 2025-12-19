@@ -1,6 +1,6 @@
 "use server";
 
-import { getRequiredSession } from "@/app/_lib/getRequiredSession";
+import { verifySession } from "@/app/_lib/getRequiredSession";
 import { signOut } from "@server/shared/auth";
 import { redirect } from "next/navigation";
 
@@ -9,7 +9,7 @@ import { redirect } from "next/navigation";
  */
 export async function signOutAction() {
   // 認証チェック: ログイン済みユーザーのみ
-  await getRequiredSession();
+  await verifySession();
 
   await signOut();
   redirect("/signin");

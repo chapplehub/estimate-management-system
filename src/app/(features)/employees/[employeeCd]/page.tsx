@@ -1,4 +1,4 @@
-import { getRequiredSession } from "@/app/_lib/getRequiredSession";
+import { verifySession } from "@/app/_lib/getRequiredSession";
 import { isAdmin, isOwner } from "@server/shared/auth";
 import { GetEmployeeByEmployeeCdQuery } from "@subdomains/employee/application/queries/GetEmployeeByEmployeeCdQuery";
 import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
@@ -13,7 +13,7 @@ export default async function Page({
 }) {
   const { employeeCd } = await params;
 
-  const session = await getRequiredSession();
+  const session = await verifySession();
 
   // データ取得（Query側）
   const queryService = new PrismaEmployeeQueryService();

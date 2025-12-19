@@ -1,10 +1,10 @@
-import { getRequiredSession } from "@/app/_lib/getRequiredSession";
+import { verifySession } from "@/app/_lib/getRequiredSession";
 import { GetAllEmployeesQuery } from "@subdomains/employee/application/queries/GetAllEmployeesQuery";
 import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
 import Link from "next/link";
 
 export default async function EmployeePage() {
-  const session = await getRequiredSession();
+  const session = await verifySession();
   const isAdmin = session.user.role === "ADMIN";
   // データ取得（Query側）
   const queryService = new PrismaEmployeeQueryService();
