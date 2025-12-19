@@ -1,6 +1,6 @@
 "use server";
 
-import { verifySession } from "@/app/_lib/getRequiredSession";
+import { verifySession } from "@/app/_lib/verifyAuthentication";
 import { signOut } from "@server/shared/auth";
 import { redirect } from "next/navigation";
 

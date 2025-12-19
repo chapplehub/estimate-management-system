@@ -1,4 +1,4 @@
-import { verifySession } from "@/app/_lib/getRequiredSession";
+import { verifySession } from "@/app/_lib/verifyAuthentication";
 import { isAdmin, isOwner } from "@server/shared/auth";
 import { GetEmployeeByEmployeeCdQuery } from "@subdomains/employee/application/queries/GetEmployeeByEmployeeCdQuery";
 import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";

@@ -1,8 +1,9 @@
 "use server";
 
-import { verifyAdmin, verifySession } from "@/app/_lib/getRequiredSession";
-import { isAdmin, isOwner } from "@server/shared/auth";
-import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
+import {
+  verifyAdmin,
+  verifyOwnerOrAdmin,
+} from "@/app/_lib/verifyAuthentication";
 import type { ActionResult } from "@shared/types/ActionResult";
 import { deleteEmployeeCommandFactory } from "@subdomains/employee/application/factories/deleteEmployeeCommandFactory";
 import { updateEmployeeCommandFactory } from "@subdomains/employee/application/factories/updateEmployeeCommandFactory";
@@ -42,10 +43,7 @@ export async function updateEmployee(
   const { id, name, email, employeeCd, role } = validationResult.data;
 
   // 認証・認可チェック: 本人または管理者
-  const session = await verifySession();
-  if (!isOwner(session, id) && !isAdmin(session)) {
-    redirect(`/signin?reason=${REDIRECT_REASON.FORBIDDEN}`);
-  }
+  await verifyOwnerOrAdmin(id);
 
   try {
     // DIはファクトリで解決（インフラ層への依存をserver/側に閉じ込める）

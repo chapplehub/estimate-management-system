@@ -1,6 +1,6 @@
 "use server";
 
-import { verifyAdmin } from "@/app/_lib/getRequiredSession";
+import { verifyAdmin } from "@/app/_lib/verifyAuthentication";
 import type { ActionResult } from "@shared/types/ActionResult";
 import { createEmployeeCommandFactory } from "@subdomains/employee/application/factories/createEmployeeCommandFactory";
 import { revalidatePath } from "next/cache";

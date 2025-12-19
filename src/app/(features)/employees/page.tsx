@@ -1,4 +1,4 @@
-import { verifySession } from "@/app/_lib/getRequiredSession";
+import { verifySession } from "@/app/_lib/verifyAuthentication";
 import { GetAllEmployeesQuery } from "@subdomains/employee/application/queries/GetAllEmployeesQuery";
 import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
 import Link from "next/link";
