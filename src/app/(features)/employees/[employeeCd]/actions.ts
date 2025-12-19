@@ -64,8 +64,8 @@ export async function updateEmployee(
     return handleCommandError(error);
   }
 
-  // 成功時は詳細ページにリダイレクト
-  redirect(`/employees/${employeeCd}?reason=${REDIRECT_REASON.EMPLOYEE_UPDATED}`);
+  // 成功時（withCallbacksパターンでトースト表示）
+  return { success: true };
 }
 
 // ========================================

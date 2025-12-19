@@ -1,7 +1,9 @@
 "use client";
 
-import { updateEmployee } from "./actions";
+import { withCallbacks } from "@/app/_lib/withCallbacks";
 import { useActionState } from "react";
+import { toast } from "sonner";
+import { updateEmployee } from "./actions";
 
 type Employee = {
   id: string;
@@ -17,9 +19,14 @@ type Props = {
 };
 
 export function EmployeeUpdateForm({ employee, canUpdate }: Props) {
-  const [updateState, formAction, isPending] = useActionState(updateEmployee, {
-    success: true,
-  });
+  const [updateState, formAction, isPending] = useActionState(
+    withCallbacks(updateEmployee, {
+      onSuccess() {
+        toast.success("従業員情報を更新しました。");
+      },
+    }),
+    { success: true }
+  );
 
   return (
     <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-8">
