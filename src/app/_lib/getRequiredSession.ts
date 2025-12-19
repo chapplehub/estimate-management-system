@@ -1,4 +1,8 @@
-import { getCurrentSession, type AuthSession } from "@server/shared/auth";
+import {
+  getCurrentSession,
+  isAdmin,
+  type AuthSession,
+} from "@server/shared/auth";
 import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
 import { redirect } from "next/navigation";
 import { cache } from "react";
@@ -20,3 +24,19 @@ export const verifySession = cache(async (): Promise<AuthSession> => {
   }
   return session;
 });
+
+/**
+ * 管理者権限を持つセッションを取得する
+ *
+ * 認証済みかつ管理者であることを確認する。
+ * 管理者でない場合は FORBIDDEN でリダイレクト。
+ *
+ * @returns AuthSession（管理者のセッション）
+ */
+export async function verifyAdmin(): Promise<AuthSession> {
+  const session = await verifySession();
+  if (!isAdmin(session)) {
+    redirect(`/signin?reason=${REDIRECT_REASON.FORBIDDEN}`);
+  }
+  return session;
+}

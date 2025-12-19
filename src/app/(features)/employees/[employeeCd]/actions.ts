@@ -1,6 +1,6 @@
 "use server";
 
-import { verifySession } from "@/app/_lib/getRequiredSession";
+import { verifyAdmin, verifySession } from "@/app/_lib/getRequiredSession";
 import { isAdmin, isOwner } from "@server/shared/auth";
 import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
 import type { ActionResult } from "@shared/types/ActionResult";
@@ -77,10 +77,7 @@ export async function deleteEmployee(
   formData: FormData
 ): Promise<ActionResult> {
   // 認証・認可チェック: 管理者のみ
-  const session = await verifySession();
-  if (!isAdmin(session)) {
-    redirect(`/signin?reason=${REDIRECT_REASON.FORBIDDEN}`);
-  }
+  await verifyAdmin();
 
   const id = formData.get("id") as string;
 
