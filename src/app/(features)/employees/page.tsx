@@ -1,4 +1,4 @@
-import { getRequiredSession } from "@server/shared/auth";
+import { getRequiredSession } from "@/app/_lib/getRequiredSession";
 import { GetAllEmployeesQuery } from "@subdomains/employee/application/queries/GetAllEmployeesQuery";
 import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
 import Link from "next/link";

@@ -1,4 +1,5 @@
-import { getRequiredSession, isAdmin, isOwner } from "@server/shared/auth";
+import { getRequiredSession } from "@/app/_lib/getRequiredSession";
+import { isAdmin, isOwner } from "@server/shared/auth";
 import { GetEmployeeByEmployeeCdQuery } from "@subdomains/employee/application/queries/GetEmployeeByEmployeeCdQuery";
 import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
 import { notFound } from "next/navigation";

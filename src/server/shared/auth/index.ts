@@ -5,10 +5,6 @@
  * 実装の詳細（Better Auth）は隠蔽される。
  */
 
-import { cache } from "react";
-import { redirect } from "next/navigation";
-import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
-
 export type { IAuthService } from "./IAuthService";
 export type {
   AuthSession,
@@ -17,7 +13,6 @@ export type {
   SignInResult,
   SignOutResult,
 } from "./types";
-import type { AuthSession } from "./types";
 
 // 認可チェックヘルパー関数
 export { isAdmin, isOwner } from "./verify/authorization";
@@ -34,24 +29,6 @@ const authService = new BetterAuthService();
 export async function getCurrentSession() {
   return authService.getCurrentSession();
 }
-
-/**
- * 認証済みセッションを取得する（null を返さない）
- *
- * proxy を通過後のページ・Server Action から呼び出す。
- * 同一リクエスト内で複数回呼んでも cache() により1回だけ実行される。
- * 万が一セッションがない場合はサインインページにリダイレクト。
- *
- * @returns AuthSession（null なし）
- */
-export const getRequiredSession = cache(async (): Promise<AuthSession> => {
-  const session = await authService.getCurrentSession();
-  if (!session) {
-    // proxy を通過しているはずなので、ここに来るのは異常系
-    redirect(`/signin?reason=${REDIRECT_REASON.SESSION_EXPIRED}`);
-  }
-  return session;
-});
 
 /**
  * メールアドレスとパスワードでサインインする

@@ -1,6 +1,7 @@
 "use server";
 
-import { getRequiredSession, isAdmin, isOwner } from "@server/shared/auth";
+import { getRequiredSession } from "@/app/_lib/getRequiredSession";
+import { isAdmin, isOwner } from "@server/shared/auth";
 import type { ActionResult } from "@shared/types/ActionResult";
 import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
 import { deleteEmployeeCommandFactory } from "@subdomains/employee/application/factories/deleteEmployeeCommandFactory";

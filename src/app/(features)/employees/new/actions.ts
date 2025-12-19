@@ -1,8 +1,9 @@
 "use server";
 
-import { getRequiredSession, isAdmin } from "@server/shared/auth";
-import type { ActionResult } from "@shared/types/ActionResult";
+import { getRequiredSession } from "@/app/_lib/getRequiredSession";
+import { isAdmin } from "@server/shared/auth";
 import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
+import type { ActionResult } from "@shared/types/ActionResult";
 import { createEmployeeCommandFactory } from "@subdomains/employee/application/factories/createEmployeeCommandFactory";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";

@@ -1,6 +1,7 @@
 "use server";
 
-import { getRequiredSession, signOut } from "@server/shared/auth";
+import { getRequiredSession } from "@/app/_lib/getRequiredSession";
+import { signOut } from "@server/shared/auth";
 import { redirect } from "next/navigation";
 
 /**
