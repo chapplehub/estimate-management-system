@@ -5,6 +5,9 @@
 export const REDIRECT_REASON = {
   SESSION_EXPIRED: "session_expired",
   FORBIDDEN: "forbidden",
+  EMPLOYEE_CREATED: "employee_created",
+  EMPLOYEE_UPDATED: "employee_updated",
+  EMPLOYEE_DELETED: "employee_deleted",
 } as const;
 
 export type RedirectReason =

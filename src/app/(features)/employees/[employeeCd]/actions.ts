@@ -4,6 +4,7 @@ import {
   verifyAdmin,
   verifyOwnerOrAdmin,
 } from "@/app/_lib/verifyAuthentication";
+import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
 import type { ActionResult } from "@shared/types/ActionResult";
 import { deleteEmployeeCommandFactory } from "@subdomains/employee/application/factories/deleteEmployeeCommandFactory";
 import { updateEmployeeCommandFactory } from "@subdomains/employee/application/factories/updateEmployeeCommandFactory";
@@ -64,7 +65,7 @@ export async function updateEmployee(
   }
 
   // 成功時は詳細ページにリダイレクト
-  redirect(`/employees/${employeeCd}`);
+  redirect(`/employees/${employeeCd}?reason=${REDIRECT_REASON.EMPLOYEE_UPDATED}`);
 }
 
 // ========================================
@@ -93,5 +94,5 @@ export async function deleteEmployee(
   }
 
   // 成功時は一覧ページにリダイレクト
-  redirect("/employees");
+  redirect(`/employees?reason=${REDIRECT_REASON.EMPLOYEE_DELETED}`);
 }

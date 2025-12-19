@@ -1,6 +1,7 @@
 "use server";
 
 import { verifyAdmin } from "@/app/_lib/verifyAuthentication";
+import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
 import type { ActionResult } from "@shared/types/ActionResult";
 import { createEmployeeCommandFactory } from "@subdomains/employee/application/factories/createEmployeeCommandFactory";
 import { revalidatePath } from "next/cache";
@@ -61,5 +62,5 @@ export async function createEmployee(
   }
 
   // 成功時は一覧ページにリダイレクト
-  redirect("/employees");
+  redirect(`/employees?reason=${REDIRECT_REASON.EMPLOYEE_CREATED}`);
 }

@@ -21,6 +21,18 @@ const FLASH_MESSAGES: Record<RedirectReason, FlashMessage> = {
     type: FLASH_MESSAGE_TYPE.ERROR,
     message: "この操作を行う権限がありません。",
   },
+  [REDIRECT_REASON.EMPLOYEE_CREATED]: {
+    type: FLASH_MESSAGE_TYPE.SUCCESS,
+    message: "従業員を登録しました。",
+  },
+  [REDIRECT_REASON.EMPLOYEE_UPDATED]: {
+    type: FLASH_MESSAGE_TYPE.SUCCESS,
+    message: "従業員情報を更新しました。",
+  },
+  [REDIRECT_REASON.EMPLOYEE_DELETED]: {
+    type: FLASH_MESSAGE_TYPE.SUCCESS,
+    message: "従業員を削除しました。",
+  },
 };
 
 function RedirectReasonToastInner() {
