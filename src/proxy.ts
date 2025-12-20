@@ -19,5 +19,11 @@ export async function proxy(request: NextRequest) {
   return NextResponse.next();
 }
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|.*\\.png$).*)"],
+  matcher: [
+    {
+      source: "/((?!api|_next/static|_next/image|.*\\.png$).*)",
+      // NOTE: https://github.com/chapplehub/estimate-management-system/issues/25
+      missing: [{ type: "header", key: "next-action" }],
+    },
+  ],
 };
