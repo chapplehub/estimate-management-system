@@ -1,6 +1,7 @@
 "use client";
 
 import { useSession } from "@/app/_lib/auth-client";
+import { Loader2Icon } from "lucide-react";
 
 /**
  * ユーザー名表示コンポーネント（Client Component）
@@ -14,9 +15,7 @@ export const UserDisplay = () => {
   const { data: session, isPending } = useSession();
 
   if (isPending) {
-    return (
-      <span className="text-sm text-muted-foreground animate-pulse">...</span>
-    );
+    return <Loader2Icon className="size-4 animate-spin" />;
   }
 
   if (!session?.user) {
