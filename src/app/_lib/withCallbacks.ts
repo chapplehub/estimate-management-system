@@ -4,7 +4,7 @@ import type { ActionResult } from "@shared/types/ActionResult";
  * withCallbacksパターン - Server Actionにコールバックを追加するユーティリティ
  *
  * useActionStateと組み合わせて使用し、アクションの成功・失敗時に
- * コールバック関数を実行できるようにする。
+ * コールバック関数(トースト通知などの副作用)を実行できるようにする。
  *
  * @remarks
  * 同じ画面に留まる場合（redirect不要）のトースト通知などに有用。
@@ -37,6 +37,7 @@ export function withCallbacks<T, Args extends unknown[]>(
   return async (...args: Args) => {
     const result = await action(...args);
 
+    // server actionの状態変化に応じてcallbacksの処理が変えられる
     if (result.success) {
       callbacks.onSuccess?.(result);
     } else {
