@@ -13,7 +13,6 @@ const mockCreateEmployee = createEmployee as Mock;
 
 describe("EmployeeCreateForm", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     // デフォルトのモック: 成功レスポンス
     mockCreateEmployee.mockResolvedValue({ success: true });
   });

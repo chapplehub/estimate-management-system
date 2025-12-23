@@ -15,6 +15,7 @@ export default defineConfig({
           root: "./src/app",
           environment: "jsdom",
           setupFiles: [path.resolve(__dirname, "./vitest-cleanup-after-each.ts")],
+          clearMocks: true,
         },
         resolve: {
           alias: {
