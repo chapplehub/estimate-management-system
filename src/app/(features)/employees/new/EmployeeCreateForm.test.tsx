@@ -159,47 +159,47 @@ describe("EmployeeCreateForm", () => {
       expect(screen.getByRole("alert")).toBeInTheDocument();
     });
 
-    // TODO: useActionStateの状態更新がテスト環境で正しく反映されない問題を調査
-    // 全体エラーテストは成功するが、フィールドエラーテストは失敗する
-    // React 19 + Server Actions + useActionState の組み合わせが原因の可能性
-    test.todo("フィールドごとのバリデーションエラーが表示される", async () => {
+    // サーバーサイドのバリデーションエラーをテスト
+    // HTML5バリデーションを通過する有効な値を入力し、サーバーがエラーを返すシナリオ
+    test("フィールドごとのバリデーションエラーが表示される", async () => {
       const user = userEvent.setup();
 
-      // フィールドエラーを返すようにモック
+      // サーバーサイドでバリデーションエラーを返すようにモック
       mockCreateEmployee.mockResolvedValue({
         success: false,
         errors: {
-          name: ["名前は必須です"],
-          email: ["有効なメールアドレスを入力してください"],
-          employeeCd: ["従業員コードの形式が正しくありません"],
+          name: ["名前は2文字以上で入力してください"],
+          email: ["このメールアドレスは既に使用されています"],
+          employeeCd: ["この従業員コードは既に使用されています"],
         },
         data: {
-          name: "",
-          email: "invalid-email",
-          employeeCd: "INVALID",
+          name: "山田太郎",
+          email: "yamada@example.com",
+          employeeCd: "EMP000001",
         },
       });
 
       render(<EmployeeCreateForm />);
 
-      // 必須フィールドに不正な値を入力
-      await user.type(screen.getByLabelText("名前"), "a");
-      await user.type(screen.getByLabelText("メールアドレス"), "invalid-email");
-      await user.type(screen.getByLabelText("従業員コード"), "INVALID123");
+      // HTML5バリデーションを通過する有効な値を入力
+      // （サーバーサイドでエラーを返すシナリオ）
+      await user.type(screen.getByLabelText("名前"), "山田太郎");
+      await user.type(screen.getByLabelText("メールアドレス"), "yamada@example.com");
+      await user.type(screen.getByLabelText("従業員コード"), "EMP000001");
       await user.type(screen.getByLabelText("パスワード"), "password123");
 
       // フォームを送信
       await user.click(screen.getByRole("button", { name: "登録" }));
 
+      // createEmployeeが呼び出されたことを確認
+      await waitFor(() => {
+        expect(mockCreateEmployee).toHaveBeenCalled();
+      });
+
       // 各フィールドのエラーメッセージが表示されることを確認
-      await waitFor(
-        () => {
-          expect(screen.getByText("名前は必須です")).toBeInTheDocument();
-        },
-        { timeout: 3000 }
-      );
-      expect(screen.getByText("有効なメールアドレスを入力してください")).toBeInTheDocument();
-      expect(screen.getByText("従業員コードの形式が正しくありません")).toBeInTheDocument();
+      expect(await screen.findByText("名前は2文字以上で入力してください")).toBeInTheDocument();
+      expect(screen.getByText("このメールアドレスは既に使用されています")).toBeInTheDocument();
+      expect(screen.getByText("この従業員コードは既に使用されています")).toBeInTheDocument();
     });
   });
 });
