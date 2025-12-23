@@ -1,27 +1,34 @@
 import react from "@vitejs/plugin-react";
 import { config } from "dotenv";
 import path from "path";
-import { defineProject } from "vitest/config";
+import { defineConfig } from "vitest/config";
 
 config(); // .envを読み込む
 
-export default defineProject({
+export default defineConfig({
   test: {
     projects: [
       {
         plugins: [react()],
         test: {
-          globals: true,
-          name: "front",
+          name: { label: "FrontEnd", color: "white" },
           root: "./src/app",
           environment: "jsdom",
-          setupFiles: ["./setup.front-test.ts"],
+          setupFiles: [path.resolve(__dirname, "./vitest-cleanup-after-each.ts")],
+        },
+        resolve: {
+          alias: {
+            "@server": path.resolve(__dirname, "./src/server"),
+            "@shared": path.resolve(__dirname, "./src/shared"),
+            "@subdomains": path.resolve(__dirname, "./src/server/subdomains"),
+            "@generated": path.resolve(__dirname, "./generated"),
+            "@": path.resolve(__dirname, "./src"),
+          },
         },
       },
       {
         test: {
-          globals: true,
-          name: "back",
+          name: { label: "BackEnd", color: "black" },
           root: "./src/server",
           environment: "node",
         },
