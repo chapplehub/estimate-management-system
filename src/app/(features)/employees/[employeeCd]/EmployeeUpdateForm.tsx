@@ -45,7 +45,7 @@ export function EmployeeUpdateForm({ employee, canUpdate }: Props) {
         </div>
       )}
 
-      <form action={formAction} className="space-y-4">
+      <form noValidate action={formAction} className="space-y-4">
         {/* hidden inputでIDと従業員コードを渡す */}
         <input type="hidden" name="id" value={employee.id} />
         <input type="hidden" name="employeeCd" value={employee.employeeCd} />
@@ -66,7 +66,6 @@ export function EmployeeUpdateForm({ employee, canUpdate }: Props) {
                 ? (updateState.data.name as string)
                 : employee.name
             }
-            required
             disabled={isPending || !canUpdate}
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
           />
@@ -93,7 +92,6 @@ export function EmployeeUpdateForm({ employee, canUpdate }: Props) {
                 ? (updateState.data.email as string)
                 : employee.email
             }
-            required
             disabled={isPending || !canUpdate}
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
           />
@@ -134,7 +132,6 @@ export function EmployeeUpdateForm({ employee, canUpdate }: Props) {
           <select
             id="role"
             name="role"
-            required
             defaultValue={
               !updateState.success && updateState.data?.role
                 ? (updateState.data.role as string)

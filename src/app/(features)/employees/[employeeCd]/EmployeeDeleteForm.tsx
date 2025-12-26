@@ -26,7 +26,7 @@ export function EmployeeDeleteForm({ employeeId }: Props) {
         </div>
       )}
 
-      <form action={formAction}>
+      <form noValidate action={formAction}>
         {/* hidden inputでIDを渡す */}
         <input type="hidden" name="id" value={employeeId} />
 

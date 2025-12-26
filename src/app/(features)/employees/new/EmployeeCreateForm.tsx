@@ -21,7 +21,7 @@ export function EmployeeCreateForm() {
         </div>
       )}
 
-      <form action={formAction} className="space-y-4">
+      <form noValidate action={formAction} className="space-y-4">
         <div>
           <label
             htmlFor="name"
@@ -38,7 +38,6 @@ export function EmployeeCreateForm() {
                 ? (createState.data?.name as string) || ""
                 : ""
             }
-            required
             disabled={isPending}
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
             placeholder="山田太郎"
@@ -66,7 +65,6 @@ export function EmployeeCreateForm() {
                 ? (createState.data?.email as string) || ""
                 : ""
             }
-            required
             disabled={isPending}
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
             placeholder="yamada@example.com"
@@ -94,9 +92,7 @@ export function EmployeeCreateForm() {
                 ? (createState.data?.employeeCd as string) || ""
                 : ""
             }
-            required
             disabled={isPending}
-            pattern="EMP[0-9]{6}"
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
             placeholder="EMP000001"
           />
@@ -127,9 +123,7 @@ export function EmployeeCreateForm() {
                 ? (createState.data?.password as string) || ""
                 : ""
             }
-            required
             disabled={isPending}
-            minLength={8}
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
             placeholder="8文字以上"
           />
@@ -155,7 +149,6 @@ export function EmployeeCreateForm() {
                 ? (createState.data?.role as string) || "USER"
                 : "USER"
             }
-            required
             disabled={isPending}
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
           >
