@@ -49,6 +49,7 @@ export async function createEmployee(prevState: unknown, formData: FormData) {
     // ActionResultのdiscriminated unionを考慮
     const errorMessage =
       !errorResult.success && errorResult.error ? errorResult.error : undefined;
+    // バックエンド側のエラーをフロントエンドに返却
     return submission.reply({
       formErrors: errorMessage ? [errorMessage] : [],
     });
