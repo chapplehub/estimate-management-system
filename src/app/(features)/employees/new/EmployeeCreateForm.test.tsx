@@ -13,8 +13,8 @@ const mockCreateEmployee = createEmployee as Mock;
 
 describe("EmployeeCreateForm", () => {
   beforeEach(() => {
-    // デフォルトのモック: 成功レスポンス
-    mockCreateEmployee.mockResolvedValue({ success: true });
+    // デフォルトのモック: 成功時はredirectするため undefined を返す
+    mockCreateEmployee.mockResolvedValue(undefined);
   });
 
   describe("レンダリングテスト", () => {
@@ -137,10 +137,14 @@ describe("EmployeeCreateForm", () => {
     test("全体エラーメッセージが表示される", async () => {
       const user = userEvent.setup();
 
-      // エラーレスポンスを返すようにモック
+      // Conform形式のエラーレスポンスを返すようにモック
+      // formErrors は空文字キー "" に格納される
       mockCreateEmployee.mockResolvedValue({
-        success: false,
-        error: "サーバーエラーが発生しました",
+        status: "error",
+        error: {
+          "": ["サーバーエラーが発生しました"],
+        },
+        initialValue: {},
       });
 
       render(<EmployeeCreateForm />);
@@ -164,15 +168,15 @@ describe("EmployeeCreateForm", () => {
     test("フィールドごとのバリデーションエラーが表示される", async () => {
       const user = userEvent.setup();
 
-      // サーバーサイドでバリデーションエラーを返すようにモック
+      // Conform形式のフィールドエラーを返すようにモック
       mockCreateEmployee.mockResolvedValue({
-        success: false,
-        errors: {
+        status: "error",
+        error: {
           name: ["名前は2文字以上で入力してください"],
           email: ["このメールアドレスは既に使用されています"],
           employeeCd: ["この従業員コードは既に使用されています"],
         },
-        data: {
+        initialValue: {
           name: "山田太郎",
           email: "yamada@example.com",
           employeeCd: "EMP000001",

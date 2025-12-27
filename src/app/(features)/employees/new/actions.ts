@@ -1,46 +1,32 @@
 "use server";
 
+import { parseWithZod } from "@conform-to/zod/v4";
 import { verifyAdmin } from "@/app/_lib/verifyAuthentication";
 import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
-import type { ActionResult } from "@shared/types/ActionResult";
 import { createEmployeeCommandFactory } from "@subdomains/employee/application/factories/createEmployeeCommandFactory";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { z } from "zod";
 import { handleCommandError } from "../_lib/error-handler";
 import { createEmployeeSchema } from "./schema";
 
 // ========================================
 // 従業員作成
 // ========================================
-export async function createEmployee(
-  _prevState: ActionResult,
-  formData: FormData
-): Promise<ActionResult> {
+export async function createEmployee(prevState: unknown, formData: FormData) {
   // 認証・認可チェック: 管理者のみ
   await verifyAdmin();
 
-  // フォームデータをオブジェクト化
-  const rawData = {
-    name: formData.get("name"),
-    email: formData.get("email"),
-    employeeCd: formData.get("employeeCd"),
-    password: formData.get("password"),
-    role: formData.get("role"),
-  };
+  // Conformを使用してFormDataをパース・バリデーション
+  const submission = parseWithZod(formData, {
+    schema: createEmployeeSchema,
+  });
 
-  // Zodバリデーション（プレゼンテーション層の責務）
-  const validationResult = createEmployeeSchema.safeParse(rawData);
-  if (!validationResult.success) {
-    const { fieldErrors } = z.flattenError(validationResult.error);
-    return {
-      success: false,
-      errors: fieldErrors,
-      data: rawData,
-    };
+  // バリデーション失敗時はエラーを返却
+  if (submission.status !== "success") {
+    return submission.reply();
   }
 
-  const { name, email, employeeCd, role } = validationResult.data;
+  const { name, email, employeeCd, role } = submission.value;
 
   try {
     // DIはファクトリで解決（インフラ層への依存をserver/側に閉じ込める）
@@ -58,7 +44,14 @@ export async function createEmployee(
 
     revalidatePath("/employees");
   } catch (error) {
-    return handleCommandError(error);
+    // ドメイン層エラーをConform形式に変換
+    const errorResult = handleCommandError(error);
+    // ActionResultのdiscriminated unionを考慮
+    const errorMessage =
+      !errorResult.success && errorResult.error ? errorResult.error : undefined;
+    return submission.reply({
+      formErrors: errorMessage ? [errorMessage] : [],
+    });
   }
 
   // 成功時は一覧ページにリダイレクト

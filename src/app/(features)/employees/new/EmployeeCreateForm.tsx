@@ -1,104 +1,110 @@
 "use client";
 
-import { createEmployee } from "./actions";
+import {
+  useForm,
+  getFormProps,
+  getInputProps,
+  getSelectProps,
+} from "@conform-to/react";
+import { parseWithZod, getZodConstraint } from "@conform-to/zod/v4";
 import { useActionState } from "react";
+import { createEmployee } from "./actions";
+import { createEmployeeSchema } from "./schema";
 
 export function EmployeeCreateForm() {
-  const [createState, formAction, isPending] = useActionState(createEmployee, {
-    success: true,
+  const [lastResult, formAction, isPending] = useActionState(
+    createEmployee,
+    undefined
+  );
+
+  const [form, fields] = useForm({
+    lastResult,
+    constraint: getZodConstraint(createEmployeeSchema),
+    onValidate({ formData }) {
+      return parseWithZod(formData, { schema: createEmployeeSchema });
+    },
+    shouldValidate: "onBlur",
+    shouldRevalidate: "onInput",
   });
 
   return (
     <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-8">
       {/* 全体エラーメッセージ表示 */}
-      {!createState.success && createState.error && (
+      {form.errors && (
         <div
           className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4"
           role="alert"
         >
           <p className="font-bold">エラー</p>
-          <p>{createState.error}</p>
+          <p>{form.errors}</p>
         </div>
       )}
 
-      <form noValidate action={formAction} className="space-y-4">
+      <form
+        {...getFormProps(form)}
+        action={formAction}
+        noValidate
+        className="space-y-4"
+      >
         <div>
           <label
-            htmlFor="name"
+            htmlFor={fields.name.id}
             className="block text-gray-700 text-sm font-bold mb-2"
           >
             名前
           </label>
           <input
-            type="text"
-            id="name"
-            name="name"
-            defaultValue={
-              !createState.success
-                ? (createState.data?.name as string) || ""
-                : ""
-            }
+            {...getInputProps(fields.name, { type: "text" })}
             disabled={isPending}
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
             placeholder="山田太郎"
           />
-          {!createState.success && createState.errors?.name && (
-            <p className="text-red-500 text-xs mt-1">
-              {createState.errors.name[0]}
+          {fields.name.errors && (
+            <p className="text-red-500 text-xs mt-1" id={fields.name.errorId}>
+              {fields.name.errors[0]}
             </p>
           )}
         </div>
 
         <div>
           <label
-            htmlFor="email"
+            htmlFor={fields.email.id}
             className="block text-gray-700 text-sm font-bold mb-2"
           >
             メールアドレス
           </label>
           <input
-            type="email"
-            id="email"
-            name="email"
-            defaultValue={
-              !createState.success
-                ? (createState.data?.email as string) || ""
-                : ""
-            }
+            {...getInputProps(fields.email, { type: "email" })}
             disabled={isPending}
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
             placeholder="yamada@example.com"
           />
-          {!createState.success && createState.errors?.email && (
-            <p className="text-red-500 text-xs mt-1">
-              {createState.errors.email[0]}
+          {fields.email.errors && (
+            <p className="text-red-500 text-xs mt-1" id={fields.email.errorId}>
+              {fields.email.errors[0]}
             </p>
           )}
         </div>
 
         <div>
           <label
-            htmlFor="employeeCd"
+            htmlFor={fields.employeeCd.id}
             className="block text-gray-700 text-sm font-bold mb-2"
           >
             従業員コード
           </label>
           <input
-            type="text"
-            id="employeeCd"
-            name="employeeCd"
-            defaultValue={
-              !createState.success
-                ? (createState.data?.employeeCd as string) || ""
-                : ""
-            }
+            {...getInputProps(fields.employeeCd, { type: "text" })}
             disabled={isPending}
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
             placeholder="EMP000001"
           />
-          {!createState.success && createState.errors?.employeeCd ? (
-            <p className="text-red-500 text-xs mt-1">
-              {createState.errors.employeeCd[0]}
+          {fields.employeeCd.errors ? (
+            <p
+              className="text-red-500 text-xs mt-1"
+              id={fields.employeeCd.errorId}
+            >
+              {fields.employeeCd.errors[0]}
             </p>
           ) : (
             <p className="text-gray-600 text-xs mt-1">
@@ -109,55 +115,46 @@ export function EmployeeCreateForm() {
 
         <div>
           <label
-            htmlFor="password"
+            htmlFor={fields.password.id}
             className="block text-gray-700 text-sm font-bold mb-2"
           >
             パスワード
           </label>
           <input
-            type="password"
-            id="password"
-            name="password"
-            defaultValue={
-              !createState.success
-                ? (createState.data?.password as string) || ""
-                : ""
-            }
+            {...getInputProps(fields.password, { type: "password" })}
             disabled={isPending}
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
             placeholder="8文字以上"
           />
-          {!createState.success && createState.errors?.password && (
-            <p className="text-red-500 text-xs mt-1">
-              {createState.errors.password[0]}
+          {fields.password.errors && (
+            <p
+              className="text-red-500 text-xs mt-1"
+              id={fields.password.errorId}
+            >
+              {fields.password.errors[0]}
             </p>
           )}
         </div>
 
         <div>
           <label
-            htmlFor="role"
+            htmlFor={fields.role.id}
             className="block text-gray-700 text-sm font-bold mb-2"
           >
             権限
           </label>
           <select
-            id="role"
-            name="role"
-            defaultValue={
-              !createState.success
-                ? (createState.data?.role as string) || "USER"
-                : "USER"
-            }
+            {...getSelectProps(fields.role)}
+            defaultValue="USER"
             disabled={isPending}
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
           >
             <option value="USER">一般ユーザー</option>
             <option value="ADMIN">管理者</option>
           </select>
-          {!createState.success && createState.errors?.role && (
-            <p className="text-red-500 text-xs mt-1">
-              {createState.errors.role[0]}
+          {fields.role.errors && (
+            <p className="text-red-500 text-xs mt-1" id={fields.role.errorId}>
+              {fields.role.errors[0]}
             </p>
           )}
         </div>

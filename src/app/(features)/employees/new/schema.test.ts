@@ -30,6 +30,58 @@ describe("createEmployeeSchema", () => {
     });
   });
 
+  describe("必須入力", () => {
+    it("nameがundefinedの場合エラー", () => {
+      const { name: _, ...inputWithoutName } = validInput;
+      const result = createEmployeeSchema.safeParse(inputWithoutName);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const { fieldErrors } = z.flattenError(result.error);
+        expect(fieldErrors.name?.[0]).toBe("必須入力です");
+      }
+    });
+
+    it("emailがundefinedの場合エラー", () => {
+      const { email: _, ...inputWithoutEmail } = validInput;
+      const result = createEmployeeSchema.safeParse(inputWithoutEmail);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const { fieldErrors } = z.flattenError(result.error);
+        expect(fieldErrors.email?.[0]).toBe("必須入力です");
+      }
+    });
+
+    it("employeeCdがundefinedの場合エラー", () => {
+      const { employeeCd: _, ...inputWithoutEmployeeCd } = validInput;
+      const result = createEmployeeSchema.safeParse(inputWithoutEmployeeCd);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const { fieldErrors } = z.flattenError(result.error);
+        expect(fieldErrors.employeeCd?.[0]).toBe("必須入力です");
+      }
+    });
+
+    it("passwordがundefinedの場合エラー", () => {
+      const { password: _, ...inputWithoutPassword } = validInput;
+      const result = createEmployeeSchema.safeParse(inputWithoutPassword);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const { fieldErrors } = z.flattenError(result.error);
+        expect(fieldErrors.password?.[0]).toBe("必須入力です");
+      }
+    });
+
+    it("roleがundefinedの場合エラー", () => {
+      const { role: _, ...inputWithoutRole } = validInput;
+      const result = createEmployeeSchema.safeParse(inputWithoutRole);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const { fieldErrors } = z.flattenError(result.error);
+        expect(fieldErrors.role?.[0]).toBe("権限を選択してください");
+      }
+    });
+  });
+
   describe("name フィールド", () => {
     describe("正常系", () => {
       it("1文字の名前が許可される", () => {
@@ -54,6 +106,17 @@ describe("createEmployeeSchema", () => {
           name: "山田太郎",
         });
         expect(result.success).toBe(true);
+      });
+
+      it("前後の空白がトリムされる", () => {
+        const result = createEmployeeSchema.safeParse({
+          ...validInput,
+          name: "  山田太郎  ",
+        });
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data.name).toBe("山田太郎");
+        }
       });
     });
 
@@ -103,6 +166,30 @@ describe("createEmployeeSchema", () => {
         });
         expect(result.success).toBe(true);
       });
+
+      it("254文字のメールアドレスが許可される", () => {
+        // ローカル部64文字 + @ + ドメイン部189文字 = 254文字
+        const localPart = "a".repeat(64);
+        const domainPart = "b".repeat(185) + ".com";
+        const email = `${localPart}@${domainPart}`;
+        expect(email.length).toBe(254);
+        const result = createEmployeeSchema.safeParse({
+          ...validInput,
+          email,
+        });
+        expect(result.success).toBe(true);
+      });
+
+      it("前後の空白がトリムされる", () => {
+        const result = createEmployeeSchema.safeParse({
+          ...validInput,
+          email: "  test@example.com  ",
+        });
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data.email).toBe("test@example.com");
+        }
+      });
     });
 
     describe("異常系", () => {
@@ -116,6 +203,25 @@ describe("createEmployeeSchema", () => {
           const { fieldErrors } = z.flattenError(result.error);
           expect(fieldErrors.email?.[0]).toBe(
             "有効なメールアドレスを入力してください"
+          );
+        }
+      });
+
+      it("255文字以上はエラー", () => {
+        // ローカル部64文字 + @ + ドメイン部190文字 = 255文字
+        const localPart = "a".repeat(64);
+        const domainPart = "b".repeat(186) + ".com";
+        const email = `${localPart}@${domainPart}`;
+        expect(email.length).toBe(255);
+        const result = createEmployeeSchema.safeParse({
+          ...validInput,
+          email,
+        });
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          const { fieldErrors } = z.flattenError(result.error);
+          expect(fieldErrors.email?.[0]).toBe(
+            "メールアドレスは254文字以内で入力してください"
           );
         }
       });
@@ -167,9 +273,34 @@ describe("createEmployeeSchema", () => {
         });
         expect(result.success).toBe(true);
       });
+
+      it("前後の空白がトリムされる", () => {
+        const result = createEmployeeSchema.safeParse({
+          ...validInput,
+          employeeCd: "  EMP000001  ",
+        });
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data.employeeCd).toBe("EMP000001");
+        }
+      });
     });
 
     describe("異常系", () => {
+      it("EMP000000はエラー（ドメインルールとの整合性）", () => {
+        const result = createEmployeeSchema.safeParse({
+          ...validInput,
+          employeeCd: "EMP000000",
+        });
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          const { fieldErrors } = z.flattenError(result.error);
+          expect(fieldErrors.employeeCd?.[0]).toBe(
+            "従業員コードは EMP000001 以上である必要があります"
+          );
+        }
+      });
+
       it("空文字列はエラー", () => {
         const result = createEmployeeSchema.safeParse({
           ...validInput,
