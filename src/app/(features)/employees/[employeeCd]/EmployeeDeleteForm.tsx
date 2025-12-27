@@ -1,8 +1,7 @@
 "use client";
 
-import { deleteEmployee } from "./actions";
-import type { ActionResult } from "@/shared/types/ActionResult";
 import { useActionState } from "react";
+import { deleteEmployee } from "./actions";
 
 type Props = {
   employeeId: string;

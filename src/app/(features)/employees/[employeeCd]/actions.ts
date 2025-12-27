@@ -4,44 +4,54 @@ import {
   verifyAdmin,
   verifyOwnerOrAdmin,
 } from "@/app/_lib/verifyAuthentication";
+import { parseWithZod } from "@conform-to/zod/v4";
 import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
 import type { ActionResult } from "@shared/types/ActionResult";
 import { deleteEmployeeCommandFactory } from "@subdomains/employee/application/factories/deleteEmployeeCommandFactory";
 import { updateEmployeeCommandFactory } from "@subdomains/employee/application/factories/updateEmployeeCommandFactory";
+import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { z } from "zod";
 import { handleCommandError } from "../_lib/error-handler";
 import { updateEmployeeSchema } from "./schema";
 
 // ========================================
 // 従業員更新
 // ========================================
-export async function updateEmployee(
-  _prevState: ActionResult,
-  formData: FormData
-): Promise<ActionResult> {
-  // フォームデータをオブジェクト化
-  const rawData = {
-    id: formData.get("id"),
-    name: formData.get("name"),
-    email: formData.get("email"),
-    employeeCd: formData.get("employeeCd"),
-    role: formData.get("role"),
-  };
 
-  // Zodバリデーション（プレゼンテーション層の責務）
-  const validationResult = updateEmployeeSchema.safeParse(rawData);
-  if (!validationResult.success) {
-    const { fieldErrors } = z.flattenError(validationResult.error);
-    return {
-      success: false,
-      errors: fieldErrors,
-      data: rawData,
-    };
+/**
+ * 従業員更新Server Action
+ * @param employeeCd - URLパラメータから取得した従業員コード（bind()で渡す）
+ * @param prevState - 前回の状態（Conform用）
+ * @param formData - フォームデータ
+ */
+export async function updateEmployee(
+  employeeCd: string,
+  prevState: unknown,
+  formData: FormData
+) {
+  // Conformを使用してFormDataをパース・バリデーション
+  const submission = parseWithZod(formData, {
+    schema: updateEmployeeSchema,
+  });
+
+  // バリデーション失敗時はエラーを返却
+  if (submission.status !== "success") {
+    return submission.reply();
   }
 
-  const { id, name, email, employeeCd, role } = validationResult.data;
+  const { name, email, role } = submission.value;
+
+  // employeeCdからidを取得
+  const queryService = new PrismaEmployeeQueryService();
+  const employee = await queryService.findByEmployeeCd(employeeCd);
+  if (!employee) {
+    return submission.reply({
+      formErrors: ["従業員が見つかりません"],
+    });
+  }
+
+  const { id } = employee;
 
   // 認証・認可チェック: 本人または管理者
   await verifyOwnerOrAdmin(id);
@@ -61,11 +71,17 @@ export async function updateEmployee(
     revalidatePath("/employees");
     revalidatePath(`/employees/${employeeCd}`);
   } catch (error) {
-    return handleCommandError(error);
+    // ドメイン層エラーをConform形式に変換
+    const errorResult = handleCommandError(error);
+    const errorMessage =
+      !errorResult.success && errorResult.error ? errorResult.error : undefined;
+    return submission.reply({
+      formErrors: errorMessage ? [errorMessage] : [],
+    });
   }
 
-  // 成功時（withCallbacksパターンでトースト表示）
-  return { success: true };
+  // 成功時はsubmission.reply()を返す
+  return submission.reply();
 }
 
 // ========================================
