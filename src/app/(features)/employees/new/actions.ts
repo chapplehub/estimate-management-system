@@ -1,7 +1,7 @@
 "use server";
 
-import { parseWithZod } from "@conform-to/zod/v4";
 import { verifyAdmin } from "@/app/_lib/verifyAuthentication";
+import { parseWithZod } from "@conform-to/zod/v4";
 import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
 import { createEmployeeCommandFactory } from "@subdomains/employee/application/factories/createEmployeeCommandFactory";
 import { revalidatePath } from "next/cache";
@@ -21,7 +21,7 @@ export async function createEmployee(prevState: unknown, formData: FormData) {
     schema: createEmployeeSchema,
   });
 
-  // バリデーション失敗時はエラーを返却
+  // バリデーション失敗時はエラーを返却(useActionStateの戻り値としてlastResultにエラーが設定される)
   if (submission.status !== "success") {
     return submission.reply();
   }
