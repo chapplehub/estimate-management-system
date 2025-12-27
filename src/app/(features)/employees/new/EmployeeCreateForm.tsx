@@ -6,7 +6,7 @@ import {
   getInputProps,
   getSelectProps,
 } from "@conform-to/react";
-import { parseWithZod, getZodConstraint } from "@conform-to/zod/v4";
+import { parseWithZod } from "@conform-to/zod/v4";
 import { useActionState } from "react";
 import { createEmployee } from "./actions";
 import { createEmployeeSchema } from "./schema";
@@ -19,7 +19,6 @@ export function EmployeeCreateForm() {
 
   const [form, fields] = useForm({
     lastResult,
-    constraint: getZodConstraint(createEmployeeSchema),
     onValidate({ formData }) {
       return parseWithZod(formData, { schema: createEmployeeSchema });
     },
