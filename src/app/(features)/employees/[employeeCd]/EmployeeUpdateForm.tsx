@@ -26,7 +26,7 @@ type Props = {
 };
 
 export function EmployeeUpdateForm({ employee, canUpdate }: Props) {
-  // bind()でemployeeCdを事前にバインド
+  // LEARN: bind()でemployeeCdを事前にバインド(server-action-bind-vs-formdata.md)
   const updateEmployeeWithEmployeeCd = updateEmployee.bind(
     null,
     employee.employeeCd
