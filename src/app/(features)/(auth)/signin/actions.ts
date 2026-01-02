@@ -1,56 +1,37 @@
 "use server";
 
-import { signIn, type SignInResult } from "@server/shared/auth";
-import { z } from "zod";
+import { signIn } from "@server/shared/auth";
+import { parseWithZod } from "@conform-to/zod/v4";
+import { redirect } from "next/navigation";
 import { SigninFormSchema } from "./schema";
-
-export type SigninActionResult =
-  | { success: true }
-  | {
-      success: false;
-      errors: {
-        email?: string[];
-        password?: string[];
-        general?: string;
-      };
-    };
+import { DEFAULT_CALLBACK_URL } from "./consts";
 
 /**
  * サインイン Server Action
+ *
+ * Conformを使用してFormDataをバリデーションし、認証を行う。
+ * 成功時はDEFAULT_CALLBACK_URLにリダイレクト。
  */
-export async function signinAction(
-  _prevState: SigninActionResult,
-  formData: FormData
-): Promise<SigninActionResult> {
-  const rawData = {
-    email: formData.get("email"),
-    password: formData.get("password"),
-  };
-
-  // バリデーション
-  const validatedFields = SigninFormSchema.safeParse(rawData);
-
-  if (!validatedFields.success) {
-    return {
-      success: false,
-      errors: z.flattenError(validatedFields.error).fieldErrors,
-    };
-  }
-
-  // 認証サービスでサインイン
-  const result: SignInResult = await signIn({
-    email: validatedFields.data.email,
-    password: validatedFields.data.password,
+export async function signinAction(prevState: unknown, formData: FormData) {
+  const submission = parseWithZod(formData, {
+    schema: SigninFormSchema,
   });
 
-  if (!result.success) {
-    return {
-      success: false,
-      errors: {
-        general: result.error,
-      },
-    };
+  if (submission.status !== "success") {
+    return submission.reply();
   }
 
-  return { success: true };
+  const { email, password } = submission.value;
+
+  // 認証サービスでサインイン
+  const result = await signIn({ email, password });
+
+  if (!result.success) {
+    // 認証エラーはformErrors（全体エラー）として返却
+    return submission.reply({
+      formErrors: [result.error],
+    });
+  }
+
+  redirect(DEFAULT_CALLBACK_URL);
 }
