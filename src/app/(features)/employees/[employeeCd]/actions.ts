@@ -80,8 +80,8 @@ export async function updateEmployee(
     });
   }
 
-  // 成功時はsubmission.reply()を返す
-  return submission.reply();
+  // 成功時は同じページにリダイレクト（フォーム状態をリセット）
+  redirect(`/employees/${employeeCd}?reason=${REDIRECT_REASON.EMPLOYEE_UPDATED}`);
 }
 
 // ========================================

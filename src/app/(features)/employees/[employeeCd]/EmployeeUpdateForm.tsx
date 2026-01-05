@@ -9,8 +9,7 @@ import {
 import { parseWithZod } from "@conform-to/zod/v4";
 import type { UserRole } from "@server/shared/auth/types";
 import { USER_ROLES } from "@server/shared/auth/types";
-import { useActionState, useEffect } from "react";
-import { toast } from "sonner";
+import { useActionState } from "react";
 import { updateEmployee } from "./actions";
 import { updateEmployeeSchema } from "./schema";
 
@@ -52,13 +51,6 @@ export function EmployeeUpdateForm({ employee, canUpdate }: Props) {
     shouldValidate: "onBlur",
     shouldRevalidate: "onInput",
   });
-
-  // 成功時のトースト表示
-  useEffect(() => {
-    if (lastResult?.status === "success") {
-      toast.success("従業員情報を更新しました。");
-    }
-  }, [lastResult]);
 
   return (
     <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-8">
