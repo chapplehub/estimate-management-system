@@ -19,7 +19,7 @@ interface SeedUser {
   employeeCd: string;
   email: string;
   name: string;
-  role: "ADMIN" | "USER";
+  role: "admin" | "user";
 }
 
 async function createUserWithEmployee(userData: SeedUser) {
@@ -37,7 +37,6 @@ async function createUserWithEmployee(userData: SeedUser) {
         employeeCd: userData.employeeCd,
         email: userData.email,
         name: userData.name,
-        role: userData.role,
       },
     });
 
@@ -49,6 +48,7 @@ async function createUserWithEmployee(userData: SeedUser) {
         email: userData.email,
         emailVerified: true, // 開発環境では検証済みとして扱う
         employeeId: employeeId,
+        role: userData.role, // Admin Pluginで使用する権限
       },
     });
 
@@ -85,31 +85,31 @@ async function main() {
       employeeCd: "EMP000001",
       email: "admin@example.com",
       name: "Admin Taro",
-      role: "ADMIN",
+      role: "admin",
     },
     {
       employeeCd: "EMP000002",
       email: "yamada@example.com",
       name: "Yamada Hanako",
-      role: "USER",
+      role: "user",
     },
     {
       employeeCd: "EMP000003",
       email: "tanaka@example.com",
       name: "Tanaka Ichiro",
-      role: "USER",
+      role: "user",
     },
     {
       employeeCd: "EMP000004",
       email: "suzuki@example.com",
       name: "Suzuki Jiro",
-      role: "USER",
+      role: "user",
     },
     {
       employeeCd: "EMP000005",
       email: "sato@example.com",
       name: "Sato Saburo",
-      role: "USER",
+      role: "user",
     },
   ];
 

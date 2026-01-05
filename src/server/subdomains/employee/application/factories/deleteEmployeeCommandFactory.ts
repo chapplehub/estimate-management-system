@@ -1,3 +1,4 @@
+import { BetterAuthUserManagementService } from "@server/shared/auth/better-auth/BetterAuthUserManagementService";
 import { DeleteEmployeeCommand } from "../commands/DeleteEmployeeCommand";
 import { PrismaEmployeeRepository } from "../../infrastructure/prisma/PrismaEmployeeRepository";
 
@@ -8,6 +9,7 @@ import { PrismaEmployeeRepository } from "../../infrastructure/prisma/PrismaEmpl
  */
 export function deleteEmployeeCommandFactory(): DeleteEmployeeCommand {
   const repository = new PrismaEmployeeRepository();
+  const userManagementService = new BetterAuthUserManagementService();
 
-  return new DeleteEmployeeCommand(repository);
+  return new DeleteEmployeeCommand(repository, userManagementService);
 }

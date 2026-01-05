@@ -1,5 +1,4 @@
 import { Employee } from "@subdomains/employee/domain/entities/Employee";
-import { Role } from "@subdomains/employee/domain/types/Role";
 import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
 import { Employee as PrismaEmployee } from "@generated/prisma/client";
@@ -8,6 +7,7 @@ import { Employee as PrismaEmployee } from "@generated/prisma/client";
  * EmployeeMapper
  *
  * PrismaのEmployeeモデルとドメインのEmployeeエンティティを相互変換する
+ * Note: roleはEmployee側では管理せず、User.roleで管理
  */
 export class EmployeeMapper {
   /**
@@ -25,7 +25,6 @@ export class EmployeeMapper {
       employeeCd,
       email,
       prismaEmployee.name,
-      prismaEmployee.role as Role,
       prismaEmployee.createdAt,
       prismaEmployee.updatedAt
     );
@@ -43,7 +42,6 @@ export class EmployeeMapper {
       employeeCd: employee.employeeCd.value,
       email: employee.email.value,
       name: employee.name,
-      role: employee.role,
     };
   }
 
@@ -57,7 +55,6 @@ export class EmployeeMapper {
     return {
       email: employee.email.value,
       name: employee.name,
-      role: employee.role,
       updatedAt: employee.updatedAt,
     };
   }

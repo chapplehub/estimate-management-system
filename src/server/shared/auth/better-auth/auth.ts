@@ -2,7 +2,7 @@ import prisma from "@server/prisma";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
-import { customSession } from "better-auth/plugins";
+import { admin, customSession } from "better-auth/plugins";
 
 /**
  * Better Auth の設定
@@ -27,14 +27,15 @@ export const auth = betterAuth({
     },
   },
   plugins: [
+    admin(), // 管理者によるUser作成・削除・更新を可能にする
     customSession(async ({ user, session }) => {
-      // User から Employee を取得して employeeId と role をセッションに追加
+      // User から employeeId と role をセッションに追加
       // NOTE: better-authの実装が直接prismaに依存しているが、以下の２つが理由で許容。依存が増えてきたら要検討
       // better-auth自体がprismaAdapterでprismaに依存していること
       // 依存範囲がここだけなのでインターフェース等の実装は不要と判断
       const dbUser = await prisma.user.findUnique({
         where: { id: user.id },
-        include: { employee: true },
+        select: { employeeId: true, role: true },
       });
 
       return {
@@ -42,7 +43,8 @@ export const auth = betterAuth({
         user: {
           ...user,
           employeeId: dbUser?.employeeId ?? null,
-          role: dbUser?.employee?.role ?? null,
+          // User.roleを使用（"admin" | "user"）
+          role: (dbUser?.role as "admin" | "user") ?? null,
         },
       };
     }),

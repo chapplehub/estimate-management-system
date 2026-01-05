@@ -15,7 +15,8 @@ export const employeeBaseSchema = z.object({
     .trim()
     .max(254, { error: "メールアドレスは254文字以内で入力してください" })
     .pipe(z.email({ error: "有効なメールアドレスを入力してください" })),
-  role: z.enum(["ADMIN", "USER"], {
+  // User.roleに設定される値（"admin" | "user"）
+  role: z.enum(["admin", "user"], {
     error: "権限を選択してください",
   }),
 });

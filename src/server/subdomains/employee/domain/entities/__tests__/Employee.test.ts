@@ -2,7 +2,6 @@ import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
 import { describe, expect, it, beforeEach } from "vitest";
 import { Employee } from "../Employee";
-import { Role } from "@subdomains/employee/domain/types/Role";
 
 describe("Employee エンティティ", () => {
   let employeeCd: EmployeeCd;
@@ -25,13 +24,6 @@ describe("Employee エンティティ", () => {
         expect(employee.employeeCd.value).toBe("EMP000001");
         expect(employee.email.value).toBe("test@example.com");
         expect(employee.name).toBe("山田太郎");
-        expect(employee.role).toBe(Role.USER);
-      });
-
-      it("役割を指定して作成できる", () => {
-        const admin = Employee.create(employeeCd, email, name, Role.ADMIN);
-
-        expect(admin.role).toBe(Role.ADMIN);
       });
 
       it("作成日時と更新日時が設定される", () => {
@@ -60,7 +52,6 @@ describe("Employee エンティティ", () => {
           employeeCd,
           email,
           name,
-          Role.ADMIN,
           createdAt,
           updatedAt
         );
@@ -69,7 +60,6 @@ describe("Employee エンティティ", () => {
         expect(employee.employeeCd.value).toBe("EMP000001");
         expect(employee.email.value).toBe("test@example.com");
         expect(employee.name).toBe("山田太郎");
-        expect(employee.role).toBe(Role.ADMIN);
         expect(employee.createdAt).toEqual(createdAt);
         expect(employee.updatedAt).toEqual(updatedAt);
       });
@@ -124,50 +114,6 @@ describe("Employee エンティティ", () => {
     });
   });
 
-  describe("役割変更", () => {
-    it("役割を変更できる（USERからADMINへ）", () => {
-      const employee = Employee.create(employeeCd, email, name, Role.USER);
-
-      employee.changeRole(Role.ADMIN);
-
-      expect(employee.role).toBe(Role.ADMIN);
-    });
-
-    it("役割を変更できる（ADMINからUSERへ）", () => {
-      const employee = Employee.create(employeeCd, email, name, Role.ADMIN);
-
-      employee.changeRole(Role.USER);
-
-      expect(employee.role).toBe(Role.USER);
-    });
-
-    it("更新日時が更新される", () => {
-      const employee = Employee.create(employeeCd, email, name);
-      const oldUpdatedAt = employee.updatedAt;
-
-      setTimeout(() => {
-        employee.changeRole(Role.ADMIN);
-        expect(employee.updatedAt.getTime()).toBeGreaterThanOrEqual(
-          oldUpdatedAt.getTime()
-        );
-      }, 10);
-    });
-  });
-
-  describe("役割判定", () => {
-    it("管理者の場合trueを返す", () => {
-      const admin = Employee.create(employeeCd, email, name, Role.ADMIN);
-
-      expect(admin.isAdmin()).toBe(true);
-    });
-
-    it("一般ユーザーの場合falseを返す", () => {
-      const user = Employee.create(employeeCd, email, name, Role.USER);
-
-      expect(user.isAdmin()).toBe(false);
-    });
-  });
-
   describe("ゲッター", () => {
     it("すべてのフィールドにアクセスできる", () => {
       const id = "clxyz123abc456def789";
@@ -179,7 +125,6 @@ describe("Employee エンティティ", () => {
         employeeCd,
         email,
         name,
-        Role.ADMIN,
         createdAt,
         updatedAt
       );
@@ -188,7 +133,6 @@ describe("Employee エンティティ", () => {
       expect(employee.employeeCd).toBe(employeeCd);
       expect(employee.email).toBe(email);
       expect(employee.name).toBe(name);
-      expect(employee.role).toBe(Role.ADMIN);
       expect(employee.createdAt).toEqual(createdAt);
       expect(employee.updatedAt).toEqual(updatedAt);
     });

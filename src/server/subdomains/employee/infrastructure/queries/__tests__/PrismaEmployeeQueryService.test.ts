@@ -1,4 +1,3 @@
-import { Role } from "@subdomains/employee/domain/types/Role";
 import { PrismaEmployeeQueryService } from "../PrismaEmployeeQueryService";
 import prisma from "@server/prisma";
 import { createId } from "@paralleldrive/cuid2";
@@ -7,10 +6,70 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 describe("PrismaEmployeeQueryService", () => {
   let queryService: PrismaEmployeeQueryService;
 
+  // テスト用のEmployee/User IDを保持
+  const testEmployeeIds: string[] = [];
+  const testUserIds: string[] = [];
+
+  /**
+   * テスト用のEmployee + Userを作成するヘルパー
+   */
+  async function createTestEmployeeWithUser(data: {
+    employeeCd: string;
+    email: string;
+    name: string;
+    role: "admin" | "user";
+  }) {
+    const employeeId = createId();
+    const userId = createId();
+
+    // Employeeを作成
+    await prisma.employee.create({
+      data: {
+        id: employeeId,
+        employeeCd: data.employeeCd,
+        email: data.email,
+        name: data.name,
+      },
+    });
+
+    // Userを作成（Employeeにリンク）
+    await prisma.user.create({
+      data: {
+        id: userId,
+        email: data.email,
+        name: data.name,
+        employeeId: employeeId,
+        role: data.role,
+      },
+    });
+
+    testEmployeeIds.push(employeeId);
+    testUserIds.push(userId);
+
+    return { employeeId, userId };
+  }
+
   beforeEach(async () => {
     queryService = new PrismaEmployeeQueryService();
+    testEmployeeIds.length = 0;
+    testUserIds.length = 0;
 
     // テストデータのクリーンアップ
+    await prisma.user.deleteMany({
+      where: {
+        employee: {
+          employeeCd: {
+            in: [
+              "EMP999901",
+              "EMP999902",
+              "EMP999903",
+              "EMP999904",
+              "EMP999905",
+            ],
+          },
+        },
+      },
+    });
     await prisma.employee.deleteMany({
       where: {
         employeeCd: {
@@ -27,18 +86,15 @@ describe("PrismaEmployeeQueryService", () => {
   });
 
   afterEach(async () => {
-    // テストデータのクリーンアップ
+    // テストデータのクリーンアップ（Userを先に削除）
+    await prisma.user.deleteMany({
+      where: {
+        id: { in: testUserIds },
+      },
+    });
     await prisma.employee.deleteMany({
       where: {
-        employeeCd: {
-          in: [
-            "EMP999901",
-            "EMP999902",
-            "EMP999903",
-            "EMP999904",
-            "EMP999905",
-          ],
-        },
+        id: { in: testEmployeeIds },
       },
     });
   });
@@ -46,25 +102,22 @@ describe("PrismaEmployeeQueryService", () => {
   describe("findById", () => {
     it("IDで従業員を取得できる", async () => {
       // テストデータを作成
-      const employee = await prisma.employee.create({
-        data: {
-          id: createId(),
-          employeeCd: "EMP999901",
-          email: "query-findbyid@example.com",
-          name: "QueryFindById",
-          role: Role.USER,
-        },
+      const { employeeId } = await createTestEmployeeWithUser({
+        employeeCd: "EMP999901",
+        email: "query-findbyid@example.com",
+        name: "QueryFindById",
+        role: "user",
       });
 
       // findByIdで取得
-      const found = await queryService.findById(employee.id);
+      const found = await queryService.findById(employeeId);
 
       expect(found).not.toBeNull();
-      expect(found?.id).toBe(employee.id);
+      expect(found?.id).toBe(employeeId);
       expect(found?.employeeCd).toBe("EMP999901");
       expect(found?.email).toBe("query-findbyid@example.com");
       expect(found?.name).toBe("QueryFindById");
-      expect(found?.role).toBe(Role.USER);
+      expect(found?.role).toBe("user");
     });
 
     it("存在しないIDの場合nullを返す", async () => {
@@ -75,14 +128,11 @@ describe("PrismaEmployeeQueryService", () => {
 
   describe("findByEmail", () => {
     it("メールアドレスで従業員を取得できる", async () => {
-      await prisma.employee.create({
-        data: {
-          id: createId(),
-          employeeCd: "EMP999902",
-          email: "query-email@example.com",
-          name: "QueryEmail",
-          role: Role.ADMIN,
-        },
+      await createTestEmployeeWithUser({
+        employeeCd: "EMP999902",
+        email: "query-email@example.com",
+        name: "QueryEmail",
+        role: "admin",
       });
 
       const found = await queryService.findByEmail("query-email@example.com");
@@ -90,7 +140,7 @@ describe("PrismaEmployeeQueryService", () => {
       expect(found).not.toBeNull();
       expect(found?.email).toBe("query-email@example.com");
       expect(found?.employeeCd).toBe("EMP999902");
-      expect(found?.role).toBe(Role.ADMIN);
+      expect(found?.role).toBe("admin");
     });
 
     it("存在しないメールアドレスの場合nullを返す", async () => {
@@ -101,14 +151,11 @@ describe("PrismaEmployeeQueryService", () => {
 
   describe("findByEmployeeCd", () => {
     it("従業員CDで従業員を取得できる", async () => {
-      await prisma.employee.create({
-        data: {
-          id: createId(),
-          employeeCd: "EMP999903",
-          email: "query-cd@example.com",
-          name: "QueryEmployeeCd",
-          role: Role.USER,
-        },
+      await createTestEmployeeWithUser({
+        employeeCd: "EMP999903",
+        email: "query-cd@example.com",
+        name: "QueryEmployeeCd",
+        role: "user",
       });
 
       const found = await queryService.findByEmployeeCd("EMP999903");
@@ -126,47 +173,30 @@ describe("PrismaEmployeeQueryService", () => {
 
   describe("search", () => {
     beforeEach(async () => {
-      // 既存のテストデータを削除してから作成
-      await prisma.employee.deleteMany({
-        where: {
-          employeeCd: {
-            in: ["EMP999901", "EMP999902", "EMP999903", "EMP999904"],
-          },
-        },
-      });
-
       // 複数のテストデータを作成
-      await prisma.employee.createMany({
-        data: [
-          {
-            id: createId(),
-            employeeCd: "EMP999901",
-            email: "search-tanaka@example.com",
-            name: "田中太郎",
-            role: Role.USER,
-          },
-          {
-            id: createId(),
-            employeeCd: "EMP999902",
-            email: "search-yamada@example.com",
-            name: "山田花子",
-            role: Role.ADMIN,
-          },
-          {
-            id: createId(),
-            employeeCd: "EMP999903",
-            email: "search-suzuki@example.com",
-            name: "鈴木一郎",
-            role: Role.USER,
-          },
-          {
-            id: createId(),
-            employeeCd: "EMP999904",
-            email: "search-sato@example.com",
-            name: "佐藤次郎",
-            role: Role.USER,
-          },
-        ],
+      await createTestEmployeeWithUser({
+        employeeCd: "EMP999901",
+        email: "search-tanaka@example.com",
+        name: "田中太郎",
+        role: "user",
+      });
+      await createTestEmployeeWithUser({
+        employeeCd: "EMP999902",
+        email: "search-yamada@example.com",
+        name: "山田花子",
+        role: "admin",
+      });
+      await createTestEmployeeWithUser({
+        employeeCd: "EMP999903",
+        email: "search-suzuki@example.com",
+        name: "鈴木一郎",
+        role: "user",
+      });
+      await createTestEmployeeWithUser({
+        employeeCd: "EMP999904",
+        email: "search-sato@example.com",
+        name: "佐藤次郎",
+        role: "user",
       });
     });
 
@@ -192,13 +222,13 @@ describe("PrismaEmployeeQueryService", () => {
     });
 
     it("ロールでのフィルタができる", async () => {
-      const results = await queryService.search({ role: Role.ADMIN });
+      const results = await queryService.search({ role: "admin" });
 
-      // 少なくとも1人のADMINが取得できる
+      // 少なくとも1人のadminが取得できる
       expect(results.length).toBeGreaterThanOrEqual(1);
-      // 全員がADMINであること
+      // 全員がadminであること
       results.forEach((r) => {
-        expect(r.role).toBe(Role.ADMIN);
+        expect(r.role).toBe("admin");
       });
       // テストデータの山田花子が含まれている
       const names = results.map((r) => r.name);
@@ -209,14 +239,14 @@ describe("PrismaEmployeeQueryService", () => {
 
     it("複数条件の組み合わせで検索できる", async () => {
       const results = await queryService.search({
-        role: Role.USER,
+        role: "user",
         name: "田中",
       });
 
-      // USER かつ 田中 が名前に含まれる従業員
+      // user かつ 田中 が名前に含まれる従業員
       expect(results.length).toBeGreaterThanOrEqual(1);
       results.forEach((r) => {
-        expect(r.role).toBe(Role.USER);
+        expect(r.role).toBe("user");
         expect(r.name).toContain("田中");
       });
     });
@@ -275,33 +305,18 @@ describe("PrismaEmployeeQueryService", () => {
 
   describe("findAll", () => {
     beforeEach(async () => {
-      // 既存のテストデータを削除してから作成
-      await prisma.employee.deleteMany({
-        where: {
-          employeeCd: {
-            in: ["EMP999901", "EMP999902"],
-          },
-        },
-      });
-
       // テストデータを作成
-      await prisma.employee.createMany({
-        data: [
-          {
-            id: createId(),
-            employeeCd: "EMP999901",
-            email: "findall1@example.com",
-            name: "全取得1",
-            role: Role.USER,
-          },
-          {
-            id: createId(),
-            employeeCd: "EMP999902",
-            email: "findall2@example.com",
-            name: "全取得2",
-            role: Role.ADMIN,
-          },
-        ],
+      await createTestEmployeeWithUser({
+        employeeCd: "EMP999901",
+        email: "findall1@example.com",
+        name: "全取得1",
+        role: "user",
+      });
+      await createTestEmployeeWithUser({
+        employeeCd: "EMP999902",
+        email: "findall2@example.com",
+        name: "全取得2",
+        role: "admin",
       });
     });
 
@@ -335,40 +350,24 @@ describe("PrismaEmployeeQueryService", () => {
 
   describe("count", () => {
     beforeEach(async () => {
-      // 既存のテストデータを削除してから作成
-      await prisma.employee.deleteMany({
-        where: {
-          employeeCd: {
-            in: ["EMP999901", "EMP999902", "EMP999903"],
-          },
-        },
-      });
-
       // テストデータを作成
-      await prisma.employee.createMany({
-        data: [
-          {
-            id: createId(),
-            employeeCd: "EMP999901",
-            email: "count1@example.com",
-            name: "カウント1",
-            role: Role.USER,
-          },
-          {
-            id: createId(),
-            employeeCd: "EMP999902",
-            email: "count2@example.com",
-            name: "カウント2",
-            role: Role.USER,
-          },
-          {
-            id: createId(),
-            employeeCd: "EMP999903",
-            email: "count3@example.com",
-            name: "カウント3",
-            role: Role.ADMIN,
-          },
-        ],
+      await createTestEmployeeWithUser({
+        employeeCd: "EMP999901",
+        email: "count1@example.com",
+        name: "カウント1",
+        role: "user",
+      });
+      await createTestEmployeeWithUser({
+        employeeCd: "EMP999902",
+        email: "count2@example.com",
+        name: "カウント2",
+        role: "user",
+      });
+      await createTestEmployeeWithUser({
+        employeeCd: "EMP999903",
+        email: "count3@example.com",
+        name: "カウント3",
+        role: "admin",
       });
     });
 
@@ -379,7 +378,7 @@ describe("PrismaEmployeeQueryService", () => {
     });
 
     it("条件に一致する従業員数をカウントできる", async () => {
-      const count = await queryService.count({ role: Role.USER });
+      const count = await queryService.count({ role: "user" });
 
       expect(count).toBeGreaterThanOrEqual(2);
     });

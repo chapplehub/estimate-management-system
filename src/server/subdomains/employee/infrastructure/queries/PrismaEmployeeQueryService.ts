@@ -6,11 +6,13 @@ import {
 import { IEmployeeQueryService } from "@subdomains/employee/application/queries/IEmployeeQueryService";
 import prisma from "@server/prisma";
 import { Prisma } from "@generated/prisma/client";
+import type { UserRole } from "@server/shared/auth/types";
 
 /**
  * Prismaを使用した従業員クエリサービス実装
  *
  * データベースから直接DTOを取得し、軽量で高速な読み取りを実現
+ * Note: roleはUser.roleから取得する
  */
 export class PrismaEmployeeQueryService implements IEmployeeQueryService {
   async findById(id: string): Promise<EmployeeDTO | null> {
@@ -96,8 +98,9 @@ export class PrismaEmployeeQueryService implements IEmployeeQueryService {
       where.employeeCd = criteria.employeeCd;
     }
 
+    // roleでのフィルタはUser.roleを使用
     if (criteria.role !== undefined) {
-      where.role = criteria.role;
+      where.user = { role: criteria.role };
     }
 
     // NOTE: isLocked 検索は認証を better-auth に移行したため削除
@@ -133,7 +136,7 @@ export class PrismaEmployeeQueryService implements IEmployeeQueryService {
 
   /**
    * DTOに必要なフィールドのみを取得するためのselect定義
-   * Entityの完全な再構築を避け、必要なデータだけを取得
+   * User.roleも含めて取得する
    */
   private getSelectFields() {
     return {
@@ -141,9 +144,14 @@ export class PrismaEmployeeQueryService implements IEmployeeQueryService {
       employeeCd: true,
       email: true,
       name: true,
-      role: true,
       createdAt: true,
       updatedAt: true,
+      // User.roleを取得
+      user: {
+        select: {
+          role: true,
+        },
+      },
     } as const;
   }
 
@@ -155,16 +163,17 @@ export class PrismaEmployeeQueryService implements IEmployeeQueryService {
     employeeCd: string;
     email: string;
     name: string;
-    role: string;
     createdAt: Date;
     updatedAt: Date;
+    user: { role: string | null } | null;
   }): EmployeeDTO {
     return {
       id: employee.id,
       employeeCd: employee.employeeCd,
       email: employee.email,
       name: employee.name,
-      role: employee.role as "ADMIN" | "USER",
+      // User.roleを使用（"admin" | "user" | null）
+      role: (employee.user?.role as UserRole) ?? null,
       createdAt: employee.createdAt,
       updatedAt: employee.updatedAt,
     };

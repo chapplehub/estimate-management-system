@@ -4,7 +4,6 @@ import {
   ListOptions,
 } from "../dto/EmployeeSearchCriteria";
 import { IEmployeeQueryService } from "../IEmployeeQueryService";
-import { Role } from "@subdomains/employee/domain/types/Role";
 import { SearchEmployeesQuery } from "../SearchEmployeesQuery";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -17,7 +16,7 @@ describe("SearchEmployeesQuery", () => {
     employeeCd: "EMP000001",
     email: "test@example.com",
     name: "テスト太郎",
-    role: Role.USER,
+    role: "user",
     createdAt: new Date("2025-01-01"),
     updatedAt: new Date("2025-01-01"),
   };
@@ -38,7 +37,7 @@ describe("SearchEmployeesQuery", () => {
   it("検索条件で従業員を検索できる", async () => {
     const criteria: EmployeeSearchCriteria = {
       name: "テスト",
-      role: Role.USER,
+      role: "user",
     };
 
     const mockResults: EmployeeDTO[] = [mockEmployeeDTO];
@@ -53,7 +52,7 @@ describe("SearchEmployeesQuery", () => {
 
   it("検索条件とオプションを指定して検索できる", async () => {
     const criteria: EmployeeSearchCriteria = {
-      role: Role.ADMIN,
+      role: "admin",
     };
 
     const options: ListOptions = {
@@ -63,7 +62,7 @@ describe("SearchEmployeesQuery", () => {
     };
 
     const mockResults: EmployeeDTO[] = [
-      { ...mockEmployeeDTO, role: Role.ADMIN },
+      { ...mockEmployeeDTO, role: "admin" },
     ];
 
     vi.mocked(mockQueryService.search).mockResolvedValue(mockResults);
@@ -90,7 +89,7 @@ describe("SearchEmployeesQuery", () => {
     const criteria: EmployeeSearchCriteria = {
       name: "テスト",
       email: "test",
-      role: Role.USER,
+      role: "user",
     };
 
     vi.mocked(mockQueryService.search).mockResolvedValue([mockEmployeeDTO]);

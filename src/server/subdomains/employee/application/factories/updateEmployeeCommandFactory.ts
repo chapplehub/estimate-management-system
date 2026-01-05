@@ -1,3 +1,4 @@
+import { BetterAuthUserManagementService } from "@server/shared/auth/better-auth/BetterAuthUserManagementService";
 import { UpdateEmployeeCommand } from "../commands/UpdateEmployeeCommand";
 import { MailAddressDuplicationCheckDomainService } from "../../domain/services/MailAddressDuplicationCheckDomainService";
 import { PrismaEmployeeRepository } from "../../infrastructure/prisma/PrismaEmployeeRepository";
@@ -9,9 +10,11 @@ import { PrismaEmployeeRepository } from "../../infrastructure/prisma/PrismaEmpl
  */
 export function updateEmployeeCommandFactory(): UpdateEmployeeCommand {
   const repository = new PrismaEmployeeRepository();
+  const userManagementService = new BetterAuthUserManagementService();
 
   return new UpdateEmployeeCommand(
     repository,
-    new MailAddressDuplicationCheckDomainService(repository)
+    new MailAddressDuplicationCheckDomainService(repository),
+    userManagementService
   );
 }

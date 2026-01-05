@@ -26,20 +26,19 @@ export async function createEmployee(prevState: unknown, formData: FormData) {
     return submission.reply();
   }
 
-  const { name, email, employeeCd, role } = submission.value;
+  const { name, email, employeeCd, role, password } = submission.value;
 
   try {
     // DIはファクトリで解決（インフラ層への依存をserver/側に閉じ込める）
     const command = createEmployeeCommandFactory();
 
-    // NOTE: パスワードは better-auth (User/Account) で管理
-    // 従業員作成後、別途 better-auth の API で認証情報を登録する
-
+    // Employee と認証ユーザー（User/Account）を同時に作成
     await command.execute({
       name,
       email,
       employeeCd,
       role,
+      password,
     });
 
     revalidatePath("/employees");

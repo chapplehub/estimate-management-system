@@ -1,7 +1,6 @@
 import { EmployeeDTO } from "../dto/EmployeeDTO";
 import { ListOptions } from "../dto/EmployeeSearchCriteria";
 import { IEmployeeQueryService } from "../IEmployeeQueryService";
-import { Role } from "@subdomains/employee/domain/types/Role";
 import { GetAllEmployeesQuery } from "../GetAllEmployeesQuery";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -14,7 +13,7 @@ describe("GetAllEmployeesQuery", () => {
     employeeCd: "EMP000001",
     email: "test@example.com",
     name: "テスト太郎",
-    role: Role.USER,
+    role: "user",
     createdAt: new Date("2025-01-01"),
     updatedAt: new Date("2025-01-01"),
   };

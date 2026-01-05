@@ -17,7 +17,7 @@ type Employee = {
   name: string;
   email: string;
   employeeCd: string;
-  role: "ADMIN" | "USER";
+  role: "admin" | "user" | null;
 };
 
 type Props = {
@@ -42,7 +42,7 @@ export function EmployeeUpdateForm({ employee, canUpdate }: Props) {
     defaultValue: {
       name: employee.name,
       email: employee.email,
-      role: employee.role,
+      role: employee.role ?? "user",
     },
     onValidate({ formData }) {
       return parseWithZod(formData, { schema: updateEmployeeSchema });
@@ -151,8 +151,8 @@ export function EmployeeUpdateForm({ employee, canUpdate }: Props) {
             disabled={isPending || !canUpdate}
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
           >
-            <option value="USER">一般ユーザー</option>
-            <option value="ADMIN">管理者</option>
+            <option value="user">一般ユーザー</option>
+            <option value="admin">管理者</option>
           </select>
           {fields.role.errors && (
             <p className="text-red-500 text-xs mt-1" id={fields.role.errorId}>

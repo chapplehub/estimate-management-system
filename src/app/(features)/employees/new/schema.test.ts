@@ -16,7 +16,7 @@ const validInput = {
   email: "yamada@example.com",
   employeeCd: "EMP000001",
   password: "password123",
-  role: "USER" as const,
+  role: "user" as const,
 };
 
 describe("createEmployeeSchema", () => {
@@ -453,18 +453,18 @@ describe("createEmployeeSchema", () => {
 
   describe("role フィールド", () => {
     describe("正常系", () => {
-      it("ADMINが許可される", () => {
+      it("adminが許可される", () => {
         const result = createEmployeeSchema.safeParse({
           ...validInput,
-          role: "ADMIN",
+          role: "admin",
         });
         expect(result.success).toBe(true);
       });
 
-      it("USERが許可される", () => {
+      it("userが許可される", () => {
         const result = createEmployeeSchema.safeParse({
           ...validInput,
-          role: "USER",
+          role: "user",
         });
         expect(result.success).toBe(true);
       });
@@ -495,10 +495,10 @@ describe("createEmployeeSchema", () => {
         }
       });
 
-      it("小文字はエラー", () => {
+      it("大文字はエラー", () => {
         const result = createEmployeeSchema.safeParse({
           ...validInput,
-          role: "admin",
+          role: "ADMIN",
         });
         expect(result.success).toBe(false);
         if (!result.success) {

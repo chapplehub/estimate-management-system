@@ -144,12 +144,12 @@ export function EmployeeCreateForm() {
           </label>
           <select
             {...getSelectProps(fields.role)}
-            defaultValue="USER"
+            defaultValue="user"
             disabled={isPending}
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
           >
-            <option value="USER">一般ユーザー</option>
-            <option value="ADMIN">管理者</option>
+            <option value="user">一般ユーザー</option>
+            <option value="admin">管理者</option>
           </select>
           {fields.role.errors && (
             <p className="text-red-500 text-xs mt-1" id={fields.role.errorId}>

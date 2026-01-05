@@ -9,6 +9,8 @@ export default async function EmployeePage() {
   // データ取得（Query側）
   const queryService = new PrismaEmployeeQueryService();
   const getAllQuery = new GetAllEmployeesQuery(queryService);
+  // TODO: 検索できるようにする。今は連弾リングの最初にデータを取得してるだけ
+  // TODO: IEmployeeQueryServiceのsearchを呼ぶ処理
   const employees = await getAllQuery.execute({});
 
   return (
@@ -24,6 +26,10 @@ export default async function EmployeePage() {
           </Link>
         )}
       </div>
+
+      {/* TODO: ここで検索コンポーネントを入れる。表示件数は20件 取得してくるのは1000件 1000件を超える場合は検索条件を絞るようにエラー表示する */}
+      {/* TODO: 従業員に退職フラグを付けるか検討する */}
+      {/* TODO: ページネーション機能をつける */}
 
       {/* 一覧表示 */}
       <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 text-gray-500">
@@ -64,12 +70,12 @@ export default async function EmployeePage() {
                     <td className="px-4 py-2">
                       <span
                         className={`px-2 py-1 rounded text-xs ${
-                          employee.role === "ADMIN"
+                          employee.role === "admin"
                             ? "bg-red-100 text-red-800"
                             : "bg-blue-100 text-blue-800"
                         }`}
                       >
-                        {employee.role === "ADMIN" ? "管理者" : "一般"}
+                        {employee.role === "admin" ? "管理者" : "一般"}
                       </span>
                     </td>
                   </tr>

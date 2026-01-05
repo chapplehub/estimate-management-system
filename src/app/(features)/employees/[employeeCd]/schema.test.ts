@@ -14,7 +14,7 @@ import { updateEmployeeSchema } from "./schema";
 const validInput = {
   name: "山田太郎",
   email: "yamada@example.com",
-  role: "USER" as const,
+  role: "user" as const,
 };
 
 describe("updateEmployeeSchema", () => {
@@ -27,8 +27,8 @@ describe("updateEmployeeSchema", () => {
       }
     });
 
-    it("roleがADMINの場合もパースが成功する", () => {
-      const input = { ...validInput, role: "ADMIN" as const };
+    it("roleがadminの場合もパースが成功する", () => {
+      const input = { ...validInput, role: "admin" as const };
       const result = updateEmployeeSchema.safeParse(input);
       expect(result.success).toBe(true);
     });
@@ -170,14 +170,14 @@ describe("updateEmployeeSchema", () => {
   });
 
   describe("role バリデーション", () => {
-    it("USERは有効", () => {
-      const input = { ...validInput, role: "USER" };
+    it("userは有効", () => {
+      const input = { ...validInput, role: "user" };
       const result = updateEmployeeSchema.safeParse(input);
       expect(result.success).toBe(true);
     });
 
-    it("ADMINは有効", () => {
-      const input = { ...validInput, role: "ADMIN" };
+    it("adminは有効", () => {
+      const input = { ...validInput, role: "admin" };
       const result = updateEmployeeSchema.safeParse(input);
       expect(result.success).toBe(true);
     });

@@ -1,6 +1,5 @@
 import { EmployeeDTO } from "../dto/EmployeeDTO";
 import { IEmployeeQueryService } from "../IEmployeeQueryService";
-import { Role } from "@subdomains/employee/domain/types/Role";
 import { GetEmployeeByEmailQuery } from "../GetEmployeeByEmailQuery";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -13,7 +12,7 @@ describe("GetEmployeeByEmailQuery", () => {
     employeeCd: "EMP000001",
     email: "test@example.com",
     name: "テスト太郎",
-    role: Role.USER,
+    role: "user",
     createdAt: new Date("2025-01-01"),
     updatedAt: new Date("2025-01-01"),
   };

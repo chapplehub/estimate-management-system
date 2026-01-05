@@ -1,9 +1,16 @@
-import type { Role } from "@generated/prisma/client";
-
 /**
  * 認証サービスで使用する型定義
  * Better Auth への依存を避け、アプリケーション独自の型を定義
  */
+
+/**
+ * ユーザーロール
+ *
+ * better-auth Admin Plugin が使用する形式に合わせる。
+ * - "admin": 管理者権限（Employee管理、システム管理等）
+ * - "user": 一般ユーザー権限
+ */
+export type UserRole = "admin" | "user";
 
 /**
  * 認証済みユーザー情報
@@ -17,8 +24,8 @@ export type AuthUser = {
   updatedAt: Date;
   /** 紐づく従業員ID（認可チェック用） */
   employeeId: string | null;
-  /** 従業員のロール（認可チェック用） */
-  role: Role | null;
+  /** ユーザーのロール（認可チェック用） */
+  role: UserRole | null;
 };
 
 /**

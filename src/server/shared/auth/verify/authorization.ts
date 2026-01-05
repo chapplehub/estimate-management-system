@@ -34,7 +34,7 @@ import type { AuthSession } from "../types";
  * ```
  */
 export function isAdmin(session: AuthSession): boolean {
-  return session.user.role === "ADMIN";
+  return session.user.role === "admin";
 }
 
 /**

@@ -23,7 +23,7 @@ model Employee {
   employeeCd String @unique @map("employee_cd") // EMP000001 形式
   email      String @unique
   name       String
-  role       Role   @default(USER)
+  // role は User.role に移動（better-auth Admin Plugin用）
 
   // タイムスタンプ
   createdAt DateTime @default(now()) @map("created_at")
@@ -33,11 +33,6 @@ model Employee {
   user User?
 
   @@map("employees")
-}
-
-enum Role {
-  ADMIN
-  USER
 }
 
 model User {
@@ -55,6 +50,13 @@ model User {
   employeeId String?   @unique @map("employee_id")
   employee   Employee? @relation(fields: [employeeId], references: [id])
 
+  // better-auth Admin Plugin用フィールド
+  // role: 権限管理にも使用（"admin" or "user"）
+  role       String?   @default("user")
+  banned     Boolean?  @default(false)
+  banReason  String?
+  banExpires DateTime?
+
   @@unique([email])
   @@map("user")
 }
@@ -69,6 +71,9 @@ model Session {
   userAgent String?
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // better-auth Admin Plugin用（なりすまし管理者ID）
+  impersonatedBy String?
 
   @@unique([token])
   @@index([userId])

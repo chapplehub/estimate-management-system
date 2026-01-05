@@ -6,6 +6,13 @@
  */
 
 export type { IAuthService } from "./IAuthService";
+export type { IUserManagementService } from "./IUserManagementService";
+export type {
+  CreateAuthUserInput,
+  CreateAuthUserResult,
+  RemoveAuthUserResult,
+  UpdateAuthUserEmailResult,
+} from "./IUserManagementService";
 export type {
   AuthSession,
   AuthUser,
@@ -19,6 +26,8 @@ export { isAdmin, isOwner } from "./verify/authorization";
 
 // デフォルトの認証サービスインスタンス
 import { BetterAuthService } from "./better-auth/BetterAuthService";
+// ユーザー管理サービスのエクスポート
+export { BetterAuthUserManagementService } from "./better-auth/BetterAuthUserManagementService";
 
 const authService = new BetterAuthService();
 

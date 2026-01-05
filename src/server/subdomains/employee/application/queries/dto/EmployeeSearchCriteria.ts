@@ -1,4 +1,4 @@
-import { Role } from "@subdomains/employee/domain/types/Role";
+import type { UserRole } from "@server/shared/auth/types";
 
 /**
  * 従業員検索条件
@@ -14,8 +14,8 @@ export type EmployeeSearchCriteria = {
   /** 従業員CDでの完全一致検索 */
   employeeCd?: string;
 
-  /** ロールでのフィルタ */
-  role?: Role;
+  /** ロールでのフィルタ（User.roleで検索） */
+  role?: UserRole;
 
   // NOTE: isLocked は認証を better-auth に移行したため削除
   // 将来的に User テーブルの ban 状態で検索する場合は別途実装

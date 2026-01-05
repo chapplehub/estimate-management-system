@@ -36,7 +36,7 @@ describe("EmployeeCreateForm", () => {
       render(<EmployeeCreateForm />);
 
       const roleSelect = screen.getByLabelText("権限");
-      expect(roleSelect).toHaveValue("USER"); // デフォルト値
+      expect(roleSelect).toHaveValue("user"); // デフォルト値
 
       // オプションの存在を確認
       expect(screen.getByRole("option", { name: "一般ユーザー" })).toBeInTheDocument();
@@ -79,11 +79,11 @@ describe("EmployeeCreateForm", () => {
 
       const roleSelect = screen.getByLabelText("権限");
 
-      await user.selectOptions(roleSelect, "ADMIN");
-      expect(roleSelect).toHaveValue("ADMIN");
+      await user.selectOptions(roleSelect, "admin");
+      expect(roleSelect).toHaveValue("admin");
 
-      await user.selectOptions(roleSelect, "USER");
-      expect(roleSelect).toHaveValue("USER");
+      await user.selectOptions(roleSelect, "user");
+      expect(roleSelect).toHaveValue("user");
     });
   });
 
@@ -115,7 +115,7 @@ describe("EmployeeCreateForm", () => {
       await user.type(screen.getByLabelText("メールアドレス"), "yamada@example.com");
       await user.type(screen.getByLabelText("従業員コード"), "EMP000001");
       await user.type(screen.getByLabelText("パスワード"), "password123");
-      await user.selectOptions(screen.getByLabelText("権限"), "ADMIN");
+      await user.selectOptions(screen.getByLabelText("権限"), "admin");
 
       // フォームを送信
       await user.click(screen.getByRole("button", { name: "登録" }));
@@ -129,7 +129,7 @@ describe("EmployeeCreateForm", () => {
       expect(formData.get("email")).toBe("yamada@example.com");
       expect(formData.get("employeeCd")).toBe("EMP000001");
       expect(formData.get("password")).toBe("password123");
-      expect(formData.get("role")).toBe("ADMIN");
+      expect(formData.get("role")).toBe("admin");
     });
   });
 

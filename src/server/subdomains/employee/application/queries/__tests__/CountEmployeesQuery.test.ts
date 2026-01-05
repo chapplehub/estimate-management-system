@@ -1,6 +1,5 @@
 import { EmployeeSearchCriteria } from "../dto/EmployeeSearchCriteria";
 import { IEmployeeQueryService } from "../IEmployeeQueryService";
-import { Role } from "@subdomains/employee/domain/types/Role";
 import { CountEmployeesQuery } from "../CountEmployeesQuery";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -32,7 +31,7 @@ describe("CountEmployeesQuery", () => {
 
   it("検索条件に一致する従業員数をカウントできる", async () => {
     const criteria: EmployeeSearchCriteria = {
-      role: Role.ADMIN,
+      role: "admin",
     };
 
     vi.mocked(mockQueryService.count).mockResolvedValue(5);

@@ -19,7 +19,6 @@ export class InMemoryEmployeeRepository implements IEmployeeRepository {
         employee.employeeCd,
         employee.email,
         employee.name,
-        employee.role,
         employee.createdAt,
         employee.updatedAt
       );

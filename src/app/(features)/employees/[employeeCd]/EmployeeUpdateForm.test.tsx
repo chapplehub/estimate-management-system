@@ -24,7 +24,7 @@ const mockEmployee = {
   name: "山田太郎",
   email: "yamada@example.com",
   employeeCd: "EMP000001",
-  role: "USER" as const,
+  role: "user" as const,
 };
 
 describe("EmployeeUpdateForm", () => {
@@ -58,7 +58,7 @@ describe("EmployeeUpdateForm", () => {
         "yamada@example.com"
       );
       expect(screen.getByLabelText("従業員コード")).toHaveValue("EMP000001");
-      expect(screen.getByLabelText("権限")).toHaveValue("USER");
+      expect(screen.getByLabelText("権限")).toHaveValue("user");
     });
 
     test("従業員コードは読み取り専用で表示される", () => {
@@ -159,11 +159,11 @@ describe("EmployeeUpdateForm", () => {
 
       const roleSelect = screen.getByLabelText("権限");
 
-      await user.selectOptions(roleSelect, "ADMIN");
-      expect(roleSelect).toHaveValue("ADMIN");
+      await user.selectOptions(roleSelect, "admin");
+      expect(roleSelect).toHaveValue("admin");
 
-      await user.selectOptions(roleSelect, "USER");
-      expect(roleSelect).toHaveValue("USER");
+      await user.selectOptions(roleSelect, "user");
+      expect(roleSelect).toHaveValue("user");
     });
   });
 
@@ -189,7 +189,7 @@ describe("EmployeeUpdateForm", () => {
       await user.clear(nameInput);
       await user.type(nameInput, "田中花子");
 
-      await user.selectOptions(screen.getByLabelText("権限"), "ADMIN");
+      await user.selectOptions(screen.getByLabelText("権限"), "admin");
 
       // フォームを送信
       await user.click(screen.getByRole("button", { name: "更新" }));
@@ -208,7 +208,7 @@ describe("EmployeeUpdateForm", () => {
 
       expect(formData.get("name")).toBe("田中花子");
       expect(formData.get("email")).toBe("yamada@example.com");
-      expect(formData.get("role")).toBe("ADMIN");
+      expect(formData.get("role")).toBe("admin");
     });
   });
 

@@ -1,5 +1,4 @@
 import { createId } from "@paralleldrive/cuid2";
-import { Role } from "@subdomains/employee/domain/types/Role";
 import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
 
@@ -7,7 +6,7 @@ import { MailAddress } from "@server/shared/domain/values/MailAddress";
  * 従業員エンティティ
  *
  * 業務ドメインにおける従業員を表す。
- * 認証関連の責務は better-auth (User/Account) に委譲。
+ * 認証関連の責務（パスワード、ロール等）は better-auth (User/Account) に委譲。
  */
 export class Employee {
   /** エンティティ名（エラーメッセージ用） */
@@ -18,7 +17,6 @@ export class Employee {
     private readonly _employeeCd: EmployeeCd,
     private _email: MailAddress,
     private _name: string,
-    private _role: Role,
     private readonly _createdAt: Date,
     private _updatedAt: Date
   ) {}
@@ -29,14 +27,12 @@ export class Employee {
    * @param employeeCd 社員コード
    * @param email メールアドレス
    * @param name 氏名
-   * @param role 役割（デフォルト：USER）
    * @returns 従業員エンティティ
    */
   static create(
     employeeCd: EmployeeCd,
     email: MailAddress,
-    name: string,
-    role: Role = Role.USER
+    name: string
   ): Employee {
     const now = new Date();
 
@@ -45,7 +41,6 @@ export class Employee {
       employeeCd,
       email,
       name,
-      role,
       now,
       now
     );
@@ -58,7 +53,6 @@ export class Employee {
    * @param employeeCd 社員コード
    * @param email メールアドレス
    * @param name 氏名
-   * @param role 役割
    * @param createdAt 作成日時
    * @param updatedAt 更新日時
    * @returns 従業員エンティティ
@@ -68,11 +62,10 @@ export class Employee {
     employeeCd: EmployeeCd,
     email: MailAddress,
     name: string,
-    role: Role,
     createdAt: Date,
     updatedAt: Date
   ): Employee {
-    return new Employee(id, employeeCd, email, name, role, createdAt, updatedAt);
+    return new Employee(id, employeeCd, email, name, createdAt, updatedAt);
   }
 
   // ========================================
@@ -99,25 +92,6 @@ export class Employee {
     this._updatedAt = new Date();
   }
 
-  /**
-   * 役割を変更
-   *
-   * @param newRole
-   */
-  changeRole(newRole: Role): void {
-    this._role = newRole;
-    this._updatedAt = new Date();
-  }
-
-  /**
-   * 管理者かどうか判定
-   *
-   * @returns 管理者の場合true
-   */
-  isAdmin(): boolean {
-    return this._role === Role.ADMIN;
-  }
-
   // ========================================
   // ゲッター
   // ========================================
@@ -136,10 +110,6 @@ export class Employee {
 
   get name(): string {
     return this._name;
-  }
-
-  get role(): Role {
-    return this._role;
   }
 
   get createdAt(): Date {
