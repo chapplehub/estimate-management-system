@@ -1,4 +1,5 @@
 import prisma from "@server/prisma";
+import type { UserRole } from "@server/shared/auth/types";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
@@ -44,7 +45,7 @@ export const auth = betterAuth({
           ...user,
           employeeId: dbUser?.employeeId ?? null,
           // User.roleを使用（"admin" | "user"）
-          role: (dbUser?.role as "admin" | "user") ?? null,
+          role: (dbUser?.role as UserRole) ?? null,
         },
       };
     }),

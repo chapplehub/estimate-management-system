@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { createEmployeeSchema } from "./schema";
+import { USER_ROLES } from "@server/shared/auth/types";
 
 /**
  * createEmployeeSchema のバリデーションテスト
@@ -16,7 +17,7 @@ const validInput = {
   email: "yamada@example.com",
   employeeCd: "EMP000001",
   password: "password123",
-  role: "user" as const,
+  role: USER_ROLES.USER,
 };
 
 describe("createEmployeeSchema", () => {
@@ -456,7 +457,7 @@ describe("createEmployeeSchema", () => {
       it("adminが許可される", () => {
         const result = createEmployeeSchema.safeParse({
           ...validInput,
-          role: "admin",
+          role: USER_ROLES.ADMIN,
         });
         expect(result.success).toBe(true);
       });
@@ -464,7 +465,7 @@ describe("createEmployeeSchema", () => {
       it("userが許可される", () => {
         const result = createEmployeeSchema.safeParse({
           ...validInput,
-          role: "user",
+          role: USER_ROLES.USER,
         });
         expect(result.success).toBe(true);
       });

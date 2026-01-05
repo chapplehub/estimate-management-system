@@ -8,6 +8,7 @@ import { ValidationError } from "@server/shared/errors/DomainError";
 import { UpdateEmployeeCommand } from "../UpdateEmployeeCommand";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { IUserManagementService } from "@server/shared/auth/IUserManagementService";
+import { USER_ROLES } from "@server/shared/auth/types";
 
 describe("UpdateEmployeeCommand", () => {
   let command: UpdateEmployeeCommand;
@@ -62,7 +63,7 @@ describe("UpdateEmployeeCommand", () => {
       employeeCd: "EMP000001",
       email: "new@example.com",
       name: "新名前",
-      role: "admin",
+      role: USER_ROLES.ADMIN,
     });
 
     expect(mockRepository.findById).toHaveBeenCalledWith("test-id-001");
@@ -84,7 +85,7 @@ describe("UpdateEmployeeCommand", () => {
     // role変更時に認証ユーザーのroleも更新されることを確認
     expect(mockUserManagementService.updateUserRole).toHaveBeenCalledWith(
       "user-1",
-      "admin"
+      USER_ROLES.ADMIN
     );
   });
 
@@ -97,7 +98,7 @@ describe("UpdateEmployeeCommand", () => {
         employeeCd: "EMP000001",
         email: "test@example.com",
         name: "テスト太郎",
-        role: "user",
+        role: USER_ROLES.USER,
       })
     ).rejects.toThrow(NotFoundEntityError);
 
@@ -113,7 +114,7 @@ describe("UpdateEmployeeCommand", () => {
         employeeCd: "EMP000001",
         email: "invalid-email",
         name: "新名前",
-        role: "user",
+        role: USER_ROLES.USER,
       })
     ).rejects.toThrow(ValidationError);
 

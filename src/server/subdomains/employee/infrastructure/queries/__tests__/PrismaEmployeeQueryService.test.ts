@@ -2,6 +2,8 @@ import { PrismaEmployeeQueryService } from "../PrismaEmployeeQueryService";
 import prisma from "@server/prisma";
 import { createId } from "@paralleldrive/cuid2";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { UserRole } from "@server/shared/auth/types";
+import { USER_ROLES } from "@server/shared/auth/types";
 
 describe("PrismaEmployeeQueryService", () => {
   let queryService: PrismaEmployeeQueryService;
@@ -17,7 +19,7 @@ describe("PrismaEmployeeQueryService", () => {
     employeeCd: string;
     email: string;
     name: string;
-    role: "admin" | "user";
+    role: UserRole;
   }) {
     const employeeId = createId();
     const userId = createId();
@@ -106,7 +108,7 @@ describe("PrismaEmployeeQueryService", () => {
         employeeCd: "EMP999901",
         email: "query-findbyid@example.com",
         name: "QueryFindById",
-        role: "user",
+        role: USER_ROLES.USER,
       });
 
       // findByIdで取得
@@ -117,7 +119,7 @@ describe("PrismaEmployeeQueryService", () => {
       expect(found?.employeeCd).toBe("EMP999901");
       expect(found?.email).toBe("query-findbyid@example.com");
       expect(found?.name).toBe("QueryFindById");
-      expect(found?.role).toBe("user");
+      expect(found?.role).toBe(USER_ROLES.USER);
     });
 
     it("存在しないIDの場合nullを返す", async () => {
@@ -132,7 +134,7 @@ describe("PrismaEmployeeQueryService", () => {
         employeeCd: "EMP999902",
         email: "query-email@example.com",
         name: "QueryEmail",
-        role: "admin",
+        role: USER_ROLES.ADMIN,
       });
 
       const found = await queryService.findByEmail("query-email@example.com");
@@ -140,7 +142,7 @@ describe("PrismaEmployeeQueryService", () => {
       expect(found).not.toBeNull();
       expect(found?.email).toBe("query-email@example.com");
       expect(found?.employeeCd).toBe("EMP999902");
-      expect(found?.role).toBe("admin");
+      expect(found?.role).toBe(USER_ROLES.ADMIN);
     });
 
     it("存在しないメールアドレスの場合nullを返す", async () => {
@@ -155,7 +157,7 @@ describe("PrismaEmployeeQueryService", () => {
         employeeCd: "EMP999903",
         email: "query-cd@example.com",
         name: "QueryEmployeeCd",
-        role: "user",
+        role: USER_ROLES.USER,
       });
 
       const found = await queryService.findByEmployeeCd("EMP999903");
@@ -178,25 +180,25 @@ describe("PrismaEmployeeQueryService", () => {
         employeeCd: "EMP999901",
         email: "search-tanaka@example.com",
         name: "田中太郎",
-        role: "user",
+        role: USER_ROLES.USER,
       });
       await createTestEmployeeWithUser({
         employeeCd: "EMP999902",
         email: "search-yamada@example.com",
         name: "山田花子",
-        role: "admin",
+        role: USER_ROLES.ADMIN,
       });
       await createTestEmployeeWithUser({
         employeeCd: "EMP999903",
         email: "search-suzuki@example.com",
         name: "鈴木一郎",
-        role: "user",
+        role: USER_ROLES.USER,
       });
       await createTestEmployeeWithUser({
         employeeCd: "EMP999904",
         email: "search-sato@example.com",
         name: "佐藤次郎",
-        role: "user",
+        role: USER_ROLES.USER,
       });
     });
 
@@ -222,13 +224,13 @@ describe("PrismaEmployeeQueryService", () => {
     });
 
     it("ロールでのフィルタができる", async () => {
-      const results = await queryService.search({ role: "admin" });
+      const results = await queryService.search({ role: USER_ROLES.ADMIN });
 
       // 少なくとも1人のadminが取得できる
       expect(results.length).toBeGreaterThanOrEqual(1);
       // 全員がadminであること
       results.forEach((r) => {
-        expect(r.role).toBe("admin");
+        expect(r.role).toBe(USER_ROLES.ADMIN);
       });
       // テストデータの山田花子が含まれている
       const names = results.map((r) => r.name);
@@ -239,14 +241,14 @@ describe("PrismaEmployeeQueryService", () => {
 
     it("複数条件の組み合わせで検索できる", async () => {
       const results = await queryService.search({
-        role: "user",
+        role: USER_ROLES.USER,
         name: "田中",
       });
 
       // user かつ 田中 が名前に含まれる従業員
       expect(results.length).toBeGreaterThanOrEqual(1);
       results.forEach((r) => {
-        expect(r.role).toBe("user");
+        expect(r.role).toBe(USER_ROLES.USER);
         expect(r.name).toContain("田中");
       });
     });
@@ -310,13 +312,13 @@ describe("PrismaEmployeeQueryService", () => {
         employeeCd: "EMP999901",
         email: "findall1@example.com",
         name: "全取得1",
-        role: "user",
+        role: USER_ROLES.USER,
       });
       await createTestEmployeeWithUser({
         employeeCd: "EMP999902",
         email: "findall2@example.com",
         name: "全取得2",
-        role: "admin",
+        role: USER_ROLES.ADMIN,
       });
     });
 
@@ -355,19 +357,19 @@ describe("PrismaEmployeeQueryService", () => {
         employeeCd: "EMP999901",
         email: "count1@example.com",
         name: "カウント1",
-        role: "user",
+        role: USER_ROLES.USER,
       });
       await createTestEmployeeWithUser({
         employeeCd: "EMP999902",
         email: "count2@example.com",
         name: "カウント2",
-        role: "user",
+        role: USER_ROLES.USER,
       });
       await createTestEmployeeWithUser({
         employeeCd: "EMP999903",
         email: "count3@example.com",
         name: "カウント3",
-        role: "admin",
+        role: USER_ROLES.ADMIN,
       });
     });
 
@@ -378,7 +380,7 @@ describe("PrismaEmployeeQueryService", () => {
     });
 
     it("条件に一致する従業員数をカウントできる", async () => {
-      const count = await queryService.count({ role: "user" });
+      const count = await queryService.count({ role: USER_ROLES.USER });
 
       expect(count).toBeGreaterThanOrEqual(2);
     });

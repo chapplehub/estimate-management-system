@@ -1,5 +1,6 @@
 import { verifySession } from "@/app/_lib/verifyAuthentication";
 import { isAdmin } from "@server/shared/auth";
+import { USER_ROLES } from "@server/shared/auth/types";
 import { GetAllEmployeesQuery } from "@subdomains/employee/application/queries/GetAllEmployeesQuery";
 import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
 import Link from "next/link";
@@ -70,12 +71,12 @@ export default async function EmployeePage() {
                     <td className="px-4 py-2">
                       <span
                         className={`px-2 py-1 rounded text-xs ${
-                          employee.role === "admin"
+                          employee.role === USER_ROLES.ADMIN
                             ? "bg-red-100 text-red-800"
                             : "bg-blue-100 text-blue-800"
                         }`}
                       >
-                        {employee.role === "admin" ? "管理者" : "一般"}
+                        {employee.role === USER_ROLES.ADMIN ? "管理者" : "一般"}
                       </span>
                     </td>
                   </tr>

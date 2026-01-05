@@ -1,3 +1,4 @@
+import { USER_ROLES } from "@server/shared/auth/types";
 import { z } from "zod";
 
 /**
@@ -16,7 +17,7 @@ export const employeeBaseSchema = z.object({
     .max(254, { error: "メールアドレスは254文字以内で入力してください" })
     .pipe(z.email({ error: "有効なメールアドレスを入力してください" })),
   // User.roleに設定される値（"admin" | "user"）
-  role: z.enum(["admin", "user"], {
+  role: z.enum([USER_ROLES.ADMIN, USER_ROLES.USER], {
     error: "権限を選択してください",
   }),
 });

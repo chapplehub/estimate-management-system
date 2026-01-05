@@ -9,7 +9,7 @@
  * @see learning/ddd-auth-layer-placement.md
  */
 
-import type { AuthSession } from "../types";
+import { USER_ROLES, type AuthSession } from "../types";
 
 /**
  * 管理者権限チェック
@@ -34,7 +34,7 @@ import type { AuthSession } from "../types";
  * ```
  */
 export function isAdmin(session: AuthSession): boolean {
-  return session.user.role === "admin";
+  return session.user.role === USER_ROLES.ADMIN;
 }
 
 /**

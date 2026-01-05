@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { updateEmployeeSchema } from "./schema";
+import { USER_ROLES } from "@server/shared/auth/types";
 
 /**
  * updateEmployeeSchema のバリデーションテスト
@@ -14,7 +15,7 @@ import { updateEmployeeSchema } from "./schema";
 const validInput = {
   name: "山田太郎",
   email: "yamada@example.com",
-  role: "user" as const,
+  role: USER_ROLES.USER,
 };
 
 describe("updateEmployeeSchema", () => {
@@ -28,7 +29,7 @@ describe("updateEmployeeSchema", () => {
     });
 
     it("roleがadminの場合もパースが成功する", () => {
-      const input = { ...validInput, role: "admin" as const };
+      const input = { ...validInput, role: USER_ROLES.ADMIN };
       const result = updateEmployeeSchema.safeParse(input);
       expect(result.success).toBe(true);
     });
@@ -171,13 +172,13 @@ describe("updateEmployeeSchema", () => {
 
   describe("role バリデーション", () => {
     it("userは有効", () => {
-      const input = { ...validInput, role: "user" };
+      const input = { ...validInput, role: USER_ROLES.USER };
       const result = updateEmployeeSchema.safeParse(input);
       expect(result.success).toBe(true);
     });
 
     it("adminは有効", () => {
-      const input = { ...validInput, role: "admin" };
+      const input = { ...validInput, role: USER_ROLES.ADMIN };
       const result = updateEmployeeSchema.safeParse(input);
       expect(result.success).toBe(true);
     });

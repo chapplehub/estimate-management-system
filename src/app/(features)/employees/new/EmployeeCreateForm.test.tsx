@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, test, vi, beforeEach, type Mock } from "vitest";
 import { createEmployee } from "./actions";
 import { EmployeeCreateForm } from "./EmployeeCreateForm";
+import { USER_ROLES } from "@server/shared/auth/types";
 
 // Server Action をモック
 vi.mock("./actions", () => ({
@@ -36,7 +37,7 @@ describe("EmployeeCreateForm", () => {
       render(<EmployeeCreateForm />);
 
       const roleSelect = screen.getByLabelText("権限");
-      expect(roleSelect).toHaveValue("user"); // デフォルト値
+      expect(roleSelect).toHaveValue(USER_ROLES.USER); // デフォルト値
 
       // オプションの存在を確認
       expect(screen.getByRole("option", { name: "一般ユーザー" })).toBeInTheDocument();
@@ -79,11 +80,11 @@ describe("EmployeeCreateForm", () => {
 
       const roleSelect = screen.getByLabelText("権限");
 
-      await user.selectOptions(roleSelect, "admin");
-      expect(roleSelect).toHaveValue("admin");
+      await user.selectOptions(roleSelect, USER_ROLES.ADMIN);
+      expect(roleSelect).toHaveValue(USER_ROLES.ADMIN);
 
-      await user.selectOptions(roleSelect, "user");
-      expect(roleSelect).toHaveValue("user");
+      await user.selectOptions(roleSelect, USER_ROLES.USER);
+      expect(roleSelect).toHaveValue(USER_ROLES.USER);
     });
   });
 
@@ -115,7 +116,7 @@ describe("EmployeeCreateForm", () => {
       await user.type(screen.getByLabelText("メールアドレス"), "yamada@example.com");
       await user.type(screen.getByLabelText("従業員コード"), "EMP000001");
       await user.type(screen.getByLabelText("パスワード"), "password123");
-      await user.selectOptions(screen.getByLabelText("権限"), "admin");
+      await user.selectOptions(screen.getByLabelText("権限"), USER_ROLES.ADMIN);
 
       // フォームを送信
       await user.click(screen.getByRole("button", { name: "登録" }));
@@ -129,7 +130,7 @@ describe("EmployeeCreateForm", () => {
       expect(formData.get("email")).toBe("yamada@example.com");
       expect(formData.get("employeeCd")).toBe("EMP000001");
       expect(formData.get("password")).toBe("password123");
-      expect(formData.get("role")).toBe("admin");
+      expect(formData.get("role")).toBe(USER_ROLES.ADMIN);
     });
   });
 

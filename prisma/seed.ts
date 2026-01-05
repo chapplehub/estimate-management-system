@@ -3,6 +3,8 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { config } from "dotenv";
 import { hashPassword } from "better-auth/crypto";
 import { PrismaClient } from "../generated/prisma/client";
+import type { UserRole } from "../src/server/shared/auth/types";
+import { USER_ROLES } from "../src/server/shared/auth/types";
 
 config({ path: ".env" });
 
@@ -19,7 +21,7 @@ interface SeedUser {
   employeeCd: string;
   email: string;
   name: string;
-  role: "admin" | "user";
+  role: UserRole;
 }
 
 async function createUserWithEmployee(userData: SeedUser) {
@@ -85,31 +87,31 @@ async function main() {
       employeeCd: "EMP000001",
       email: "admin@example.com",
       name: "Admin Taro",
-      role: "admin",
+      role: USER_ROLES.ADMIN,
     },
     {
       employeeCd: "EMP000002",
       email: "yamada@example.com",
       name: "Yamada Hanako",
-      role: "user",
+      role: USER_ROLES.USER,
     },
     {
       employeeCd: "EMP000003",
       email: "tanaka@example.com",
       name: "Tanaka Ichiro",
-      role: "user",
+      role: USER_ROLES.USER,
     },
     {
       employeeCd: "EMP000004",
       email: "suzuki@example.com",
       name: "Suzuki Jiro",
-      role: "user",
+      role: USER_ROLES.USER,
     },
     {
       employeeCd: "EMP000005",
       email: "sato@example.com",
       name: "Sato Saburo",
-      role: "user",
+      role: USER_ROLES.USER,
     },
   ];
 

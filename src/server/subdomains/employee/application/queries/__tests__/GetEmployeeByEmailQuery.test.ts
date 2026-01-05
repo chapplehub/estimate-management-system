@@ -2,6 +2,7 @@ import { EmployeeDTO } from "../dto/EmployeeDTO";
 import { IEmployeeQueryService } from "../IEmployeeQueryService";
 import { GetEmployeeByEmailQuery } from "../GetEmployeeByEmailQuery";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { USER_ROLES } from "@server/shared/auth/types";
 
 describe("GetEmployeeByEmailQuery", () => {
   let query: GetEmployeeByEmailQuery;
@@ -12,7 +13,7 @@ describe("GetEmployeeByEmailQuery", () => {
     employeeCd: "EMP000001",
     email: "test@example.com",
     name: "テスト太郎",
-    role: "user",
+    role: USER_ROLES.USER,
     createdAt: new Date("2025-01-01"),
     updatedAt: new Date("2025-01-01"),
   };

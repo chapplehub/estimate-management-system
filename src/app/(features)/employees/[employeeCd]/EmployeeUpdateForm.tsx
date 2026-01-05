@@ -7,6 +7,8 @@ import {
   useForm,
 } from "@conform-to/react";
 import { parseWithZod } from "@conform-to/zod/v4";
+import type { UserRole } from "@server/shared/auth/types";
+import { USER_ROLES } from "@server/shared/auth/types";
 import { useActionState, useEffect } from "react";
 import { toast } from "sonner";
 import { updateEmployee } from "./actions";
@@ -17,7 +19,7 @@ type Employee = {
   name: string;
   email: string;
   employeeCd: string;
-  role: "admin" | "user" | null;
+  role: UserRole | null;
 };
 
 type Props = {
@@ -42,7 +44,7 @@ export function EmployeeUpdateForm({ employee, canUpdate }: Props) {
     defaultValue: {
       name: employee.name,
       email: employee.email,
-      role: employee.role ?? "user",
+      role: employee.role ?? USER_ROLES.USER,
     },
     onValidate({ formData }) {
       return parseWithZod(formData, { schema: updateEmployeeSchema });
@@ -151,8 +153,8 @@ export function EmployeeUpdateForm({ employee, canUpdate }: Props) {
             disabled={isPending || !canUpdate}
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
           >
-            <option value="user">一般ユーザー</option>
-            <option value="admin">管理者</option>
+            <option value={USER_ROLES.USER}>一般ユーザー</option>
+            <option value={USER_ROLES.ADMIN}>管理者</option>
           </select>
           {fields.role.errors && (
             <p className="text-red-500 text-xs mt-1" id={fields.role.errorId}>

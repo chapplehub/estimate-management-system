@@ -4,13 +4,21 @@
  */
 
 /**
- * ユーザーロール
+ * ユーザーロール定数
  *
  * better-auth Admin Plugin が使用する形式に合わせる。
- * - "admin": 管理者権限（Employee管理、システム管理等）
- * - "user": 一般ユーザー権限
+ * - ADMIN: 管理者権限（Employee管理、システム管理等）
+ * - USER: 一般ユーザー権限
  */
-export type UserRole = "admin" | "user";
+export const USER_ROLES = {
+  ADMIN: "admin",
+  USER: "user",
+} as const;
+
+/**
+ * ユーザーロール型
+ */
+export type UserRole = (typeof USER_ROLES)[keyof typeof USER_ROLES];
 
 /**
  * 認証済みユーザー情報

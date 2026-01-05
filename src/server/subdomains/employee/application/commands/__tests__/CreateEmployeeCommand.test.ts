@@ -8,6 +8,7 @@ import { ValidationError } from "@server/shared/errors/DomainError";
 import { CreateEmployeeCommand } from "../CreateEmployeeCommand";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { IUserManagementService } from "@server/shared/auth/IUserManagementService";
+import { USER_ROLES } from "@server/shared/auth/types";
 
 describe("CreateEmployeeCommand", () => {
   let command: CreateEmployeeCommand;
@@ -57,7 +58,7 @@ describe("CreateEmployeeCommand", () => {
       employeeCd: "EMP000001",
       email: "test@example.com",
       name: "テスト太郎",
-      role: "user",
+      role: USER_ROLES.USER,
       password: "Password1!",
     });
 
@@ -74,7 +75,7 @@ describe("CreateEmployeeCommand", () => {
         email: "test@example.com",
         password: "Password1!",
         name: "テスト太郎",
-        role: "user",
+        role: USER_ROLES.USER,
       })
     );
   });
@@ -87,7 +88,7 @@ describe("CreateEmployeeCommand", () => {
         employeeCd: "EMP000001",
         email: "test@example.com",
         name: "テスト太郎",
-        role: "user",
+        role: USER_ROLES.USER,
         password: "Password1!",
       })
     ).rejects.toThrow(ValidationError);
@@ -103,7 +104,7 @@ describe("CreateEmployeeCommand", () => {
         employeeCd: "EMP000001",
         email: "invalid-email",
         name: "テスト太郎",
-        role: "user",
+        role: USER_ROLES.USER,
         password: "Password1!",
       })
     ).rejects.toThrow(ValidationError);
@@ -117,7 +118,7 @@ describe("CreateEmployeeCommand", () => {
         employeeCd: "INVALID",
         email: "test@example.com",
         name: "テスト太郎",
-        role: "user",
+        role: USER_ROLES.USER,
         password: "Password1!",
       })
     ).rejects.toThrow(ValidationError);

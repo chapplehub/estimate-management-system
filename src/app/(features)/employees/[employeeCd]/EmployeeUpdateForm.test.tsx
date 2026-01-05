@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, test, vi, type Mock } from "vitest";
 import { updateEmployee } from "./actions";
 import { EmployeeUpdateForm } from "./EmployeeUpdateForm";
+import { USER_ROLES } from "@server/shared/auth/types";
 
 // Server Action をモック
 vi.mock("./actions", () => ({
@@ -24,7 +25,7 @@ const mockEmployee = {
   name: "山田太郎",
   email: "yamada@example.com",
   employeeCd: "EMP000001",
-  role: "user" as const,
+  role: USER_ROLES.USER,
 };
 
 describe("EmployeeUpdateForm", () => {
@@ -58,7 +59,7 @@ describe("EmployeeUpdateForm", () => {
         "yamada@example.com"
       );
       expect(screen.getByLabelText("従業員コード")).toHaveValue("EMP000001");
-      expect(screen.getByLabelText("権限")).toHaveValue("user");
+      expect(screen.getByLabelText("権限")).toHaveValue(USER_ROLES.USER);
     });
 
     test("従業員コードは読み取り専用で表示される", () => {
@@ -159,11 +160,11 @@ describe("EmployeeUpdateForm", () => {
 
       const roleSelect = screen.getByLabelText("権限");
 
-      await user.selectOptions(roleSelect, "admin");
-      expect(roleSelect).toHaveValue("admin");
+      await user.selectOptions(roleSelect, USER_ROLES.ADMIN);
+      expect(roleSelect).toHaveValue(USER_ROLES.ADMIN);
 
-      await user.selectOptions(roleSelect, "user");
-      expect(roleSelect).toHaveValue("user");
+      await user.selectOptions(roleSelect, USER_ROLES.USER);
+      expect(roleSelect).toHaveValue(USER_ROLES.USER);
     });
   });
 
@@ -189,7 +190,7 @@ describe("EmployeeUpdateForm", () => {
       await user.clear(nameInput);
       await user.type(nameInput, "田中花子");
 
-      await user.selectOptions(screen.getByLabelText("権限"), "admin");
+      await user.selectOptions(screen.getByLabelText("権限"), USER_ROLES.ADMIN);
 
       // フォームを送信
       await user.click(screen.getByRole("button", { name: "更新" }));
@@ -208,7 +209,7 @@ describe("EmployeeUpdateForm", () => {
 
       expect(formData.get("name")).toBe("田中花子");
       expect(formData.get("email")).toBe("yamada@example.com");
-      expect(formData.get("role")).toBe("admin");
+      expect(formData.get("role")).toBe(USER_ROLES.ADMIN);
     });
   });
 

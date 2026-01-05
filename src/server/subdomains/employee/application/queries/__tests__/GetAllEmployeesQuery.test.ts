@@ -3,6 +3,7 @@ import { ListOptions } from "../dto/EmployeeSearchCriteria";
 import { IEmployeeQueryService } from "../IEmployeeQueryService";
 import { GetAllEmployeesQuery } from "../GetAllEmployeesQuery";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { USER_ROLES } from "@server/shared/auth/types";
 
 describe("GetAllEmployeesQuery", () => {
   let query: GetAllEmployeesQuery;
@@ -13,7 +14,7 @@ describe("GetAllEmployeesQuery", () => {
     employeeCd: "EMP000001",
     email: "test@example.com",
     name: "テスト太郎",
-    role: "user",
+    role: USER_ROLES.USER,
     createdAt: new Date("2025-01-01"),
     updatedAt: new Date("2025-01-01"),
   };
