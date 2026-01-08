@@ -87,11 +87,11 @@ export class PrismaEmployeeQueryService implements IEmployeeQueryService {
     const where: Prisma.EmployeeWhereInput = {};
 
     if (criteria.name) {
-      where.name = { contains: criteria.name };
+      where.name = { contains: criteria.name, mode: "insensitive" };
     }
 
     if (criteria.email) {
-      where.email = { contains: criteria.email };
+      where.email = { contains: criteria.email, mode: "insensitive" };
     }
 
     if (criteria.employeeCd) {

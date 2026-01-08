@@ -1,22 +1,74 @@
 import { verifySession } from "@/app/_lib/verifyAuthentication";
 import { isAdmin } from "@server/shared/auth";
-import { USER_ROLES } from "@server/shared/auth/types";
-import { GetAllEmployeesQuery } from "@subdomains/employee/application/queries/GetAllEmployeesQuery";
+import { USER_ROLES, type UserRole } from "@server/shared/auth/types";
+import { SearchEmployeesQuery } from "@subdomains/employee/application/queries/SearchEmployeesQuery";
+import type { EmployeeSearchCriteria } from "@subdomains/employee/application/queries/dto/EmployeeSearchCriteria";
 import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
 import Link from "next/link";
+import { EmployeeSearchForm } from "./_components/EmployeeSearchForm";
 
-export default async function EmployeePage() {
+// NOTE: このページの検索機能の実装としては、URLのパスパラメタに基づいて検索を実行する。そのため初期検索は全件取得。
+// NOTE: 検索条件を入力して検索ボタンを押すと直接検索APIが実行されるのではなく、まず入力した検索条件をパスパラメタに設定してナビゲーションし、レンダリング時に検索処理が実行される。
+
+type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
+
+// ヘルパー関数: 文字列値を安全に取得
+function getStringParam(
+  params: Awaited<SearchParams>,
+  key: string
+): string | undefined {
+  const value = params[key];
+  if (typeof value === "string" && value.trim() !== "") {
+    return value.trim();
+  }
+  return undefined;
+}
+
+// ヘルパー関数: role値を検証
+function validateRole(value: string | undefined): UserRole | undefined {
+  if (value === USER_ROLES.ADMIN || value === USER_ROLES.USER) {
+    return value;
+  }
+  return undefined;
+}
+
+export default async function EmployeePage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
   const session = await verifySession();
-  // データ取得（Query側）
+  const params = await searchParams;
+
+  // 検索条件の構築
+  const criteria: EmployeeSearchCriteria = {
+    name: getStringParam(params, "name"),
+    email: getStringParam(params, "email"),
+    employeeCd: getStringParam(params, "employeeCd"),
+    role: validateRole(getStringParam(params, "role")),
+  };
+
+  // 検索実行
   const queryService = new PrismaEmployeeQueryService();
-  const getAllQuery = new GetAllEmployeesQuery(queryService);
-  // TODO: 検索できるようにする。今は連弾リングの最初にデータを取得してるだけ
-  // TODO: IEmployeeQueryServiceのsearchを呼ぶ処理
-  const employees = await getAllQuery.execute({});
+  const searchQuery = new SearchEmployeesQuery(queryService);
+  const employees = await searchQuery.execute({
+    criteria,
+    options: {
+      orderBy: { field: "employeeCd", direction: "asc" },
+    },
+  });
+
+  // Client Componentに渡すdefaultValues
+  const defaultSearchValues = {
+    name: getStringParam(params, "name") ?? "",
+    email: getStringParam(params, "email") ?? "",
+    employeeCd: getStringParam(params, "employeeCd") ?? "",
+    role: getStringParam(params, "role") ?? "",
+  };
 
   return (
-    <div className="container mx-auto p-8">
-      <div className="flex justify-between items-center mb-8">
+    <div className="container mx-auto p-4">
+      <div className="flex justify-between items-center mb-2">
         <h1 className="text-3xl font-bold">従業員管理</h1>
         {isAdmin(session) && (
           <Link
@@ -28,9 +80,8 @@ export default async function EmployeePage() {
         )}
       </div>
 
-      {/* TODO: ここで検索コンポーネントを入れる。表示件数は20件 取得してくるのは1000件 1000件を超える場合は検索条件を絞るようにエラー表示する */}
-      {/* TODO: 従業員に退職フラグを付けるか検討する */}
-      {/* TODO: ページネーション機能をつける */}
+      {/* 検索フォーム */}
+      <EmployeeSearchForm defaultValues={defaultSearchValues} />
 
       {/* 一覧表示 */}
       <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 text-gray-500">
