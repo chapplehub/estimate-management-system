@@ -1,5 +1,6 @@
 import { Employee } from "@subdomains/employee/domain/entities/Employee";
 import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
+import { EmployeeName } from "@subdomains/employee/domain/values/EmployeeName";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
 import { PrismaEmployeeRepository } from "../PrismaEmployeeRepository";
 import prisma from "@server/prisma";
@@ -36,7 +37,7 @@ describe("PrismaEmployeeRepository", () => {
       const employee = Employee.create(
         new EmployeeCd("EMP999001"),
         new MailAddress("test-save@example.com"),
-        "テスト太郎"
+        new EmployeeName("テスト太郎")
       );
 
       const savedEmployee = await repository.save(employee);
@@ -46,7 +47,7 @@ describe("PrismaEmployeeRepository", () => {
       expect(savedEmployee.id).toBeTruthy();
       expect(savedEmployee.employeeCd.value).toBe("EMP999001");
       expect(savedEmployee.email.value).toBe("test-save@example.com");
-      expect(savedEmployee.name).toBe("テスト太郎");
+      expect(savedEmployee.name.value).toBe("テスト太郎");
 
       // DBから取得して確認
       const saved = await prisma.employee.findUnique({
@@ -66,16 +67,16 @@ describe("PrismaEmployeeRepository", () => {
       const employee = Employee.create(
         new EmployeeCd("EMP999001"),
         new MailAddress("test-update@example.com"),
-        "更新前の名前"
+        new EmployeeName("更新前の名前")
       );
       const savedEmployee = await repository.save(employee);
 
       // 名前を変更
-      savedEmployee.changeName("更新後の名前");
+      savedEmployee.changeName(new EmployeeName("更新後の名前"));
       const updatedEmployee = await repository.save(savedEmployee);
 
       // 更新されたエンティティを確認
-      expect(updatedEmployee.name).toBe("更新後の名前");
+      expect(updatedEmployee.name.value).toBe("更新後の名前");
       expect(updatedEmployee.id).toBe(savedEmployee.id);
 
       // DBから再取得して確認
@@ -93,7 +94,7 @@ describe("PrismaEmployeeRepository", () => {
       const employee = Employee.create(
         new EmployeeCd("EMP999001"),
         new MailAddress("test-delete@example.com"),
-        "削除テスト"
+        new EmployeeName("削除テスト")
       );
       const savedEmployee = await repository.save(employee);
 
@@ -114,7 +115,7 @@ describe("PrismaEmployeeRepository", () => {
       const employee = Employee.create(
         new EmployeeCd("EMP999001"),
         new MailAddress("test-findbyid@example.com"),
-        "ID検索テスト"
+        new EmployeeName("ID検索テスト")
       );
       const savedEmployee = await repository.save(employee);
 
@@ -123,7 +124,7 @@ describe("PrismaEmployeeRepository", () => {
 
       expect(found).not.toBeNull();
       expect(found?.id).toBe(savedEmployee.id);
-      expect(found?.name).toBe("ID検索テスト");
+      expect(found?.name.value).toBe("ID検索テスト");
       expect(found?.email.value).toBe("test-findbyid@example.com");
       expect(found?.employeeCd.value).toBe("EMP999001");
     });
@@ -141,7 +142,7 @@ describe("PrismaEmployeeRepository", () => {
       const employee = Employee.create(
         new EmployeeCd("EMP999002"),
         new MailAddress("test-findbycd@example.com"),
-        "社員コード検索テスト"
+        new EmployeeName("社員コード検索テスト")
       );
       await repository.save(employee);
 
@@ -152,7 +153,7 @@ describe("PrismaEmployeeRepository", () => {
 
       expect(found).not.toBeNull();
       expect(found?.employeeCd.value).toBe("EMP999002");
-      expect(found?.name).toBe("社員コード検索テスト");
+      expect(found?.name.value).toBe("社員コード検索テスト");
       expect(found?.email.value).toBe("test-findbycd@example.com");
     });
 
@@ -169,12 +170,12 @@ describe("PrismaEmployeeRepository", () => {
       const employee1 = Employee.create(
         new EmployeeCd("EMP999002"),
         new MailAddress("test1@example.com"),
-        "テスト1"
+        new EmployeeName("テスト1")
       );
       const employee2 = Employee.create(
         new EmployeeCd("EMP999003"),
         new MailAddress("test2@example.com"),
-        "テスト2"
+        new EmployeeName("テスト2")
       );
 
       await repository.save(employee1);
@@ -187,7 +188,7 @@ describe("PrismaEmployeeRepository", () => {
 
       expect(found).not.toBeNull();
       expect(found?.employeeCd.value).toBe("EMP999003");
-      expect(found?.name).toBe("テスト2");
+      expect(found?.name.value).toBe("テスト2");
     });
   });
 

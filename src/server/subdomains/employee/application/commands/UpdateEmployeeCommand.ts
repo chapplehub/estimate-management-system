@@ -6,6 +6,7 @@ import { ValidationError } from "@server/shared/errors/DomainError";
 import { Employee } from "@subdomains/employee/domain/entities/Employee";
 import { IEmployeeRepository } from "@subdomains/employee/domain/repositories/IEmployeeRepository";
 import { MailAddressDuplicationCheckDomainService } from "@subdomains/employee/domain/services/MailAddressDuplicationCheckDomainService";
+import { EmployeeName } from "@subdomains/employee/domain/values/EmployeeName";
 
 export type UpdateEmployeeInput = {
   id: string;
@@ -52,7 +53,7 @@ export class UpdateEmployeeCommand {
       }
     }
 
-    targetEmployee.changeName(input.name);
+    targetEmployee.changeName(new EmployeeName(input.name));
     targetEmployee.changeEmail(newMailAddress);
 
     await this.employeeRepository.save(targetEmployee);

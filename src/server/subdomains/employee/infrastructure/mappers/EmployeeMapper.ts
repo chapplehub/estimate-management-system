@@ -1,5 +1,6 @@
 import { Employee } from "@subdomains/employee/domain/entities/Employee";
 import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
+import { EmployeeName } from "@subdomains/employee/domain/values/EmployeeName";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
 import { Employee as PrismaEmployee } from "@generated/prisma/client";
 
@@ -19,12 +20,13 @@ export class EmployeeMapper {
   static toDomain(prismaEmployee: PrismaEmployee): Employee {
     const employeeCd = new EmployeeCd(prismaEmployee.employeeCd);
     const email = new MailAddress(prismaEmployee.email);
+    const name = new EmployeeName(prismaEmployee.name);
 
     return Employee.reconstruct(
       prismaEmployee.id,
       employeeCd,
       email,
-      prismaEmployee.name,
+      name,
       prismaEmployee.createdAt,
       prismaEmployee.updatedAt
     );
@@ -41,7 +43,7 @@ export class EmployeeMapper {
       id: employee.id,
       employeeCd: employee.employeeCd.value,
       email: employee.email.value,
-      name: employee.name,
+      name: employee.name.value,
     };
   }
 
@@ -54,7 +56,7 @@ export class EmployeeMapper {
   static toPrismaUpdate(employee: Employee) {
     return {
       email: employee.email.value,
-      name: employee.name,
+      name: employee.name.value,
       updatedAt: employee.updatedAt,
     };
   }

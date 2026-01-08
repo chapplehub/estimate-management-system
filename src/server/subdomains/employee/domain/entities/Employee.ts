@@ -1,5 +1,6 @@
 import { createId } from "@paralleldrive/cuid2";
 import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
+import { EmployeeName } from "@subdomains/employee/domain/values/EmployeeName";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
 
 /**
@@ -16,7 +17,7 @@ export class Employee {
     private readonly _id: string,
     private readonly _employeeCd: EmployeeCd,
     private _email: MailAddress,
-    private _name: string,
+    private _name: EmployeeName,
     private readonly _createdAt: Date,
     private _updatedAt: Date
   ) {}
@@ -32,7 +33,7 @@ export class Employee {
   static create(
     employeeCd: EmployeeCd,
     email: MailAddress,
-    name: string
+    name: EmployeeName
   ): Employee {
     const now = new Date();
 
@@ -61,7 +62,7 @@ export class Employee {
     id: string,
     employeeCd: EmployeeCd,
     email: MailAddress,
-    name: string,
+    name: EmployeeName,
     createdAt: Date,
     updatedAt: Date
   ): Employee {
@@ -77,7 +78,7 @@ export class Employee {
    *
    * @param newName
    */
-  changeName(newName: string): void {
+  changeName(newName: EmployeeName): void {
     this._name = newName;
     this._updatedAt = new Date();
   }
@@ -108,7 +109,7 @@ export class Employee {
     return this._email;
   }
 
-  get name(): string {
+  get name(): EmployeeName {
     return this._name;
   }
 

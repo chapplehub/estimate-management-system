@@ -2,6 +2,7 @@ import { Employee } from "@subdomains/employee/domain/entities/Employee";
 import { IEmployeeRepository } from "@subdomains/employee/domain/repositories/IEmployeeRepository";
 import { MailAddressDuplicationCheckDomainService } from "@subdomains/employee/domain/services/MailAddressDuplicationCheckDomainService";
 import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
+import { EmployeeName } from "@subdomains/employee/domain/values/EmployeeName";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
 import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { ValidationError } from "@server/shared/errors/DomainError";
@@ -22,7 +23,7 @@ describe("UpdateEmployeeCommand", () => {
       "test-id-001",
       new EmployeeCd("EMP000001"),
       new MailAddress("old@example.com"),
-      "旧名前",
+      new EmployeeName("旧名前"),
       new Date("2025-01-01"),
       new Date("2025-01-01")
     );
@@ -71,7 +72,7 @@ describe("UpdateEmployeeCommand", () => {
     expect(mockRepository.save).toHaveBeenCalledTimes(1);
 
     // エンティティが更新されているか確認
-    expect(existingEmployee.name).toBe("新名前");
+    expect(existingEmployee.name.value).toBe("新名前");
     expect(existingEmployee.email.value).toBe("new@example.com");
 
     // email変更時に認証ユーザーのemailも更新されることを確認

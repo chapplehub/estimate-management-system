@@ -3,6 +3,7 @@ import { IEmployeeRepository } from "@subdomains/employee/domain/repositories/IE
 import { EmployeeCdDuplicationCheckDomainService } from "@subdomains/employee/domain/services/EmployeeCdDuplicationCheckDomainService";
 import { MailAddressDuplicationCheckDomainService } from "@subdomains/employee/domain/services/MailAddressDuplicationCheckDomainService";
 import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
+import { EmployeeName } from "@subdomains/employee/domain/values/EmployeeName";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
 import { ValidationError } from "@server/shared/errors/DomainError";
 import type { IUserManagementService } from "@server/shared/auth/IUserManagementService";
@@ -52,7 +53,8 @@ export class CreateEmployeeCommand {
       );
     }
 
-    const newEmployee = Employee.create(employeeCd, mailAddress, input.name);
+    const employeeName = new EmployeeName(input.name);
+    const newEmployee = Employee.create(employeeCd, mailAddress, employeeName);
 
     // Employee を保存
     await this.employeeRepository.save(newEmployee);

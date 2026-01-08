@@ -126,4 +126,40 @@ describe("CreateEmployeeCommand", () => {
     expect(mockCdDuplicationCheckService.execute).not.toHaveBeenCalled();
     expect(mockRepository.save).not.toHaveBeenCalled();
   });
+
+  it("空の名前の場合はエラーを投げる", async () => {
+    vi.mocked(mockCdDuplicationCheckService.execute).mockResolvedValue(false);
+    vi.mocked(mockMailDuplicationCheckService.execute).mockResolvedValue(false);
+
+    await expect(
+      command.execute({
+        employeeCd: "EMP000001",
+        email: "test@example.com",
+        name: "",
+        role: USER_ROLES.USER,
+        password: "Password1!",
+      })
+    ).rejects.toThrow(ValidationError);
+
+    expect(mockRepository.save).not.toHaveBeenCalled();
+  });
+
+  it("101文字以上の名前の場合はエラーを投げる", async () => {
+    vi.mocked(mockCdDuplicationCheckService.execute).mockResolvedValue(false);
+    vi.mocked(mockMailDuplicationCheckService.execute).mockResolvedValue(false);
+
+    const tooLongName = "あ".repeat(101);
+
+    await expect(
+      command.execute({
+        employeeCd: "EMP000001",
+        email: "test@example.com",
+        name: tooLongName,
+        role: USER_ROLES.USER,
+        password: "Password1!",
+      })
+    ).rejects.toThrow(ValidationError);
+
+    expect(mockRepository.save).not.toHaveBeenCalled();
+  });
 });
