@@ -11,11 +11,10 @@ export default async function Layout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // TODO: どこかのファイルで一括で画面名を管理して、ルーティングに応じて画面名を出せるようにしたい。
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen flex flex-col bg-background">
       <Header />
-      <main>{children}</main>
+      <main className="flex-1 min-h-0">{children}</main>
     </div>
   );
 }
