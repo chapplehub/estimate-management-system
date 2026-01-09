@@ -15,13 +15,10 @@ import { Pagination } from "./_components/Pagination";
 const PAGE_SIZE = 100;
 const MAX_PAGES = 10;
 
-type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
+type SearchParams = { [key: string]: string | string[] | undefined };
 
 // ヘルパー関数: 文字列値を安全に取得
-function getStringParam(
-  params: Awaited<SearchParams>,
-  key: string
-): string | undefined {
+function getStringParam(params: SearchParams, key: string): string | undefined {
   const value = params[key];
   if (typeof value === "string" && value.trim() !== "") {
     return value.trim();
@@ -30,7 +27,7 @@ function getStringParam(
 }
 
 // ヘルパー関数: ページ番号を安全に取得
-function getPageParam(params: Awaited<SearchParams>): number {
+function getPageParam(params: SearchParams): number {
   const value = params["page"];
   if (typeof value === "string") {
     const page = parseInt(value, 10);
@@ -52,7 +49,7 @@ function validateRole(value: string | undefined): UserRole | undefined {
 export default async function EmployeePage({
   searchParams,
 }: {
-  searchParams: SearchParams;
+  searchParams: Promise<SearchParams>;
 }) {
   const session = await verifySession();
   const params = await searchParams;
@@ -156,7 +153,9 @@ export default async function EmployeePage({
                               : "bg-blue-100 text-blue-800"
                           }`}
                         >
-                          {employee.role === USER_ROLES.ADMIN ? "管理者" : "一般"}
+                          {employee.role === USER_ROLES.ADMIN
+                            ? "管理者"
+                            : "一般"}
                         </span>
                       </td>
                     </tr>
