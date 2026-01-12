@@ -185,46 +185,45 @@ describe("PrismaEmployeeQueryService", () => {
 
   describe("search", () => {
     beforeEach(async () => {
-      // 複数のテストデータを作成
-      // TODO:seed.tsで使ってる苗字と被ってるからテストが失敗してる。
+      // 複数のテストデータを作成（seedデータと重複しない名前を使用）
       await createTestEmployeeWithUser({
         employeeCd: "EMP999901",
-        email: "search-tanaka@example.com",
-        name: "田中太郎",
+        email: "search-a@example.com",
+        name: "QA検索者A",
         role: USER_ROLES.USER,
       });
       await createTestEmployeeWithUser({
         employeeCd: "EMP999902",
-        email: "search-yamada@example.com",
-        name: "山田花子",
+        email: "search-b@example.com",
+        name: "QA検索者B",
         role: USER_ROLES.ADMIN,
       });
       await createTestEmployeeWithUser({
         employeeCd: "EMP999903",
-        email: "search-suzuki@example.com",
-        name: "鈴木一郎",
+        email: "search-c@example.com",
+        name: "QA検索者C",
         role: USER_ROLES.USER,
       });
       await createTestEmployeeWithUser({
         employeeCd: "EMP999904",
-        email: "search-sato@example.com",
-        name: "佐藤次郎",
+        email: "search-d@example.com",
+        name: "QA検索者D",
         role: USER_ROLES.USER,
       });
     });
 
     it("名前での部分一致検索ができる", async () => {
-      const results = await queryService.search({ name: "田中" });
+      const results = await queryService.search({ name: "QA検索者A" });
 
       expect(results.length).toBe(1);
-      expect(results[0].name).toBe("田中太郎");
+      expect(results[0].name).toBe("QA検索者A");
     });
 
     it("メールアドレスでの部分一致検索ができる", async () => {
-      const results = await queryService.search({ email: "search-yamada" });
+      const results = await queryService.search({ email: "search-b" });
 
       expect(results.length).toBe(1);
-      expect(results[0].email).toBe("search-yamada@example.com");
+      expect(results[0].email).toBe("search-b@example.com");
     });
 
     it("従業員CDでの完全一致検索ができる", async () => {
@@ -243,9 +242,9 @@ describe("PrismaEmployeeQueryService", () => {
       results.forEach((r) => {
         expect(r.role).toBe(USER_ROLES.ADMIN);
       });
-      // テストデータの山田花子が含まれている
+      // テストデータのQA検索者Bが含まれている
       const names = results.map((r) => r.name);
-      expect(names).toContain("山田花子");
+      expect(names).toContain("QA検索者B");
     });
 
     // NOTE: isLocked 検索は認証を better-auth に移行したため削除
@@ -253,15 +252,13 @@ describe("PrismaEmployeeQueryService", () => {
     it("複数条件の組み合わせで検索できる", async () => {
       const results = await queryService.search({
         role: USER_ROLES.USER,
-        name: "田中",
+        name: "QA検索者A",
       });
 
-      // user かつ 田中 が名前に含まれる従業員
-      expect(results.length).toBeGreaterThanOrEqual(1);
-      results.forEach((r) => {
-        expect(r.role).toBe(USER_ROLES.USER);
-        expect(r.name).toContain("田中");
-      });
+      // user かつ QA検索者A が名前に含まれる従業員
+      expect(results.length).toBe(1);
+      expect(results[0].role).toBe(USER_ROLES.USER);
+      expect(results[0].name).toBe("QA検索者A");
     });
 
     it("limitで取得件数を制限できる", async () => {
