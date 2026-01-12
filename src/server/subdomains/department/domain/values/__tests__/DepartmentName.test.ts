@@ -40,7 +40,7 @@ describe("DepartmentName", () => {
       const longName = "あ".repeat(101);
       expect(() => new DepartmentName(longName)).toThrow(ValidationError);
       expect(() => new DepartmentName(longName)).toThrow(
-        "部署名は100文字以内である必要があります"
+        "部署名は100文字以内で入力してください"
       );
     });
   });

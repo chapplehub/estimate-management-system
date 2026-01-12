@@ -51,17 +51,17 @@ describe("Password 値オブジェクト", () => {
   describe("異常系 - 長さ", () => {
     it("空文字列の場合はエラー", () => {
       expect(() => new Password("")).toThrow(ValidationError);
-      expect(() => new Password("")).toThrow("パスワードは10文字以上である必要があります");
+      expect(() => new Password("")).toThrow("パスワードは10文字以上で入力してください");
     });
 
     it("短すぎる（9文字）場合はエラー", () => {
       expect(() => new Password("Abc123!@#")).toThrow(ValidationError);
-      expect(() => new Password("Abc123!@#")).toThrow("パスワードは10文字以上である必要があります");
+      expect(() => new Password("Abc123!@#")).toThrow("パスワードは10文字以上で入力してください");
     });
 
     it("長すぎる（25文字）場合はエラー", () => {
       expect(() => new Password("Abcd123!@#Abcd123!@#ABCDE")).toThrow(ValidationError);
-      expect(() => new Password("Abcd123!@#Abcd123!@#ABCDE")).toThrow("パスワードは24文字以下である必要があります");
+      expect(() => new Password("Abcd123!@#Abcd123!@#ABCDE")).toThrow("パスワードは24文字以内で入力してください");
     });
   });
 

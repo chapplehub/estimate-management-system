@@ -1,9 +1,9 @@
-import { PrismaEmployeeQueryService } from "../PrismaEmployeeQueryService";
-import prisma from "@server/prisma";
 import { createId } from "@paralleldrive/cuid2";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import prisma from "@server/prisma";
 import type { UserRole } from "@server/shared/auth/types";
 import { USER_ROLES } from "@server/shared/auth/types";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { PrismaEmployeeQueryService } from "../PrismaEmployeeQueryService";
 
 describe("PrismaEmployeeQueryService", () => {
   let queryService: PrismaEmployeeQueryService;
@@ -77,13 +77,7 @@ describe("PrismaEmployeeQueryService", () => {
     await prisma.employee.deleteMany({
       where: {
         employeeCd: {
-          in: [
-            "EMP999901",
-            "EMP999902",
-            "EMP999903",
-            "EMP999904",
-            "EMP999905",
-          ],
+          in: ["EMP999901", "EMP999902", "EMP999903", "EMP999904", "EMP999905"],
         },
       },
     });
@@ -192,6 +186,7 @@ describe("PrismaEmployeeQueryService", () => {
   describe("search", () => {
     beforeEach(async () => {
       // 複数のテストデータを作成
+      // TODO:seed.tsで使ってる苗字と被ってるからテストが失敗してる。
       await createTestEmployeeWithUser({
         employeeCd: "EMP999901",
         email: "search-tanaka@example.com",

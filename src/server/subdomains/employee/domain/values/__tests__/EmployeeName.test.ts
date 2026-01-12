@@ -41,12 +41,12 @@ describe("EmployeeName 値オブジェクト", () => {
   describe("異常系", () => {
     it("空文字列の場合はエラー", () => {
       expect(() => new EmployeeName("")).toThrow(ValidationError);
-      expect(() => new EmployeeName("")).toThrow("名前を入力してください");
+      expect(() => new EmployeeName("")).toThrow("名前は必須です");
     });
 
     it("空白のみの場合はエラー", () => {
       expect(() => new EmployeeName("   ")).toThrow(ValidationError);
-      expect(() => new EmployeeName("   ")).toThrow("名前を入力してください");
+      expect(() => new EmployeeName("   ")).toThrow("名前は必須です");
     });
 
     it("101文字の場合はエラー", () => {

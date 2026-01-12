@@ -8,12 +8,9 @@ import { StringValueObject } from "@server/shared/StringValueObject";
  * - 空白のみは不可
  */
 export class DepartmentName extends StringValueObject<"DepartmentName"> {
+  protected static readonly LABEL = "部署名";
   protected static readonly MIN_LENGTH = 1;
   protected static readonly MAX_LENGTH = 100;
-  protected static readonly ERROR_MESSAGE_EMPTY = "部署名は必須です";
-  protected static readonly ERROR_MESSAGE_TOO_SHORT = "部署名は必須です";
-  protected static readonly ERROR_MESSAGE_TOO_LONG =
-    "部署名は100文字以内である必要があります";
 
   constructor(value: string) {
     super(value.trim());
