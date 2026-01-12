@@ -2,7 +2,7 @@ import { Department } from "@subdomains/department/domain/entities/Department";
 import { IDepartmentRepository } from "@subdomains/department/domain/repositories/IDepartmentRepository";
 import { DepartmentName } from "@subdomains/department/domain/values/DepartmentName";
 import { Abbreviation } from "@subdomains/department/domain/values/Abbreviation";
-import { ValidationError } from "@server/shared/errors/DomainError";
+import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
 import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 
 export type UpdateDepartmentInput = {
@@ -63,7 +63,7 @@ export class UpdateDepartmentCommand {
         );
         const activeChildren = children.filter((c) => c.isActive);
         if (activeChildren.length > 0) {
-          throw new ValidationError(
+          throw new BusinessRuleViolationError(
             "有効な子部署が存在するため、この部署を無効化できません"
           );
         }
@@ -84,17 +84,17 @@ export class UpdateDepartmentCommand {
   ): Promise<void> {
     // 自分自身を親にできない（これは Entity 側でもチェックしているが念のため）
     if (departmentId === newParentId) {
-      throw new ValidationError("自分自身を親部署にすることはできません");
+      throw new BusinessRuleViolationError("自分自身を親部署にすることはできません");
     }
 
     // 新しい親部署が存在するか確認
     const newParent = await this.departmentRepository.findById(newParentId);
     if (!newParent) {
-      throw new ValidationError(`親部署が存在しません: ID=${newParentId}`);
+      throw new BusinessRuleViolationError(`親部署が存在しません: ID=${newParentId}`);
     }
 
     if (!newParent.isActive) {
-      throw new ValidationError(
+      throw new BusinessRuleViolationError(
         `無効な部署を親部署に設定することはできません: ID=${newParentId}`
       );
     }
@@ -103,7 +103,7 @@ export class UpdateDepartmentCommand {
     let currentParentId: string | null = newParent.parentId;
     while (currentParentId !== null) {
       if (currentParentId === departmentId) {
-        throw new ValidationError(
+        throw new BusinessRuleViolationError(
           "循環参照が発生するため、この親部署は設定できません"
         );
       }

@@ -5,7 +5,7 @@ import { Department } from "@subdomains/department/domain/entities/Department";
 import { DepartmentCd } from "@subdomains/department/domain/values/DepartmentCd";
 import { DepartmentName } from "@subdomains/department/domain/values/DepartmentName";
 import { Abbreviation } from "@subdomains/department/domain/values/Abbreviation";
-import { ValidationError } from "@server/shared/errors/DomainError";
+import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
 import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 
 describe("UpdateDepartmentCommand", () => {
@@ -111,7 +111,7 @@ describe("UpdateDepartmentCommand", () => {
         id: "dept-1",
         isActive: false,
       })
-    ).rejects.toThrow(ValidationError);
+    ).rejects.toThrow(BusinessRuleViolationError);
     await expect(
       command.execute({
         id: "dept-1",
@@ -173,7 +173,7 @@ describe("UpdateDepartmentCommand", () => {
         id: "dept-1",
         parentId: "dept-2",
       })
-    ).rejects.toThrow(ValidationError);
+    ).rejects.toThrow(BusinessRuleViolationError);
 
     // reset mock for second assertion
     vi.mocked(mockRepository.findById).mockImplementation((id: string) => {
