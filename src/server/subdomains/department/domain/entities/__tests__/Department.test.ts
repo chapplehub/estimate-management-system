@@ -1,9 +1,12 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { Department } from "../Department";
+import {
+  BusinessRuleViolationError,
+  ValidationError,
+} from "@server/shared/errors/DomainError";
+import { describe, expect, it } from "vitest";
+import { Abbreviation } from "../../values/Abbreviation";
 import { DepartmentCd } from "../../values/DepartmentCd";
 import { DepartmentName } from "../../values/DepartmentName";
-import { Abbreviation } from "../../values/Abbreviation";
-import { ValidationError } from "@server/shared/errors/DomainError";
+import { Department } from "../Department";
 
 describe("Department", () => {
   // テスト用のValue Objects
@@ -161,7 +164,9 @@ describe("Department", () => {
     it("自分自身を親にするとエラー", () => {
       const dept = createTestDepartment();
 
-      expect(() => dept.changeParent(dept.id)).toThrow(ValidationError);
+      expect(() => dept.changeParent(dept.id)).toThrow(
+        BusinessRuleViolationError
+      );
       expect(() => dept.changeParent(dept.id)).toThrow(
         "自分自身を親部署にすることはできません"
       );
