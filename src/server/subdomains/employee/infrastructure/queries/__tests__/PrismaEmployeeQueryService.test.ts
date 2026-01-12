@@ -20,6 +20,7 @@ describe("PrismaEmployeeQueryService", () => {
     email: string;
     name: string;
     role: UserRole;
+    departmentId?: string;
   }) {
     const employeeId = createId();
     const userId = createId();
@@ -31,6 +32,7 @@ describe("PrismaEmployeeQueryService", () => {
         employeeCd: data.employeeCd,
         email: data.email,
         name: data.name,
+        departmentId: data.departmentId ?? "dept-001",
       },
     });
 
@@ -83,6 +85,20 @@ describe("PrismaEmployeeQueryService", () => {
             "EMP999905",
           ],
         },
+      },
+    });
+
+    // テスト用部署を作成（存在しない場合）
+    await prisma.department.upsert({
+      where: { id: "dept-001" },
+      update: {},
+      create: {
+        id: "dept-001",
+        departmentCd: "DEPT001",
+        name: "テスト部署",
+        abbreviation: "テスト",
+        displayOrder: 1,
+        isActive: true,
       },
     });
   });

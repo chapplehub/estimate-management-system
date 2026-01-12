@@ -1,5 +1,6 @@
 import { Employee } from "@subdomains/employee/domain/entities/Employee";
 import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
+import { EmployeeName } from "@subdomains/employee/domain/values/EmployeeName";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
 import { InMemoryEmployeeRepository } from "@subdomains/employee/infrastructure/in-memory/InMemoryEmployeeRepository";
 import { beforeEach, describe, expect, test } from "vitest";
@@ -27,8 +28,8 @@ describe("MailAddressDuplicationCheckDomainService", () => {
   test("重複がある場合、trueを返す", async () => {
     const employeeCd = new EmployeeCd("EMP000001");
     const mailAddress = new MailAddress("test@example.com");
-    const name = "山田太郎";
-    const employee = Employee.create(employeeCd, mailAddress, name);
+    const name = new EmployeeName("山田太郎");
+    const employee = Employee.create(employeeCd, mailAddress, name, "dept-001");
 
     await inMemoryEmployeeRepository.save(employee);
 
@@ -42,8 +43,8 @@ describe("MailAddressDuplicationCheckDomainService", () => {
     const employeeCd = new EmployeeCd("EMP000001");
     const existingMailAddress = new MailAddress("existing@example.com");
     const newMailAddress = new MailAddress("new@example.com");
-    const name = "山田太郎";
-    const employee = Employee.create(employeeCd, existingMailAddress, name);
+    const name = new EmployeeName("山田太郎");
+    const employee = Employee.create(employeeCd, existingMailAddress, name, "dept-001");
 
     await inMemoryEmployeeRepository.save(employee);
 

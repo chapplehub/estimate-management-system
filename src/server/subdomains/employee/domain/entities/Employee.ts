@@ -18,6 +18,7 @@ export class Employee {
     private readonly _employeeCd: EmployeeCd,
     private _email: MailAddress,
     private _name: EmployeeName,
+    private _departmentId: string,
     private readonly _createdAt: Date,
     private _updatedAt: Date
   ) {}
@@ -28,12 +29,14 @@ export class Employee {
    * @param employeeCd 社員コード
    * @param email メールアドレス
    * @param name 氏名
+   * @param departmentId 所属部署ID
    * @returns 従業員エンティティ
    */
   static create(
     employeeCd: EmployeeCd,
     email: MailAddress,
-    name: EmployeeName
+    name: EmployeeName,
+    departmentId: string
   ): Employee {
     const now = new Date();
 
@@ -42,6 +45,7 @@ export class Employee {
       employeeCd,
       email,
       name,
+      departmentId,
       now,
       now
     );
@@ -54,6 +58,7 @@ export class Employee {
    * @param employeeCd 社員コード
    * @param email メールアドレス
    * @param name 氏名
+   * @param departmentId 所属部署ID
    * @param createdAt 作成日時
    * @param updatedAt 更新日時
    * @returns 従業員エンティティ
@@ -63,10 +68,19 @@ export class Employee {
     employeeCd: EmployeeCd,
     email: MailAddress,
     name: EmployeeName,
+    departmentId: string,
     createdAt: Date,
     updatedAt: Date
   ): Employee {
-    return new Employee(id, employeeCd, email, name, createdAt, updatedAt);
+    return new Employee(
+      id,
+      employeeCd,
+      email,
+      name,
+      departmentId,
+      createdAt,
+      updatedAt
+    );
   }
 
   // ========================================
@@ -93,6 +107,16 @@ export class Employee {
     this._updatedAt = new Date();
   }
 
+  /**
+   * 所属部署を変更
+   *
+   * @param newDepartmentId 新しい部署ID
+   */
+  changeDepartment(newDepartmentId: string): void {
+    this._departmentId = newDepartmentId;
+    this._updatedAt = new Date();
+  }
+
   // ========================================
   // ゲッター
   // ========================================
@@ -111,6 +135,10 @@ export class Employee {
 
   get name(): EmployeeName {
     return this._name;
+  }
+
+  get departmentId(): string {
+    return this._departmentId;
   }
 
   get createdAt(): Date {

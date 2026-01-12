@@ -13,6 +13,8 @@ export type UpdateEmployeeInput = {
   employeeCd: string;
   email: string;
   name: string;
+  /** 所属部署ID */
+  departmentId: string;
   /** ユーザーロール（"admin" | "user"） - User.roleを更新 */
   role: UserRole;
 };
@@ -55,6 +57,7 @@ export class UpdateEmployeeCommand {
 
     targetEmployee.changeName(new EmployeeName(input.name));
     targetEmployee.changeEmail(newMailAddress);
+    targetEmployee.changeDepartment(input.departmentId);
 
     await this.employeeRepository.save(targetEmployee);
 

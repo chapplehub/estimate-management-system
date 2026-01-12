@@ -24,6 +24,7 @@ describe("UpdateEmployeeCommand", () => {
       new EmployeeCd("EMP000001"),
       new MailAddress("old@example.com"),
       new EmployeeName("旧名前"),
+      "dept-001",
       new Date("2025-01-01"),
       new Date("2025-01-01")
     );
@@ -64,6 +65,7 @@ describe("UpdateEmployeeCommand", () => {
       employeeCd: "EMP000001",
       email: "new@example.com",
       name: "新名前",
+      departmentId: "dept-001",
       role: USER_ROLES.ADMIN,
     });
 
@@ -99,6 +101,7 @@ describe("UpdateEmployeeCommand", () => {
         employeeCd: "EMP000001",
         email: "test@example.com",
         name: "テスト太郎",
+        departmentId: "dept-001",
         role: USER_ROLES.USER,
       })
     ).rejects.toThrow(NotFoundEntityError);
@@ -115,6 +118,7 @@ describe("UpdateEmployeeCommand", () => {
         employeeCd: "EMP000001",
         email: "invalid-email",
         name: "新名前",
+        departmentId: "dept-001",
         role: USER_ROLES.USER,
       })
     ).rejects.toThrow(ValidationError);

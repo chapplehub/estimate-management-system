@@ -14,6 +14,7 @@ describe("GetAllEmployeesQuery", () => {
     employeeCd: "EMP000001",
     email: "test@example.com",
     name: "テスト太郎",
+    departmentId: "dept-001",
     role: USER_ROLES.USER,
     createdAt: new Date("2025-01-01"),
     updatedAt: new Date("2025-01-01"),

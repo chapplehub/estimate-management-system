@@ -47,7 +47,17 @@ interface SeedUser {
   email: string;
   name: string;
   role: UserRole;
+  departmentId: string;
 }
+
+// 部署リスト
+const DEPARTMENTS = [
+  { id: "dept-001", departmentCd: "DEPT001", name: "営業部", abbreviation: "営業", displayOrder: 1 },
+  { id: "dept-002", departmentCd: "DEPT002", name: "開発部", abbreviation: "開発", displayOrder: 2 },
+  { id: "dept-003", departmentCd: "DEPT003", name: "総務部", abbreviation: "総務", displayOrder: 3 },
+  { id: "dept-004", departmentCd: "DEPT004", name: "人事部", abbreviation: "人事", displayOrder: 4 },
+  { id: "dept-005", departmentCd: "DEPT005", name: "経理部", abbreviation: "経理", displayOrder: 5 },
+];
 
 // ランダムな要素を取得
 function randomChoice<T>(array: T[]): T {
@@ -88,6 +98,7 @@ function generateSeedUsers(count: number): SeedUser[] {
       email: generateEmail(i),
       name: generateName(),
       role: determineRole(i),
+      departmentId: randomChoice(DEPARTMENTS).id,
     });
   }
   return users;
@@ -110,6 +121,7 @@ async function createUserWithEmployee(
         employeeCd: userData.employeeCd,
         email: userData.email,
         name: userData.name,
+        departmentId: userData.departmentId,
       },
     });
 
@@ -152,7 +164,25 @@ async function main() {
   await prisma.session.deleteMany();
   await prisma.user.deleteMany();
   await prisma.employee.deleteMany();
+  await prisma.department.deleteMany();
   console.log("Deleted existing data");
+  console.log("");
+
+  // 部署を作成
+  console.log("Creating departments...");
+  for (const dept of DEPARTMENTS) {
+    await prisma.department.create({
+      data: {
+        id: dept.id,
+        departmentCd: dept.departmentCd,
+        name: dept.name,
+        abbreviation: dept.abbreviation,
+        displayOrder: dept.displayOrder,
+        isActive: true,
+      },
+    });
+  }
+  console.log(`Created ${DEPARTMENTS.length} departments`);
   console.log("");
 
   // パスワードは全員同じなので、事前に1回だけハッシュ化

@@ -1,0 +1,71 @@
+import { Department } from "@subdomains/department/domain/entities/Department";
+import { DepartmentCd } from "@subdomains/department/domain/values/DepartmentCd";
+import { DepartmentName } from "@subdomains/department/domain/values/DepartmentName";
+import { Abbreviation } from "@subdomains/department/domain/values/Abbreviation";
+import { Department as PrismaDepartment } from "@generated/prisma/client";
+
+/**
+ * DepartmentMapper
+ *
+ * PrismaのDepartmentモデルとドメインのDepartmentエンティティを相互変換する
+ */
+export class DepartmentMapper {
+  /**
+   * Prismaモデルからドメインエンティティへ変換
+   *
+   * @param prismaDepartment PrismaのDepartmentモデル
+   * @returns ドメインのDepartmentエンティティ
+   */
+  static toDomain(prismaDepartment: PrismaDepartment): Department {
+    const departmentCd = new DepartmentCd(prismaDepartment.departmentCd);
+    const name = new DepartmentName(prismaDepartment.name);
+    const abbreviation = new Abbreviation(prismaDepartment.abbreviation);
+
+    return Department.reconstruct(
+      prismaDepartment.id,
+      departmentCd,
+      name,
+      abbreviation,
+      prismaDepartment.displayOrder,
+      prismaDepartment.isActive,
+      prismaDepartment.parentId,
+      prismaDepartment.createdAt,
+      prismaDepartment.updatedAt
+    );
+  }
+
+  /**
+   * ドメインエンティティからPrismaモデル用のデータへ変換（新規作成用）
+   *
+   * @param department ドメインのDepartmentエンティティ
+   * @returns Prisma作成用データ
+   */
+  static toPrismaCreate(department: Department) {
+    return {
+      id: department.id,
+      departmentCd: department.departmentCd.value,
+      name: department.name.value,
+      abbreviation: department.abbreviation.value,
+      displayOrder: department.displayOrder,
+      isActive: department.isActive,
+      parentId: department.parentId,
+    };
+  }
+
+  /**
+   * ドメインエンティティからPrismaモデル更新用のデータへ変換
+   *
+   * @param department ドメインのDepartmentエンティティ
+   * @returns Prisma更新用データ
+   */
+  static toPrismaUpdate(department: Department) {
+    return {
+      name: department.name.value,
+      abbreviation: department.abbreviation.value,
+      displayOrder: department.displayOrder,
+      isActive: department.isActive,
+      parentId: department.parentId,
+      updatedAt: department.updatedAt,
+    };
+  }
+}

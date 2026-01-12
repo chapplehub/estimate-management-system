@@ -25,6 +25,10 @@ model Employee {
   name       String
   // role は User.role に移動（better-auth Admin Plugin用）
 
+  // 所属部署
+  departmentId String     @map("department_id")
+  department   Department @relation(fields: [departmentId], references: [id])
+
   // タイムスタンプ
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -32,7 +36,36 @@ model Employee {
   // 認証ユーザーとの逆参照（Employee はこの関係を知らない設計だが、Prisma の制約上必要）
   user User?
 
+  @@index([departmentId])
   @@map("employees")
+}
+
+// ========================================
+// 部署関連
+// ========================================
+
+model Department {
+  id           String  @id // ドメイン層でCUID生成
+  departmentCd String  @unique @map("department_cd") // DEPT001 形式
+  name         String
+  abbreviation String  // 略称
+  displayOrder Int     @default(0) @map("display_order")
+  isActive     Boolean @default(true) @map("is_active")
+
+  // 階層構造（自己参照）
+  parentId String?      @map("parent_id")
+  parent   Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children Department[] @relation("DepartmentHierarchy")
+
+  // 所属従業員（逆参照）
+  employees Employee[]
+
+  // タイムスタンプ
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([parentId])
+  @@map("departments")
 }
 
 model User {

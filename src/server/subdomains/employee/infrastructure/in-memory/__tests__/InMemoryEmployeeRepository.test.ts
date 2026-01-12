@@ -2,6 +2,7 @@ import { describe, expect, it, beforeEach } from "vitest";
 import { InMemoryEmployeeRepository } from "../InMemoryEmployeeRepository";
 import { Employee } from "@subdomains/employee/domain/entities/Employee";
 import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
+import { EmployeeName } from "@subdomains/employee/domain/values/EmployeeName";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
 
 describe("InMemoryEmployeeRepository", () => {
@@ -13,7 +14,8 @@ describe("InMemoryEmployeeRepository", () => {
     employee = Employee.create(
       new EmployeeCd("EMP000001"),
       new MailAddress("test@example.com"),
-      "山田太郎"
+      new EmployeeName("山田太郎"),
+      "dept-001"
     );
   });
 
@@ -30,7 +32,8 @@ describe("InMemoryEmployeeRepository", () => {
       const employee2 = Employee.create(
         new EmployeeCd("EMP000002"),
         new MailAddress("test2@example.com"),
-        "鈴木花子"
+        new EmployeeName("鈴木花子"),
+        "dept-001"
       );
 
       const saved1 = await repository.save(employee);
@@ -41,8 +44,8 @@ describe("InMemoryEmployeeRepository", () => {
 
       expect(found1).not.toBeNull();
       expect(found2).not.toBeNull();
-      expect(found1?.name).toBe("山田太郎");
-      expect(found2?.name).toBe("鈴木花子");
+      expect(found1?.name.value).toBe("山田太郎");
+      expect(found2?.name.value).toBe("鈴木花子");
     });
   });
 
@@ -50,11 +53,11 @@ describe("InMemoryEmployeeRepository", () => {
     it("従業員を更新できる", async () => {
       const saved = await repository.save(employee);
 
-      saved.changeName("山田次郎");
+      saved.changeName(new EmployeeName("山田次郎"));
       await repository.save(saved);
 
       const found = await repository.findByEmployeeCd(saved.employeeCd);
-      expect(found?.name).toBe("山田次郎");
+      expect(found?.name.value).toBe("山田次郎");
     });
   });
 
@@ -86,7 +89,7 @@ describe("InMemoryEmployeeRepository", () => {
 
       expect(found).not.toBeNull();
       expect(found?.id).toBe(saved.id);
-      expect(found?.name).toBe("山田太郎");
+      expect(found?.name.value).toBe("山田太郎");
       expect(found?.email.value).toBe("test@example.com");
     });
 
@@ -116,7 +119,7 @@ describe("InMemoryEmployeeRepository", () => {
 
       expect(found).not.toBeNull();
       expect(found?.employeeCd.value).toBe("EMP000001");
-      expect(found?.name).toBe("山田太郎");
+      expect(found?.name.value).toBe("山田太郎");
     });
 
     it("存在しない社員コードの場合nullを返す", async () => {
@@ -131,7 +134,8 @@ describe("InMemoryEmployeeRepository", () => {
       const employee2 = Employee.create(
         new EmployeeCd("EMP000002"),
         new MailAddress("test2@example.com"),
-        "鈴木花子"
+        new EmployeeName("鈴木花子"),
+        "dept-001"
       );
 
       await repository.save(employee);
@@ -142,7 +146,7 @@ describe("InMemoryEmployeeRepository", () => {
       );
 
       expect(found).not.toBeNull();
-      expect(found?.name).toBe("鈴木花子");
+      expect(found?.name.value).toBe("鈴木花子");
     });
 
     it("削除された従業員はnullを返す", async () => {

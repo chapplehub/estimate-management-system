@@ -13,6 +13,8 @@ export type CreateEmployeeInput = {
   employeeCd: string;
   email: string;
   name: string;
+  /** 所属部署ID */
+  departmentId: string;
   /** ユーザーロール（"admin" | "user"） - User.roleに設定 */
   role: UserRole;
   /** 認証用パスワード（better-auth User作成用） */
@@ -54,7 +56,12 @@ export class CreateEmployeeCommand {
     }
 
     const employeeName = new EmployeeName(input.name);
-    const newEmployee = Employee.create(employeeCd, mailAddress, employeeName);
+    const newEmployee = Employee.create(
+      employeeCd,
+      mailAddress,
+      employeeName,
+      input.departmentId
+    );
 
     // Employee を保存
     await this.employeeRepository.save(newEmployee);

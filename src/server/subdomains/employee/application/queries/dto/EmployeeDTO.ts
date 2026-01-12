@@ -11,6 +11,8 @@ export type EmployeeDTO = {
   employeeCd: string;
   email: string;
   name: string;
+  /** 所属部署ID */
+  departmentId: string;
   /** ユーザーロール（User.roleから取得、Userが存在しない場合はnull） */
   role: UserRole | null;
   createdAt: Date;

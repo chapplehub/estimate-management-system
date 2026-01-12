@@ -58,6 +58,7 @@ describe("CreateEmployeeCommand", () => {
       employeeCd: "EMP000001",
       email: "test@example.com",
       name: "テスト太郎",
+      departmentId: "dept-001",
       role: USER_ROLES.USER,
       password: "Password1!",
     });
@@ -88,6 +89,7 @@ describe("CreateEmployeeCommand", () => {
         employeeCd: "EMP000001",
         email: "test@example.com",
         name: "テスト太郎",
+        departmentId: "dept-001",
         role: USER_ROLES.USER,
         password: "Password1!",
       })
@@ -104,6 +106,7 @@ describe("CreateEmployeeCommand", () => {
         employeeCd: "EMP000001",
         email: "invalid-email",
         name: "テスト太郎",
+        departmentId: "dept-001",
         role: USER_ROLES.USER,
         password: "Password1!",
       })
@@ -118,6 +121,7 @@ describe("CreateEmployeeCommand", () => {
         employeeCd: "INVALID",
         email: "test@example.com",
         name: "テスト太郎",
+        departmentId: "dept-001",
         role: USER_ROLES.USER,
         password: "Password1!",
       })
@@ -136,6 +140,7 @@ describe("CreateEmployeeCommand", () => {
         employeeCd: "EMP000001",
         email: "test@example.com",
         name: "",
+        departmentId: "dept-001",
         role: USER_ROLES.USER,
         password: "Password1!",
       })
@@ -155,6 +160,7 @@ describe("CreateEmployeeCommand", () => {
         employeeCd: "EMP000001",
         email: "test@example.com",
         name: tooLongName,
+        departmentId: "dept-001",
         role: USER_ROLES.USER,
         password: "Password1!",
       })

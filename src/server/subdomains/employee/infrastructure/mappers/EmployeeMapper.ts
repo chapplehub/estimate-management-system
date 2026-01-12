@@ -27,6 +27,7 @@ export class EmployeeMapper {
       employeeCd,
       email,
       name,
+      prismaEmployee.departmentId,
       prismaEmployee.createdAt,
       prismaEmployee.updatedAt
     );
@@ -44,6 +45,7 @@ export class EmployeeMapper {
       employeeCd: employee.employeeCd.value,
       email: employee.email.value,
       name: employee.name.value,
+      departmentId: employee.departmentId,
     };
   }
 
@@ -57,6 +59,7 @@ export class EmployeeMapper {
     return {
       email: employee.email.value,
       name: employee.name.value,
+      departmentId: employee.departmentId,
       updatedAt: employee.updatedAt,
     };
   }
