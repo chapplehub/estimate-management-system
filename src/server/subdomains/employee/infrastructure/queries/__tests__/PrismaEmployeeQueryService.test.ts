@@ -213,7 +213,7 @@ describe("PrismaEmployeeQueryService", () => {
     });
 
     it("名前での部分一致検索ができる", async () => {
-      const results = await queryService.search({ name: "QA検索者A" });
+      const results = await queryService.search({ name: "検索者A" });
 
       expect(results.length).toBe(1);
       expect(results[0].name).toBe("QA検索者A");
@@ -246,8 +246,6 @@ describe("PrismaEmployeeQueryService", () => {
       const names = results.map((r) => r.name);
       expect(names).toContain("QA検索者B");
     });
-
-    // NOTE: isLocked 検索は認証を better-auth に移行したため削除
 
     it("複数条件の組み合わせで検索できる", async () => {
       const results = await queryService.search({
