@@ -1,16 +1,17 @@
+import type { IUserManagementService } from "@server/shared/auth/IUserManagementService";
+import { USER_ROLES } from "@server/shared/auth/types";
+import { MailAddress } from "@server/shared/domain/values/MailAddress";
+import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
+import { ValidationError } from "@server/shared/errors/DomainError";
 import { Employee } from "@subdomains/employee/domain/entities/Employee";
 import { IEmployeeRepository } from "@subdomains/employee/domain/repositories/IEmployeeRepository";
 import { MailAddressDuplicationCheckDomainService } from "@subdomains/employee/domain/services/MailAddressDuplicationCheckDomainService";
 import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
 import { EmployeeName } from "@subdomains/employee/domain/values/EmployeeName";
-import { MailAddress } from "@server/shared/domain/values/MailAddress";
-import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
-import { ValidationError } from "@server/shared/errors/DomainError";
-import { UpdateEmployeeCommand } from "../UpdateEmployeeCommand";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { IUserManagementService } from "@server/shared/auth/IUserManagementService";
-import { USER_ROLES } from "@server/shared/auth/types";
+import { UpdateEmployeeCommand } from "../UpdateEmployeeCommand";
 
+// TODO: 統合(Midium)テストなのにモックを使いすぎている。すべて実際のモジュールに置き換えること
 describe("UpdateEmployeeCommand", () => {
   let command: UpdateEmployeeCommand;
   let mockRepository: IEmployeeRepository;
@@ -26,7 +27,7 @@ describe("UpdateEmployeeCommand", () => {
       new EmployeeName("旧名前"),
       "dept-001",
       new Date("2025-01-01"),
-      new Date("2025-01-01")
+      new Date("2025-01-01"),
     );
 
     mockRepository = {
@@ -42,7 +43,9 @@ describe("UpdateEmployeeCommand", () => {
     } as unknown as MailAddressDuplicationCheckDomainService;
 
     mockUserManagementService = {
-      createUser: vi.fn().mockResolvedValue({ success: true, userId: "user-1" }),
+      createUser: vi
+        .fn()
+        .mockResolvedValue({ success: true, userId: "user-1" }),
       updateUserEmail: vi.fn().mockResolvedValue({ success: true }),
       updateUserRole: vi.fn().mockResolvedValue({ success: true }),
       removeUser: vi.fn().mockResolvedValue({ success: true }),
@@ -52,7 +55,7 @@ describe("UpdateEmployeeCommand", () => {
     command = new UpdateEmployeeCommand(
       mockRepository,
       mockMailDuplicationCheckService,
-      mockUserManagementService
+      mockUserManagementService,
     );
   });
 
@@ -79,16 +82,16 @@ describe("UpdateEmployeeCommand", () => {
 
     // email変更時に認証ユーザーのemailも更新されることを確認
     expect(mockUserManagementService.findUserByEmployeeId).toHaveBeenCalledWith(
-      "test-id-001"
+      "test-id-001",
     );
     expect(mockUserManagementService.updateUserEmail).toHaveBeenCalledWith(
       "user-1",
-      "new@example.com"
+      "new@example.com",
     );
     // role変更時に認証ユーザーのroleも更新されることを確認
     expect(mockUserManagementService.updateUserRole).toHaveBeenCalledWith(
       "user-1",
-      USER_ROLES.ADMIN
+      USER_ROLES.ADMIN,
     );
   });
 
@@ -103,7 +106,7 @@ describe("UpdateEmployeeCommand", () => {
         name: "テスト太郎",
         departmentId: "dept-001",
         role: USER_ROLES.USER,
-      })
+      }),
     ).rejects.toThrow(NotFoundEntityError);
 
     expect(mockRepository.save).not.toHaveBeenCalled();
@@ -120,7 +123,7 @@ describe("UpdateEmployeeCommand", () => {
         name: "新名前",
         departmentId: "dept-001",
         role: USER_ROLES.USER,
-      })
+      }),
     ).rejects.toThrow(ValidationError);
 
     expect(mockRepository.save).not.toHaveBeenCalled();

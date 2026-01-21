@@ -1,13 +1,13 @@
+import type { IUserManagementService } from "@server/shared/auth/IUserManagementService";
+import type { UserRole } from "@server/shared/auth/types";
+import { MailAddress } from "@server/shared/domain/values/MailAddress";
+import { ValidationError } from "@server/shared/errors/DomainError";
 import { Employee } from "@subdomains/employee/domain/entities/Employee";
 import { IEmployeeRepository } from "@subdomains/employee/domain/repositories/IEmployeeRepository";
 import { EmployeeCdDuplicationCheckDomainService } from "@subdomains/employee/domain/services/EmployeeCdDuplicationCheckDomainService";
 import { MailAddressDuplicationCheckDomainService } from "@subdomains/employee/domain/services/MailAddressDuplicationCheckDomainService";
 import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
 import { EmployeeName } from "@subdomains/employee/domain/values/EmployeeName";
-import { MailAddress } from "@server/shared/domain/values/MailAddress";
-import { ValidationError } from "@server/shared/errors/DomainError";
-import type { IUserManagementService } from "@server/shared/auth/IUserManagementService";
-import type { UserRole } from "@server/shared/auth/types";
 
 export type CreateEmployeeInput = {
   employeeCd: string;
@@ -32,7 +32,7 @@ export class CreateEmployeeCommand {
     private readonly employeeRepository: IEmployeeRepository,
     private readonly employeeCdDuplicationCheckDomainService: EmployeeCdDuplicationCheckDomainService,
     private readonly mailAddressDuplicationCheckDomainService: MailAddressDuplicationCheckDomainService,
-    private readonly userManagementService: IUserManagementService
+    private readonly userManagementService: IUserManagementService,
   ) {}
 
   async execute(input: CreateEmployeeInput): Promise<void> {
@@ -51,7 +51,7 @@ export class CreateEmployeeCommand {
       await this.mailAddressDuplicationCheckDomainService.execute(mailAddress);
     if (isEmailDuplicated) {
       throw new ValidationError(
-        `既に存在するメールアドレスです: Email=${mailAddress.value}`
+        `既に存在するメールアドレスです: Email=${mailAddress.value}`,
       );
     }
 
@@ -60,7 +60,7 @@ export class CreateEmployeeCommand {
       employeeCd,
       mailAddress,
       employeeName,
-      input.departmentId
+      input.departmentId,
     );
 
     // Employee を保存
@@ -79,7 +79,7 @@ export class CreateEmployeeCommand {
     if (!userResult.success) {
       await this.employeeRepository.delete(newEmployee.id);
       throw new ValidationError(
-        `認証ユーザーの作成に失敗しました: ${userResult.error}`
+        `認証ユーザーの作成に失敗しました: ${userResult.error}`,
       );
     }
   }

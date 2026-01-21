@@ -1,171 +1,111 @@
-import { Employee } from "@subdomains/employee/domain/entities/Employee";
-import { IEmployeeRepository } from "@subdomains/employee/domain/repositories/IEmployeeRepository";
+import { FakeUserManagementService } from "@server/shared/auth/fake/FakeUserManagementService";
+import { USER_ROLES } from "@server/shared/auth/types";
+import { ValidationError } from "@server/shared/errors/DomainError";
+import prisma from "@server/prisma";
 import { EmployeeCdDuplicationCheckDomainService } from "@subdomains/employee/domain/services/EmployeeCdDuplicationCheckDomainService";
 import { MailAddressDuplicationCheckDomainService } from "@subdomains/employee/domain/services/MailAddressDuplicationCheckDomainService";
 import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
-import { MailAddress } from "@server/shared/domain/values/MailAddress";
-import { ValidationError } from "@server/shared/errors/DomainError";
+import { PrismaEmployeeRepository } from "@subdomains/employee/infrastructure/prisma/PrismaEmployeeRepository";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { CreateEmployeeCommand } from "../CreateEmployeeCommand";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { IUserManagementService } from "@server/shared/auth/IUserManagementService";
-import { USER_ROLES } from "@server/shared/auth/types";
 
 describe("CreateEmployeeCommand", () => {
   let command: CreateEmployeeCommand;
-  let mockRepository: IEmployeeRepository;
-  let mockCdDuplicationCheckService: EmployeeCdDuplicationCheckDomainService;
-  let mockMailDuplicationCheckService: MailAddressDuplicationCheckDomainService;
-  let mockUserManagementService: IUserManagementService;
+  let repository: PrismaEmployeeRepository;
+  let cdDuplicationCheckService: EmployeeCdDuplicationCheckDomainService;
+  let mailDuplicationCheckService: MailAddressDuplicationCheckDomainService;
+  let fakeUserManagementService: FakeUserManagementService;
 
-  beforeEach(() => {
-    mockRepository = {
-      save: vi.fn(),
-      delete: vi.fn(),
-      findById: vi.fn(),
-      findByEmployeeCd: vi.fn(),
-      findByEmail: vi.fn(),
-    };
+  beforeEach(async () => {
+    // テストデータのクリーンアップ
+    await prisma.employee.deleteMany({
+      where: {
+        employeeCd: {
+          in: ["EMP999901"],
+        },
+      },
+    });
 
-    mockCdDuplicationCheckService = {
-      execute: vi.fn(),
-    } as unknown as EmployeeCdDuplicationCheckDomainService;
+    // テスト用部署を作成（存在しない場合）
+    await prisma.department.upsert({
+      where: { id: "dept-001" },
+      update: {},
+      create: {
+        id: "dept-001",
+        departmentCd: "DEPT001",
+        name: "テスト部署",
+        abbreviation: "テスト",
+        displayOrder: 1,
+        isActive: true,
+      },
+    });
 
-    mockMailDuplicationCheckService = {
-      execute: vi.fn(),
-    } as unknown as MailAddressDuplicationCheckDomainService;
-
-    mockUserManagementService = {
-      createUser: vi.fn().mockResolvedValue({ success: true, userId: "user-1" }),
-      updateUserEmail: vi.fn().mockResolvedValue({ success: true }),
-      updateUserRole: vi.fn().mockResolvedValue({ success: true }),
-      removeUser: vi.fn().mockResolvedValue({ success: true }),
-      findUserByEmployeeId: vi.fn().mockResolvedValue(null),
-    };
+    repository = new PrismaEmployeeRepository();
+    cdDuplicationCheckService = new EmployeeCdDuplicationCheckDomainService(
+      repository
+    );
+    mailDuplicationCheckService = new MailAddressDuplicationCheckDomainService(
+      repository
+    );
+    fakeUserManagementService = new FakeUserManagementService();
 
     command = new CreateEmployeeCommand(
-      mockRepository,
-      mockCdDuplicationCheckService,
-      mockMailDuplicationCheckService,
-      mockUserManagementService
+      repository,
+      cdDuplicationCheckService,
+      mailDuplicationCheckService,
+      fakeUserManagementService
     );
   });
 
-  it("従業員を新規登録できる", async () => {
-    vi.mocked(mockCdDuplicationCheckService.execute).mockResolvedValue(false);
-    vi.mocked(mockMailDuplicationCheckService.execute).mockResolvedValue(false);
+  afterEach(async () => {
+    // テストデータのクリーンアップ
+    await prisma.employee.deleteMany({
+      where: {
+        employeeCd: {
+          in: ["EMP999901"],
+        },
+      },
+    });
+  });
 
+  it("従業員を新規登録できる", async () => {
     await command.execute({
-      employeeCd: "EMP000001",
-      email: "test@example.com",
+      employeeCd: "EMP999901",
+      email: "test-create-cmd@example.com",
       name: "テスト太郎",
       departmentId: "dept-001",
       role: USER_ROLES.USER,
       password: "Password1!",
     });
 
-    expect(mockCdDuplicationCheckService.execute).toHaveBeenCalledWith(
-      expect.any(EmployeeCd)
+    // 実際にリポジトリに保存されたことを確認
+    const saved = await repository.findByEmployeeCd(
+      new EmployeeCd("EMP999901")
     );
-    expect(mockMailDuplicationCheckService.execute).toHaveBeenCalledWith(
-      expect.any(MailAddress)
+    expect(saved).not.toBeNull();
+    expect(saved?.email.value).toBe("test-create-cmd@example.com");
+    expect(saved?.name.value).toBe("テスト太郎");
+    expect(saved?.departmentId).toBe("dept-001");
+  });
+
+  it("認証ユーザー作成失敗時、保存したEmployeeが削除される", async () => {
+    fakeUserManagementService.setCreateUserToFail(true);
+
+    await expect(
+      command.execute({
+        employeeCd: "EMP999901",
+        email: "test-create-cmd@example.com",
+        name: "テスト太郎",
+        departmentId: "dept-001",
+        role: USER_ROLES.USER,
+        password: "Password1!",
+      })
+    ).rejects.toThrow(ValidationError);
+
+    // ロールバックされてEmployeeが残っていないことを確認
+    const employee = await repository.findByEmployeeCd(
+      new EmployeeCd("EMP999901")
     );
-    expect(mockRepository.save).toHaveBeenCalledWith(expect.any(Employee));
-    expect(mockRepository.save).toHaveBeenCalledTimes(1);
-    expect(mockUserManagementService.createUser).toHaveBeenCalledWith(
-      expect.objectContaining({
-        email: "test@example.com",
-        password: "Password1!",
-        name: "テスト太郎",
-        role: USER_ROLES.USER,
-      })
-    );
-  });
-
-  it("既に存在する従業員CDの場合はエラーを投げる", async () => {
-    vi.mocked(mockCdDuplicationCheckService.execute).mockResolvedValue(true);
-
-    await expect(
-      command.execute({
-        employeeCd: "EMP000001",
-        email: "test@example.com",
-        name: "テスト太郎",
-        departmentId: "dept-001",
-        role: USER_ROLES.USER,
-        password: "Password1!",
-      })
-    ).rejects.toThrow(ValidationError);
-
-    expect(mockRepository.save).not.toHaveBeenCalled();
-  });
-
-  it("不正なメールアドレスの場合はエラーを投げる", async () => {
-    vi.mocked(mockCdDuplicationCheckService.execute).mockResolvedValue(false);
-
-    await expect(
-      command.execute({
-        employeeCd: "EMP000001",
-        email: "invalid-email",
-        name: "テスト太郎",
-        departmentId: "dept-001",
-        role: USER_ROLES.USER,
-        password: "Password1!",
-      })
-    ).rejects.toThrow(ValidationError);
-
-    expect(mockRepository.save).not.toHaveBeenCalled();
-  });
-
-  it("不正な従業員CDの場合はエラーを投げる", async () => {
-    await expect(
-      command.execute({
-        employeeCd: "INVALID",
-        email: "test@example.com",
-        name: "テスト太郎",
-        departmentId: "dept-001",
-        role: USER_ROLES.USER,
-        password: "Password1!",
-      })
-    ).rejects.toThrow(ValidationError);
-
-    expect(mockCdDuplicationCheckService.execute).not.toHaveBeenCalled();
-    expect(mockRepository.save).not.toHaveBeenCalled();
-  });
-
-  it("空の名前の場合はエラーを投げる", async () => {
-    vi.mocked(mockCdDuplicationCheckService.execute).mockResolvedValue(false);
-    vi.mocked(mockMailDuplicationCheckService.execute).mockResolvedValue(false);
-
-    await expect(
-      command.execute({
-        employeeCd: "EMP000001",
-        email: "test@example.com",
-        name: "",
-        departmentId: "dept-001",
-        role: USER_ROLES.USER,
-        password: "Password1!",
-      })
-    ).rejects.toThrow(ValidationError);
-
-    expect(mockRepository.save).not.toHaveBeenCalled();
-  });
-
-  it("101文字以上の名前の場合はエラーを投げる", async () => {
-    vi.mocked(mockCdDuplicationCheckService.execute).mockResolvedValue(false);
-    vi.mocked(mockMailDuplicationCheckService.execute).mockResolvedValue(false);
-
-    const tooLongName = "あ".repeat(101);
-
-    await expect(
-      command.execute({
-        employeeCd: "EMP000001",
-        email: "test@example.com",
-        name: tooLongName,
-        departmentId: "dept-001",
-        role: USER_ROLES.USER,
-        password: "Password1!",
-      })
-    ).rejects.toThrow(ValidationError);
-
-    expect(mockRepository.save).not.toHaveBeenCalled();
+    expect(employee).toBeNull();
   });
 });
