@@ -1,131 +1,172 @@
-import type { IUserManagementService } from "@server/shared/auth/IUserManagementService";
+import { FakeUserManagementService } from "@server/shared/auth/fake/FakeUserManagementService";
 import { USER_ROLES } from "@server/shared/auth/types";
-import { MailAddress } from "@server/shared/domain/values/MailAddress";
-import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
+import prisma from "@server/prisma";
 import { ValidationError } from "@server/shared/errors/DomainError";
-import { Employee } from "@subdomains/employee/domain/entities/Employee";
-import { IEmployeeRepository } from "@subdomains/employee/domain/repositories/IEmployeeRepository";
 import { MailAddressDuplicationCheckDomainService } from "@subdomains/employee/domain/services/MailAddressDuplicationCheckDomainService";
-import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
-import { EmployeeName } from "@subdomains/employee/domain/values/EmployeeName";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { PrismaEmployeeRepository } from "@subdomains/employee/infrastructure/prisma/PrismaEmployeeRepository";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { UpdateEmployeeCommand } from "../UpdateEmployeeCommand";
 
-// TODO: 統合(Midium)テストなのにモックを使いすぎている。すべて実際のモジュールに置き換えること
 describe("UpdateEmployeeCommand", () => {
   let command: UpdateEmployeeCommand;
-  let mockRepository: IEmployeeRepository;
-  let mockMailDuplicationCheckService: MailAddressDuplicationCheckDomainService;
-  let mockUserManagementService: IUserManagementService;
-  let existingEmployee: Employee;
+  let repository: PrismaEmployeeRepository;
+  let mailDuplicationCheckService: MailAddressDuplicationCheckDomainService;
+  let fakeUserManagementService: FakeUserManagementService;
 
-  beforeEach(() => {
-    existingEmployee = Employee.reconstruct(
-      "test-id-001",
-      new EmployeeCd("EMP000001"),
-      new MailAddress("old@example.com"),
-      new EmployeeName("旧名前"),
-      "dept-001",
-      new Date("2025-01-01"),
-      new Date("2025-01-01"),
-    );
+  const TEST_EMPLOYEE_ID = "test-update-id-001";
+  const ANOTHER_EMPLOYEE_ID = "test-update-id-002";
 
-    mockRepository = {
-      save: vi.fn(),
-      delete: vi.fn(),
-      findById: vi.fn(),
-      findByEmployeeCd: vi.fn(),
-      findByEmail: vi.fn(),
-    };
-
-    mockMailDuplicationCheckService = {
-      execute: vi.fn(),
-    } as unknown as MailAddressDuplicationCheckDomainService;
-
-    mockUserManagementService = {
-      createUser: vi
-        .fn()
-        .mockResolvedValue({ success: true, userId: "user-1" }),
-      updateUserEmail: vi.fn().mockResolvedValue({ success: true }),
-      updateUserRole: vi.fn().mockResolvedValue({ success: true }),
-      removeUser: vi.fn().mockResolvedValue({ success: true }),
-      findUserByEmployeeId: vi.fn().mockResolvedValue({ id: "user-1" }),
-    };
-
-    command = new UpdateEmployeeCommand(
-      mockRepository,
-      mockMailDuplicationCheckService,
-      mockUserManagementService,
-    );
-  });
-
-  it("従業員情報を更新できる", async () => {
-    vi.mocked(mockRepository.findById).mockResolvedValue(existingEmployee);
-    vi.mocked(mockMailDuplicationCheckService.execute).mockResolvedValue(false);
-
-    await command.execute({
-      id: "test-id-001",
-      employeeCd: "EMP000001",
-      email: "new@example.com",
-      name: "新名前",
-      departmentId: "dept-001",
-      role: USER_ROLES.ADMIN,
+  beforeEach(async () => {
+    // 1. テストデータクリーンアップ
+    await prisma.employee.deleteMany({
+      where: {
+        employeeCd: {
+          in: ["EMP999902", "EMP999903"],
+        },
+      },
     });
 
-    expect(mockRepository.findById).toHaveBeenCalledWith("test-id-001");
-    expect(mockRepository.save).toHaveBeenCalledWith(existingEmployee);
-    expect(mockRepository.save).toHaveBeenCalledTimes(1);
+    // 2. テスト用部署を upsert
+    await prisma.department.upsert({
+      where: { id: "dept-001" },
+      update: {},
+      create: {
+        id: "dept-001",
+        departmentCd: "DEPT001",
+        name: "テスト部署",
+        abbreviation: "テスト",
+        displayOrder: 1,
+        isActive: true,
+      },
+    });
 
-    // エンティティが更新されているか確認
-    expect(existingEmployee.name.value).toBe("新名前");
-    expect(existingEmployee.email.value).toBe("new@example.com");
+    // 3. 更新対象の既存従業員を作成
+    await prisma.employee.create({
+      data: {
+        id: TEST_EMPLOYEE_ID,
+        employeeCd: "EMP999902",
+        email: "existing@example.com",
+        name: "既存従業員",
+        departmentId: "dept-001",
+      },
+    });
 
-    // email変更時に認証ユーザーのemailも更新されることを確認
-    expect(mockUserManagementService.findUserByEmployeeId).toHaveBeenCalledWith(
-      "test-id-001",
+    // 4. 重複チェック用の別従業員を作成
+    await prisma.employee.create({
+      data: {
+        id: ANOTHER_EMPLOYEE_ID,
+        employeeCd: "EMP999903",
+        email: "another@example.com",
+        name: "別従業員",
+        departmentId: "dept-001",
+      },
+    });
+
+    // 5. 依存オブジェクト初期化
+    repository = new PrismaEmployeeRepository();
+    mailDuplicationCheckService = new MailAddressDuplicationCheckDomainService(
+      repository
     );
-    expect(mockUserManagementService.updateUserEmail).toHaveBeenCalledWith(
-      "user-1",
-      "new@example.com",
-    );
-    // role変更時に認証ユーザーのroleも更新されることを確認
-    expect(mockUserManagementService.updateUserRole).toHaveBeenCalledWith(
-      "user-1",
-      USER_ROLES.ADMIN,
+    fakeUserManagementService = new FakeUserManagementService();
+
+    // 6. 既存の認証ユーザーを登録
+    await fakeUserManagementService.createUser({
+      email: "existing@example.com",
+      name: "既存従業員",
+      password: "Password1!",
+      employeeId: TEST_EMPLOYEE_ID,
+      role: USER_ROLES.USER,
+    });
+
+    command = new UpdateEmployeeCommand(
+      repository,
+      mailDuplicationCheckService,
+      fakeUserManagementService
     );
   });
 
-  it("存在しない従業員IDの場合はエラーを投げる", async () => {
-    vi.mocked(mockRepository.findById).mockResolvedValue(null);
-
-    await expect(
-      command.execute({
-        id: "non-existent-id",
-        employeeCd: "EMP000001",
-        email: "test@example.com",
-        name: "テスト太郎",
-        departmentId: "dept-001",
-        role: USER_ROLES.USER,
-      }),
-    ).rejects.toThrow(NotFoundEntityError);
-
-    expect(mockRepository.save).not.toHaveBeenCalled();
+  afterEach(async () => {
+    await prisma.employee.deleteMany({
+      where: {
+        employeeCd: {
+          in: ["EMP999902", "EMP999903"],
+        },
+      },
+    });
+    fakeUserManagementService.reset();
   });
 
-  it("不正なメールアドレスの場合はエラーを投げる", async () => {
-    vi.mocked(mockRepository.findById).mockResolvedValue(existingEmployee);
+  it("従業員情報を更新できる（email変更なし）", async () => {
+    await command.execute({
+      id: TEST_EMPLOYEE_ID,
+      employeeCd: "EMP999902",
+      email: "existing@example.com", // 変更なし
+      name: "更新後従業員",
+      departmentId: "dept-001",
+      role: USER_ROLES.USER,
+    });
 
+    // DBに反映されたことを確認
+    const updated = await prisma.employee.findUnique({
+      where: { id: TEST_EMPLOYEE_ID },
+    });
+    expect(updated).not.toBeNull();
+    expect(updated?.name).toBe("更新後従業員");
+    expect(updated?.email).toBe("existing@example.com");
+  });
+
+  it("email変更時に認証ユーザーのemailも同期される", async () => {
+    await command.execute({
+      id: TEST_EMPLOYEE_ID,
+      employeeCd: "EMP999902",
+      email: "newemail@example.com", // 変更
+      name: "既存従業員",
+      departmentId: "dept-001",
+      role: USER_ROLES.USER,
+    });
+
+    // DBに反映されたことを確認
+    const updated = await prisma.employee.findUnique({
+      where: { id: TEST_EMPLOYEE_ID },
+    });
+    expect(updated?.email).toBe("newemail@example.com");
+
+    // 認証ユーザーのemailも更新されたことを確認
+    const authUser = fakeUserManagementService.getUser(TEST_EMPLOYEE_ID);
+    expect(authUser?.email).toBe("newemail@example.com");
+  });
+
+  it("role変更時に認証ユーザーのroleも同期される", async () => {
+    await command.execute({
+      id: TEST_EMPLOYEE_ID,
+      employeeCd: "EMP999902",
+      email: "existing@example.com",
+      name: "既存従業員",
+      departmentId: "dept-001",
+      role: USER_ROLES.ADMIN, // USER -> ADMIN に変更
+    });
+
+    // 認証ユーザーのroleが更新されたことを確認
+    const authUser = fakeUserManagementService.getUser(TEST_EMPLOYEE_ID);
+    expect(authUser?.role).toBe(USER_ROLES.ADMIN);
+  });
+
+  it("重複するメールアドレスの場合はエラー", async () => {
     await expect(
       command.execute({
-        id: "test-id-001",
-        employeeCd: "EMP000001",
-        email: "invalid-email",
-        name: "新名前",
+        id: TEST_EMPLOYEE_ID,
+        employeeCd: "EMP999902",
+        email: "another@example.com", // 別従業員と同じemail
+        name: "既存従業員",
         departmentId: "dept-001",
         role: USER_ROLES.USER,
-      }),
+      })
     ).rejects.toThrow(ValidationError);
 
-    expect(mockRepository.save).not.toHaveBeenCalled();
+    // 更新されていないことを確認
+    const employee = await prisma.employee.findUnique({
+      where: { id: TEST_EMPLOYEE_ID },
+    });
+    expect(employee?.email).toBe("existing@example.com");
   });
 });

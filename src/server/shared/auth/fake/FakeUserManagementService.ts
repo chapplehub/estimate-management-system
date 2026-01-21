@@ -102,6 +102,14 @@ export class FakeUserManagementService implements IUserManagementService {
   /**
    * テスト用: 内部状態をリセットする
    */
+
+  /**
+   * テスト用: employeeIdでユーザーを取得する
+   */
+  getUser(employeeId: string): AuthUser | undefined {
+    return this.usersByEmployeeId.get(employeeId);
+  }
+
   reset(): void {
     this.users.clear();
     this.usersByEmployeeId.clear();
