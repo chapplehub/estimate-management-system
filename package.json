@@ -12,7 +12,8 @@
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
-    "test": "vitest"
+    "test": "vitest",
+    "coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@conform-to/react": "^1.15.1",
@@ -48,6 +49,7 @@
     "@types/node": "^20",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
+    "@vitest/coverage-v8": "^4.0.17",
     "babel-plugin-react-compiler": "1.0.0",
     "es-toolkit": "^1.41.0",
     "eslint": "^9",

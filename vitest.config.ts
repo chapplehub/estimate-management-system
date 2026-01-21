@@ -7,6 +7,9 @@ config(); // .envを読み込む
 
 export default defineConfig({
   test: {
+    coverage: {
+      provider: "v8",
+    },
     projects: [
       {
         plugins: [react()],
@@ -14,7 +17,9 @@ export default defineConfig({
           name: { label: "FrontEnd", color: "white" },
           root: "./src/app",
           environment: "jsdom",
-          setupFiles: [path.resolve(__dirname, "./vitest-cleanup-after-each.ts")],
+          setupFiles: [
+            path.resolve(__dirname, "./vitest-cleanup-after-each.ts"),
+          ],
           clearMocks: true,
         },
         resolve: {
