@@ -85,6 +85,7 @@ model User {
 
   // better-auth Admin Plugin用フィールド
   // role: 権限管理にも使用（"admin" or "user"）
+  // TODO: role自体をどこかテーブルに持っておく必要がある 
   role       String?   @default("user")
   banned     Boolean?  @default(false)
   banReason  String?
