@@ -1,6 +1,29 @@
 {
   "model": "opus",
   "alwaysThinkingEnabled": true,
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo \"unknown\"); echo \"Current branch: $BRANCH\"; if [ \"$BRANCH\" = \"main\" ] || [ \"$BRANCH\" = \"master\" ]; then echo \"\"; echo \"⚠️  WARNING: You are on the $BRANCH branch.\"; echo \"For parallel development, consider using git worktree:\"; echo \"  git worktree add ../$(basename $PWD)-<task-name> -b <branch-name>\"; echo \"\"; fi'"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo \"unknown\"); INPUT=$(cat); CMD=$(echo \"$INPUT\" | jq -r \".tool_input.command // empty\" 2>/dev/null); if [ -z \"$CMD\" ]; then exit 0; fi; if echo \"$CMD\" | grep -qE \"git\\s+(push|commit)\"; then if [ \"$BRANCH\" = \"main\" ] || [ \"$BRANCH\" = \"master\" ]; then echo \"❌ ERROR: git push/commit to $BRANCH branch is blocked.\" >&2; echo \"Please use a feature branch or git worktree for development.\" >&2; exit 2; fi; fi'"
+          }
+        ]
+      }
+    ]
+  },
   "permissions": {
     "allow": [
       "Bash(npm run dev:*)",
@@ -25,6 +48,13 @@
       "Bash(git log:*)",
       "Bash(git show:*)",
       "Bash(git branch:*)",
+      "Bash(git add:*)",
+      "Bash(git checkout:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git worktree add:*)",
+      "Bash(git worktree list:*)",
+      "Bash(git worktree remove:*)",
 
       "Bash(npm install:*)",
       "Bash(npm ci:*)",
@@ -34,6 +64,9 @@
       "Bash(gh issue create:*)",
       "Bash(gh issue comment:*)",
       "Bash(gh issue close:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr list:*)",
 
       "Bash(cat:*)",
       "Bash(tree:*)",
@@ -48,8 +81,6 @@
       "SlashCommand(/learn:*)"
     ],
     "deny": [
-      "Bash(git commit:*)",
-      "Bash(git push:*)",
       "Bash(git reset:*)",
       "Bash(git rebase:*)",
       "Bash(rm:*)",

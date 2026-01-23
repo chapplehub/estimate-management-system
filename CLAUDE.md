@@ -313,3 +313,70 @@ This is in **early development**. The domain layer foundation is being establish
 10. **Verify handoff materials** - HANDOFF.md is reference, not absolute instruction. Validate against official docs.
 
 Refer to `docs/system-design-doc.md` and `docs/dev-guidelines.md` for comprehensive architecture and coding standards.
+
+---
+
+## 並行開発ワークフロー（Git Worktrees）
+
+複数の Claude Code セッションを並行して実行する場合は、**Git worktrees** を使用してファイルの競合を防ぐ。
+
+### なぜ Git Worktrees を使うのか
+
+- 各ワークツリーは独立したファイル状態を持つ（同じファイルを編集してもコンフリクトしない）
+- Git 履歴は共有される
+- 各 Claude Code セッションが互いに干渉しない
+
+### 基本的な使い方
+
+```bash
+# 1. タスク用のワークツリーを作成（新しいブランチ付き）
+git worktree add ../estimate-management-system-issue-XX -b issue-XX
+
+# 2. ワークツリーに移動して Claude Code を起動
+cd ../estimate-management-system-issue-XX
+claude
+
+# 3. 別のターミナルで別のタスク用ワークツリーを作成・起動
+git worktree add ../estimate-management-system-issue-YY -b issue-YY
+cd ../estimate-management-system-issue-YY
+claude
+```
+
+### 作業完了後
+
+```bash
+# 1. 変更をコミット & プッシュ
+git add .
+git commit -m "issue-XX: 説明"
+git push -u origin issue-XX
+
+# 2. PR を作成
+gh pr create --title "Issue #XX: タイトル" --body "説明"
+
+# 3. ワークツリーを削除（PR マージ後）
+cd /home/chapple/dev/estimate-management-system
+git worktree remove ../estimate-management-system-issue-XX
+git branch -d issue-XX  # ローカルブランチも削除
+```
+
+### ワークツリー管理コマンド
+
+```bash
+# 現在のワークツリー一覧
+git worktree list
+
+# ワークツリーの削除
+git worktree remove <path>
+
+# 不要なワークツリー情報のクリーンアップ
+git worktree prune
+```
+
+### Hooks による保護
+
+`.claude/settings.json` に設定された hooks により：
+
+- **セッション開始時**: 現在のブランチを表示し、main/master の場合は警告
+- **git push/commit 時**: main/master ブランチへの直接操作をブロック
+
+これにより、誤って main ブランチで作業することを防止する。
