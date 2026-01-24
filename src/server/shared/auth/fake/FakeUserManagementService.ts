@@ -18,12 +18,20 @@ export class FakeUserManagementService implements IUserManagementService {
   private users = new Map<string, AuthUser>();
   private usersByEmployeeId = new Map<string, AuthUser>();
   private shouldFailOnCreate = false;
+  private shouldFailOnRemove = false;
 
   /**
    * テスト用: 次のcreateUser呼び出しを失敗させる
    */
   setCreateUserToFail(fail: boolean): void {
     this.shouldFailOnCreate = fail;
+  }
+
+  /**
+   * テスト用: 次のremoveUser呼び出しを失敗させる
+   */
+  setRemoveUserToFail(fail: boolean): void {
+    this.shouldFailOnRemove = fail;
   }
 
   async createUser(input: CreateAuthUserInput): Promise<CreateAuthUserResult> {
@@ -66,6 +74,10 @@ export class FakeUserManagementService implements IUserManagementService {
   }
 
   async removeUser(userId: string): Promise<RemoveAuthUserResult> {
+    if (this.shouldFailOnRemove) {
+      return { success: false, error: "Fake error for testing" };
+    }
+
     const user = this.users.get(userId);
     if (!user) {
       return { success: false, error: "User not found" };
@@ -114,5 +126,6 @@ export class FakeUserManagementService implements IUserManagementService {
     this.users.clear();
     this.usersByEmployeeId.clear();
     this.shouldFailOnCreate = false;
+    this.shouldFailOnRemove = false;
   }
 }
