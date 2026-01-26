@@ -18,6 +18,7 @@ const validInput = {
   employeeCd: "EMP000001",
   password: "password123",
   role: USER_ROLES.USER,
+  departmentId: "dept-001",
 };
 
 describe("createEmployeeSchema", () => {
