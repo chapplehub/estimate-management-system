@@ -1,6 +1,6 @@
+import prisma from "@server/prisma";
 import { FakeUserManagementService } from "@server/shared/auth/fake/FakeUserManagementService";
 import { USER_ROLES } from "@server/shared/auth/types";
-import prisma from "@server/prisma";
 import { ValidationError } from "@server/shared/errors/DomainError";
 import { MailAddressDuplicationCheckDomainService } from "@subdomains/employee/domain/services/MailAddressDuplicationCheckDomainService";
 import { PrismaEmployeeRepository } from "@subdomains/employee/infrastructure/prisma/PrismaEmployeeRepository";
@@ -21,7 +21,7 @@ describe("UpdateEmployeeCommand", () => {
     await prisma.employee.deleteMany({
       where: {
         employeeCd: {
-          in: ["EMP999902", "EMP999903"],
+          in: ["EMP999912", "EMP999913"],
         },
       },
     });
@@ -44,7 +44,7 @@ describe("UpdateEmployeeCommand", () => {
     await prisma.employee.create({
       data: {
         id: TEST_EMPLOYEE_ID,
-        employeeCd: "EMP999902",
+        employeeCd: "EMP999912",
         email: "existing@example.com",
         name: "既存従業員",
         departmentId: "dept-001",
@@ -55,7 +55,7 @@ describe("UpdateEmployeeCommand", () => {
     await prisma.employee.create({
       data: {
         id: ANOTHER_EMPLOYEE_ID,
-        employeeCd: "EMP999903",
+        employeeCd: "EMP999913",
         email: "another@example.com",
         name: "別従業員",
         departmentId: "dept-001",
@@ -65,7 +65,7 @@ describe("UpdateEmployeeCommand", () => {
     // 5. 依存オブジェクト初期化
     repository = new PrismaEmployeeRepository();
     mailDuplicationCheckService = new MailAddressDuplicationCheckDomainService(
-      repository
+      repository,
     );
     fakeUserManagementService = new FakeUserManagementService();
 
@@ -81,7 +81,7 @@ describe("UpdateEmployeeCommand", () => {
     command = new UpdateEmployeeCommand(
       repository,
       mailDuplicationCheckService,
-      fakeUserManagementService
+      fakeUserManagementService,
     );
   });
 
@@ -89,7 +89,7 @@ describe("UpdateEmployeeCommand", () => {
     await prisma.employee.deleteMany({
       where: {
         employeeCd: {
-          in: ["EMP999902", "EMP999903"],
+          in: ["EMP999912", "EMP999913"],
         },
       },
     });
@@ -99,7 +99,7 @@ describe("UpdateEmployeeCommand", () => {
   it("従業員情報を更新できる（email変更なし）", async () => {
     await command.execute({
       id: TEST_EMPLOYEE_ID,
-      employeeCd: "EMP999902",
+      employeeCd: "EMP999912",
       email: "existing@example.com", // 変更なし
       name: "更新後従業員",
       departmentId: "dept-001",
@@ -118,7 +118,7 @@ describe("UpdateEmployeeCommand", () => {
   it("email変更時に認証ユーザーのemailも同期される", async () => {
     await command.execute({
       id: TEST_EMPLOYEE_ID,
-      employeeCd: "EMP999902",
+      employeeCd: "EMP999912",
       email: "newemail@example.com", // 変更
       name: "既存従業員",
       departmentId: "dept-001",
@@ -139,7 +139,7 @@ describe("UpdateEmployeeCommand", () => {
   it("role変更時に認証ユーザーのroleも同期される", async () => {
     await command.execute({
       id: TEST_EMPLOYEE_ID,
-      employeeCd: "EMP999902",
+      employeeCd: "EMP999912",
       email: "existing@example.com",
       name: "既存従業員",
       departmentId: "dept-001",
@@ -155,12 +155,12 @@ describe("UpdateEmployeeCommand", () => {
     await expect(
       command.execute({
         id: TEST_EMPLOYEE_ID,
-        employeeCd: "EMP999902",
+        employeeCd: "EMP999912",
         email: "another@example.com", // 別従業員と同じemail
         name: "既存従業員",
         departmentId: "dept-001",
         role: USER_ROLES.USER,
-      })
+      }),
     ).rejects.toThrow(ValidationError);
 
     // 更新されていないことを確認

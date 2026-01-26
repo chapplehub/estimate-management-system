@@ -21,7 +21,7 @@ describe("CreateEmployeeCommand", () => {
     await prisma.employee.deleteMany({
       where: {
         employeeCd: {
-          in: ["EMP999901"],
+          in: ["EMP999911"],
         },
       },
     });
@@ -62,7 +62,7 @@ describe("CreateEmployeeCommand", () => {
     await prisma.employee.deleteMany({
       where: {
         employeeCd: {
-          in: ["EMP999901"],
+          in: ["EMP999911"],
         },
       },
     });
@@ -70,7 +70,7 @@ describe("CreateEmployeeCommand", () => {
 
   it("従業員を新規登録できる", async () => {
     await command.execute({
-      employeeCd: "EMP999901",
+      employeeCd: "EMP999911",
       email: "test-create-cmd@example.com",
       name: "テスト太郎",
       departmentId: "dept-001",
@@ -80,7 +80,7 @@ describe("CreateEmployeeCommand", () => {
 
     // 実際にリポジトリに保存されたことを確認
     const saved = await repository.findByEmployeeCd(
-      new EmployeeCd("EMP999901")
+      new EmployeeCd("EMP999911")
     );
     expect(saved).not.toBeNull();
     expect(saved?.email.value).toBe("test-create-cmd@example.com");
@@ -93,7 +93,7 @@ describe("CreateEmployeeCommand", () => {
 
     await expect(
       command.execute({
-        employeeCd: "EMP999901",
+        employeeCd: "EMP999911",
         email: "test-create-cmd@example.com",
         name: "テスト太郎",
         departmentId: "dept-001",
@@ -104,7 +104,7 @@ describe("CreateEmployeeCommand", () => {
 
     // ロールバックされてEmployeeが残っていないことを確認
     const employee = await repository.findByEmployeeCd(
-      new EmployeeCd("EMP999901")
+      new EmployeeCd("EMP999911")
     );
     expect(employee).toBeNull();
   });
