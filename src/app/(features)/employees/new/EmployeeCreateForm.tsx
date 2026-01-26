@@ -11,7 +11,12 @@ import { useActionState } from "react";
 import { createEmployee } from "./actions";
 import { createEmployeeSchema } from "./schema";
 
-export function EmployeeCreateForm() {
+type Props = {
+  /** 部署選択フィールド（Server Component を slot として受け取る） */
+  departmentSelectSlot: React.ReactNode;
+};
+
+export function EmployeeCreateForm({ departmentSelectSlot }: Props) {
   const [lastResult, formAction, isPending] = useActionState(
     createEmployee,
     undefined
@@ -108,6 +113,24 @@ export function EmployeeCreateForm() {
           ) : (
             <p className="text-gray-600 text-xs mt-1">
               形式: EMP + 6桁の数字（例: EMP000001）
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label
+            htmlFor="departmentId"
+            className="block text-gray-700 text-sm font-bold mb-2"
+          >
+            所属部署
+          </label>
+          {departmentSelectSlot}
+          {fields.departmentId.errors && (
+            <p
+              className="text-red-500 text-xs mt-1"
+              id={fields.departmentId.errorId}
+            >
+              {fields.departmentId.errors[0]}
             </p>
           )}
         </div>
