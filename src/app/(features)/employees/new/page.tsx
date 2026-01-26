@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { DepartmentSelectField } from "@/app/_components/form";
 import { EmployeeCreateForm } from "./EmployeeCreateForm";
 
 export default function EmployeeNewPage() {
@@ -17,11 +16,7 @@ export default function EmployeeNewPage() {
       <h1 className="text-3xl font-bold mb-8">新規従業員登録</h1>
 
       {/* 作成フォーム */}
-      <EmployeeCreateForm
-        departmentSelectSlot={
-          <DepartmentSelectField name="departmentId" id="departmentId" />
-        }
-      />
+      <EmployeeCreateForm />
 
       <div className="mt-4">
         <Link

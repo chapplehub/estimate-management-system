@@ -40,7 +40,7 @@ export async function updateEmployee(
     return submission.reply();
   }
 
-  const { name, email, role, departmentId } = submission.value;
+  const { name, email, role } = submission.value;
 
   // employeeCdからidを取得
   const queryService = new PrismaEmployeeQueryService();
@@ -65,7 +65,6 @@ export async function updateEmployee(
       name,
       email,
       employeeCd,
-      departmentId,
       role,
     });
 

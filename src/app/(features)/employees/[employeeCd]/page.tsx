@@ -1,5 +1,4 @@
 import { verifySession } from "@/app/_lib/verifyAuthentication";
-import { DepartmentSelectField } from "@/app/_components/form";
 import { isAdmin, isOwner } from "@server/shared/auth";
 import { GetEmployeeByEmployeeCdQuery } from "@subdomains/employee/application/queries/GetEmployeeByEmployeeCdQuery";
 import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
@@ -33,18 +32,7 @@ export default async function Page({
       <h1 className="text-3xl font-bold mb-8">従業員管理</h1>
 
       {/* 更新フォーム（Client Component） */}
-      <EmployeeUpdateForm
-        employee={employee}
-        canUpdate={canUpdate}
-        departmentSelectSlot={
-          <DepartmentSelectField
-            name="departmentId"
-            id="departmentId"
-            defaultValue={employee.departmentId}
-            disabled={!canUpdate}
-          />
-        }
-      />
+      <EmployeeUpdateForm employee={employee} canUpdate={canUpdate} />
 
       {/* 削除フォーム（Client Component） */}
       {canDelete && <EmployeeDeleteForm employeeId={employee.id} />}
