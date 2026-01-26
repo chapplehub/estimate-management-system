@@ -8,14 +8,7 @@
 ## ディレクトリ構造
 ```
 
-my-project/
-├── .git/
-├── src/
-├── worktrees/ ← worktree はここに作成される
-│ ├── feature-login/
-│ ├── feature-signup/
-│ └── hotfix-bug-123/
-└── .gitignore ← /worktrees/ を追加しておく
+my-project/ ├── .git/ ├── src/ ├── worktrees/ ← worktree はここに作成される │ ├── feature-login/ │ ├── feature-signup/ │ └── hotfix-bug-123/ └── .gitignore ← /worktrees/ を追加しておく
 
 ````
 

@@ -7,12 +7,11 @@ import {
 
 /**
  * 従業員作成フォームのバリデーションスキーマ
- * 基盤スキーマ + employeeCd + password + departmentId
+ * 基盤スキーマ + employeeCd + password
  */
 export const createEmployeeSchema = employeeBaseSchema.extend({
   employeeCd: employeeCdSchema,
   password: passwordSchema,
-  departmentId: z.string().min(1, "部署を選択してください"),
 });
 
 export type CreateEmployeeInput = z.infer<typeof createEmployeeSchema>;

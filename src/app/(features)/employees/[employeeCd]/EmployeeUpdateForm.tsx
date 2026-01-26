@@ -18,22 +18,15 @@ type Employee = {
   name: string;
   email: string;
   employeeCd: string;
-  departmentId: string;
   role: UserRole | null;
 };
 
 type Props = {
   employee: Employee;
   canUpdate: boolean;
-  /** 部署選択フィールド（Server Component を slot として受け取る） */
-  departmentSelectSlot: React.ReactNode;
 };
 
-export function EmployeeUpdateForm({
-  employee,
-  canUpdate,
-  departmentSelectSlot,
-}: Props) {
+export function EmployeeUpdateForm({ employee, canUpdate }: Props) {
   // LEARN: bind()でemployeeCdを事前にバインド(server-action-bind-vs-formdata.md)
   const updateEmployeeWithEmployeeCd = updateEmployee.bind(
     null,
@@ -50,7 +43,6 @@ export function EmployeeUpdateForm({
     defaultValue: {
       name: employee.name,
       email: employee.email,
-      departmentId: employee.departmentId,
       role: employee.role ?? USER_ROLES.USER,
     },
     onValidate({ formData }) {
@@ -139,24 +131,6 @@ export function EmployeeUpdateForm({
           <p className="text-gray-600 text-xs mt-1">
             形式: EMP + 6桁の数字（例: EMP000001）
           </p>
-        </div>
-
-        <div>
-          <label
-            htmlFor="departmentId"
-            className="block text-gray-700 text-sm font-bold mb-2"
-          >
-            所属部署
-          </label>
-          {departmentSelectSlot}
-          {fields.departmentId.errors && (
-            <p
-              className="text-red-500 text-xs mt-1"
-              id={fields.departmentId.errorId}
-            >
-              {fields.departmentId.errors[0]}
-            </p>
-          )}
         </div>
 
         <div>
