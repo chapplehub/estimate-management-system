@@ -3,7 +3,7 @@
 ## 概要
 
 複数ブランチを同時に作業するための worktree を簡単に管理するシェル関数。
-worktree 作成時に自動で環境セットアップ（npm install、prisma generate、.env コピー）を行い、作成したディレクトリに移動します。
+worktree 作成時に自動で環境セットアップ（pnpm install、prisma generate、.env コピー）を行い、作成したディレクトリに移動します。
 
 ## ディレクトリ構造
 
@@ -37,7 +37,7 @@ wta feature/new-feature
 実行される処理：
 1. worktree 作成（ブランチがなければ新規作成）
 2. `.env` ファイルのコピー
-3. `npm install`
+3. `pnpm install`
 4. `prisma generate`
 5. 作成したディレクトリに `cd`
 

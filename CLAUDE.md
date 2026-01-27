@@ -144,24 +144,24 @@ All commands should be run from the project root directory:
 
 ```bash
 # Development
-npm run dev              # Start dev server (http://localhost:3000)
+pnpm dev              # Start dev server (http://localhost:3000)
 
 # Build & Production
-npm run build           # Build for production
-npm start              # Start production server
+pnpm build           # Build for production
+pnpm start           # Start production server
 
 # Testing
-npm test               # Run tests with Vitest
+pnpm test            # Run tests with Vitest
 
 # Linting
-npm run lint           # Run ESLint
+pnpm lint            # Run ESLint
 
 # Database Operations
-npm run db:studio      # Open Prisma Studio (database GUI)
-npm run db:migrate     # Run database migrations
-npm run db:push        # Push schema changes to database
-npm run db:generate    # Generate Prisma Client
-npm run db:seed        # Run seed script (uses tsx)
+pnpm db:studio       # Open Prisma Studio (database GUI)
+pnpm db:migrate      # Run database migrations
+pnpm db:push         # Push schema changes to database
+pnpm db:generate     # Generate Prisma Client
+pnpm db:seed         # Run seed script (uses tsx)
 ```
 
 **Database Connection:**

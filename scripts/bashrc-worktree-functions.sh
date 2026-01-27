@@ -54,15 +54,15 @@ wta() {
         echo "  -> スキップ: $root/.env が見つかりません"
     fi
 
-    # npm install
+    # pnpm install
     echo ""
-    echo "[2/4] npm install..."
-    (cd "$path" && npm install)
+    echo "[2/4] pnpm install..."
+    (cd "$path" && pnpm install)
 
     # prisma generate
     echo ""
     echo "[3/4] prisma generate..."
-    (cd "$path" && npx prisma generate)
+    (cd "$path" && pnpm exec prisma generate)
 
     # ディレクトリ移動
     echo ""
@@ -77,7 +77,7 @@ wta() {
     echo "現在のディレクトリ: $(pwd)"
     echo ""
     echo "Claude Code を起動するには: cc"
-    echo "開発サーバーを起動するには: npm run dev"
+    echo "開発サーバーを起動するには: pnpm dev"
     echo ""
 }
 

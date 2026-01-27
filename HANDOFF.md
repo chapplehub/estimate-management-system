@@ -440,7 +440,7 @@ main()
 
 **実行:**
 ```bash
-npm run db:seed
+pnpm db:seed
 ```
 
 **テストアカウント:**
@@ -453,7 +453,7 @@ npm run db:seed
 
 **インストール:**
 ```bash
-npm install next-auth@beta @auth/prisma-adapter
+pnpm add next-auth@beta @auth/prisma-adapter
 ```
 
 **ファイル作成:**
@@ -905,8 +905,8 @@ const [state, formAction, isPending] = useActionState(serverAction, { success: t
 
 ### 📋 Auth.jsフェーズ（次のタスク）
 - [ ] `prisma/seed.ts` にテストアカウント追加
-- [ ] `npm run db:seed` 実行
-- [ ] `npm install next-auth@beta @auth/prisma-adapter`
+- [ ] `pnpm db:seed` 実行
+- [ ] `pnpm add next-auth@beta @auth/prisma-adapter`
 - [ ] `src/auth.ts` 作成
 - [ ] `src/types/next-auth.d.ts` 作成
 - [ ] `middleware.ts` 作成
@@ -970,14 +970,14 @@ import { PrismaClient } from "@prisma/client";
 
 **開発サーバー起動:**
 ```bash
-npm run dev
+pnpm dev
 # http://localhost:3000
 ```
 
 **データベースリセット（必要時）:**
 ```bash
-npm run db:push
-npm run db:seed
+pnpm db:push
+pnpm db:seed
 ```
 
 ## 完了した作業の振り返り（2025-11-17）
