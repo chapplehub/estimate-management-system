@@ -1,15 +1,9 @@
 "use client";
 
-import {
-  getFormProps,
-  getInputProps,
-  getSelectProps,
-  useForm,
-} from "@conform-to/react";
-import { parseWithZod } from "@conform-to/zod/v4";
+import { getFormProps, getInputProps, getSelectProps } from "@conform-to/react";
+import { useServerForm } from "@/app/_hooks/useServerForm";
 import type { UserRole } from "@server/shared/auth/types";
 import { USER_ROLES } from "@server/shared/auth/types";
-import { useActionState } from "react";
 import { updateEmployee } from "./actions";
 import { updateEmployeeSchema } from "./schema";
 
@@ -40,24 +34,15 @@ export function EmployeeUpdateForm({
     employee.employeeCd
   );
 
-  const [lastResult, formAction, isPending] = useActionState(
-    updateEmployeeWithEmployeeCd,
-    undefined
-  );
-
-  const [form, fields] = useForm({
-    lastResult,
+  const { form, fields, isPending } = useServerForm({
+    action: updateEmployeeWithEmployeeCd,
+    schema: updateEmployeeSchema,
     defaultValue: {
       name: employee.name,
       email: employee.email,
       departmentId: employee.departmentId,
       role: employee.role ?? USER_ROLES.USER,
     },
-    onValidate({ formData }) {
-      return parseWithZod(formData, { schema: updateEmployeeSchema });
-    },
-    shouldValidate: "onBlur",
-    shouldRevalidate: "onInput",
   });
 
   return (
@@ -77,12 +62,7 @@ export function EmployeeUpdateForm({
         </div>
       )}
 
-      <form
-        {...getFormProps(form)}
-        action={formAction}
-        noValidate
-        className="space-y-4"
-      >
+      <form {...getFormProps(form)} noValidate className="space-y-4">
         <div>
           <label
             htmlFor={fields.name.id}
