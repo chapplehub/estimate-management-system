@@ -1,13 +1,7 @@
 "use client";
 
-import {
-  useForm,
-  getFormProps,
-  getInputProps,
-  getSelectProps,
-} from "@conform-to/react";
-import { parseWithZod } from "@conform-to/zod/v4";
-import { useActionState } from "react";
+import { getFormProps, getInputProps, getSelectProps } from "@conform-to/react";
+import { useServerForm } from "@/app/_hooks/useServerForm";
 import { createEmployee } from "./actions";
 import { createEmployeeSchema } from "./schema";
 
@@ -17,18 +11,9 @@ type Props = {
 };
 
 export function EmployeeCreateForm({ departmentSelectSlot }: Props) {
-  const [lastResult, formAction, isPending] = useActionState(
-    createEmployee,
-    undefined
-  );
-
-  const [form, fields] = useForm({
-    lastResult,
-    onValidate({ formData }) {
-      return parseWithZod(formData, { schema: createEmployeeSchema });
-    },
-    shouldValidate: "onBlur",
-    shouldRevalidate: "onInput",
+  const { form, fields, isPending } = useServerForm({
+    action: createEmployee,
+    schema: createEmployeeSchema,
   });
 
   return (
@@ -44,12 +29,7 @@ export function EmployeeCreateForm({ departmentSelectSlot }: Props) {
         </div>
       )}
 
-      <form
-        {...getFormProps(form)}
-        action={formAction}
-        noValidate
-        className="space-y-4"
-      >
+      <form {...getFormProps(form)} noValidate className="space-y-4">
         <div>
           <label
             htmlFor={fields.name.id}
