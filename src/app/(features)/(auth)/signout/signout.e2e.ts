@@ -1,16 +1,20 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("ログアウト", () => {
-  test.use({ storageState: "playwright/.auth/admin.json" });
+  // storageStateを使わない（ログアウトはセッションを破壊するため、共有状態に依存すべきでない）
 
   test("ログアウトに成功する", async ({ page }) => {
-    // ログイン状態で従業員一覧ページにアクセス
-    await page.goto("/employees");
+    // 1. まずログインする（このテスト専用のセッション）
+    await page.goto("/signin");
+    await page.getByLabel("メールアドレス").fill("employee1@example.com");
+    await page.getByLabel("パスワード").fill("pass123!");
+    await page.getByRole("button", { name: "サインイン" }).click();
+    await expect(page).toHaveURL(/\/employees/, { timeout: 10000 });
 
-    // サインアウトボタンをクリック
+    // 2. サインアウトボタンをクリック
     await page.getByRole("button", { name: "サインアウト" }).click();
 
-    // /signin にリダイレクトされることを確認
+    // 3. /signin にリダイレクトされることを確認
     await expect(page).toHaveURL(/\/signin/, { timeout: 10000 });
   });
 });
