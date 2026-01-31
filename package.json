@@ -14,7 +14,8 @@
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
     "test": "vitest",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage",
+    "prepare": "husky"
   },
   "dependencies": {
     "@conform-to/react": "^1.15.1",
@@ -56,6 +57,7 @@
     "es-toolkit": "^1.41.0",
     "eslint": "^9",
     "eslint-config-next": "16.0.0",
+    "husky": "^9.1.7",
     "jsdom": "^27.3.0",
     "prisma": "^7.0.1",
     "tailwindcss": "^4",
