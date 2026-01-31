@@ -1,8 +1,5 @@
 import { EmployeeDTO } from "../dto/EmployeeDTO";
-import {
-  EmployeeSearchCriteria,
-  ListOptions,
-} from "../dto/EmployeeSearchCriteria";
+import { EmployeeSearchCriteria, ListOptions } from "../dto/EmployeeSearchCriteria";
 import { IEmployeeQueryService } from "../IEmployeeQueryService";
 import { SearchEmployeesQuery } from "../SearchEmployeesQuery";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -63,9 +60,7 @@ describe("SearchEmployeesQuery", () => {
       orderBy: { field: "createdAt", direction: "desc" },
     };
 
-    const mockResults: EmployeeDTO[] = [
-      { ...mockEmployeeDTO, role: USER_ROLES.ADMIN },
-    ];
+    const mockResults: EmployeeDTO[] = [{ ...mockEmployeeDTO, role: USER_ROLES.ADMIN }];
 
     vi.mocked(mockQueryService.search).mockResolvedValue(mockResults);
 

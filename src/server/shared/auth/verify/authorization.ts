@@ -60,9 +60,6 @@ export function isAdmin(session: AuthSession): boolean {
  * }
  * ```
  */
-export function isOwner(
-  session: AuthSession,
-  resourceEmployeeId: string
-): boolean {
+export function isOwner(session: AuthSession, resourceEmployeeId: string): boolean {
   return session.user.employeeId === resourceEmployeeId;
 }

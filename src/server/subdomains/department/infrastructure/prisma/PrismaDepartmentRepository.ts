@@ -52,9 +52,7 @@ export class PrismaDepartmentRepository implements IDepartmentRepository {
       where: { id: id },
     });
 
-    return prismaDepartment
-      ? DepartmentMapper.toDomain(prismaDepartment)
-      : null;
+    return prismaDepartment ? DepartmentMapper.toDomain(prismaDepartment) : null;
   }
 
   /**
@@ -68,9 +66,7 @@ export class PrismaDepartmentRepository implements IDepartmentRepository {
       where: { departmentCd: departmentCd.value },
     });
 
-    return prismaDepartment
-      ? DepartmentMapper.toDomain(prismaDepartment)
-      : null;
+    return prismaDepartment ? DepartmentMapper.toDomain(prismaDepartment) : null;
   }
 
   /**

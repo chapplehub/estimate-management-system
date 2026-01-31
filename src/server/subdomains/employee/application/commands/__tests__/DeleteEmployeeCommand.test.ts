@@ -96,8 +96,7 @@ describe("DeleteEmployeeCommand", () => {
     expect(employee).toBeNull();
 
     // 検証：認証ユーザーも削除されていること
-    const authUser =
-      await fakeUserManagementService.findUserByEmployeeId(TEST_EMPLOYEE_ID);
+    const authUser = await fakeUserManagementService.findUserByEmployeeId(TEST_EMPLOYEE_ID);
     expect(authUser).toBeNull();
   });
 
@@ -118,9 +117,7 @@ describe("DeleteEmployeeCommand", () => {
   it("存在しない従業員を削除しようとするとNotFoundEntityErrorがスローされる", async () => {
     const nonExistentId = "non-existent-id-12345";
 
-    await expect(command.execute({ id: nonExistentId })).rejects.toThrow(
-      NotFoundEntityError,
-    );
+    await expect(command.execute({ id: nonExistentId })).rejects.toThrow(NotFoundEntityError);
   });
 
   it("認証ユーザー削除失敗時はエラーがスローされる", async () => {
@@ -133,7 +130,7 @@ describe("DeleteEmployeeCommand", () => {
 
     // 実行・検証：エラーがスローされること
     await expect(command.execute({ id: TEST_EMPLOYEE_ID })).rejects.toThrow(
-      "認証ユーザーの削除に失敗しました",
+      "認証ユーザーの削除に失敗しました"
     );
 
     // 検証：従業員が削除されていないこと（エラーで処理が中断されたため）
@@ -143,8 +140,7 @@ describe("DeleteEmployeeCommand", () => {
     expect(employee).not.toBeNull();
 
     // 検証：認証ユーザーも削除されていないこと
-    const authUser =
-      await fakeUserManagementService.findUserByEmployeeId(TEST_EMPLOYEE_ID);
+    const authUser = await fakeUserManagementService.findUserByEmployeeId(TEST_EMPLOYEE_ID);
     expect(authUser).not.toBeNull();
   });
 });

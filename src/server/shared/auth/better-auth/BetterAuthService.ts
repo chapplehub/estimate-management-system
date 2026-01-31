@@ -1,12 +1,6 @@
 import { headers } from "next/headers";
 import type { IAuthService } from "../IAuthService";
-import type {
-  AuthSession,
-  AuthUser,
-  SignInInput,
-  SignInResult,
-  SignOutResult,
-} from "../types";
+import type { AuthSession, AuthUser, SignInInput, SignInResult, SignOutResult } from "../types";
 import { auth } from "./auth";
 
 /**

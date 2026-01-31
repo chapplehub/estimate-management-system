@@ -16,8 +16,7 @@ export class DepartmentCdDuplicationCheckDomainService {
    * @returns 重複している場合は true
    */
   async execute(departmentCd: DepartmentCd): Promise<boolean> {
-    const existingDepartment =
-      await this.departmentRepository.findByDepartmentCd(departmentCd);
+    const existingDepartment = await this.departmentRepository.findByDepartmentCd(departmentCd);
     return !!existingDepartment;
   }
 }

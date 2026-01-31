@@ -39,9 +39,7 @@ describe("Abbreviation", () => {
     it("21文字以上はエラー", () => {
       const longAbbr = "あ".repeat(21);
       expect(() => new Abbreviation(longAbbr)).toThrow(ValidationError);
-      expect(() => new Abbreviation(longAbbr)).toThrow(
-        "部署略称は20文字以内で入力してください"
-      );
+      expect(() => new Abbreviation(longAbbr)).toThrow("部署略称は20文字以内で入力してください");
     });
   });
 

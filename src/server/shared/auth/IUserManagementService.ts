@@ -39,23 +39,17 @@ export type CreateAuthUserResult =
 /**
  * 認証ユーザーのemail更新の結果
  */
-export type UpdateAuthUserEmailResult =
-  | { success: true }
-  | { success: false; error: string };
+export type UpdateAuthUserEmailResult = { success: true } | { success: false; error: string };
 
 /**
  * 認証ユーザー削除の結果
  */
-export type RemoveAuthUserResult =
-  | { success: true }
-  | { success: false; error: string };
+export type RemoveAuthUserResult = { success: true } | { success: false; error: string };
 
 /**
  * 認証ユーザーのrole更新の結果
  */
-export type UpdateAuthUserRoleResult =
-  | { success: true }
-  | { success: false; error: string };
+export type UpdateAuthUserRoleResult = { success: true } | { success: false; error: string };
 
 // ========================================
 // インターフェース
@@ -77,10 +71,7 @@ export interface IUserManagementService {
    * @param newEmail 新しいメールアドレス
    * @returns 更新結果
    */
-  updateUserEmail(
-    userId: string,
-    newEmail: string
-  ): Promise<UpdateAuthUserEmailResult>;
+  updateUserEmail(userId: string, newEmail: string): Promise<UpdateAuthUserEmailResult>;
 
   /**
    * 認証ユーザーを削除する
@@ -106,8 +97,5 @@ export interface IUserManagementService {
    * @param role 新しいロール（"admin" | "user"）
    * @returns 更新結果
    */
-  updateUserRole(
-    userId: string,
-    role: UserRole
-  ): Promise<UpdateAuthUserRoleResult>;
+  updateUserRole(userId: string, role: UserRole): Promise<UpdateAuthUserRoleResult>;
 }

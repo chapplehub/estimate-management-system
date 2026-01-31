@@ -41,12 +41,8 @@ describe("CreateEmployeeCommand", () => {
     });
 
     repository = new PrismaEmployeeRepository();
-    cdDuplicationCheckService = new EmployeeCdDuplicationCheckDomainService(
-      repository
-    );
-    mailDuplicationCheckService = new MailAddressDuplicationCheckDomainService(
-      repository
-    );
+    cdDuplicationCheckService = new EmployeeCdDuplicationCheckDomainService(repository);
+    mailDuplicationCheckService = new MailAddressDuplicationCheckDomainService(repository);
     fakeUserManagementService = new FakeUserManagementService();
 
     command = new CreateEmployeeCommand(
@@ -79,9 +75,7 @@ describe("CreateEmployeeCommand", () => {
     });
 
     // 実際にリポジトリに保存されたことを確認
-    const saved = await repository.findByEmployeeCd(
-      new EmployeeCd("EMP999911")
-    );
+    const saved = await repository.findByEmployeeCd(new EmployeeCd("EMP999911"));
     expect(saved).not.toBeNull();
     expect(saved?.email.value).toBe("test-create-cmd@example.com");
     expect(saved?.name.value).toBe("テスト太郎");
@@ -103,9 +97,7 @@ describe("CreateEmployeeCommand", () => {
     ).rejects.toThrow(ValidationError);
 
     // ロールバックされてEmployeeが残っていないことを確認
-    const employee = await repository.findByEmployeeCd(
-      new EmployeeCd("EMP999911")
-    );
+    const employee = await repository.findByEmployeeCd(new EmployeeCd("EMP999911"));
     expect(employee).toBeNull();
   });
 });

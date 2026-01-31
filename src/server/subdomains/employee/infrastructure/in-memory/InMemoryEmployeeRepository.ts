@@ -40,17 +40,13 @@ export class InMemoryEmployeeRepository implements IEmployeeRepository {
   }
 
   async findByEmployeeCd(employeeCd: EmployeeCd): Promise<Employee | null> {
-    const employee = Object.values(this.DB).find((emp) =>
-      emp.employeeCd.equals(employeeCd)
-    );
+    const employee = Object.values(this.DB).find((emp) => emp.employeeCd.equals(employeeCd));
 
     return employee || null;
   }
 
   async findByEmail(email: MailAddress): Promise<Employee | null> {
-    const employee = Object.values(this.DB).find((emp) =>
-      emp.email.equals(email)
-    );
+    const employee = Object.values(this.DB).find((emp) => emp.email.equals(email));
 
     return employee || null;
   }

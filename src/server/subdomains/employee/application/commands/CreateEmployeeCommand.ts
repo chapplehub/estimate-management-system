@@ -32,7 +32,7 @@ export class CreateEmployeeCommand {
     private readonly employeeRepository: IEmployeeRepository,
     private readonly employeeCdDuplicationCheckDomainService: EmployeeCdDuplicationCheckDomainService,
     private readonly mailAddressDuplicationCheckDomainService: MailAddressDuplicationCheckDomainService,
-    private readonly userManagementService: IUserManagementService,
+    private readonly userManagementService: IUserManagementService
   ) {}
 
   async execute(input: CreateEmployeeInput): Promise<void> {
@@ -40,8 +40,7 @@ export class CreateEmployeeCommand {
     const mailAddress = new MailAddress(input.email);
 
     // 従業員コードの重複チェック
-    const isCdDuplicated =
-      await this.employeeCdDuplicationCheckDomainService.execute(employeeCd);
+    const isCdDuplicated = await this.employeeCdDuplicationCheckDomainService.execute(employeeCd);
     if (isCdDuplicated) {
       throw new ValidationError(`既に存在する従業員CDです: CD=${employeeCd}`);
     }
@@ -50,18 +49,11 @@ export class CreateEmployeeCommand {
     const isEmailDuplicated =
       await this.mailAddressDuplicationCheckDomainService.execute(mailAddress);
     if (isEmailDuplicated) {
-      throw new ValidationError(
-        `既に存在するメールアドレスです: Email=${mailAddress.value}`,
-      );
+      throw new ValidationError(`既に存在するメールアドレスです: Email=${mailAddress.value}`);
     }
 
     const employeeName = new EmployeeName(input.name);
-    const newEmployee = Employee.create(
-      employeeCd,
-      mailAddress,
-      employeeName,
-      input.departmentId,
-    );
+    const newEmployee = Employee.create(employeeCd, mailAddress, employeeName, input.departmentId);
 
     // Employee を保存
     await this.employeeRepository.save(newEmployee);
@@ -78,9 +70,7 @@ export class CreateEmployeeCommand {
     // 認証ユーザーの作成に失敗した場合、Employeeを削除してロールバック
     if (!userResult.success) {
       await this.employeeRepository.delete(newEmployee.id);
-      throw new ValidationError(
-        `認証ユーザーの作成に失敗しました: ${userResult.error}`,
-      );
+      throw new ValidationError(`認証ユーザーの作成に失敗しました: ${userResult.error}`);
     }
   }
 }

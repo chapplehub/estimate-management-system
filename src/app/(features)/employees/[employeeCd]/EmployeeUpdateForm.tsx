@@ -23,16 +23,9 @@ type Props = {
   departmentSelectSlot: React.ReactNode;
 };
 
-export function EmployeeUpdateForm({
-  employee,
-  canUpdate,
-  departmentSelectSlot,
-}: Props) {
+export function EmployeeUpdateForm({ employee, canUpdate, departmentSelectSlot }: Props) {
   // LEARN: bind()でemployeeCdを事前にバインド(server-action-bind-vs-formdata.md)
-  const updateEmployeeWithEmployeeCd = updateEmployee.bind(
-    null,
-    employee.employeeCd
-  );
+  const updateEmployeeWithEmployeeCd = updateEmployee.bind(null, employee.employeeCd);
 
   const { form, fields, isPending } = useServerForm({
     action: updateEmployeeWithEmployeeCd,
@@ -64,10 +57,7 @@ export function EmployeeUpdateForm({
 
       <form {...getFormProps(form)} noValidate className="space-y-4">
         <div>
-          <label
-            htmlFor={fields.name.id}
-            className="block text-gray-700 text-sm font-bold mb-2"
-          >
+          <label htmlFor={fields.name.id} className="block text-gray-700 text-sm font-bold mb-2">
             名前
           </label>
           <input
@@ -83,10 +73,7 @@ export function EmployeeUpdateForm({
         </div>
 
         <div>
-          <label
-            htmlFor={fields.email.id}
-            className="block text-gray-700 text-sm font-bold mb-2"
-          >
+          <label htmlFor={fields.email.id} className="block text-gray-700 text-sm font-bold mb-2">
             メールアドレス
           </label>
           <input
@@ -116,34 +103,23 @@ export function EmployeeUpdateForm({
             readOnly
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline bg-gray-100"
           />
-          <p className="text-gray-600 text-xs mt-1">
-            形式: EMP + 6桁の数字（例: EMP000001）
-          </p>
+          <p className="text-gray-600 text-xs mt-1">形式: EMP + 6桁の数字（例: EMP000001）</p>
         </div>
 
         <div>
-          <label
-            htmlFor="departmentId"
-            className="block text-gray-700 text-sm font-bold mb-2"
-          >
+          <label htmlFor="departmentId" className="block text-gray-700 text-sm font-bold mb-2">
             所属部署
           </label>
           {departmentSelectSlot}
           {fields.departmentId.errors && (
-            <p
-              className="text-red-500 text-xs mt-1"
-              id={fields.departmentId.errorId}
-            >
+            <p className="text-red-500 text-xs mt-1" id={fields.departmentId.errorId}>
               {fields.departmentId.errors[0]}
             </p>
           )}
         </div>
 
         <div>
-          <label
-            htmlFor={fields.role.id}
-            className="block text-gray-700 text-sm font-bold mb-2"
-          >
+          <label htmlFor={fields.role.id} className="block text-gray-700 text-sm font-bold mb-2">
             権限
           </label>
           <select

@@ -1,8 +1,5 @@
 import { DepartmentDTO, DepartmentTreeDTO } from "./dto/DepartmentDTO";
-import {
-  DepartmentSearchCriteria,
-  DepartmentListOptions,
-} from "./dto/DepartmentSearchCriteria";
+import { DepartmentSearchCriteria, DepartmentListOptions } from "./dto/DepartmentSearchCriteria";
 
 /**
  * 部署クエリサービスインターフェース
@@ -60,10 +57,7 @@ export interface IDepartmentQueryService {
    * @param options リスト取得オプション
    * @returns 部署DTOの配列
    */
-  findChildren(
-    parentId: string,
-    options?: DepartmentListOptions
-  ): Promise<DepartmentDTO[]>;
+  findChildren(parentId: string, options?: DepartmentListOptions): Promise<DepartmentDTO[]>;
 
   /**
    * ルート部署（親がない部署）を取得

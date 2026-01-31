@@ -9,9 +9,7 @@ export type GetDepartmentByIdInput = {
  * ID指定部署取得クエリ
  */
 export class GetDepartmentByIdQuery {
-  public constructor(
-    private readonly departmentQueryService: IDepartmentQueryService
-  ) {}
+  public constructor(private readonly departmentQueryService: IDepartmentQueryService) {}
 
   async execute(input: GetDepartmentByIdInput): Promise<DepartmentDTO | null> {
     return await this.departmentQueryService.findById(input.id);

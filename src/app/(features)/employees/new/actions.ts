@@ -26,8 +26,7 @@ export async function createEmployee(prevState: unknown, formData: FormData) {
     return submission.reply();
   }
 
-  const { name, email, employeeCd, role, password, departmentId } =
-    submission.value;
+  const { name, email, employeeCd, role, password, departmentId } = submission.value;
 
   try {
     // DIはファクトリで解決（インフラ層への依存をserver/側に閉じ込める）
@@ -48,8 +47,7 @@ export async function createEmployee(prevState: unknown, formData: FormData) {
     // ドメイン層エラーをConform形式に変換
     const errorResult = handleCommandError(error);
     // ActionResultのdiscriminated unionを考慮
-    const errorMessage =
-      !errorResult.success && errorResult.error ? errorResult.error : undefined;
+    const errorMessage = !errorResult.success && errorResult.error ? errorResult.error : undefined;
     // バックエンド側のエラーをフロントエンドに返却
     return submission.reply({
       formErrors: errorMessage ? [errorMessage] : [],

@@ -18,9 +18,7 @@ export type UpdateDepartmentInput = {
  * 部署更新コマンド
  */
 export class UpdateDepartmentCommand {
-  public constructor(
-    private readonly departmentRepository: IDepartmentRepository
-  ) {}
+  public constructor(private readonly departmentRepository: IDepartmentRepository) {}
 
   async execute(input: UpdateDepartmentInput): Promise<Department> {
     const department = await this.departmentRepository.findById(input.id);
@@ -58,9 +56,7 @@ export class UpdateDepartmentCommand {
         department.activate();
       } else {
         // 子部署がある場合は無効化できない
-        const children = await this.departmentRepository.findChildren(
-          department.id
-        );
+        const children = await this.departmentRepository.findChildren(department.id);
         const activeChildren = children.filter((c) => c.isActive);
         if (activeChildren.length > 0) {
           throw new BusinessRuleViolationError(
@@ -103,9 +99,7 @@ export class UpdateDepartmentCommand {
     let currentParentId: string | null = newParent.parentId;
     while (currentParentId !== null) {
       if (currentParentId === departmentId) {
-        throw new BusinessRuleViolationError(
-          "循環参照が発生するため、この親部署は設定できません"
-        );
+        throw new BusinessRuleViolationError("循環参照が発生するため、この親部署は設定できません");
       }
       const parent = await this.departmentRepository.findById(currentParentId);
       if (!parent) {

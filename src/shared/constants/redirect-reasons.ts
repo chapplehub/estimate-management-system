@@ -10,8 +10,7 @@ export const REDIRECT_REASON = {
   EMPLOYEE_DELETED: "employee_deleted",
 } as const;
 
-export type RedirectReason =
-  (typeof REDIRECT_REASON)[keyof typeof REDIRECT_REASON];
+export type RedirectReason = (typeof REDIRECT_REASON)[keyof typeof REDIRECT_REASON];
 
 // stringとして送られてくるurlパラメタのreasonのチェック
 export function isRedirectReason(value: string): value is RedirectReason {
@@ -28,8 +27,7 @@ export const FLASH_MESSAGE_TYPE = {
   SUCCESS: "success",
 } as const;
 
-export type FlashMessageType =
-  (typeof FLASH_MESSAGE_TYPE)[keyof typeof FLASH_MESSAGE_TYPE];
+export type FlashMessageType = (typeof FLASH_MESSAGE_TYPE)[keyof typeof FLASH_MESSAGE_TYPE];
 
 export type FlashMessage = {
   type: FlashMessageType;

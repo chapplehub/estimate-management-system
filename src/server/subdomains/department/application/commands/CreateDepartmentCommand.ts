@@ -30,20 +30,14 @@ export class CreateDepartmentCommand {
     const isCdDuplicated =
       await this.departmentCdDuplicationCheckDomainService.execute(departmentCd);
     if (isCdDuplicated) {
-      throw new ValidationError(
-        `既に存在する部署コードです: CD=${departmentCd.value}`
-      );
+      throw new ValidationError(`既に存在する部署コードです: CD=${departmentCd.value}`);
     }
 
     // 親部署が指定されている場合、存在確認
     if (input.parentId) {
-      const parentDepartment = await this.departmentRepository.findById(
-        input.parentId
-      );
+      const parentDepartment = await this.departmentRepository.findById(input.parentId);
       if (!parentDepartment) {
-        throw new ValidationError(
-          `親部署が存在しません: ID=${input.parentId}`
-        );
+        throw new ValidationError(`親部署が存在しません: ID=${input.parentId}`);
       }
       if (!parentDepartment.isActive) {
         throw new ValidationError(

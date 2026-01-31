@@ -54,10 +54,7 @@ export function EmployeeSearchForm({ defaultValues }: Props) {
       <form onSubmit={handleSearch}>
         <div className="flex flex-wrap items-end gap-4">
           <div className="flex-1 min-w-[150px]">
-            <label
-              htmlFor="search-name"
-              className="block text-gray-700 text-sm font-bold mb-2"
-            >
+            <label htmlFor="search-name" className="block text-gray-700 text-sm font-bold mb-2">
               名前
             </label>
             <input
@@ -86,10 +83,7 @@ export function EmployeeSearchForm({ defaultValues }: Props) {
             />
           </div>
           <div className="flex-1 min-w-[150px]">
-            <label
-              htmlFor="search-email"
-              className="block text-gray-700 text-sm font-bold mb-2"
-            >
+            <label htmlFor="search-email" className="block text-gray-700 text-sm font-bold mb-2">
               メールアドレス
             </label>
             <input
@@ -102,10 +96,7 @@ export function EmployeeSearchForm({ defaultValues }: Props) {
             />
           </div>
           <div className="w-[140px]">
-            <label
-              htmlFor="search-role"
-              className="block text-gray-700 text-sm font-bold mb-2"
-            >
+            <label htmlFor="search-role" className="block text-gray-700 text-sm font-bold mb-2">
               権限
             </label>
             <select

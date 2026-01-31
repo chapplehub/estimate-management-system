@@ -125,10 +125,7 @@ export default async function EmployeePage({
               <tbody>
                 {result.items.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan={4}
-                      className="px-4 py-4 text-center text-gray-500"
-                    >
+                    <td colSpan={4} className="px-4 py-4 text-center text-gray-500">
                       従業員が登録されていません
                     </td>
                   </tr>
@@ -153,9 +150,7 @@ export default async function EmployeePage({
                               : "bg-blue-100 text-blue-800"
                           }`}
                         >
-                          {employee.role === USER_ROLES.ADMIN
-                            ? "管理者"
-                            : "一般"}
+                          {employee.role === USER_ROLES.ADMIN ? "管理者" : "一般"}
                         </span>
                       </td>
                     </tr>

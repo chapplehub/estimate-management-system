@@ -64,9 +64,7 @@ describe("UpdateEmployeeCommand", () => {
 
     // 5. 依存オブジェクト初期化
     repository = new PrismaEmployeeRepository();
-    mailDuplicationCheckService = new MailAddressDuplicationCheckDomainService(
-      repository,
-    );
+    mailDuplicationCheckService = new MailAddressDuplicationCheckDomainService(repository);
     fakeUserManagementService = new FakeUserManagementService();
 
     // 6. 既存の認証ユーザーを登録
@@ -81,7 +79,7 @@ describe("UpdateEmployeeCommand", () => {
     command = new UpdateEmployeeCommand(
       repository,
       mailDuplicationCheckService,
-      fakeUserManagementService,
+      fakeUserManagementService
     );
   });
 
@@ -160,7 +158,7 @@ describe("UpdateEmployeeCommand", () => {
         name: "既存従業員",
         departmentId: "dept-001",
         role: USER_ROLES.USER,
-      }),
+      })
     ).rejects.toThrow(ValidationError);
 
     // 更新されていないことを確認

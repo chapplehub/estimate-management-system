@@ -6,21 +6,13 @@ import { useActionState } from "react";
 import { signinAction } from "../actions";
 import { SigninFormSchema } from "../schema";
 import { Button } from "@/app/_components/shadcnui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-} from "@/app/_components/shadcnui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "@/app/_components/shadcnui/card";
 import { Input } from "@/app/_components/shadcnui/input";
 import { Label } from "@/app/_components/shadcnui/label";
 import { AlertCircle, Loader2, Lock, Mail } from "lucide-react";
 
 export function SigninForm() {
-  const [lastResult, formAction, isPending] = useActionState(
-    signinAction,
-    undefined
-  );
+  const [lastResult, formAction, isPending] = useActionState(signinAction, undefined);
 
   const [form, fields] = useForm({
     lastResult,
@@ -35,9 +27,7 @@ export function SigninForm() {
     <Card className="w-full max-w-md">
       <CardHeader className="text-center">
         <h1 className="text-2xl font-bold leading-none">サインイン</h1>
-        <CardDescription>
-          メールアドレスとパスワードを入力してください
-        </CardDescription>
+        <CardDescription>メールアドレスとパスワードを入力してください</CardDescription>
       </CardHeader>
       <CardContent>
         {/* 全体エラー表示（認証失敗など） */}
@@ -51,12 +41,7 @@ export function SigninForm() {
           </div>
         )}
 
-        <form
-          {...getFormProps(form)}
-          action={formAction}
-          noValidate
-          className="space-y-4"
-        >
+        <form {...getFormProps(form)} action={formAction} noValidate className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor={fields.email.id}>メールアドレス</Label>
             <div className="relative">

@@ -18,8 +18,7 @@ export abstract class StringValueObject<U> extends ValueObject<string, U> {
   protected static readonly ERROR_MESSAGE_EMPTY: string | null = null;
   protected static readonly ERROR_MESSAGE_TOO_SHORT: string | null = null;
   protected static readonly ERROR_MESSAGE_TOO_LONG: string | null = null;
-  protected static readonly ERROR_MESSAGE_INVALID_FORMAT: string =
-    "不正な形式です";
+  protected static readonly ERROR_MESSAGE_INVALID_FORMAT: string = "不正な形式です";
 
   constructor(value: string) {
     super(value);
@@ -60,9 +59,10 @@ export abstract class StringValueObject<U> extends ValueObject<string, U> {
   private getTooShortMessage(constructor: typeof StringValueObject): string {
     // カスタムメッセージが定義されている場合はそれを使用
     if (constructor.ERROR_MESSAGE_TOO_SHORT) {
-      return constructor.ERROR_MESSAGE_TOO_SHORT
-        .replace("{name}", constructor.LABEL)
-        .replace("{min}", constructor.MIN_LENGTH.toString());
+      return constructor.ERROR_MESSAGE_TOO_SHORT.replace("{name}", constructor.LABEL).replace(
+        "{min}",
+        constructor.MIN_LENGTH.toString()
+      );
     }
 
     // MIN_LENGTH=1 の場合は「必須です」
@@ -80,9 +80,10 @@ export abstract class StringValueObject<U> extends ValueObject<string, U> {
   private getTooLongMessage(constructor: typeof StringValueObject): string {
     // カスタムメッセージが定義されている場合はそれを使用
     if (constructor.ERROR_MESSAGE_TOO_LONG) {
-      return constructor.ERROR_MESSAGE_TOO_LONG
-        .replace("{name}", constructor.LABEL)
-        .replace("{max}", constructor.MAX_LENGTH.toString());
+      return constructor.ERROR_MESSAGE_TOO_LONG.replace("{name}", constructor.LABEL).replace(
+        "{max}",
+        constructor.MAX_LENGTH.toString()
+      );
     }
 
     return `${constructor.LABEL}は${constructor.MAX_LENGTH}文字以内で入力してください`;

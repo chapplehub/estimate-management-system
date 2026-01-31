@@ -75,9 +75,7 @@ describe("InMemoryEmployeeRepository", () => {
     });
 
     it("存在しないIDを削除しようとしても例外が発生しない", async () => {
-      await expect(
-        repository.delete("non-existent-id")
-      ).resolves.toBeUndefined();
+      await expect(repository.delete("non-existent-id")).resolves.toBeUndefined();
     });
   });
 
@@ -113,9 +111,7 @@ describe("InMemoryEmployeeRepository", () => {
     it("社員コードで従業員を検索できる", async () => {
       await repository.save(employee);
 
-      const found = await repository.findByEmployeeCd(
-        new EmployeeCd("EMP000001")
-      );
+      const found = await repository.findByEmployeeCd(new EmployeeCd("EMP000001"));
 
       expect(found).not.toBeNull();
       expect(found?.employeeCd.value).toBe("EMP000001");
@@ -123,9 +119,7 @@ describe("InMemoryEmployeeRepository", () => {
     });
 
     it("存在しない社員コードの場合nullを返す", async () => {
-      const found = await repository.findByEmployeeCd(
-        new EmployeeCd("EMP999999")
-      );
+      const found = await repository.findByEmployeeCd(new EmployeeCd("EMP999999"));
 
       expect(found).toBeNull();
     });
@@ -141,9 +135,7 @@ describe("InMemoryEmployeeRepository", () => {
       await repository.save(employee);
       await repository.save(employee2);
 
-      const found = await repository.findByEmployeeCd(
-        new EmployeeCd("EMP000002")
-      );
+      const found = await repository.findByEmployeeCd(new EmployeeCd("EMP000002"));
 
       expect(found).not.toBeNull();
       expect(found?.name.value).toBe("鈴木花子");
@@ -153,9 +145,7 @@ describe("InMemoryEmployeeRepository", () => {
       const saved = await repository.save(employee);
       await repository.delete(saved.id);
 
-      const found = await repository.findByEmployeeCd(
-        new EmployeeCd("EMP000001")
-      );
+      const found = await repository.findByEmployeeCd(new EmployeeCd("EMP000001"));
 
       expect(found).toBeNull();
     });

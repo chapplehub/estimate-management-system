@@ -27,10 +27,7 @@ describe("CreateDepartmentCommand", () => {
       execute: vi.fn(),
     } as unknown as DepartmentCdDuplicationCheckDomainService;
 
-    command = new CreateDepartmentCommand(
-      mockRepository,
-      mockDuplicationCheckService
-    );
+    command = new CreateDepartmentCommand(mockRepository, mockDuplicationCheckService);
   });
 
   it("部署を新規登録できる", async () => {

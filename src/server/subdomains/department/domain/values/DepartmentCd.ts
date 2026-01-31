@@ -11,8 +11,7 @@ export class DepartmentCd extends StringValueObject<"DepartmentCd"> {
   private static readonly NUMERIC_LENGTH = 3;
   private static readonly TOTAL_LENGTH = 7; // "DEPT" + 3桁 = 7文字
   private static readonly NUMERIC_MIN = 1;
-  private static readonly NUMERIC_MAX =
-    Math.pow(10, DepartmentCd.NUMERIC_LENGTH) - 1;
+  private static readonly NUMERIC_MAX = Math.pow(10, DepartmentCd.NUMERIC_LENGTH) - 1;
 
   protected static readonly REGEX = new RegExp(
     `^${DepartmentCd.PREFIX}\\d{${DepartmentCd.NUMERIC_LENGTH}}$`,
@@ -73,9 +72,7 @@ export class DepartmentCd extends StringValueObject<"DepartmentCd"> {
       );
     }
 
-    const paddedNumber = num
-      .toString()
-      .padStart(DepartmentCd.NUMERIC_LENGTH, "0");
+    const paddedNumber = num.toString().padStart(DepartmentCd.NUMERIC_LENGTH, "0");
     return new DepartmentCd(`${DepartmentCd.PREFIX}${paddedNumber}`);
   }
 }

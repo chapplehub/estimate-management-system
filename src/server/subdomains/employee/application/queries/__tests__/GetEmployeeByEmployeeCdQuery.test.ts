@@ -33,16 +33,12 @@ describe("GetEmployeeByEmployeeCdQuery", () => {
   });
 
   it("従業員CDで従業員を取得できる", async () => {
-    vi.mocked(mockQueryService.findByEmployeeCd).mockResolvedValue(
-      mockEmployeeDTO
-    );
+    vi.mocked(mockQueryService.findByEmployeeCd).mockResolvedValue(mockEmployeeDTO);
 
     const result = await query.execute({ employeeCd: "EMP000001" });
 
     expect(result).toEqual(mockEmployeeDTO);
-    expect(mockQueryService.findByEmployeeCd).toHaveBeenCalledWith(
-      "EMP000001"
-    );
+    expect(mockQueryService.findByEmployeeCd).toHaveBeenCalledWith("EMP000001");
   });
 
   it("存在しない従業員CDの場合nullを返す", async () => {

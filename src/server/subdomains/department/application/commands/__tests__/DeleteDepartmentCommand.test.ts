@@ -52,9 +52,7 @@ describe("DeleteDepartmentCommand", () => {
   it("存在しない部署を削除しようとするとエラー", async () => {
     vi.mocked(mockRepository.findById).mockResolvedValue(null);
 
-    await expect(command.execute({ id: "non-existent" })).rejects.toThrow(
-      NotFoundEntityError
-    );
+    await expect(command.execute({ id: "non-existent" })).rejects.toThrow(NotFoundEntityError);
 
     expect(mockRepository.delete).not.toHaveBeenCalled();
   });
@@ -65,12 +63,8 @@ describe("DeleteDepartmentCommand", () => {
     vi.mocked(mockRepository.findById).mockResolvedValue(department);
     vi.mocked(mockRepository.findChildren).mockResolvedValue([childDepartment]);
 
-    await expect(command.execute({ id: "dept-1" })).rejects.toThrow(
-      ValidationError
-    );
-    await expect(command.execute({ id: "dept-1" })).rejects.toThrow(
-      "子部署が存在するため"
-    );
+    await expect(command.execute({ id: "dept-1" })).rejects.toThrow(ValidationError);
+    await expect(command.execute({ id: "dept-1" })).rejects.toThrow("子部署が存在するため");
 
     expect(mockRepository.delete).not.toHaveBeenCalled();
   });

@@ -1,8 +1,5 @@
 import { DepartmentDTO } from "./dto/DepartmentDTO";
-import {
-  DepartmentSearchCriteria,
-  DepartmentListOptions,
-} from "./dto/DepartmentSearchCriteria";
+import { DepartmentSearchCriteria, DepartmentListOptions } from "./dto/DepartmentSearchCriteria";
 import { IDepartmentQueryService } from "./IDepartmentQueryService";
 
 export type SearchDepartmentsInput = {
@@ -14,14 +11,9 @@ export type SearchDepartmentsInput = {
  * 部署検索クエリ
  */
 export class SearchDepartmentsQuery {
-  public constructor(
-    private readonly departmentQueryService: IDepartmentQueryService
-  ) {}
+  public constructor(private readonly departmentQueryService: IDepartmentQueryService) {}
 
   async execute(input: SearchDepartmentsInput): Promise<DepartmentDTO[]> {
-    return await this.departmentQueryService.search(
-      input.criteria,
-      input.options
-    );
+    return await this.departmentQueryService.search(input.criteria, input.options);
   }
 }

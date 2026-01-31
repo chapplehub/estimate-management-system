@@ -39,11 +39,13 @@
 ### ✅ 完了済み
 
 #### Employee CRUD機能の実装
+
 - **一覧画面:** `/employees` (GET)
 - **新規登録画面:** `/employees/new` (POST)
 - **詳細・編集画面:** `/employees/[employeeCd]` (GET/PUT/DELETE)
 
 **実装ファイル:**
+
 - `app/employees/page.tsx` - 一覧表示
 - `app/employees/new/page.tsx` - 新規登録ページ
 - `app/employees/new/EmployeeCreateForm.tsx` - 新規登録フォーム（Client Component）
@@ -57,18 +59,21 @@
 - `app/employees/_lib/error-handler.ts` - エラーハンドリング共通処理
 
 **重要な実装パターン:**
+
 - `useActionState` を使用したフォーム状態管理
 - 変数命名: `createState`, `updateState`, `deleteState` (プレフィックス付き)
 - `isPending` でローディング状態管理
 - hidden inputでID・従業員コードを渡す（disabledフィールドはフォーム送信されないため）
 
 #### バリデーション・重複チェック
+
 - **従業員コード重複チェック:** `EmployeeCdDuplicationCheckDomainService`
 - **メールアドレス重複チェック:** `MailAddressDuplicationCheckDomainService`（`shared/domain/services/`に配置）
 - 新規登録時: 両方チェック
 - 更新時: メールアドレス変更時のみチェック（自分自身との重複はスキップ）
 
 #### ディレクトリ構成の変更
+
 - `app/employee/` → `app/employees/` (RESTful: 複数形)
 - Server Actionsを**コロケーション配置**（使う場所の近くに配置）
   - `app/employees/new/actions.ts` - 新規登録用
@@ -76,6 +81,7 @@
 - バックエンドは `subdomains/employee/` のまま（DDD: 単数形）
 
 #### Zod導入とバリデーション
+
 - **Zodスキーマ:** 各機能ごとに `schema.ts` で定義
   - `app/employees/new/schema.ts` - 新規登録スキーマ
   - `app/employees/[employeeCd]/schema.ts` - 更新スキーマ
@@ -90,6 +96,7 @@
 ## 既知の問題（Issue登録済み）
 
 ### ✅ Issue #7: フォーム送信エラー時に入力値が失われる（解決済み）
+
 - **問題:** バリデーションエラー発生時、ユーザー入力値がリセットされる
 - **解決策:** Next.jsコミュニティの標準パターンを採用
   - Server Actionから入力値を返却（`ActionResult.data`）
@@ -104,16 +111,19 @@
 - **参考:** `learning/form-input-preservation-issue-7.md`
 
 ### ✅ Issue #8: 複数のバリデーションエラーを同時に表示したい（解決済み）
+
 - **問題:** 複数エラーがあっても最初の1つしか表示されない
 - **解決策:** Zod導入により、`errors: Record<string, string[]>` で複数エラーを返却
   - フィールドごとのエラー配列を表示
 
 ### Issue #9: バックエンドにプレゼンテーション層とDIコンテナを導入する
+
 - **問題:** Server Actionsがインフラ層に直接依存、DI処理が散在
 - **実装タイミング:** Auth.js導入後
 - **要検討:** ディレクトリ構成（レイヤーごと vs ドメインごと）
 
 ### Issue #10: Server Actionsのファイル配置（コロケーション vs 集約）
+
 - **現状:** コロケーション配置を採用
 - **今後の検討:** 実績を見て方向転換の可能性あり
 - **参考:** `learning/server-actions-file-structure.md`
@@ -157,11 +167,13 @@
 ### 1. 環境変数の整理 ✅
 
 **実施内容:**
+
 - `.env.local` 作成（Gitにコミットしない）
 - `.env.example` 作成（Gitにコミットする）
 - `.gitignore` で `.env.local` を除外、`.env.example` のみコミット可能に設定
 
 **作成したファイル:**
+
 ```bash
 # .env.local
 DATABASE_URL="postgresql://dev_user:dev_password@localhost:5432/estimate_management_dev?schema=public"
@@ -179,11 +191,13 @@ NEXTAUTH_URL="http://localhost:3000"
 ### 2. ActionResult型の共通化 ✅
 
 **実施内容:**
+
 - `src/shared/types/ActionResult.ts` を作成
 - 複数エラー対応（`errors` フィールド）
 - フォーム入力値保持用（`data` フィールド）
 
 **作成したファイル:**
+
 ```typescript
 // src/shared/types/ActionResult.ts
 export type ActionResult<T = void> =
@@ -197,6 +211,7 @@ export type ActionResult<T = void> =
 ```
 
 **修正したファイル:**
+
 - `app/employees/new/actions.ts`
 - `app/employees/[employeeCd]/actions.ts`
 - `app/employees/new/EmployeeCreateForm.tsx`
@@ -208,20 +223,16 @@ export type ActionResult<T = void> =
 ### 3. エラーハンドリングの共通化 ✅
 
 **実施内容:**
+
 - `src/app/employees/_lib/error-handler.ts` を作成
 - 75行のコード削減（DRY原則の適用）
 
 **作成したファイル:**
+
 ```typescript
 // src/app/employees/_lib/error-handler.ts
-import {
-  NotFoundEntityError,
-  NotFoundError,
-} from "@/shared/errors/ApplicationError";
-import {
-  BusinessRuleViolationError,
-  ValidationError,
-} from "@/shared/errors/DomainError";
+import { NotFoundEntityError, NotFoundError } from "@/shared/errors/ApplicationError";
+import { BusinessRuleViolationError, ValidationError } from "@/shared/errors/DomainError";
 import type { ActionResult } from "@/shared/types/ActionResult";
 
 export function handleCommandError(error: unknown): ActionResult {
@@ -271,14 +282,17 @@ export async function createEmployee(...) {
 ### 1. Zod導入 ✅
 
 **実施内容:**
+
 - Zodをインストール（既にインストール済みだった）
 - コロケーション方式でスキーマファイルを作成
 
 **作成したファイル:**
+
 - `src/app/employees/new/schema.ts` - 新規登録スキーマ
 - `src/app/employees/[employeeCd]/schema.ts` - 更新スキーマ
 
 **実装例:**
+
 ```typescript
 // src/app/employees/new/schema.ts
 import { z } from "zod";
@@ -297,11 +311,13 @@ export const createEmployeeSchema = z.object({
 ### 2. Server Actionsでのバリデーション ✅
 
 **実施内容:**
+
 - `safeParse()` でバリデーション実行
 - **Zod v4対応:** `z.flattenError()` を使用（`flatten()` は非推奨）
 - エラー時は `errors` フィールドを返却（`formData` は返さない）
 
 **実装例:**
+
 ```typescript
 // app/employees/new/actions.ts
 import { z } from "zod";
@@ -311,7 +327,7 @@ export async function createEmployee(
   _prevState: ActionResult,
   formData: FormData
 ): Promise<ActionResult> {
-  const rawData = { name: formData.get("name"), /* ... */ };
+  const rawData = { name: formData.get("name") /* ... */ };
 
   // Zodバリデーション
   const validationResult = createEmployeeSchema.safeParse(rawData);
@@ -339,10 +355,12 @@ export async function createEmployee(
 ### 3. フォームでのエラー表示 ✅
 
 **実施内容:**
+
 - フィールドごとのエラーメッセージ表示
 - バリデーションエラー時の入力値保持（`defaultValue`で設定）
 
 **実装例:**
+
 ```typescript
 // app/employees/new/EmployeeCreateForm.tsx
 export function EmployeeCreateForm() {
@@ -372,6 +390,7 @@ export function EmployeeCreateForm() {
 ```
 
 **重要な変更点:**
+
 - ✅ Server Actionから `data` フィールドを返却（入力値保持用）
 - ✅ フィールドごとのエラー表示実装
 - ✅ `defaultValue` で入力値を復元
@@ -439,11 +458,13 @@ main()
 ```
 
 **実行:**
+
 ```bash
 pnpm db:seed
 ```
 
 **テストアカウント:**
+
 - 管理者: `EMP000001` / `password123`
 - 一般ユーザー: `EMP000002` / `password123`
 
@@ -452,6 +473,7 @@ pnpm db:seed
 ### 2. Auth.js設定
 
 **インストール:**
+
 ```bash
 pnpm add next-auth@beta @auth/prisma-adapter
 ```
@@ -494,10 +516,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!employee) return null;
 
         // パスワード検証
-        const passwordMatch = await compare(
-          parsedCredentials.data.password,
-          employee.passwordHash
-        );
+        const passwordMatch = await compare(parsedCredentials.data.password, employee.passwordHash);
 
         if (!passwordMatch) return null;
 
@@ -801,21 +820,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 ## Authentication
 
 Uses **Auth.js (NextAuth v5+)** with:
+
 - Credentials provider (employeeCd + password)
 - Database sessions (stored in PostgreSQL via Prisma Adapter)
 - Password hashing with bcrypt
 - Account locking after failed attempts (future)
 
 ### Login Credentials (Development)
+
 - Admin: `EMP000001` / `password123`
 - User: `EMP000002` / `password123`
 
 ### Protected Routes
+
 All routes except `/login` require authentication (enforced by middleware.ts)
 
 ## Validation
 
 Uses **Zod** for:
+
 - Form validation in Server Actions
 - Type-safe schema definitions
 - Runtime type checking
@@ -827,11 +850,11 @@ Uses **Zod** for:
 import { z } from "zod";
 
 export const createEmployeeSchema = z.object({
-  name: z.string().min(1, "名前は必須です"),
-  email: z.string().email("有効なメールアドレスを入力してください"),
-  employeeCd: z.string().regex(/^EMP[0-9]{6}$/, "従業員コードの形式が正しくありません"),
-  password: z.string().min(8, "パスワードは8文字以上である必要があります"),
-  role: z.enum(["ADMIN", "USER"]),
+name: z.string().min(1, "名前は必須です"),
+email: z.string().email("有効なメールアドレスを入力してください"),
+employeeCd: z.string().regex(/^EMP[0-9]{6}$/, "従業員コードの形式が正しくありません"),
+password: z.string().min(8, "パスワードは8文字以上である必要があります"),
+role: z.enum(["ADMIN", "USER"]),
 });
 \`\`\`
 
@@ -839,30 +862,30 @@ export const createEmployeeSchema = z.object({
 
 \`\`\`typescript
 export async function createEmployee(
-  _prevState: ActionResult,
-  formData: FormData
+\_prevState: ActionResult,
+formData: FormData
 ): Promise<ActionResult> {
-  // 1. Zod validation
-  const validatedFields = createEmployeeSchema.safeParse({...});
+// 1. Zod validation
+const validatedFields = createEmployeeSchema.safeParse({...});
 
-  if (!validatedFields.success) {
-    return {
-      success: false,
-      errors: validatedFields.error.flatten().fieldErrors,
-      formData: Object.fromEntries(formData.entries()),
-    };
-  }
+if (!validatedFields.success) {
+return {
+success: false,
+errors: validatedFields.error.flatten().fieldErrors,
+formData: Object.fromEntries(formData.entries()),
+};
+}
 
-  // 2. Business logic
-  try {
-    await command.execute(validatedFields.data);
-  } catch (error) {
-    return handleCommandError(error);
-  }
+// 2. Business logic
+try {
+await command.execute(validatedFields.data);
+} catch (error) {
+return handleCommandError(error);
+}
 
-  // 3. Revalidate and redirect
-  revalidatePath("/employees");
-  redirect("/employees");
+// 3. Revalidate and redirect
+revalidatePath("/employees");
+redirect("/employees");
 }
 \`\`\`
 
@@ -876,6 +899,7 @@ const [state, formAction, isPending] = useActionState(serverAction, { success: t
 
 // Field-level error display
 {!state.success && state.errors?.fieldName && (
+
   <p className="text-red-500 text-xs">{state.errors.fieldName[0]}</p>
 )}
 \`\`\`
@@ -886,6 +910,7 @@ const [state, formAction, isPending] = useActionState(serverAction, { success: t
 ## チェックリスト
 
 ### ✅ 準備フェーズ（完了）
+
 - [x] `.env.local` 作成（AUTH_SECRET生成）
 - [x] `.env.example` 作成
 - [x] `shared/types/ActionResult.ts` 作成
@@ -894,6 +919,7 @@ const [state, formAction, isPending] = useActionState(serverAction, { success: t
 - [x] Server Actionsのコロケーション移行
 
 ### ✅ Zodフェーズ（完了）
+
 - [x] Zod導入（既にインストール済み）
 - [x] `app/employees/new/schema.ts` 作成
 - [x] `app/employees/[employeeCd]/schema.ts` 作成
@@ -904,6 +930,7 @@ const [state, formAction, isPending] = useActionState(serverAction, { success: t
 - [x] Issue #8のクローズ（複数エラー表示）
 
 ### 📋 Auth.jsフェーズ（次のタスク）
+
 - [ ] `prisma/seed.ts` にテストアカウント追加
 - [ ] `pnpm db:seed` 実行
 - [ ] `pnpm add next-auth@beta @auth/prisma-adapter`
@@ -913,6 +940,7 @@ const [state, formAction, isPending] = useActionState(serverAction, { success: t
 - [ ] `app/api/auth/[...nextauth]/route.ts` 作成
 
 ### 📋 ログイン画面フェーズ
+
 - [ ] `app/login/page.tsx` 作成
 - [ ] `app/login/LoginForm.tsx` 作成
 - [ ] `app/login/_lib/actions.ts` 作成
@@ -926,6 +954,7 @@ const [state, formAction, isPending] = useActionState(serverAction, { success: t
 ## 重要な注意事項
 
 ### Prismaクライアントのインポートパス
+
 ```typescript
 // ✅ 正しい
 import { PrismaClient } from "@/generated/prisma";
@@ -937,9 +966,11 @@ import { PrismaClient } from "@prisma/client";
 カスタム出力先を使用しているため、必ず `@/generated/prisma` からインポートすること。
 
 ### Server Actionsのredirect
+
 `redirect()` は `try-catch` の外で呼ぶこと（エラーとして扱われるため）。
 
 ### hidden inputの重要性
+
 `disabled` フィールドはフォーム送信時にデータが送られないため、変更不可フィールドは hidden input で送る。
 
 ---
@@ -969,12 +1000,14 @@ import { PrismaClient } from "@prisma/client";
 3. **適宜gitコミット**（各フェーズ完了時）
 
 **開発サーバー起動:**
+
 ```bash
 pnpm dev
 # http://localhost:3000
 ```
 
 **データベースリセット（必要時）:**
+
 ```bash
 pnpm db:push
 pnpm db:seed
@@ -983,16 +1016,19 @@ pnpm db:seed
 ## 完了した作業の振り返り（2025-11-17）
 
 ✅ **準備フェーズ**
+
 - 環境変数整理、ActionResult型共通化、エラーハンドリング共通化
 - Server Actionsのコロケーション移行
 
 ✅ **Zodフェーズ**
+
 - Zodスキーマ定義、バリデーション実装
 - Zod v4対応（`z.flattenError()`）
 - フィールドごとのエラー表示
 - **Issue #7解決**: バリデーションエラー時の入力値保持（`defaultValue`パターン）
 
 📚 **Learning作成**
+
 - `learning/zod-flatten-deprecation.md` - Zod v4移行の記録
 - `learning/validation-layer-responsibilities.md` - バリデーション層の責務分担
 - `learning/server-actions-file-structure.md` - コロケーション採用の経緯

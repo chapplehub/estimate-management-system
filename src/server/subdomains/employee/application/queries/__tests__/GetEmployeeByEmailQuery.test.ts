@@ -38,9 +38,7 @@ describe("GetEmployeeByEmailQuery", () => {
     const result = await query.execute({ email: "test@example.com" });
 
     expect(result).toEqual(mockEmployeeDTO);
-    expect(mockQueryService.findByEmail).toHaveBeenCalledWith(
-      "test@example.com"
-    );
+    expect(mockQueryService.findByEmail).toHaveBeenCalledWith("test@example.com");
   });
 
   it("存在しないメールアドレスの場合nullを返す", async () => {

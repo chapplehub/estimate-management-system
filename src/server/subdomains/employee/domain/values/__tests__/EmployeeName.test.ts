@@ -52,9 +52,7 @@ describe("EmployeeName 値オブジェクト", () => {
     it("101文字の場合はエラー", () => {
       const tooLongName = "あ".repeat(101);
       expect(() => new EmployeeName(tooLongName)).toThrow(ValidationError);
-      expect(() => new EmployeeName(tooLongName)).toThrow(
-        "名前は100文字以内で入力してください"
-      );
+      expect(() => new EmployeeName(tooLongName)).toThrow("名前は100文字以内で入力してください");
     });
   });
 });

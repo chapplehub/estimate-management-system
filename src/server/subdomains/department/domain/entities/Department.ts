@@ -2,10 +2,7 @@ import { createId } from "@paralleldrive/cuid2";
 import { DepartmentCd } from "../values/DepartmentCd";
 import { DepartmentName } from "../values/DepartmentName";
 import { Abbreviation } from "../values/Abbreviation";
-import {
-  ValidationError,
-  BusinessRuleViolationError,
-} from "@server/shared/errors/DomainError";
+import { ValidationError, BusinessRuleViolationError } from "@server/shared/errors/DomainError";
 
 /**
  * 部署エンティティ
@@ -150,9 +147,7 @@ export class Department {
   changeParent(newParentId: string | null): void {
     // 自分自身を親にすることはできない
     if (newParentId === this._id) {
-      throw new BusinessRuleViolationError(
-        "自分自身を親部署にすることはできません"
-      );
+      throw new BusinessRuleViolationError("自分自身を親部署にすることはできません");
     }
     this._parentId = newParentId;
     this._updatedAt = new Date();

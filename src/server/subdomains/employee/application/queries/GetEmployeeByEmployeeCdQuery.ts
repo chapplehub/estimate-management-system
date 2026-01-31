@@ -9,13 +9,9 @@ export type GetEmployeeByEmployeeCdInput = {
  * 従業員CDで従業員を取得するクエリ
  */
 export class GetEmployeeByEmployeeCdQuery {
-  public constructor(
-    private readonly employeeQueryService: IEmployeeQueryService
-  ) {}
+  public constructor(private readonly employeeQueryService: IEmployeeQueryService) {}
 
-  async execute(
-    input: GetEmployeeByEmployeeCdInput
-  ): Promise<EmployeeDTO | null> {
+  async execute(input: GetEmployeeByEmployeeCdInput): Promise<EmployeeDTO | null> {
     return await this.employeeQueryService.findByEmployeeCd(input.employeeCd);
   }
 }

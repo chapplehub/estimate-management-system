@@ -59,10 +59,7 @@ export class FakeUserManagementService implements IUserManagementService {
     return { success: true, userId };
   }
 
-  async updateUserEmail(
-    userId: string,
-    newEmail: string
-  ): Promise<UpdateAuthUserEmailResult> {
+  async updateUserEmail(userId: string, newEmail: string): Promise<UpdateAuthUserEmailResult> {
     const user = this.users.get(userId);
     if (!user) {
       return { success: false, error: "User not found" };
@@ -90,17 +87,12 @@ export class FakeUserManagementService implements IUserManagementService {
     return { success: true };
   }
 
-  async findUserByEmployeeId(
-    employeeId: string
-  ): Promise<{ id: string } | null> {
+  async findUserByEmployeeId(employeeId: string): Promise<{ id: string } | null> {
     const user = this.usersByEmployeeId.get(employeeId);
     return user ? { id: user.id } : null;
   }
 
-  async updateUserRole(
-    userId: string,
-    role: UserRole
-  ): Promise<UpdateAuthUserRoleResult> {
+  async updateUserRole(userId: string, role: UserRole): Promise<UpdateAuthUserRoleResult> {
     const user = this.users.get(userId);
     if (!user) {
       return { success: false, error: "User not found" };

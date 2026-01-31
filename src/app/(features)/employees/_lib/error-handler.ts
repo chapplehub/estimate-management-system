@@ -1,11 +1,5 @@
-import {
-  NotFoundEntityError,
-  NotFoundError,
-} from "@server/shared/errors/ApplicationError";
-import {
-  BusinessRuleViolationError,
-  ValidationError,
-} from "@server/shared/errors/DomainError";
+import { NotFoundEntityError, NotFoundError } from "@server/shared/errors/ApplicationError";
+import { BusinessRuleViolationError, ValidationError } from "@server/shared/errors/DomainError";
 import type { ActionResult } from "@shared/types/ActionResult";
 
 /**

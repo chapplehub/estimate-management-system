@@ -28,15 +28,11 @@ export class DeleteEmployeeCommand {
     }
 
     // 関連する認証ユーザーを削除（存在する場合のみ）
-    const user = await this.userManagementService.findUserByEmployeeId(
-      input.id
-    );
+    const user = await this.userManagementService.findUserByEmployeeId(input.id);
     if (user) {
       const removeResult = await this.userManagementService.removeUser(user.id);
       if (!removeResult.success) {
-        throw new Error(
-          `認証ユーザーの削除に失敗しました: ${removeResult.error}`
-        );
+        throw new Error(`認証ユーザーの削除に失敗しました: ${removeResult.error}`);
       }
     }
 

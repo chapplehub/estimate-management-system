@@ -1,9 +1,4 @@
-import type {
-  AuthSession,
-  SignInInput,
-  SignInResult,
-  SignOutResult,
-} from "./types";
+import type { AuthSession, SignInInput, SignInResult, SignOutResult } from "./types";
 
 /**
  * 認証サービスのインターフェース

@@ -37,13 +37,7 @@ export type DepartmentListOptions = {
 
   /** ソート順 */
   orderBy?: {
-    field:
-      | "name"
-      | "departmentCd"
-      | "abbreviation"
-      | "displayOrder"
-      | "createdAt"
-      | "updatedAt";
+    field: "name" | "departmentCd" | "abbreviation" | "displayOrder" | "createdAt" | "updatedAt";
     direction: "asc" | "desc";
   };
 };

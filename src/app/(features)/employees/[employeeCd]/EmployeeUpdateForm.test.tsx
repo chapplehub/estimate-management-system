@@ -31,12 +31,7 @@ const mockEmployee = {
 
 // 部署選択スロットのモック
 const mockDepartmentSelectSlot = (
-  <select
-    name="departmentId"
-    id="departmentId"
-    aria-label="所属部署"
-    defaultValue="dept-1"
-  >
+  <select name="departmentId" id="departmentId" aria-label="所属部署" defaultValue="dept-1">
     <option value="">選択してください</option>
     <option value="dept-1">営業部</option>
     <option value="dept-2">開発部</option>
@@ -83,9 +78,7 @@ describe("EmployeeUpdateForm", () => {
       );
 
       expect(screen.getByLabelText("名前")).toHaveValue("山田太郎");
-      expect(screen.getByLabelText("メールアドレス")).toHaveValue(
-        "yamada@example.com"
-      );
+      expect(screen.getByLabelText("メールアドレス")).toHaveValue("yamada@example.com");
       expect(screen.getByLabelText("従業員コード")).toHaveValue("EMP000001");
       expect(screen.getByLabelText("権限")).toHaveValue(USER_ROLES.USER);
     });
@@ -113,9 +106,7 @@ describe("EmployeeUpdateForm", () => {
         />
       );
 
-      expect(
-        screen.getByText("形式: EMP + 6桁の数字（例: EMP000001）")
-      ).toBeInTheDocument();
+      expect(screen.getByText("形式: EMP + 6桁の数字（例: EMP000001）")).toBeInTheDocument();
     });
 
     test("権限のセレクトボックスにオプションが表示される", () => {
@@ -127,12 +118,8 @@ describe("EmployeeUpdateForm", () => {
         />
       );
 
-      expect(
-        screen.getByRole("option", { name: "一般ユーザー" })
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("option", { name: "管理者" })
-      ).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "一般ユーザー" })).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "管理者" })).toBeInTheDocument();
     });
   });
 
@@ -198,9 +185,7 @@ describe("EmployeeUpdateForm", () => {
         />
       );
 
-      expect(
-        screen.queryByRole("button", { name: "更新" })
-      ).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "更新" })).not.toBeInTheDocument();
     });
 
     test("入力フィールドが無効になっている", () => {
@@ -355,9 +340,7 @@ describe("EmployeeUpdateForm", () => {
       });
 
       // エラーメッセージが表示されることを確認
-      expect(
-        await screen.findByText("サーバーエラーが発生しました")
-      ).toBeInTheDocument();
+      expect(await screen.findByText("サーバーエラーが発生しました")).toBeInTheDocument();
       expect(screen.getByRole("alert")).toBeInTheDocument();
     });
 
@@ -396,12 +379,8 @@ describe("EmployeeUpdateForm", () => {
       });
 
       // 各フィールドのエラーメッセージが表示されることを確認
-      expect(
-        await screen.findByText("名前は2文字以上で入力してください")
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText("このメールアドレスは既に使用されています")
-      ).toBeInTheDocument();
+      expect(await screen.findByText("名前は2文字以上で入力してください")).toBeInTheDocument();
+      expect(screen.getByText("このメールアドレスは既に使用されています")).toBeInTheDocument();
     });
   });
 });

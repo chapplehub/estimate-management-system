@@ -9,9 +9,7 @@ type DepartmentSelectFieldProps = Omit<SelectFieldProps, "options">;
  * DBから有効な部署を取得し、表示順でソートして表示する。
  * Container/Presentation パターンの Container 部分。
  */
-export async function DepartmentSelectField(
-  props: DepartmentSelectFieldProps
-) {
+export async function DepartmentSelectField(props: DepartmentSelectFieldProps) {
   const queryService = new PrismaDepartmentQueryService();
   const departments = await queryService.findActive({
     orderBy: { field: "displayOrder", direction: "asc" },

@@ -86,5 +86,4 @@ export class PrismaEmployeeRepository implements IEmployeeRepository {
 
     return prismaEmployee ? EmployeeMapper.toDomain(prismaEmployee) : null;
   }
-
 }

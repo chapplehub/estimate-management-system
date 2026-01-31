@@ -80,9 +80,7 @@ describe("EmployeeCd 値オブジェクト", () => {
 
     it("EMP000000（ゼロ埋めのゼロ）はエラー", () => {
       expect(() => new EmployeeCd("EMP000000")).toThrow(ValidationError);
-      expect(() => new EmployeeCd("EMP000000")).toThrow(
-        "社員コードは 1 以上である必要があります"
-      );
+      expect(() => new EmployeeCd("EMP000000")).toThrow("社員コードは 1 以上である必要があります");
     });
 
     it("形式が完全に間違っている場合はエラー", () => {

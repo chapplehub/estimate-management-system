@@ -89,9 +89,7 @@ describe("Employee エンティティ", () => {
 
       setTimeout(() => {
         employee.changeName(newName);
-        expect(employee.updatedAt.getTime()).toBeGreaterThanOrEqual(
-          oldUpdatedAt.getTime()
-        );
+        expect(employee.updatedAt.getTime()).toBeGreaterThanOrEqual(oldUpdatedAt.getTime());
       }, 10);
     });
   });
@@ -113,9 +111,7 @@ describe("Employee エンティティ", () => {
 
       setTimeout(() => {
         employee.changeEmail(newEmail);
-        expect(employee.updatedAt.getTime()).toBeGreaterThanOrEqual(
-          oldUpdatedAt.getTime()
-        );
+        expect(employee.updatedAt.getTime()).toBeGreaterThanOrEqual(oldUpdatedAt.getTime());
       }, 10);
     });
   });
@@ -137,9 +133,7 @@ describe("Employee エンティティ", () => {
 
       setTimeout(() => {
         employee.changeDepartment(newDepartmentId);
-        expect(employee.updatedAt.getTime()).toBeGreaterThanOrEqual(
-          oldUpdatedAt.getTime()
-        );
+        expect(employee.updatedAt.getTime()).toBeGreaterThanOrEqual(oldUpdatedAt.getTime());
       }, 10);
     });
   });

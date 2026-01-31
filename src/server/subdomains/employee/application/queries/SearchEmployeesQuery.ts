@@ -24,15 +24,10 @@ export type SearchEmployeesPaginatedInput = {
  * 検索条件に基づいて従業員を検索するクエリ
  */
 export class SearchEmployeesQuery {
-  public constructor(
-    private readonly employeeQueryService: IEmployeeQueryService
-  ) {}
+  public constructor(private readonly employeeQueryService: IEmployeeQueryService) {}
 
   async execute(input: SearchEmployeesInput): Promise<EmployeeDTO[]> {
-    return await this.employeeQueryService.search(
-      input.criteria,
-      input.options
-    );
+    return await this.employeeQueryService.search(input.criteria, input.options);
   }
 
   /**

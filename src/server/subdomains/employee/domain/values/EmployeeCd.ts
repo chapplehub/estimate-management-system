@@ -12,8 +12,7 @@ export class EmployeeCd extends StringValueObject<"EmployeeCd"> {
   private static readonly NUMERIC_LENGTH = 6;
   private static readonly TOTAL_LENGTH = 9; // "EMP" + 6桁 = 9文字
   private static readonly NUMERIC_MIN = 1;
-  private static readonly NUMERIC_MAX =
-    Math.pow(10, EmployeeCd.NUMERIC_LENGTH) - 1;
+  private static readonly NUMERIC_MAX = Math.pow(10, EmployeeCd.NUMERIC_LENGTH) - 1;
 
   protected static readonly REGEX = new RegExp(
     `^${EmployeeCd.PREFIX}\\d{${EmployeeCd.NUMERIC_LENGTH}}$`,
@@ -44,14 +43,10 @@ export class EmployeeCd extends StringValueObject<"EmployeeCd"> {
     // 数値部分の範囲チェック（EMP000000を弾くため）
     const numericPart = EmployeeCd.extractNumericPart(value);
     if (numericPart < EmployeeCd.NUMERIC_MIN) {
-      throw new ValidationError(
-        `社員コードは ${EmployeeCd.NUMERIC_MIN} 以上である必要があります`
-      );
+      throw new ValidationError(`社員コードは ${EmployeeCd.NUMERIC_MIN} 以上である必要があります`);
     }
     if (numericPart > EmployeeCd.NUMERIC_MAX) {
-      throw new ValidationError(
-        `社員コードは ${EmployeeCd.NUMERIC_MAX} 以下である必要があります`
-      );
+      throw new ValidationError(`社員コードは ${EmployeeCd.NUMERIC_MAX} 以下である必要があります`);
     }
   }
 
@@ -74,9 +69,7 @@ export class EmployeeCd extends StringValueObject<"EmployeeCd"> {
       );
     }
 
-    const paddedNumber = num
-      .toString()
-      .padStart(EmployeeCd.NUMERIC_LENGTH, "0");
+    const paddedNumber = num.toString().padStart(EmployeeCd.NUMERIC_LENGTH, "0");
     return new EmployeeCd(`${EmployeeCd.PREFIX}${paddedNumber}`);
   }
 }

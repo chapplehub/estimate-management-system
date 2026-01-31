@@ -83,10 +83,7 @@ export class BetterAuthUserManagementService implements IUserManagementService {
    * Prisma で直接 User.email を更新する
    * （Better Auth の changeEmail は本人操作を前提としているため）
    */
-  async updateUserEmail(
-    userId: string,
-    newEmail: string
-  ): Promise<UpdateAuthUserEmailResult> {
+  async updateUserEmail(userId: string, newEmail: string): Promise<UpdateAuthUserEmailResult> {
     try {
       await prisma.user.update({
         where: { id: userId },
@@ -97,10 +94,7 @@ export class BetterAuthUserManagementService implements IUserManagementService {
     } catch (error) {
       if (error instanceof Error) {
         // メールアドレス重複エラーのハンドリング
-        if (
-          error.message.includes("Unique constraint") ||
-          error.message.includes("unique")
-        ) {
+        if (error.message.includes("Unique constraint") || error.message.includes("unique")) {
           return {
             success: false,
             error: "このメールアドレスは既に使用されています",
@@ -149,9 +143,7 @@ export class BetterAuthUserManagementService implements IUserManagementService {
   /**
    * EmployeeID から紐づく認証ユーザーを検索する
    */
-  async findUserByEmployeeId(
-    employeeId: string
-  ): Promise<{ id: string } | null> {
+  async findUserByEmployeeId(employeeId: string): Promise<{ id: string } | null> {
     return await prisma.user.findUnique({
       where: { employeeId },
       select: { id: true },
@@ -163,10 +155,7 @@ export class BetterAuthUserManagementService implements IUserManagementService {
    *
    * Prisma で直接 User.role を更新する
    */
-  async updateUserRole(
-    userId: string,
-    role: UserRole
-  ): Promise<UpdateAuthUserRoleResult> {
+  async updateUserRole(userId: string, role: UserRole): Promise<UpdateAuthUserRoleResult> {
     try {
       await prisma.user.update({
         where: { id: userId },

@@ -1,8 +1,5 @@
 import { EmployeeDTO } from "./dto/EmployeeDTO";
-import {
-  EmployeeSearchCriteria,
-  ListOptions,
-} from "./dto/EmployeeSearchCriteria";
+import { EmployeeSearchCriteria, ListOptions } from "./dto/EmployeeSearchCriteria";
 
 /**
  * 従業員クエリサービスインターフェース
@@ -42,10 +39,7 @@ export interface IEmployeeQueryService {
    * @param options リスト取得オプション（ページネーション、ソート等）
    * @returns 従業員DTOの配列
    */
-  search(
-    criteria: EmployeeSearchCriteria,
-    options?: ListOptions
-  ): Promise<EmployeeDTO[]>;
+  search(criteria: EmployeeSearchCriteria, options?: ListOptions): Promise<EmployeeDTO[]>;
 
   /**
    * 全従業員を取得

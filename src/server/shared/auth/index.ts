@@ -13,13 +13,7 @@ export type {
   RemoveAuthUserResult,
   UpdateAuthUserEmailResult,
 } from "./IUserManagementService";
-export type {
-  AuthSession,
-  AuthUser,
-  SignInInput,
-  SignInResult,
-  SignOutResult,
-} from "./types";
+export type { AuthSession, AuthUser, SignInInput, SignInResult, SignOutResult } from "./types";
 
 // 認可チェックヘルパー関数
 export { isAdmin, isOwner } from "./verify/authorization";

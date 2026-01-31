@@ -31,10 +31,7 @@ export function EmployeeCreateForm({ departmentSelectSlot }: Props) {
 
       <form {...getFormProps(form)} noValidate className="space-y-4">
         <div>
-          <label
-            htmlFor={fields.name.id}
-            className="block text-gray-700 text-sm font-bold mb-2"
-          >
+          <label htmlFor={fields.name.id} className="block text-gray-700 text-sm font-bold mb-2">
             名前
           </label>
           <input
@@ -51,10 +48,7 @@ export function EmployeeCreateForm({ departmentSelectSlot }: Props) {
         </div>
 
         <div>
-          <label
-            htmlFor={fields.email.id}
-            className="block text-gray-700 text-sm font-bold mb-2"
-          >
+          <label htmlFor={fields.email.id} className="block text-gray-700 text-sm font-bold mb-2">
             メールアドレス
           </label>
           <input
@@ -84,32 +78,21 @@ export function EmployeeCreateForm({ departmentSelectSlot }: Props) {
             placeholder="EMP000001"
           />
           {fields.employeeCd.errors ? (
-            <p
-              className="text-red-500 text-xs mt-1"
-              id={fields.employeeCd.errorId}
-            >
+            <p className="text-red-500 text-xs mt-1" id={fields.employeeCd.errorId}>
               {fields.employeeCd.errors[0]}
             </p>
           ) : (
-            <p className="text-gray-600 text-xs mt-1">
-              形式: EMP + 6桁の数字（例: EMP000001）
-            </p>
+            <p className="text-gray-600 text-xs mt-1">形式: EMP + 6桁の数字（例: EMP000001）</p>
           )}
         </div>
 
         <div>
-          <label
-            htmlFor="departmentId"
-            className="block text-gray-700 text-sm font-bold mb-2"
-          >
+          <label htmlFor="departmentId" className="block text-gray-700 text-sm font-bold mb-2">
             所属部署
           </label>
           {departmentSelectSlot}
           {fields.departmentId.errors && (
-            <p
-              className="text-red-500 text-xs mt-1"
-              id={fields.departmentId.errorId}
-            >
+            <p className="text-red-500 text-xs mt-1" id={fields.departmentId.errorId}>
               {fields.departmentId.errors[0]}
             </p>
           )}
@@ -129,20 +112,14 @@ export function EmployeeCreateForm({ departmentSelectSlot }: Props) {
             placeholder="8文字以上"
           />
           {fields.password.errors && (
-            <p
-              className="text-red-500 text-xs mt-1"
-              id={fields.password.errorId}
-            >
+            <p className="text-red-500 text-xs mt-1" id={fields.password.errorId}>
               {fields.password.errors[0]}
             </p>
           )}
         </div>
 
         <div>
-          <label
-            htmlFor={fields.role.id}
-            className="block text-gray-700 text-sm font-bold mb-2"
-          >
+          <label htmlFor={fields.role.id} className="block text-gray-700 text-sm font-bold mb-2">
             権限
           </label>
           <select

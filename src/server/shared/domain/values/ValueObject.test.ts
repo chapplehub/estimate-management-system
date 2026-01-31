@@ -91,7 +91,6 @@ describe("ValueObject 基底クラス", () => {
     it("boolean型の値を扱える", () => {
       type TestBooleanBrand = { readonly _brand: unique symbol };
       class TestBooleanValue extends ValueObject<boolean, TestBooleanBrand> {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         protected validate(_value: boolean): void {
           // No validation for boolean
         }
@@ -109,24 +108,16 @@ describe("ValueObject 基底クラス", () => {
   describe("異常系", () => {
     it("null値で作成するとInvalidArgumentErrorが発生する", () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      expect(() => new TestStringValue(null as any)).toThrow(
-        InvalidArgumentError
-      );
+      expect(() => new TestStringValue(null as any)).toThrow(InvalidArgumentError);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      expect(() => new TestStringValue(null as any)).toThrow(
-        "Value must be defined"
-      );
+      expect(() => new TestStringValue(null as any)).toThrow("Value must be defined");
     });
 
     it("undefined値で作成するとInvalidArgumentErrorが発生する", () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      expect(() => new TestStringValue(undefined as any)).toThrow(
-        InvalidArgumentError
-      );
+      expect(() => new TestStringValue(undefined as any)).toThrow(InvalidArgumentError);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      expect(() => new TestStringValue(undefined as any)).toThrow(
-        "Value must be defined"
-      );
+      expect(() => new TestStringValue(undefined as any)).toThrow("Value must be defined");
     });
 
     it("validateメソッドで検証エラーが発生すると例外が投げられる", () => {
@@ -136,17 +127,13 @@ describe("ValueObject 基底クラス", () => {
 
     it("数値の検証エラーが正しく処理される", () => {
       expect(() => new TestNumberValue(-1)).toThrow(InvalidArgumentError);
-      expect(() => new TestNumberValue(-1)).toThrow(
-        "Value must be non-negative"
-      );
+      expect(() => new TestNumberValue(-1)).toThrow("Value must be non-negative");
     });
 
     it("validateメソッドはensureValueIsDefinedの後に実行される", () => {
       // null/undefinedの場合は、validateまで到達せず、ensureValueIsDefinedで例外が発生する
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      expect(() => new TestStringValue(null as any)).toThrow(
-        "Value must be defined"
-      );
+      expect(() => new TestStringValue(null as any)).toThrow("Value must be defined");
     });
   });
 

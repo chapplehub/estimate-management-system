@@ -27,32 +27,22 @@ describe("SigninForm", () => {
       expect(screen.getByLabelText("パスワード")).toBeInTheDocument();
 
       // 送信ボタンが表示されていることを確認
-      expect(
-        screen.getByRole("button", { name: "サインイン" })
-      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "サインイン" })).toBeInTheDocument();
     });
 
     test("カードヘッダーにタイトルと説明が表示される", () => {
       render(<SigninForm />);
 
       // h1要素として描画されるのでgetByRoleが使える
-      expect(
-        screen.getByRole("heading", { name: "サインイン", level: 1 })
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText("メールアドレスとパスワードを入力してください")
-      ).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "サインイン", level: 1 })).toBeInTheDocument();
+      expect(screen.getByText("メールアドレスとパスワードを入力してください")).toBeInTheDocument();
     });
 
     test("プレースホルダーが表示される", () => {
       render(<SigninForm />);
 
-      expect(
-        screen.getByPlaceholderText("example@company.com")
-      ).toBeInTheDocument();
-      expect(
-        screen.getByPlaceholderText("パスワードを入力")
-      ).toBeInTheDocument();
+      expect(screen.getByPlaceholderText("example@company.com")).toBeInTheDocument();
+      expect(screen.getByPlaceholderText("パスワードを入力")).toBeInTheDocument();
     });
   });
 
@@ -82,10 +72,7 @@ describe("SigninForm", () => {
       render(<SigninForm />);
 
       // 必須フィールドに値を入力
-      await user.type(
-        screen.getByLabelText("メールアドレス"),
-        "test@example.com"
-      );
+      await user.type(screen.getByLabelText("メールアドレス"), "test@example.com");
       await user.type(screen.getByLabelText("パスワード"), "password123!");
 
       // フォームを送信
@@ -101,10 +88,7 @@ describe("SigninForm", () => {
       render(<SigninForm />);
 
       // 必須フィールドに値を入力
-      await user.type(
-        screen.getByLabelText("メールアドレス"),
-        "test@example.com"
-      );
+      await user.type(screen.getByLabelText("メールアドレス"), "test@example.com");
       await user.type(screen.getByLabelText("パスワード"), "password123!");
 
       // フォームを送信
@@ -137,10 +121,7 @@ describe("SigninForm", () => {
       render(<SigninForm />);
 
       // 必須フィールドに値を入力
-      await user.type(
-        screen.getByLabelText("メールアドレス"),
-        "test@example.com"
-      );
+      await user.type(screen.getByLabelText("メールアドレス"), "test@example.com");
       await user.type(screen.getByLabelText("パスワード"), "password123!");
 
       // フォームを送信
@@ -148,9 +129,7 @@ describe("SigninForm", () => {
 
       // エラーメッセージが表示されることを確認
       expect(
-        await screen.findByText(
-          "メールアドレスまたはパスワードが正しくありません"
-        )
+        await screen.findByText("メールアドレスまたはパスワードが正しくありません")
       ).toBeInTheDocument();
       expect(screen.getByRole("alert")).toBeInTheDocument();
     });
@@ -174,10 +153,7 @@ describe("SigninForm", () => {
       render(<SigninForm />);
 
       // 有効な形式の値を入力（クライアントバリデーションを通過させる）
-      await user.type(
-        screen.getByLabelText("メールアドレス"),
-        "notfound@example.com"
-      );
+      await user.type(screen.getByLabelText("メールアドレス"), "notfound@example.com");
       await user.type(screen.getByLabelText("パスワード"), "password123!");
 
       // フォームを送信
@@ -199,10 +175,7 @@ describe("SigninForm", () => {
       render(<SigninForm />);
 
       // 有効なメールアドレスを入力
-      await user.type(
-        screen.getByLabelText("メールアドレス"),
-        "test@example.com"
-      );
+      await user.type(screen.getByLabelText("メールアドレス"), "test@example.com");
 
       // 無効なパスワードを入力してblurをトリガー（クライアントバリデーション）
       const passwordInput = screen.getByLabelText("パスワード");
@@ -210,12 +183,8 @@ describe("SigninForm", () => {
       await user.tab(); // blurイベントをトリガー
 
       // クライアントサイドバリデーションエラーが表示されることを確認
-      expect(
-        await screen.findByText("8文字以上である必要があります")
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText("パスワードは以下を含む必要があります：")
-      ).toBeInTheDocument();
+      expect(await screen.findByText("8文字以上である必要があります")).toBeInTheDocument();
+      expect(screen.getByText("パスワードは以下を含む必要があります：")).toBeInTheDocument();
     });
   });
 });

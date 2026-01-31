@@ -10,9 +10,7 @@ export type GetAllDepartmentsInput = {
  * 全部署取得クエリ
  */
 export class GetAllDepartmentsQuery {
-  public constructor(
-    private readonly departmentQueryService: IDepartmentQueryService
-  ) {}
+  public constructor(private readonly departmentQueryService: IDepartmentQueryService) {}
 
   async execute(input: GetAllDepartmentsInput): Promise<DepartmentDTO[]> {
     return await this.departmentQueryService.findAll(input.options);

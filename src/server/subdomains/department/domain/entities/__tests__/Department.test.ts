@@ -1,7 +1,4 @@
-import {
-  BusinessRuleViolationError,
-  ValidationError,
-} from "@server/shared/errors/DomainError";
+import { BusinessRuleViolationError, ValidationError } from "@server/shared/errors/DomainError";
 import { describe, expect, it } from "vitest";
 import { Abbreviation } from "../../values/Abbreviation";
 import { DepartmentCd } from "../../values/DepartmentCd";
@@ -55,18 +52,14 @@ describe("Department", () => {
     });
 
     it("表示順が負の値だとエラー", () => {
-      expect(() => createTestDepartment({ displayOrder: -1 })).toThrow(
-        ValidationError
-      );
+      expect(() => createTestDepartment({ displayOrder: -1 })).toThrow(ValidationError);
       expect(() => createTestDepartment({ displayOrder: -1 })).toThrow(
         "表示順は0以上である必要があります"
       );
     });
 
     it("表示順が小数だとエラー", () => {
-      expect(() => createTestDepartment({ displayOrder: 1.5 })).toThrow(
-        ValidationError
-      );
+      expect(() => createTestDepartment({ displayOrder: 1.5 })).toThrow(ValidationError);
       expect(() => createTestDepartment({ displayOrder: 1.5 })).toThrow(
         "表示順は整数である必要があります"
       );
@@ -112,9 +105,7 @@ describe("Department", () => {
       dept.changeName(new DepartmentName("総務部"));
 
       expect(dept.name.value).toBe("総務部");
-      expect(dept.updatedAt.getTime()).toBeGreaterThanOrEqual(
-        originalUpdatedAt.getTime()
-      );
+      expect(dept.updatedAt.getTime()).toBeGreaterThanOrEqual(originalUpdatedAt.getTime());
     });
   });
 
@@ -164,12 +155,8 @@ describe("Department", () => {
     it("自分自身を親にするとエラー", () => {
       const dept = createTestDepartment();
 
-      expect(() => dept.changeParent(dept.id)).toThrow(
-        BusinessRuleViolationError
-      );
-      expect(() => dept.changeParent(dept.id)).toThrow(
-        "自分自身を親部署にすることはできません"
-      );
+      expect(() => dept.changeParent(dept.id)).toThrow(BusinessRuleViolationError);
+      expect(() => dept.changeParent(dept.id)).toThrow("自分自身を親部署にすることはできません");
     });
   });
 

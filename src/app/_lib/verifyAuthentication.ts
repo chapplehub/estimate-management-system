@@ -1,9 +1,4 @@
-import {
-  getCurrentSession,
-  isAdmin,
-  isOwner,
-  type AuthSession,
-} from "@server/shared/auth";
+import { getCurrentSession, isAdmin, isOwner, type AuthSession } from "@server/shared/auth";
 import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
 import { redirect } from "next/navigation";
 import { cache } from "react";
@@ -51,9 +46,7 @@ export async function verifyAdmin(): Promise<AuthSession> {
  * @param resourceOwnerId - リソース所有者のユーザーID
  * @returns AuthSession（本人または管理者のセッション）
  */
-export async function verifyOwnerOrAdmin(
-  resourceOwnerId: string
-): Promise<AuthSession> {
+export async function verifyOwnerOrAdmin(resourceOwnerId: string): Promise<AuthSession> {
   const session = await verifySession();
   if (!isOwner(session, resourceOwnerId) && !isAdmin(session)) {
     redirect(`/signin?reason=${REDIRECT_REASON.FORBIDDEN}`);

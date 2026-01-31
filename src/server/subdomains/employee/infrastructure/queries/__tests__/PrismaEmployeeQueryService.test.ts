@@ -63,13 +63,7 @@ describe("PrismaEmployeeQueryService", () => {
       where: {
         employee: {
           employeeCd: {
-            in: [
-              "EMP999901",
-              "EMP999902",
-              "EMP999903",
-              "EMP999904",
-              "EMP999905",
-            ],
+            in: ["EMP999901", "EMP999902", "EMP999903", "EMP999904", "EMP999905"],
           },
         },
       },

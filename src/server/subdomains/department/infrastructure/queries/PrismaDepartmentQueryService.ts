@@ -79,10 +79,7 @@ export class PrismaDepartmentQueryService implements IDepartmentQueryService {
     return departments.map((d) => this.toDTO(d));
   }
 
-  async findChildren(
-    parentId: string,
-    options?: DepartmentListOptions
-  ): Promise<DepartmentDTO[]> {
+  async findChildren(parentId: string, options?: DepartmentListOptions): Promise<DepartmentDTO[]> {
     const orderBy = this.buildOrderBy(options) ?? { displayOrder: "asc" as const };
 
     const departments = await prisma.department.findMany({
@@ -96,9 +93,7 @@ export class PrismaDepartmentQueryService implements IDepartmentQueryService {
     return departments.map((d) => this.toDTO(d));
   }
 
-  async findRootDepartments(
-    options?: DepartmentListOptions
-  ): Promise<DepartmentDTO[]> {
+  async findRootDepartments(options?: DepartmentListOptions): Promise<DepartmentDTO[]> {
     const orderBy = this.buildOrderBy(options) ?? { displayOrder: "asc" as const };
 
     const departments = await prisma.department.findMany({
@@ -134,9 +129,7 @@ export class PrismaDepartmentQueryService implements IDepartmentQueryService {
   /**
    * 検索条件からPrismaのWHERE句を構築
    */
-  private buildWhereClause(
-    criteria: DepartmentSearchCriteria
-  ): Prisma.DepartmentWhereInput {
+  private buildWhereClause(criteria: DepartmentSearchCriteria): Prisma.DepartmentWhereInput {
     const where: Prisma.DepartmentWhereInput = {};
 
     if (criteria.name) {
@@ -238,10 +231,7 @@ export class PrismaDepartmentQueryService implements IDepartmentQueryService {
   /**
    * フラットなDTOリストから階層構造を構築
    */
-  private buildTree(
-    departments: DepartmentDTO[],
-    parentId: string | null
-  ): DepartmentTreeDTO[] {
+  private buildTree(departments: DepartmentDTO[], parentId: string | null): DepartmentTreeDTO[] {
     return departments
       .filter((d) => d.parentId === parentId)
       .map((d) => ({

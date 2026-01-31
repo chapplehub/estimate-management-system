@@ -9,9 +9,7 @@ export type CountEmployeesInput = {
  * 検索条件に一致する従業員数をカウントするクエリ
  */
 export class CountEmployeesQuery {
-  public constructor(
-    private readonly employeeQueryService: IEmployeeQueryService
-  ) {}
+  public constructor(private readonly employeeQueryService: IEmployeeQueryService) {}
 
   async execute(input: CountEmployeesInput): Promise<number> {
     return await this.employeeQueryService.count(input.criteria);

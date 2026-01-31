@@ -42,10 +42,7 @@ export class PrismaEmployeeQueryService implements IEmployeeQueryService {
     return employee ? this.toDTO(employee) : null;
   }
 
-  async search(
-    criteria: EmployeeSearchCriteria,
-    options?: ListOptions
-  ): Promise<EmployeeDTO[]> {
+  async search(criteria: EmployeeSearchCriteria, options?: ListOptions): Promise<EmployeeDTO[]> {
     const where = this.buildWhereClause(criteria);
     const orderBy = this.buildOrderBy(options);
 
@@ -81,9 +78,7 @@ export class PrismaEmployeeQueryService implements IEmployeeQueryService {
   /**
    * 検索条件からPrismaのWHERE句を構築
    */
-  private buildWhereClause(
-    criteria: EmployeeSearchCriteria
-  ): Prisma.EmployeeWhereInput {
+  private buildWhereClause(criteria: EmployeeSearchCriteria): Prisma.EmployeeWhereInput {
     const where: Prisma.EmployeeWhereInput = {};
 
     if (criteria.name) {
@@ -122,9 +117,7 @@ export class PrismaEmployeeQueryService implements IEmployeeQueryService {
   /**
    * ListOptionsからPrismaのOrderBy句を構築
    */
-  private buildOrderBy(
-    options?: ListOptions
-  ): Prisma.EmployeeOrderByWithRelationInput | undefined {
+  private buildOrderBy(options?: ListOptions): Prisma.EmployeeOrderByWithRelationInput | undefined {
     if (!options?.orderBy) {
       return undefined;
     }
