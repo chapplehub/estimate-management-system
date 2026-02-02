@@ -20,8 +20,8 @@ describe("EmployeeCdDuplicationCheckDomainService", () => {
 
   test("重複がない場合、falseを返す", async () => {
     const employeeCd = new EmployeeCd("EMP000001");
-    const result = await employeeCdDuplicationCheckDomainService.execute(employeeCd);
-    expect(result).toBeFalsy();
+    const isDuplicated = await employeeCdDuplicationCheckDomainService.execute(employeeCd);
+    expect(isDuplicated).toBeFalsy();
   });
 
   test("重複がある場合、trueを返す", async () => {
@@ -32,8 +32,8 @@ describe("EmployeeCdDuplicationCheckDomainService", () => {
 
     await inMemoryEmployeeRepository.save(employee);
 
-    const result = await employeeCdDuplicationCheckDomainService.execute(employeeCd);
-    expect(result).toBeTruthy();
+    const isDuplicated = await employeeCdDuplicationCheckDomainService.execute(employeeCd);
+    expect(isDuplicated).toBeTruthy();
   });
 
   test("異なるEmployeeで重複がない場合、falseを返す", async () => {
@@ -45,7 +45,7 @@ describe("EmployeeCdDuplicationCheckDomainService", () => {
 
     await inMemoryEmployeeRepository.save(employee);
 
-    const result = await employeeCdDuplicationCheckDomainService.execute(newEmployeeCd);
-    expect(result).toBeFalsy();
+    const isDuplicated = await employeeCdDuplicationCheckDomainService.execute(newEmployeeCd);
+    expect(isDuplicated).toBeFalsy();
   });
 });

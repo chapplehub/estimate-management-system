@@ -23,15 +23,15 @@ export class FakeUserManagementService implements IUserManagementService {
   /**
    * テスト用: 次のcreateUser呼び出しを失敗させる
    */
-  setCreateUserToFail(fail: boolean): void {
-    this.shouldFailOnCreate = fail;
+  setCreateUserToFail(shouldFail: boolean): void {
+    this.shouldFailOnCreate = shouldFail;
   }
 
   /**
    * テスト用: 次のremoveUser呼び出しを失敗させる
    */
-  setRemoveUserToFail(fail: boolean): void {
-    this.shouldFailOnRemove = fail;
+  setRemoveUserToFail(shouldFail: boolean): void {
+    this.shouldFailOnRemove = shouldFail;
   }
 
   async createUser(input: CreateAuthUserInput): Promise<CreateAuthUserResult> {

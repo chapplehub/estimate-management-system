@@ -20,8 +20,8 @@ describe("MailAddressDuplicationCheckDomainService", () => {
 
   test("重複がない場合、falseを返す", async () => {
     const mailAddress = new MailAddress("test@example.com");
-    const result = await mailAddressDuplicationCheckDomainService.execute(mailAddress);
-    expect(result).toBeFalsy();
+    const isDuplicated = await mailAddressDuplicationCheckDomainService.execute(mailAddress);
+    expect(isDuplicated).toBeFalsy();
   });
 
   test("重複がある場合、trueを返す", async () => {
@@ -32,8 +32,8 @@ describe("MailAddressDuplicationCheckDomainService", () => {
 
     await inMemoryEmployeeRepository.save(employee);
 
-    const result = await mailAddressDuplicationCheckDomainService.execute(mailAddress);
-    expect(result).toBeTruthy();
+    const isDuplicated = await mailAddressDuplicationCheckDomainService.execute(mailAddress);
+    expect(isDuplicated).toBeTruthy();
   });
 
   test("異なるEmployeeで重複がない場合、falseを返す", async () => {
@@ -45,7 +45,7 @@ describe("MailAddressDuplicationCheckDomainService", () => {
 
     await inMemoryEmployeeRepository.save(employee);
 
-    const result = await mailAddressDuplicationCheckDomainService.execute(newMailAddress);
-    expect(result).toBeFalsy();
+    const isDuplicated = await mailAddressDuplicationCheckDomainService.execute(newMailAddress);
+    expect(isDuplicated).toBeFalsy();
   });
 });

@@ -26,9 +26,9 @@ describe("DepartmentCdDuplicationCheckDomainService", () => {
   it("部署コードが存在しない場合は false を返す", async () => {
     vi.mocked(mockRepository.findByDepartmentCd).mockResolvedValue(null);
 
-    const result = await service.execute(new DepartmentCd("DEPT001"));
+    const isDuplicated = await service.execute(new DepartmentCd("DEPT001"));
 
-    expect(result).toBe(false);
+    expect(isDuplicated).toBe(false);
     expect(mockRepository.findByDepartmentCd).toHaveBeenCalledWith(expect.any(DepartmentCd));
   });
 
@@ -40,8 +40,8 @@ describe("DepartmentCdDuplicationCheckDomainService", () => {
     );
     vi.mocked(mockRepository.findByDepartmentCd).mockResolvedValue(existingDepartment);
 
-    const result = await service.execute(new DepartmentCd("DEPT001"));
+    const isDuplicated = await service.execute(new DepartmentCd("DEPT001"));
 
-    expect(result).toBe(true);
+    expect(isDuplicated).toBe(true);
   });
 });
