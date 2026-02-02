@@ -1,10 +1,10 @@
 import { Department } from "@subdomains/department/domain/entities/Department";
-import { IDepartmentRepository } from "@subdomains/department/domain/repositories/IDepartmentRepository";
+import { DepartmentRepository } from "@subdomains/department/domain/repositories/DepartmentRepository";
 import { DepartmentCd } from "@subdomains/department/domain/values/DepartmentCd";
 import { DepartmentMapper } from "@subdomains/department/infrastructure/mappers/DepartmentMapper";
 import prisma from "@server/prisma";
 
-export class PrismaDepartmentRepository implements IDepartmentRepository {
+export class PrismaDepartmentRepository implements DepartmentRepository {
   /**
    * 部署を保存（新規作成・更新の両方に対応）
    *

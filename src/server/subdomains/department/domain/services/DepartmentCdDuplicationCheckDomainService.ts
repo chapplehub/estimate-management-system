@@ -1,4 +1,4 @@
-import { IDepartmentRepository } from "@subdomains/department/domain/repositories/IDepartmentRepository";
+import { DepartmentRepository } from "@subdomains/department/domain/repositories/DepartmentRepository";
 import { DepartmentCd } from "@subdomains/department/domain/values/DepartmentCd";
 
 /**
@@ -7,7 +7,7 @@ import { DepartmentCd } from "@subdomains/department/domain/values/DepartmentCd"
  * 部署コードが既に使用されているかどうかを確認する。
  */
 export class DepartmentCdDuplicationCheckDomainService {
-  constructor(private departmentRepository: IDepartmentRepository) {}
+  constructor(private departmentRepository: DepartmentRepository) {}
 
   /**
    * 部署コードが重複しているかチェック

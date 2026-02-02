@@ -1,7 +1,7 @@
 import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { Employee } from "@subdomains/employee/domain/entities/Employee";
-import { IEmployeeRepository } from "@subdomains/employee/domain/repositories/IEmployeeRepository";
-import type { IUserManagementService } from "@server/shared/auth/IUserManagementService";
+import { EmployeeRepository } from "@subdomains/employee/domain/repositories/EmployeeRepository";
+import type { UserManagementService } from "@server/shared/auth/UserManagementService";
 
 export type DeleteEmployeeInput = {
   id: string;
@@ -15,8 +15,8 @@ export type DeleteEmployeeInput = {
  */
 export class DeleteEmployeeCommand {
   public constructor(
-    private readonly employeeRepository: IEmployeeRepository,
-    private readonly userManagementService: IUserManagementService
+    private readonly employeeRepository: EmployeeRepository,
+    private readonly userManagementService: UserManagementService
   ) {}
 
   async execute(input: DeleteEmployeeInput): Promise<void> {

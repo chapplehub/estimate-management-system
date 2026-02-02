@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { DepartmentCdDuplicationCheckDomainService } from "../DepartmentCdDuplicationCheckDomainService";
-import { IDepartmentRepository } from "../../repositories/IDepartmentRepository";
+import { DepartmentRepository } from "../../repositories/DepartmentRepository";
 import { DepartmentCd } from "../../values/DepartmentCd";
 import { Department } from "../../entities/Department";
 import { DepartmentName } from "../../values/DepartmentName";
@@ -8,7 +8,7 @@ import { Abbreviation } from "../../values/Abbreviation";
 
 describe("DepartmentCdDuplicationCheckDomainService", () => {
   let service: DepartmentCdDuplicationCheckDomainService;
-  let mockRepository: IDepartmentRepository;
+  let mockRepository: DepartmentRepository;
 
   beforeEach(() => {
     mockRepository = {

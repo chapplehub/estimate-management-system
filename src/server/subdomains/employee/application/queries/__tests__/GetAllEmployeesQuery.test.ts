@@ -1,13 +1,13 @@
 import { EmployeeDTO } from "../dto/EmployeeDTO";
 import { ListOptions } from "../dto/EmployeeSearchCriteria";
-import { IEmployeeQueryService } from "../IEmployeeQueryService";
+import { EmployeeQueryService } from "../EmployeeQueryService";
 import { GetAllEmployeesQuery } from "../GetAllEmployeesQuery";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { USER_ROLES } from "@server/shared/auth/types";
 
 describe("GetAllEmployeesQuery", () => {
   let query: GetAllEmployeesQuery;
-  let mockQueryService: IEmployeeQueryService;
+  let mockQueryService: EmployeeQueryService;
 
   const mockEmployeeDTO: EmployeeDTO = {
     id: "test-id-001",

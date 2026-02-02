@@ -55,7 +55,7 @@ export type UpdateAuthUserRoleResult = { success: true } | { success: false; err
 // インターフェース
 // ========================================
 
-export interface IUserManagementService {
+export interface UserManagementService {
   /**
    * 認証ユーザー（User/Account）を作成する
    *

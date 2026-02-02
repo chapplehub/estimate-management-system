@@ -3,21 +3,21 @@ import { headers } from "next/headers";
 import type {
   CreateAuthUserInput,
   CreateAuthUserResult,
-  IUserManagementService,
+  UserManagementService,
   RemoveAuthUserResult,
   UpdateAuthUserEmailResult,
   UpdateAuthUserRoleResult,
-} from "../IUserManagementService";
+} from "../UserManagementService";
 import type { UserRole } from "../types";
 import { auth } from "./auth";
 
 /**
- * Better Auth による IUserManagementService の実装
+ * Better Auth による UserManagementService の実装
  *
  * Better Auth Admin API を使用して認証ユーザーの作成・更新・削除を行う。
  * Employee（ドメインエンティティ）と認証ユーザーの同期に使用する。
  */
-export class BetterAuthUserManagementService implements IUserManagementService {
+export class BetterAuthUserManagementService implements UserManagementService {
   /**
    * 認証ユーザー（User/Account）を作成する
    *

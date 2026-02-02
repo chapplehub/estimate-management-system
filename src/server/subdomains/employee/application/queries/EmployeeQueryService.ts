@@ -11,7 +11,7 @@ import { EmployeeSearchCriteria, ListOptions } from "./dto/EmployeeSearchCriteri
  * - リポジトリ：Entity の永続化・取得（完全な Entity の再構築）
  * - QueryService：検索・一覧取得（軽量な DTO で返却）
  */
-export interface IEmployeeQueryService {
+export interface EmployeeQueryService {
   /**
    * IDで従業員を取得
    * @param id 従業員ID

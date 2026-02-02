@@ -5,9 +5,9 @@ import { DepartmentCd } from "../values/DepartmentCd";
  * 部署リポジトリインターフェース
  *
  * Repository は Entity の永続化・取得（完全な Entity の再構築）を担当する。
- * 検索・一覧取得など読み取り専用の操作は IDepartmentQueryService を使用すること。
+ * 検索・一覧取得など読み取り専用の操作は DepartmentQueryService を使用すること。
  */
-export interface IDepartmentRepository {
+export interface DepartmentRepository {
   /**
    * 部署を保存（新規作成・更新）
    */
@@ -20,7 +20,7 @@ export interface IDepartmentRepository {
 
   /**
    * IDで部署を取得（Entity の完全な再構築が必要な場合に使用）
-   * 単なる表示目的の場合は IDepartmentQueryService を使用すること
+   * 単なる表示目的の場合は DepartmentQueryService を使用すること
    */
   findById(id: string): Promise<Department | null>;
 

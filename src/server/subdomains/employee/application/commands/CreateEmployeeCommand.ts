@@ -1,9 +1,9 @@
-import type { IUserManagementService } from "@server/shared/auth/IUserManagementService";
+import type { UserManagementService } from "@server/shared/auth/UserManagementService";
 import type { UserRole } from "@server/shared/auth/types";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
 import { ValidationError } from "@server/shared/errors/DomainError";
 import { Employee } from "@subdomains/employee/domain/entities/Employee";
-import { IEmployeeRepository } from "@subdomains/employee/domain/repositories/IEmployeeRepository";
+import { EmployeeRepository } from "@subdomains/employee/domain/repositories/EmployeeRepository";
 import { EmployeeCdDuplicationCheckDomainService } from "@subdomains/employee/domain/services/EmployeeCdDuplicationCheckDomainService";
 import { MailAddressDuplicationCheckDomainService } from "@subdomains/employee/domain/services/MailAddressDuplicationCheckDomainService";
 import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
@@ -29,10 +29,10 @@ export type CreateEmployeeInput = {
  */
 export class CreateEmployeeCommand {
   public constructor(
-    private readonly employeeRepository: IEmployeeRepository,
+    private readonly employeeRepository: EmployeeRepository,
     private readonly employeeCdDuplicationCheckDomainService: EmployeeCdDuplicationCheckDomainService,
     private readonly mailAddressDuplicationCheckDomainService: MailAddressDuplicationCheckDomainService,
-    private readonly userManagementService: IUserManagementService
+    private readonly userManagementService: UserManagementService
   ) {}
 
   async execute(input: CreateEmployeeInput): Promise<void> {

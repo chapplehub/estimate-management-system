@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { UpdateDepartmentCommand } from "../UpdateDepartmentCommand";
-import { IDepartmentRepository } from "@subdomains/department/domain/repositories/IDepartmentRepository";
+import { DepartmentRepository } from "@subdomains/department/domain/repositories/DepartmentRepository";
 import { Department } from "@subdomains/department/domain/entities/Department";
 import { DepartmentCd } from "@subdomains/department/domain/values/DepartmentCd";
 import { DepartmentName } from "@subdomains/department/domain/values/DepartmentName";
@@ -10,7 +10,7 @@ import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 
 describe("UpdateDepartmentCommand", () => {
   let command: UpdateDepartmentCommand;
-  let mockRepository: IDepartmentRepository;
+  let mockRepository: DepartmentRepository;
 
   const createTestDepartment = (id: string = "dept-1") => {
     return Department.reconstruct(

@@ -11,7 +11,7 @@ import { DepartmentSearchCriteria, DepartmentListOptions } from "./dto/Departmen
  * - リポジトリ：Entity の永続化・取得（完全な Entity の再構築）
  * - QueryService：検索・一覧取得（軽量な DTO で返却）
  */
-export interface IDepartmentQueryService {
+export interface DepartmentQueryService {
   /**
    * IDで部署を取得
    * @param id 部署ID

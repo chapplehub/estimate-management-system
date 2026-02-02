@@ -3,7 +3,7 @@ import {
   EmployeeSearchCriteria,
   ListOptions,
 } from "@subdomains/employee/application/queries/dto/EmployeeSearchCriteria";
-import { IEmployeeQueryService } from "@subdomains/employee/application/queries/IEmployeeQueryService";
+import { EmployeeQueryService } from "@subdomains/employee/application/queries/EmployeeQueryService";
 import prisma from "@server/prisma";
 import { Prisma } from "@generated/prisma/client";
 import type { UserRole } from "@server/shared/auth/types";
@@ -14,7 +14,7 @@ import type { UserRole } from "@server/shared/auth/types";
  * データベースから直接DTOを取得し、軽量で高速な読み取りを実現
  * Note: roleはUser.roleから取得する
  */
-export class PrismaEmployeeQueryService implements IEmployeeQueryService {
+export class PrismaEmployeeQueryService implements EmployeeQueryService {
   async findById(id: string): Promise<EmployeeDTO | null> {
     const employee = await prisma.employee.findUnique({
       where: { id },

@@ -1,5 +1,5 @@
 import { Department } from "@subdomains/department/domain/entities/Department";
-import { IDepartmentRepository } from "@subdomains/department/domain/repositories/IDepartmentRepository";
+import { DepartmentRepository } from "@subdomains/department/domain/repositories/DepartmentRepository";
 import { DepartmentName } from "@subdomains/department/domain/values/DepartmentName";
 import { Abbreviation } from "@subdomains/department/domain/values/Abbreviation";
 import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
@@ -18,7 +18,7 @@ export type UpdateDepartmentInput = {
  * 部署更新コマンド
  */
 export class UpdateDepartmentCommand {
-  public constructor(private readonly departmentRepository: IDepartmentRepository) {}
+  public constructor(private readonly departmentRepository: DepartmentRepository) {}
 
   async execute(input: UpdateDepartmentInput): Promise<Department> {
     const department = await this.departmentRepository.findById(input.id);

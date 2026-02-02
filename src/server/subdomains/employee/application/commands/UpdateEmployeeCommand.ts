@@ -1,10 +1,10 @@
-import type { IUserManagementService } from "@server/shared/auth/IUserManagementService";
+import type { UserManagementService } from "@server/shared/auth/UserManagementService";
 import type { UserRole } from "@server/shared/auth/types";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
 import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { ValidationError } from "@server/shared/errors/DomainError";
 import { Employee } from "@subdomains/employee/domain/entities/Employee";
-import { IEmployeeRepository } from "@subdomains/employee/domain/repositories/IEmployeeRepository";
+import { EmployeeRepository } from "@subdomains/employee/domain/repositories/EmployeeRepository";
 import { MailAddressDuplicationCheckDomainService } from "@subdomains/employee/domain/services/MailAddressDuplicationCheckDomainService";
 import { EmployeeName } from "@subdomains/employee/domain/values/EmployeeName";
 
@@ -26,9 +26,9 @@ export type UpdateEmployeeInput = {
  */
 export class UpdateEmployeeCommand {
   public constructor(
-    private readonly employeeRepository: IEmployeeRepository,
+    private readonly employeeRepository: EmployeeRepository,
     private readonly mailAddressDuplicationCheckDomainService: MailAddressDuplicationCheckDomainService,
-    private readonly userManagementService: IUserManagementService
+    private readonly userManagementService: UserManagementService
   ) {}
 
   async execute(input: UpdateEmployeeInput): Promise<void> {
