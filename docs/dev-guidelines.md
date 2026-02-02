@@ -1,5 +1,8 @@
 # 開発ガイドライン
 
+> **Note:** このドキュメントは人間の開発者向けのリファレンスです。
+> Claude Code向けのDDD実装パターンは `/ddd-architecture` スキルを使用してください。
+
 ## 目次
 
 1. [コーディング規約](#1-コーディング規約)
@@ -224,7 +227,7 @@ class UserManager {
 | ---------------- | ----------------------------------------------------------------------- | --------------------------- |
 | ファイル         | PascalCase（クラス/コンポーネント）<br>camelCase（関数/ユーティリティ） | `User.ts`<br>`userUtils.ts` |
 | クラス           | PascalCase                                                              | `CreateUserUseCase`         |
-| インターフェース | PascalCase（I 接頭辞）                                                  | `IUserRepository`           |
+| インターフェース | PascalCase                                                              | `UserRepository`            |
 | 型エイリアス     | PascalCase                                                              | `UserFormData`              |
 | 変数・関数       | camelCase                                                               | `userName`, `getUser()`     |
 | 定数             | UPPER_SNAKE_CASE                                                        | `MAX_LOGIN_ATTEMPTS`        |
@@ -257,7 +260,7 @@ export class Email {
 }
 
 // リポジトリインターフェース: I接頭辞 + エンティティ名 + Repository
-export interface IUserRepository {
+export interface UserRepository {
   findById(id: string): Promise<User | null>;
   save(user: User): Promise<void>;
   delete(id: string): Promise<void>;
@@ -305,7 +308,7 @@ export type CreateUserOutput = {
 
 ```typescript
 // リポジトリ実装: 技術名 + エンティティ名 + Repository
-export class PrismaUserRepository implements IUserRepository {
+export class PrismaUserRepository implements UserRepository {
   async findById(id: string): Promise<User | null> {
     // ...
   }
@@ -546,7 +549,7 @@ export class User {
 ```typescript
 export class CreateUserUseCase {
   constructor(
-    private readonly userRepository: IUserRepository,
+    private readonly userRepository: UserRepository,
     private readonly duplicationChecker: UserDuplicationCheckService
   ) {}
 
@@ -595,7 +598,7 @@ export class CreateUserUseCase {
 #### インフラストラクチャ層
 
 ```typescript
-export class PrismaUserRepository implements IUserRepository {
+export class PrismaUserRepository implements UserRepository {
   async findById(id: string): Promise<User | null> {
     try {
       const prismaUser = await prisma.user.findUnique({
@@ -940,15 +943,15 @@ Infrastructure → Application → Domain
 
 ```typescript
 // ✅ Good - ドメイン層はインターフェースのみ定義
-// domain/repositories/IUserRepository.ts
-export interface IUserRepository {
+// domain/repositories/UserRepository.ts
+export interface UserRepository {
   findById(id: string): Promise<User | null>;
   save(user: User): Promise<void>;
 }
 
 // ✅ Good - インフラ層が実装を提供
 // infrastructure/repositories/PrismaUserRepository.ts
-export class PrismaUserRepository implements IUserRepository {
+export class PrismaUserRepository implements UserRepository {
   async findById(id: string): Promise<User | null> {
     // Prismaを使用した実装
   }
@@ -958,7 +961,7 @@ export class PrismaUserRepository implements IUserRepository {
 // application/usecases/CreateUserUseCase.ts
 export class CreateUserUseCase {
   constructor(
-    private readonly userRepository: IUserRepository // インターフェースに依存
+    private readonly userRepository: UserRepository // インターフェースに依存
   ) {}
 }
 
@@ -1125,7 +1128,7 @@ export class Email {
 
 ```typescript
 // ✅ Good - インターフェース定義（ドメイン層）
-export interface IUserRepository {
+export interface UserRepository {
   findById(id: string): Promise<User | null>;
   findByEmail(email: Email): Promise<User | null>;
   findAll(options?: FindAllOptions): Promise<User[]>;
@@ -1134,7 +1137,7 @@ export interface IUserRepository {
 }
 
 // ✅ Good - 実装（インフラ層）
-export class PrismaUserRepository implements IUserRepository {
+export class PrismaUserRepository implements UserRepository {
   async findById(id: string): Promise<User | null> {
     try {
       const prismaUser = await prisma.user.findUnique({
@@ -1189,7 +1192,7 @@ export class UserRepository {
 // ✅ Good - 単一責任のユースケース
 export class CreateUserUseCase {
   constructor(
-    private readonly userRepository: IUserRepository,
+    private readonly userRepository: UserRepository,
     private readonly duplicationChecker: UserDuplicationCheckService
   ) {}
 
@@ -1562,7 +1565,7 @@ export async function updateEstimate(...) {
  */
 export class CreateUserUseCase {
   constructor(
-    private readonly userRepository: IUserRepository,
+    private readonly userRepository: UserRepository,
     private readonly duplicationChecker: UserDuplicationCheckService
   ) {}
 
@@ -1743,7 +1746,7 @@ it("should create user with valid input", () => {
 
 ```typescript
 describe("CreateUserUseCase", () => {
-  let mockUserRepository: jest.Mocked<IUserRepository>;
+  let mockUserRepository: jest.Mocked<UserRepository>;
   let mockDuplicationChecker: jest.Mocked<UserDuplicationCheckService>;
   let useCase: CreateUserUseCase;
 
@@ -1995,8 +1998,8 @@ export class User {
   }
 }
 
-// domain/repositories/IUserRepository.ts
-export interface IUserRepository {
+// domain/repositories/UserRepository.ts
+export interface UserRepository {
   findById(id: string): Promise<User | null>;
   findByEmail(email: Email): Promise<User | null>;
   findAll(options?: FindAllOptions): Promise<User[]>;
@@ -2011,7 +2014,7 @@ export interface IUserRepository {
 // application/usecases/CreateUserUseCase.ts
 export class CreateUserUseCase {
   constructor(
-    private readonly userRepository: IUserRepository,
+    private readonly userRepository: UserRepository,
     private readonly duplicationChecker: UserDuplicationCheckService
   ) {}
 
@@ -2047,7 +2050,7 @@ export class CreateUserUseCase {
 
 ```typescript
 // infrastructure/repositories/PrismaUserRepository.ts
-export class PrismaUserRepository implements IUserRepository {
+export class PrismaUserRepository implements UserRepository {
   async findById(id: string): Promise<User | null> {
     try {
       const prismaUser = await prisma.user.findUnique({ where: { id } });
