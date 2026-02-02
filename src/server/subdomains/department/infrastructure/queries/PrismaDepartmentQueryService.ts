@@ -6,7 +6,7 @@ import {
   DepartmentSearchCriteria,
   DepartmentListOptions,
 } from "@subdomains/department/application/queries/dto/DepartmentSearchCriteria";
-import { IDepartmentQueryService } from "@subdomains/department/application/queries/IDepartmentQueryService";
+import { DepartmentQueryService } from "@subdomains/department/application/queries/DepartmentQueryService";
 import prisma from "@server/prisma";
 import { Prisma } from "@generated/prisma/client";
 
@@ -15,7 +15,7 @@ import { Prisma } from "@generated/prisma/client";
  *
  * データベースから直接DTOを取得し、軽量で高速な読み取りを実現
  */
-export class PrismaDepartmentQueryService implements IDepartmentQueryService {
+export class PrismaDepartmentQueryService implements DepartmentQueryService {
   async findById(id: string): Promise<DepartmentDTO | null> {
     const department = await prisma.department.findUnique({
       where: { id },

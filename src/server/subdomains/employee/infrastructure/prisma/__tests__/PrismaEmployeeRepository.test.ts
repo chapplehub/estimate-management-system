@@ -207,6 +207,6 @@ describe("PrismaEmployeeRepository", () => {
     });
   });
 
-  // findAll は IEmployeeRepository から削除されました
-  // 一覧取得には IEmployeeQueryService を使用してください
+  // findAll は EmployeeRepository から削除されました
+  // 一覧取得には EmployeeQueryService を使用してください
 });

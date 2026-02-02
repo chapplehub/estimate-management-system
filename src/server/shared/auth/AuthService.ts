@@ -5,7 +5,7 @@ import type { AuthSession, SignInInput, SignInResult, SignOutResult } from "./ty
  *
  * 認証機能の抽象化を提供し、実装の詳細（Better Auth等）を隠蔽する
  */
-export interface IAuthService {
+export interface AuthService {
   /**
    * 現在のセッションを取得する
    * Server Component / Server Action から呼び出す

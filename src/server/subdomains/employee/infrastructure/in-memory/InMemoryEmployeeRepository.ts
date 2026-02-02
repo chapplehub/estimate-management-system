@@ -1,10 +1,10 @@
 import { Employee } from "@subdomains/employee/domain/entities/Employee";
-import { IEmployeeRepository } from "@subdomains/employee/domain/repositories/IEmployeeRepository";
+import { EmployeeRepository } from "@subdomains/employee/domain/repositories/EmployeeRepository";
 import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
 import { randomUUID } from "crypto";
 
-export class InMemoryEmployeeRepository implements IEmployeeRepository {
+export class InMemoryEmployeeRepository implements EmployeeRepository {
   public DB: {
     [id: string]: Employee;
   } = {};

@@ -2,11 +2,11 @@ import { randomUUID } from "crypto";
 import type {
   CreateAuthUserInput,
   CreateAuthUserResult,
-  IUserManagementService,
+  UserManagementService,
   RemoveAuthUserResult,
   UpdateAuthUserEmailResult,
   UpdateAuthUserRoleResult,
-} from "../IUserManagementService";
+} from "../UserManagementService";
 import type { AuthUser, UserRole } from "../types";
 
 /**
@@ -14,7 +14,7 @@ import type { AuthUser, UserRole } from "../types";
  *
  * インメモリでユーザー管理を行い、テスト用のフラグで失敗をシミュレートできる。
  */
-export class FakeUserManagementService implements IUserManagementService {
+export class FakeUserManagementService implements UserManagementService {
   private users = new Map<string, AuthUser>();
   private usersByEmployeeId = new Map<string, AuthUser>();
   private shouldFailOnCreate = false;

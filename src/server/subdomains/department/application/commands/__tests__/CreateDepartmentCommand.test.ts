@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { CreateDepartmentCommand } from "../CreateDepartmentCommand";
-import { IDepartmentRepository } from "@subdomains/department/domain/repositories/IDepartmentRepository";
+import { DepartmentRepository } from "@subdomains/department/domain/repositories/DepartmentRepository";
 import { DepartmentCdDuplicationCheckDomainService } from "@subdomains/department/domain/services/DepartmentCdDuplicationCheckDomainService";
 import { Department } from "@subdomains/department/domain/entities/Department";
 import { DepartmentCd } from "@subdomains/department/domain/values/DepartmentCd";
@@ -10,7 +10,7 @@ import { ValidationError } from "@server/shared/errors/DomainError";
 
 describe("CreateDepartmentCommand", () => {
   let command: CreateDepartmentCommand;
-  let mockRepository: IDepartmentRepository;
+  let mockRepository: DepartmentRepository;
   let mockDuplicationCheckService: DepartmentCdDuplicationCheckDomainService;
 
   beforeEach(() => {

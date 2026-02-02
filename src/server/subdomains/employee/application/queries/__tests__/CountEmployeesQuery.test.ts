@@ -1,12 +1,12 @@
 import { EmployeeSearchCriteria } from "../dto/EmployeeSearchCriteria";
-import { IEmployeeQueryService } from "../IEmployeeQueryService";
+import { EmployeeQueryService } from "../EmployeeQueryService";
 import { CountEmployeesQuery } from "../CountEmployeesQuery";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { USER_ROLES } from "@server/shared/auth/types";
 
 describe("CountEmployeesQuery", () => {
   let query: CountEmployeesQuery;
-  let mockQueryService: IEmployeeQueryService;
+  let mockQueryService: EmployeeQueryService;
 
   beforeEach(() => {
     mockQueryService = {

@@ -1,5 +1,5 @@
 import { Department } from "@subdomains/department/domain/entities/Department";
-import { IDepartmentRepository } from "@subdomains/department/domain/repositories/IDepartmentRepository";
+import { DepartmentRepository } from "@subdomains/department/domain/repositories/DepartmentRepository";
 import { ValidationError } from "@server/shared/errors/DomainError";
 import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 
@@ -14,7 +14,7 @@ export type DeleteDepartmentInput = {
  * 論理削除（無効化）を行う場合は UpdateDepartmentCommand の isActive を使用すること。
  */
 export class DeleteDepartmentCommand {
-  public constructor(private readonly departmentRepository: IDepartmentRepository) {}
+  public constructor(private readonly departmentRepository: DepartmentRepository) {}
 
   async execute(input: DeleteDepartmentInput): Promise<void> {
     const department = await this.departmentRepository.findById(input.id);

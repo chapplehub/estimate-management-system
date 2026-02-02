@@ -1,5 +1,5 @@
 import { Department } from "@subdomains/department/domain/entities/Department";
-import { IDepartmentRepository } from "@subdomains/department/domain/repositories/IDepartmentRepository";
+import { DepartmentRepository } from "@subdomains/department/domain/repositories/DepartmentRepository";
 import { DepartmentCdDuplicationCheckDomainService } from "@subdomains/department/domain/services/DepartmentCdDuplicationCheckDomainService";
 import { DepartmentCd } from "@subdomains/department/domain/values/DepartmentCd";
 import { DepartmentName } from "@subdomains/department/domain/values/DepartmentName";
@@ -19,7 +19,7 @@ export type CreateDepartmentInput = {
  */
 export class CreateDepartmentCommand {
   public constructor(
-    private readonly departmentRepository: IDepartmentRepository,
+    private readonly departmentRepository: DepartmentRepository,
     private readonly departmentCdDuplicationCheckDomainService: DepartmentCdDuplicationCheckDomainService
   ) {}
 
