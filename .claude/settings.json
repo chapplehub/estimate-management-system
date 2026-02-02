@@ -76,7 +76,10 @@
       "Write(/learn/**)",
       "Edit(/learn/**)",
 
-      "SlashCommand(/learn:*)"
+      "SlashCommand(/learn:*)",
+
+      "WebSearch"
+
     ],
     "deny": [
       "Bash(git reset:*)",
