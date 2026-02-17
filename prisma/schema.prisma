@@ -145,3 +145,83 @@ model Verification {
   @@index([identifier])
   @@map("verification")
 }
+
+// ========================================
+// 取引先関連
+// ========================================
+
+enum CompanyType {
+  CUSTOMER // 得意先
+  DELIVERY_LOCATION // 納品先
+}
+
+model Company {
+  id   String      @id // ドメイン層でCUID生成
+  code String      @unique // 手入力（例: C001, D001）
+  name String
+  type CompanyType
+
+  // 住所情報
+  postalCode String? @map("postal_code") // 郵便番号
+  prefecture String? // 都道府県
+  address    String? // 住所（市区町村以降）
+
+  // 連絡先
+  phoneNumber   String? @map("phone_number")
+  faxNumber     String? @map("fax_number")
+  contactPerson String? @map("contact_person") // 担当者名
+
+  // 有効フラグ
+  isActive Boolean @default(true) @map("is_active")
+
+  // 関連
+  customer         Customer?
+  deliveryLocation DeliveryLocation?
+
+  // タイムスタンプ
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([code])
+  @@index([type])
+  @@index([isActive])
+  @@map("companies")
+}
+
+model Customer {
+  id        String  @id // ドメイン層でCUID生成
+  companyId String  @unique @map("company_id")
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  // 得意先固有の属性
+  marginRate Decimal? @map("margin_rate") @db.Decimal(5, 2) // 標準マージン率
+
+  // 配下の納品先
+  deliveryLocations DeliveryLocation[]
+
+  // タイムスタンプ
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("customers")
+}
+
+model DeliveryLocation {
+  id        String  @id // ドメイン層でCUID生成
+  companyId String  @unique @map("company_id")
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  // 親得意先への参照
+  customerId String   @map("customer_id")
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  // 納品先固有の属性
+  deliveryNotes String? @map("delivery_notes") @db.Text // 配送時の注意事項
+
+  // タイムスタンプ
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([customerId])
+  @@map("delivery_locations")
+}
