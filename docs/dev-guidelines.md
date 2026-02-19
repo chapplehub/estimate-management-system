@@ -1742,69 +1742,88 @@ it("should create user with valid input", () => {
 });
 ```
 
-### 7.4 モック・スタブの使用
+### 7.4 テストにおけるモック・依存解決の方針
+
+#### レイヤー別テスト戦略
+
+| レイヤー | テスト種別 | アプローチ |
+|---|---|---|
+| **Domain層** (VO, Entity) | 単体テスト | 純粋なインメモリ。外部依存なし |
+| **Domain層** (Domain Service) | 単体テスト | InMemoryRepository を使用 |
+| **Application層** (Command, Query) | **統合テスト** | **実DB (Prisma) を使用。vi.fn() モック不使用** |
+| **Infrastructure層** | **テスト不要** | **Application層テストが間接的にカバー** |
+
+#### Domain Service テスト
+
+Domain Service は InMemoryRepository を注入し、DB 非依存で単体テストを行う。
 
 ```typescript
-describe("CreateUserUseCase", () => {
-  let mockUserRepository: jest.Mocked<UserRepository>;
-  let mockDuplicationChecker: jest.Mocked<UserDuplicationCheckService>;
-  let useCase: CreateUserUseCase;
+import { InMemoryEmployeeRepository } from "@subdomains/employee/infrastructure/in-memory/InMemoryEmployeeRepository";
+import { EmployeeCdDuplicationCheckDomainService } from "../EmployeeCdDuplicationCheckDomainService";
+
+describe("EmployeeCdDuplicationCheckDomainService", () => {
+  let service: EmployeeCdDuplicationCheckDomainService;
+  let repository: InMemoryEmployeeRepository;
 
   beforeEach(() => {
-    // モックの作成
-    mockUserRepository = {
-      findById: jest.fn(),
-      findByEmail: jest.fn(),
-      save: jest.fn(),
-      delete: jest.fn(),
-    } as any;
-
-    mockDuplicationChecker = {
-      isDuplicated: jest.fn(),
-    } as any;
-
-    useCase = new CreateUserUseCase(mockUserRepository, mockDuplicationChecker);
+    repository = new InMemoryEmployeeRepository();
+    service = new EmployeeCdDuplicationCheckDomainService(repository);
   });
 
-  it("should create user successfully", async () => {
-    // Arrange
-    mockDuplicationChecker.isDuplicated.mockResolvedValue(false);
-    mockUserRepository.save.mockResolvedValue(undefined);
-
-    const input: CreateUserInput = {
-      name: "John Doe",
-      email: "john@example.com",
-      employeeId: "EMP000001",
-    };
-
-    // Act
-    const result = await useCase.execute(input);
-
-    // Assert
-    expect(result).toBeDefined();
-    expect(result.name).toBe("John Doe");
-    expect(mockDuplicationChecker.isDuplicated).toHaveBeenCalledTimes(1);
-    expect(mockUserRepository.save).toHaveBeenCalledTimes(1);
-  });
-
-  it("should throw error when email is duplicated", async () => {
-    // Arrange
-    mockDuplicationChecker.isDuplicated.mockResolvedValue(true);
-
-    const input: CreateUserInput = {
-      name: "John Doe",
-      email: "john@example.com",
-      employeeId: "EMP000001",
-    };
-
-    // Act & Assert
-    await expect(useCase.execute(input)).rejects.toThrow(
-      BusinessRuleViolationError
-    );
-    expect(mockUserRepository.save).not.toHaveBeenCalled();
+  it("重複がない場合、falseを返す", async () => {
+    const result = await service.execute(new EmployeeCd("EMP000001"));
+    expect(result).toBeFalsy();
   });
 });
 ```
+
+#### Application層 統合テスト（実DB）
+
+Application層（Command / Query）は **実 DB（Prisma）** を使用して統合テストを行う。
+`vi.fn()` モックは使用しない。外部サービス依存には Fake 実装を使用する。
+
+```typescript
+import prisma from "@server/prisma";
+import { PrismaEmployeeRepository } from "@subdomains/employee/infrastructure/prisma/PrismaEmployeeRepository";
+import { FakeUserManagementService } from "@server/shared/auth/fake/FakeUserManagementService";
+
+describe("CreateEmployeeCommand", () => {
+  let command: CreateEmployeeCommand;
+  let repository: PrismaEmployeeRepository;
+
+  beforeEach(async () => {
+    // テストデータのクリーンアップ
+    await prisma.employee.deleteMany({
+      where: { employeeCd: { in: ["EMP999911"] } },
+    });
+
+    // 外部キー依存のフィクスチャ
+    await prisma.department.upsert({
+      where: { id: "dept-001" },
+      update: {},
+      create: { id: "dept-001", departmentCd: "DEPT001", name: "テスト部署", ... },
+    });
+
+    repository = new PrismaEmployeeRepository();
+    command = new CreateEmployeeCommand(repository, ...);
+  });
+
+  afterEach(async () => {
+    await prisma.employee.deleteMany({
+      where: { employeeCd: { in: ["EMP999911"] } },
+    });
+  });
+
+  it("従業員を新規登録できる", async () => {
+    await command.execute({ employeeCd: "EMP999911", ... });
+
+    const saved = await repository.findByEmployeeCd(new EmployeeCd("EMP999911"));
+    expect(saved).not.toBeNull();
+  });
+});
+```
+
+> **参考実装:** `src/server/subdomains/employee/application/commands/__tests__/CreateEmployeeCommand.test.ts`
 
 ### 7.5 テストカバレッジ目標
 
@@ -1843,12 +1862,58 @@ describe("Email", () => {
 
 ### 7.6 テストデータ戦略（レイヤー別）
 
-| 対象                      | データソース | 理由                                                          |
-| ------------------------- | ------------ | ------------------------------------------------------------- |
-| Value Object / Entity     | インメモリ   | 永続化は責務外。ビジネスルールのみをテスト                    |
-| Application 層（UseCase） | モック       | Repository インターフェースをモックし、ビジネスロジックに集中 |
-| Repository 実装           | 実 DB        | SQL/Prisma クエリが正しく動くか検証が必要                     |
-| 統合テスト / E2E          | 実 DB        | レイヤー間の連携、実際のデータフローを検証                    |
+| 対象 | データソース | 理由 |
+|---|---|---|
+| Value Object / Entity | インメモリ | 永続化は責務外。ビジネスルールのみテスト |
+| Domain Service | InMemoryRepository | Domain層をDB非依存に保つ |
+| Application層 (Command/Query) | **実DB** | **ビジネスロジック+永続化を一貫してテスト** |
+| Infrastructure層 | **テスト不要** | **Application層テストが間接的にカバー** |
+
+### 7.7 テスト記述規約
+
+#### 基本ルール
+
+- `it()` を使用する（`test()` は使わない）
+- `describe()` の第一引数はクラス名のみ（例: `describe("Employee", ...)`）
+- テスト記述はすべて日本語（例: `it("従業員を新規登録できる", ...)`）
+- エラーテストはエラー型のみ検証する（メッセージ文言は検証しない）
+
+```typescript
+// ✅ Good
+it("社員コードが重複している場合エラー", async () => {
+  await expect(command.execute(input)).rejects.toThrow(DuplicationError);
+});
+
+// ❌ Bad - メッセージを検証している
+it("社員コードが重複している場合エラー", async () => {
+  await expect(command.execute(input)).rejects.toThrow("社員コードが重複しています");
+});
+```
+
+#### DB クリーンアップパターン（統合テスト）
+
+```typescript
+beforeEach(async () => {
+  // テストデータのクリーンアップ（テスト前）
+  await prisma.employee.deleteMany({
+    where: { employeeCd: { in: ["EMP999911"] } },
+  });
+
+  // 外部キー依存のフィクスチャ（upsert で冪等に作成）
+  await prisma.department.upsert({
+    where: { id: "dept-001" },
+    update: {},
+    create: { ... },
+  });
+});
+
+afterEach(async () => {
+  // テストデータのクリーンアップ（テスト後）
+  await prisma.employee.deleteMany({
+    where: { employeeCd: { in: ["EMP999911"] } },
+  });
+});
+```
 
 ---
 
@@ -2129,3 +2194,4 @@ export async function POST(request: Request) {
 | ---------- | ---------- | -------- |
 | 1.0        | 2025-10-07 | 初版作成 |
 | 1.1        | 2025-12-12 | 5.6 認証・認可実装規則を追加 |
+| 1.2        | 2026-02-19 | 7.4 テスト戦略整理（実DB統合テスト方針）、7.7 テスト記述規約を追加 |
