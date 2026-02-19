@@ -10,6 +10,10 @@
 
 githubのbranch rulesetsを追加した。
 
+### 15:33 - Commitizen導入
+
+commitizen導入
+
 ---
 
 ## 🎯 今日の目標
