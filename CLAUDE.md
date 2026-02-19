@@ -11,6 +11,12 @@ pnpm dev / build / test / lint
 pnpm db:migrate / db:generate / db:studio
 ```
 
+## Git Branch Strategy
+
+- defalut branch: `develop`
+- PR base branch: `develop`（not `main`）
+- branch naming rule: `feat/issue-{number}`, `fix/issue-{number}`, `docs/issue-{number}`
+
 ## Critical: DDD Layering Rules
 
 **NEVER violate these rules:**
