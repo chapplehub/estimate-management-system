@@ -1,7 +1,7 @@
 ---
 name: ddd-architecture
 description: DDDアーキテクチャ実装パターン。エンティティ、値オブジェクト、リポジトリ、ユースケースの実装時に使用
-user-invocable: true
+user-invokable: true
 ---
 
 # DDD Architecture Implementation Patterns
