@@ -16,6 +16,7 @@ pnpm db:migrate / db:generate / db:studio
 - defalut branch: `develop`
 - PR base branch: `develop`（not `main`）
 - branch naming rule: `feat/issue-{number}`, `fix/issue-{number}`, `docs/issue-{number}`
+- PR body に関連 issue がある場合は `Closes #XX` を必ず含める
 
 ## Critical: DDD Layering Rules
 
