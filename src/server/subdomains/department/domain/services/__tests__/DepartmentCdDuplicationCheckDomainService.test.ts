@@ -1,47 +1,47 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import prisma from "@server/prisma";
+import { Department } from "@subdomains/department/domain/entities/Department";
+import { DepartmentCd } from "@subdomains/department/domain/values/DepartmentCd";
+import { DepartmentName } from "@subdomains/department/domain/values/DepartmentName";
+import { Abbreviation } from "@subdomains/department/domain/values/Abbreviation";
+import { PrismaDepartmentRepository } from "@subdomains/department/infrastructure/prisma/PrismaDepartmentRepository";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DepartmentCdDuplicationCheckDomainService } from "../DepartmentCdDuplicationCheckDomainService";
-import { DepartmentRepository } from "../../repositories/DepartmentRepository";
-import { DepartmentCd } from "../../values/DepartmentCd";
-import { Department } from "../../entities/Department";
-import { DepartmentName } from "../../values/DepartmentName";
-import { Abbreviation } from "../../values/Abbreviation";
 
 describe("DepartmentCdDuplicationCheckDomainService", () => {
   let service: DepartmentCdDuplicationCheckDomainService;
-  let mockRepository: DepartmentRepository;
+  let repository: PrismaDepartmentRepository;
 
-  beforeEach(() => {
-    mockRepository = {
-      save: vi.fn(),
-      delete: vi.fn(),
-      findById: vi.fn(),
-      findByDepartmentCd: vi.fn(),
-      findChildren: vi.fn(),
-      findRootDepartments: vi.fn(),
-    };
+  const TEST_CODES = ["DEPT998"];
 
-    service = new DepartmentCdDuplicationCheckDomainService(mockRepository);
+  async function cleanup() {
+    await prisma.department.deleteMany({
+      where: { departmentCd: { in: TEST_CODES } },
+    });
+  }
+
+  beforeEach(async () => {
+    await cleanup();
+
+    repository = new PrismaDepartmentRepository();
+    service = new DepartmentCdDuplicationCheckDomainService(repository);
   });
 
+  afterEach(cleanup);
+
   it("部署コードが存在しない場合は false を返す", async () => {
-    vi.mocked(mockRepository.findByDepartmentCd).mockResolvedValue(null);
-
-    const isDuplicated = await service.execute(new DepartmentCd("DEPT001"));
-
+    const isDuplicated = await service.execute(new DepartmentCd(TEST_CODES[0]));
     expect(isDuplicated).toBe(false);
-    expect(mockRepository.findByDepartmentCd).toHaveBeenCalledWith(expect.any(DepartmentCd));
   });
 
   it("部署コードが既に存在する場合は true を返す", async () => {
-    const existingDepartment = Department.create(
-      new DepartmentCd("DEPT001"),
-      new DepartmentName("営業部"),
-      new Abbreviation("営業")
+    const department = Department.create(
+      new DepartmentCd(TEST_CODES[0]),
+      new DepartmentName("テスト部署"),
+      new Abbreviation("テスト")
     );
-    vi.mocked(mockRepository.findByDepartmentCd).mockResolvedValue(existingDepartment);
+    await repository.save(department);
 
-    const isDuplicated = await service.execute(new DepartmentCd("DEPT001"));
-
+    const isDuplicated = await service.execute(new DepartmentCd(TEST_CODES[0]));
     expect(isDuplicated).toBe(true);
   });
 });

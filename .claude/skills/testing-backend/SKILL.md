@@ -11,7 +11,7 @@ user-invokable: true
 | レイヤー | テスト種別 | アプローチ |
 |---|---|---|
 | **Domain層** (VO, Entity) | 単体テスト | 純粋なインメモリ。外部依存なし |
-| **Domain層** (Domain Service) | 単体テスト | InMemoryRepository を使用 |
+| **Domain層** (Domain Service) | 統合テスト | 実DB (Prisma) を使用 |
 | **Application層** (Command, Query) | **統合テスト** | **実DB (Prisma) を使用。モック不使用** |
 | **Infrastructure層** | **テスト不要** | Application層テストが間接的にカバー |
 
@@ -168,43 +168,71 @@ describe("Employee", () => {
 
 ## 5. Pattern: Domain Service テスト
 
-InMemoryRepository を使用。DB 非依存の単体テスト。
+**実 PrismaRepository** を使用する統合テスト。Command テストと同じ DB クリーンアップパターンに従う。
 
 ```typescript
+import prisma from "@server/prisma";
+import { MailAddress } from "@server/shared/domain/values/MailAddress";
 import { Employee } from "@subdomains/employee/domain/entities/Employee";
 import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
 import { EmployeeName } from "@subdomains/employee/domain/values/EmployeeName";
-import { MailAddress } from "@server/shared/domain/values/MailAddress";
-import { InMemoryEmployeeRepository } from "@subdomains/employee/infrastructure/in-memory/InMemoryEmployeeRepository";
-import { beforeEach, describe, expect, it } from "vitest";
+import { PrismaEmployeeRepository } from "@subdomains/employee/infrastructure/prisma/PrismaEmployeeRepository";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { EmployeeCdDuplicationCheckDomainService } from "../EmployeeCdDuplicationCheckDomainService";
 
 describe("EmployeeCdDuplicationCheckDomainService", () => {
   let service: EmployeeCdDuplicationCheckDomainService;
-  let repository: InMemoryEmployeeRepository;
+  let repository: PrismaEmployeeRepository;
 
-  beforeEach(() => {
-    repository = new InMemoryEmployeeRepository();
+  // テストデータ定数（cleanup・テスト本体の両方でこの定数を使う）
+  const TEST_CODES = ["EMP999821", "EMP999822"];
+  const TEST_EMAIL = "ds-empcd-dup@example.com";
+  const TEST_DEPT_ID = "dept-001";
+
+  beforeEach(async () => {
+    await prisma.employee.deleteMany({
+      where: { employeeCd: { in: TEST_CODES } },
+    });
+
+    await prisma.department.upsert({
+      where: { id: TEST_DEPT_ID },
+      update: {},
+      create: {
+        id: TEST_DEPT_ID,
+        departmentCd: "DEPT001",
+        name: "テスト部署",
+        abbreviation: "テスト",
+        displayOrder: 1,
+        isActive: true,
+      },
+    });
+
+    repository = new PrismaEmployeeRepository();
     service = new EmployeeCdDuplicationCheckDomainService(repository);
   });
 
+  afterEach(async () => {
+    await prisma.employee.deleteMany({
+      where: { employeeCd: { in: TEST_CODES } },
+    });
+  });
+
   it("重複がない場合、falseを返す", async () => {
-    const result = await service.execute(new EmployeeCd("EMP000001"));
-    expect(result).toBeFalsy();
+    const result = await service.execute(new EmployeeCd(TEST_CODES[0]));
+    expect(result).toBe(false);
   });
 
   it("重複がある場合、trueを返す", async () => {
-    // テストデータをリポジトリに投入
     const employee = Employee.create(
-      new EmployeeCd("EMP000001"),
-      new MailAddress("test@example.com"),
-      new EmployeeName("山田太郎"),
-      "dept-001",
+      new EmployeeCd(TEST_CODES[0]),
+      new MailAddress(TEST_EMAIL),
+      new EmployeeName("テスト太郎"),
+      TEST_DEPT_ID,
     );
     await repository.save(employee);
 
-    const result = await service.execute(new EmployeeCd("EMP000001"));
-    expect(result).toBeTruthy();
+    const result = await service.execute(new EmployeeCd(TEST_CODES[0]));
+    expect(result).toBe(true);
   });
 });
 ```
@@ -240,18 +268,21 @@ describe("CreateEmployeeCommand", () => {
   let repository: PrismaEmployeeRepository;
   let fakeUserManagementService: FakeUserManagementService;
 
+  // テストデータ定数（cleanup・テスト本体の両方でこの定数を使う）
+  const TEST_CODES = ["EMP999911"];
+  const TEST_EMAIL = "test-create-cmd@example.com";
+  const TEST_DEPT_ID = "dept-001";
+
   beforeEach(async () => {
-    // テストデータのクリーンアップ
     await prisma.employee.deleteMany({
-      where: { employeeCd: { in: ["EMP999911"] } },
+      where: { employeeCd: { in: TEST_CODES } },
     });
 
-    // 外部キー依存のフィクスチャ（upsert で冪等に作成）
     await prisma.department.upsert({
-      where: { id: "dept-001" },
+      where: { id: TEST_DEPT_ID },
       update: {},
       create: {
-        id: "dept-001",
+        id: TEST_DEPT_ID,
         departmentCd: "DEPT001",
         name: "テスト部署",
         abbreviation: "テスト",
@@ -260,7 +291,6 @@ describe("CreateEmployeeCommand", () => {
       },
     });
 
-    // 実 Repository を使用（モックではない）
     repository = new PrismaEmployeeRepository();
     fakeUserManagementService = new FakeUserManagementService();
 
@@ -273,26 +303,24 @@ describe("CreateEmployeeCommand", () => {
   });
 
   afterEach(async () => {
-    // テストデータのクリーンアップ
     await prisma.employee.deleteMany({
-      where: { employeeCd: { in: ["EMP999911"] } },
+      where: { employeeCd: { in: TEST_CODES } },
     });
   });
 
   it("従業員を新規登録できる", async () => {
     await command.execute({
-      employeeCd: "EMP999911",
-      email: "test-create-cmd@example.com",
+      employeeCd: TEST_CODES[0],
+      email: TEST_EMAIL,
       name: "テスト太郎",
-      departmentId: "dept-001",
+      departmentId: TEST_DEPT_ID,
       role: USER_ROLES.USER,
       password: "Password1!",
     });
 
-    // 実際にリポジトリに保存されたことを確認
-    const saved = await repository.findByEmployeeCd(new EmployeeCd("EMP999911"));
+    const saved = await repository.findByEmployeeCd(new EmployeeCd(TEST_CODES[0]));
     expect(saved).not.toBeNull();
-    expect(saved?.email.value).toBe("test-create-cmd@example.com");
+    expect(saved?.email.value).toBe(TEST_EMAIL);
   });
 
   it("認証ユーザー作成失敗時、保存したEmployeeが削除される", async () => {
@@ -302,7 +330,7 @@ describe("CreateEmployeeCommand", () => {
       command.execute({ ... })
     ).rejects.toThrow(ValidationError);
 
-    const employee = await repository.findByEmployeeCd(new EmployeeCd("EMP999911"));
+    const employee = await repository.findByEmployeeCd(new EmployeeCd(TEST_CODES[0]));
     expect(employee).toBeNull();
   });
 });
