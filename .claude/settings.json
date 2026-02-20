@@ -88,6 +88,7 @@
       "Bash(cat:*)",
       "Bash(tree:*)",
       "Bash(wc:*)",
+      "Bash(find:*)",
 
       "Read(/web/**)",
       "Write(/web/src/**)",
