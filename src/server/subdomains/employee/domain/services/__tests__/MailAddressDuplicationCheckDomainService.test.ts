@@ -12,8 +12,6 @@ describe("MailAddressDuplicationCheckDomainService", () => {
   let repository: PrismaEmployeeRepository;
 
   const TEST_CODES = ["EMP999831"];
-  const TEST_EMAIL_EXISTING = "ds-mail-dup-existing@example.com";
-  const TEST_EMAIL_NEW = "ds-mail-dup-new@example.com";
   const TEST_DEPT_ID = "dept-001";
 
   async function cleanup() {
@@ -46,33 +44,33 @@ describe("MailAddressDuplicationCheckDomainService", () => {
   afterEach(cleanup);
 
   it("重複がない場合、falseを返す", async () => {
-    const isDuplicated = await service.execute(new MailAddress(TEST_EMAIL_NEW));
+    const isDuplicated = await service.execute(new MailAddress("ds-mail-dup-new@example.com"));
     expect(isDuplicated).toBe(false);
   });
 
   it("重複がある場合、trueを返す", async () => {
     const employee = Employee.create(
       new EmployeeCd(TEST_CODES[0]),
-      new MailAddress(TEST_EMAIL_EXISTING),
+      new MailAddress("ds-mail-dup-existing@example.com"),
       new EmployeeName("テスト太郎"),
       TEST_DEPT_ID
     );
     await repository.save(employee);
 
-    const isDuplicated = await service.execute(new MailAddress(TEST_EMAIL_EXISTING));
+    const isDuplicated = await service.execute(new MailAddress("ds-mail-dup-existing@example.com"));
     expect(isDuplicated).toBe(true);
   });
 
   it("異なるメールアドレスで重複がない場合、falseを返す", async () => {
     const employee = Employee.create(
       new EmployeeCd(TEST_CODES[0]),
-      new MailAddress(TEST_EMAIL_EXISTING),
+      new MailAddress("ds-mail-dup-existing@example.com"),
       new EmployeeName("テスト太郎"),
       TEST_DEPT_ID
     );
     await repository.save(employee);
 
-    const isDuplicated = await service.execute(new MailAddress(TEST_EMAIL_NEW));
+    const isDuplicated = await service.execute(new MailAddress("ds-mail-dup-new@example.com"));
     expect(isDuplicated).toBe(false);
   });
 });

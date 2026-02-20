@@ -16,22 +16,19 @@ describe("CreateEmployeeCommand", () => {
   let mailDuplicationCheckService: MailAddressDuplicationCheckDomainService;
   let fakeUserManagementService: FakeUserManagementService;
 
+  const TEST_CODES = ["EMP999911", "EMP999914"];
+  const TEST_DEPT_ID = "dept-001";
+
   beforeEach(async () => {
-    // テストデータのクリーンアップ
     await prisma.employee.deleteMany({
-      where: {
-        employeeCd: {
-          in: ["EMP999911"],
-        },
-      },
+      where: { employeeCd: { in: TEST_CODES } },
     });
 
-    // テスト用部署を作成（存在しない場合）
     await prisma.department.upsert({
-      where: { id: "dept-001" },
+      where: { id: TEST_DEPT_ID },
       update: {},
       create: {
-        id: "dept-001",
+        id: TEST_DEPT_ID,
         departmentCd: "DEPT001",
         name: "テスト部署",
         abbreviation: "テスト",
@@ -54,32 +51,70 @@ describe("CreateEmployeeCommand", () => {
   });
 
   afterEach(async () => {
-    // テストデータのクリーンアップ
     await prisma.employee.deleteMany({
-      where: {
-        employeeCd: {
-          in: ["EMP999911"],
-        },
-      },
+      where: { employeeCd: { in: TEST_CODES } },
     });
   });
 
   it("従業員を新規登録できる", async () => {
     await command.execute({
-      employeeCd: "EMP999911",
+      employeeCd: TEST_CODES[0],
       email: "test-create-cmd@example.com",
       name: "テスト太郎",
-      departmentId: "dept-001",
+      departmentId: TEST_DEPT_ID,
       role: USER_ROLES.USER,
       password: "Password1!",
     });
 
-    // 実際にリポジトリに保存されたことを確認
-    const saved = await repository.findByEmployeeCd(new EmployeeCd("EMP999911"));
+    const saved = await repository.findByEmployeeCd(new EmployeeCd(TEST_CODES[0]));
     expect(saved).not.toBeNull();
     expect(saved?.email.value).toBe("test-create-cmd@example.com");
     expect(saved?.name.value).toBe("テスト太郎");
-    expect(saved?.departmentId).toBe("dept-001");
+    expect(saved?.departmentId).toBe(TEST_DEPT_ID);
+  });
+
+  it("社員コードが重複している場合はエラー", async () => {
+    await command.execute({
+      employeeCd: TEST_CODES[0],
+      email: "test-create-dup-cd-1@example.com",
+      name: "重複CD元",
+      departmentId: TEST_DEPT_ID,
+      role: USER_ROLES.USER,
+      password: "Password1!",
+    });
+
+    await expect(
+      command.execute({
+        employeeCd: TEST_CODES[0],
+        email: "test-create-dup-cd-2@example.com",
+        name: "重複CD先",
+        departmentId: TEST_DEPT_ID,
+        role: USER_ROLES.USER,
+        password: "Password1!",
+      })
+    ).rejects.toThrow(ValidationError);
+  });
+
+  it("メールアドレスが重複している場合はエラー", async () => {
+    await command.execute({
+      employeeCd: TEST_CODES[0],
+      email: "test-create-dup-email@example.com",
+      name: "重複Email元",
+      departmentId: TEST_DEPT_ID,
+      role: USER_ROLES.USER,
+      password: "Password1!",
+    });
+
+    await expect(
+      command.execute({
+        employeeCd: TEST_CODES[1],
+        email: "test-create-dup-email@example.com",
+        name: "重複Email先",
+        departmentId: TEST_DEPT_ID,
+        role: USER_ROLES.USER,
+        password: "Password1!",
+      })
+    ).rejects.toThrow(ValidationError);
   });
 
   it("認証ユーザー作成失敗時、保存したEmployeeが削除される", async () => {
@@ -87,17 +122,16 @@ describe("CreateEmployeeCommand", () => {
 
     await expect(
       command.execute({
-        employeeCd: "EMP999911",
+        employeeCd: TEST_CODES[0],
         email: "test-create-cmd@example.com",
         name: "テスト太郎",
-        departmentId: "dept-001",
+        departmentId: TEST_DEPT_ID,
         role: USER_ROLES.USER,
         password: "Password1!",
       })
     ).rejects.toThrow(ValidationError);
 
-    // ロールバックされてEmployeeが残っていないことを確認
-    const employee = await repository.findByEmployeeCd(new EmployeeCd("EMP999911"));
+    const employee = await repository.findByEmployeeCd(new EmployeeCd(TEST_CODES[0]));
     expect(employee).toBeNull();
   });
 });

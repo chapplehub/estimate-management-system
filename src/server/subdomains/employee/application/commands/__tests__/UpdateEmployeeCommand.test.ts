@@ -1,6 +1,7 @@
 import prisma from "@server/prisma";
 import { FakeUserManagementService } from "@server/shared/auth/fake/FakeUserManagementService";
 import { USER_ROLES } from "@server/shared/auth/types";
+import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { ValidationError } from "@server/shared/errors/DomainError";
 import { MailAddressDuplicationCheckDomainService } from "@subdomains/employee/domain/services/MailAddressDuplicationCheckDomainService";
 import { PrismaEmployeeRepository } from "@subdomains/employee/infrastructure/prisma/PrismaEmployeeRepository";
@@ -147,6 +148,19 @@ describe("UpdateEmployeeCommand", () => {
     // 認証ユーザーのroleが更新されたことを確認
     const authUser = fakeUserManagementService.getUser(TEST_EMPLOYEE_ID);
     expect(authUser?.role).toBe(USER_ROLES.ADMIN);
+  });
+
+  it("存在しない従業員IDの場合はNotFoundEntityErrorがスローされる", async () => {
+    await expect(
+      command.execute({
+        id: "non-existent-id-99999",
+        employeeCd: "EMP999912",
+        email: "existing@example.com",
+        name: "更新テスト",
+        departmentId: "dept-001",
+        role: USER_ROLES.USER,
+      })
+    ).rejects.toThrow(NotFoundEntityError);
   });
 
   it("重複するメールアドレスの場合はエラー", async () => {

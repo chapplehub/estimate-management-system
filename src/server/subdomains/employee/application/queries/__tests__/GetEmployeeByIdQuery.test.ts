@@ -1,53 +1,105 @@
-import { EmployeeDTO } from "../dto/EmployeeDTO";
-import { EmployeeQueryService } from "../EmployeeQueryService";
-import { GetEmployeeByIdQuery } from "../GetEmployeeByIdQuery";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createId } from "@paralleldrive/cuid2";
+import prisma from "@server/prisma";
+import type { UserRole } from "@server/shared/auth/types";
 import { USER_ROLES } from "@server/shared/auth/types";
+import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { GetEmployeeByIdQuery } from "../GetEmployeeByIdQuery";
 
 describe("GetEmployeeByIdQuery", () => {
   let query: GetEmployeeByIdQuery;
-  let mockQueryService: EmployeeQueryService;
+  const testEmployeeIds: string[] = [];
+  const testUserIds: string[] = [];
 
-  const mockEmployeeDTO: EmployeeDTO = {
-    id: "test-id-001",
-    employeeCd: "EMP000001",
-    email: "test@example.com",
-    name: "テスト太郎",
-    departmentId: "dept-001",
-    role: USER_ROLES.USER,
-    createdAt: new Date("2025-01-01"),
-    updatedAt: new Date("2025-01-01"),
-  };
+  const TEST_CODES = ["EMP999954"];
 
-  beforeEach(() => {
-    mockQueryService = {
-      findById: vi.fn(),
-      findByEmail: vi.fn(),
-      findByEmployeeCd: vi.fn(),
-      search: vi.fn(),
-      findAll: vi.fn(),
-      count: vi.fn(),
-    };
+  async function createTestEmployeeWithUser(data: {
+    employeeCd: string;
+    email: string;
+    name: string;
+    role: UserRole;
+    departmentId?: string;
+  }) {
+    const employeeId = createId();
+    const userId = createId();
 
-    query = new GetEmployeeByIdQuery(mockQueryService);
+    await prisma.employee.create({
+      data: {
+        id: employeeId,
+        employeeCd: data.employeeCd,
+        email: data.email,
+        name: data.name,
+        departmentId: data.departmentId ?? "dept-001",
+      },
+    });
+
+    await prisma.user.create({
+      data: {
+        id: userId,
+        email: data.email,
+        name: data.name,
+        employeeId: employeeId,
+        role: data.role,
+      },
+    });
+
+    testEmployeeIds.push(employeeId);
+    testUserIds.push(userId);
+    return { employeeId, userId };
+  }
+
+  beforeEach(async () => {
+    testEmployeeIds.length = 0;
+    testUserIds.length = 0;
+
+    await prisma.user.deleteMany({
+      where: { employee: { employeeCd: { in: TEST_CODES } } },
+    });
+    await prisma.employee.deleteMany({
+      where: { employeeCd: { in: TEST_CODES } },
+    });
+
+    await prisma.department.upsert({
+      where: { id: "dept-001" },
+      update: {},
+      create: {
+        id: "dept-001",
+        departmentCd: "DEPT001",
+        name: "テスト部署",
+        abbreviation: "テスト",
+        displayOrder: 1,
+        isActive: true,
+      },
+    });
+
+    query = new GetEmployeeByIdQuery(new PrismaEmployeeQueryService());
+  });
+
+  afterEach(async () => {
+    await prisma.user.deleteMany({ where: { id: { in: testUserIds } } });
+    await prisma.employee.deleteMany({
+      where: { id: { in: testEmployeeIds } },
+    });
   });
 
   it("IDで従業員を取得できる", async () => {
-    vi.mocked(mockQueryService.findById).mockResolvedValue(mockEmployeeDTO);
+    const { employeeId } = await createTestEmployeeWithUser({
+      employeeCd: TEST_CODES[0],
+      email: "getbyid-query@example.com",
+      name: "GetByIdQuery",
+      role: USER_ROLES.USER,
+    });
 
-    const result = await query.execute({ id: "test-id-001" });
+    const result = await query.execute({ id: employeeId });
 
-    expect(result).toEqual(mockEmployeeDTO);
-    expect(mockQueryService.findById).toHaveBeenCalledWith("test-id-001");
-    expect(mockQueryService.findById).toHaveBeenCalledTimes(1);
+    expect(result).not.toBeNull();
+    expect(result?.id).toBe(employeeId);
+    expect(result?.employeeCd).toBe(TEST_CODES[0]);
+    expect(result?.email).toBe("getbyid-query@example.com");
   });
 
   it("存在しないIDの場合nullを返す", async () => {
-    vi.mocked(mockQueryService.findById).mockResolvedValue(null);
-
     const result = await query.execute({ id: "non-existent-id" });
-
     expect(result).toBeNull();
-    expect(mockQueryService.findById).toHaveBeenCalledWith("non-existent-id");
   });
 });
