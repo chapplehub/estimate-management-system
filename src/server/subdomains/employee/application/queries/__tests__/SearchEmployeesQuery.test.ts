@@ -1,98 +1,207 @@
-import { EmployeeDTO } from "../dto/EmployeeDTO";
-import { EmployeeSearchCriteria, ListOptions } from "../dto/EmployeeSearchCriteria";
-import { EmployeeQueryService } from "../EmployeeQueryService";
-import { SearchEmployeesQuery } from "../SearchEmployeesQuery";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createId } from "@paralleldrive/cuid2";
+import prisma from "@server/prisma";
+import type { UserRole } from "@server/shared/auth/types";
 import { USER_ROLES } from "@server/shared/auth/types";
+import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { SearchEmployeesQuery } from "../SearchEmployeesQuery";
 
 describe("SearchEmployeesQuery", () => {
   let query: SearchEmployeesQuery;
-  let mockQueryService: EmployeeQueryService;
+  const testEmployeeIds: string[] = [];
+  const testUserIds: string[] = [];
 
-  const mockEmployeeDTO: EmployeeDTO = {
-    id: "test-id-001",
-    employeeCd: "EMP000001",
-    email: "test@example.com",
-    name: "テスト太郎",
-    departmentId: "dept-001",
-    role: USER_ROLES.USER,
-    createdAt: new Date("2025-01-01"),
-    updatedAt: new Date("2025-01-01"),
-  };
+  const TEST_CODES = ["EMP999957", "EMP999958", "EMP999959", "EMP999960"];
 
-  beforeEach(() => {
-    mockQueryService = {
-      findById: vi.fn(),
-      findByEmail: vi.fn(),
-      findByEmployeeCd: vi.fn(),
-      search: vi.fn(),
-      findAll: vi.fn(),
-      count: vi.fn(),
-    };
+  async function createTestEmployeeWithUser(data: {
+    employeeCd: string;
+    email: string;
+    name: string;
+    role: UserRole;
+    departmentId?: string;
+  }) {
+    const employeeId = createId();
+    const userId = createId();
 
-    query = new SearchEmployeesQuery(mockQueryService);
+    await prisma.employee.create({
+      data: {
+        id: employeeId,
+        employeeCd: data.employeeCd,
+        email: data.email,
+        name: data.name,
+        departmentId: data.departmentId ?? "dept-001",
+      },
+    });
+
+    await prisma.user.create({
+      data: {
+        id: userId,
+        email: data.email,
+        name: data.name,
+        employeeId: employeeId,
+        role: data.role,
+      },
+    });
+
+    testEmployeeIds.push(employeeId);
+    testUserIds.push(userId);
+    return { employeeId, userId };
+  }
+
+  beforeEach(async () => {
+    testEmployeeIds.length = 0;
+    testUserIds.length = 0;
+
+    await prisma.user.deleteMany({
+      where: { employee: { employeeCd: { in: TEST_CODES } } },
+    });
+    await prisma.employee.deleteMany({
+      where: { employeeCd: { in: TEST_CODES } },
+    });
+
+    await prisma.department.upsert({
+      where: { id: "dept-001" },
+      update: {},
+      create: {
+        id: "dept-001",
+        departmentCd: "DEPT001",
+        name: "テスト部署",
+        abbreviation: "テスト",
+        displayOrder: 1,
+        isActive: true,
+      },
+    });
+
+    query = new SearchEmployeesQuery(new PrismaEmployeeQueryService());
   });
 
-  it("検索条件で従業員を検索できる", async () => {
-    const criteria: EmployeeSearchCriteria = {
-      name: "テスト",
-      role: USER_ROLES.USER,
-    };
-
-    const mockResults: EmployeeDTO[] = [mockEmployeeDTO];
-
-    vi.mocked(mockQueryService.search).mockResolvedValue(mockResults);
-
-    const result = await query.execute({ criteria });
-
-    expect(result).toEqual(mockResults);
-    expect(mockQueryService.search).toHaveBeenCalledWith(criteria, undefined);
+  afterEach(async () => {
+    await prisma.user.deleteMany({ where: { id: { in: testUserIds } } });
+    await prisma.employee.deleteMany({
+      where: { id: { in: testEmployeeIds } },
+    });
   });
 
-  it("検索条件とオプションを指定して検索できる", async () => {
-    const criteria: EmployeeSearchCriteria = {
-      role: USER_ROLES.ADMIN,
-    };
+  describe("execute", () => {
+    it("検索条件で従業員を検索できる", async () => {
+      await createTestEmployeeWithUser({
+        employeeCd: TEST_CODES[0],
+        email: "search-q1@example.com",
+        name: "SQ検索者A",
+        role: USER_ROLES.USER,
+      });
 
-    const options: ListOptions = {
-      limit: 20,
-      offset: 10,
-      orderBy: { field: "createdAt", direction: "desc" },
-    };
+      const result = await query.execute({
+        criteria: { name: "SQ検索者A" },
+      });
 
-    const mockResults: EmployeeDTO[] = [{ ...mockEmployeeDTO, role: USER_ROLES.ADMIN }];
+      expect(result.length).toBe(1);
+      expect(result[0].name).toBe("SQ検索者A");
+    });
 
-    vi.mocked(mockQueryService.search).mockResolvedValue(mockResults);
+    it("検索条件とオプションを指定して検索できる", async () => {
+      await createTestEmployeeWithUser({
+        employeeCd: TEST_CODES[0],
+        email: "search-q2@example.com",
+        name: "SQ検索者B",
+        role: USER_ROLES.USER,
+      });
+      await createTestEmployeeWithUser({
+        employeeCd: TEST_CODES[1],
+        email: "search-q3@example.com",
+        name: "SQ検索者C",
+        role: USER_ROLES.USER,
+      });
 
-    const result = await query.execute({ criteria, options });
+      const result = await query.execute({
+        criteria: { name: "SQ検索者" },
+        options: { limit: 1, orderBy: { field: "employeeCd", direction: "asc" } },
+      });
 
-    expect(result).toEqual(mockResults);
-    expect(mockQueryService.search).toHaveBeenCalledWith(criteria, options);
+      expect(result.length).toBe(1);
+    });
+
+    it("条件に一致する従業員がいない場合は空配列を返す", async () => {
+      const result = await query.execute({
+        criteria: { name: "存在しないSQ名前" },
+      });
+
+      expect(result).toEqual([]);
+    });
   });
 
-  it("条件に一致する従業員がいない場合は空配列を返す", async () => {
-    const criteria: EmployeeSearchCriteria = {
-      name: "存在しない名前",
-    };
+  describe("executeWithPagination", () => {
+    beforeEach(async () => {
+      await createTestEmployeeWithUser({
+        employeeCd: TEST_CODES[0],
+        email: "search-pq1@example.com",
+        name: "SQページ者A",
+        role: USER_ROLES.USER,
+      });
+      await createTestEmployeeWithUser({
+        employeeCd: TEST_CODES[1],
+        email: "search-pq2@example.com",
+        name: "SQページ者B",
+        role: USER_ROLES.USER,
+      });
+      await createTestEmployeeWithUser({
+        employeeCd: TEST_CODES[2],
+        email: "search-pq3@example.com",
+        name: "SQページ者C",
+        role: USER_ROLES.USER,
+      });
+    });
 
-    vi.mocked(mockQueryService.search).mockResolvedValue([]);
+    it("正常にページネーション結果を返す", async () => {
+      const result = await query.executeWithPagination({
+        criteria: { name: "SQページ者" },
+        pagination: { page: 1, pageSize: 2 },
+        orderBy: { field: "employeeCd", direction: "asc" },
+      });
 
-    const result = await query.execute({ criteria });
+      expect(result.items.length).toBe(2);
+      expect(result.totalCount).toBe(3);
+      expect(result.totalPages).toBe(2);
+      expect(result.currentPage).toBe(1);
+      expect(result.pageSize).toBe(2);
+      expect(result.hasNextPage).toBe(true);
+      expect(result.hasPreviousPage).toBe(false);
+    });
 
-    expect(result).toEqual([]);
-  });
+    it("2ページ目を取得できる", async () => {
+      const result = await query.executeWithPagination({
+        criteria: { name: "SQページ者" },
+        pagination: { page: 2, pageSize: 2 },
+        orderBy: { field: "employeeCd", direction: "asc" },
+      });
 
-  it("複数の検索条件を組み合わせて検索できる", async () => {
-    const criteria: EmployeeSearchCriteria = {
-      name: "テスト",
-      email: "test",
-      role: USER_ROLES.USER,
-    };
+      expect(result.items.length).toBe(1);
+      expect(result.hasNextPage).toBe(false);
+      expect(result.hasPreviousPage).toBe(true);
+    });
 
-    vi.mocked(mockQueryService.search).mockResolvedValue([mockEmployeeDTO]);
+    it("ページ範囲外の場合は空配列を返す", async () => {
+      const result = await query.executeWithPagination({
+        criteria: { name: "SQページ者" },
+        pagination: { page: 99, pageSize: 2 },
+      });
 
-    await query.execute({ criteria });
+      expect(result.items).toEqual([]);
+      expect(result.totalCount).toBe(3);
+      expect(result.hasNextPage).toBe(false);
+    });
 
-    expect(mockQueryService.search).toHaveBeenCalledWith(criteria, undefined);
+    it("0件の場合のページネーション", async () => {
+      const result = await query.executeWithPagination({
+        criteria: { name: "存在しないSQページ名前" },
+        pagination: { page: 1, pageSize: 10 },
+      });
+
+      expect(result.items).toEqual([]);
+      expect(result.totalCount).toBe(0);
+      expect(result.totalPages).toBe(0);
+      expect(result.hasNextPage).toBe(false);
+      expect(result.hasPreviousPage).toBe(false);
+    });
   });
 });

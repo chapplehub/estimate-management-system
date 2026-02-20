@@ -1,57 +1,117 @@
-import { EmployeeSearchCriteria } from "../dto/EmployeeSearchCriteria";
-import { EmployeeQueryService } from "../EmployeeQueryService";
-import { CountEmployeesQuery } from "../CountEmployeesQuery";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createId } from "@paralleldrive/cuid2";
+import prisma from "@server/prisma";
+import type { UserRole } from "@server/shared/auth/types";
 import { USER_ROLES } from "@server/shared/auth/types";
+import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { CountEmployeesQuery } from "../CountEmployeesQuery";
 
 describe("CountEmployeesQuery", () => {
   let query: CountEmployeesQuery;
-  let mockQueryService: EmployeeQueryService;
+  const testEmployeeIds: string[] = [];
+  const testUserIds: string[] = [];
 
-  beforeEach(() => {
-    mockQueryService = {
-      findById: vi.fn(),
-      findByEmail: vi.fn(),
-      findByEmployeeCd: vi.fn(),
-      search: vi.fn(),
-      findAll: vi.fn(),
-      count: vi.fn(),
-    };
+  const TEST_CODES = ["EMP999951", "EMP999952", "EMP999953"];
 
-    query = new CountEmployeesQuery(mockQueryService);
+  async function createTestEmployeeWithUser(data: {
+    employeeCd: string;
+    email: string;
+    name: string;
+    role: UserRole;
+    departmentId?: string;
+  }) {
+    const employeeId = createId();
+    const userId = createId();
+
+    await prisma.employee.create({
+      data: {
+        id: employeeId,
+        employeeCd: data.employeeCd,
+        email: data.email,
+        name: data.name,
+        departmentId: data.departmentId ?? "dept-001",
+      },
+    });
+
+    await prisma.user.create({
+      data: {
+        id: userId,
+        email: data.email,
+        name: data.name,
+        employeeId: employeeId,
+        role: data.role,
+      },
+    });
+
+    testEmployeeIds.push(employeeId);
+    testUserIds.push(userId);
+    return { employeeId, userId };
+  }
+
+  beforeEach(async () => {
+    testEmployeeIds.length = 0;
+    testUserIds.length = 0;
+
+    await prisma.user.deleteMany({
+      where: { employee: { employeeCd: { in: TEST_CODES } } },
+    });
+    await prisma.employee.deleteMany({
+      where: { employeeCd: { in: TEST_CODES } },
+    });
+
+    await prisma.department.upsert({
+      where: { id: "dept-001" },
+      update: {},
+      create: {
+        id: "dept-001",
+        departmentCd: "DEPT001",
+        name: "テスト部署",
+        abbreviation: "テスト",
+        displayOrder: 1,
+        isActive: true,
+      },
+    });
+
+    query = new CountEmployeesQuery(new PrismaEmployeeQueryService());
+  });
+
+  afterEach(async () => {
+    await prisma.user.deleteMany({ where: { id: { in: testUserIds } } });
+    await prisma.employee.deleteMany({
+      where: { id: { in: testEmployeeIds } },
+    });
   });
 
   it("全従業員数をカウントできる", async () => {
-    vi.mocked(mockQueryService.count).mockResolvedValue(100);
+    await createTestEmployeeWithUser({
+      employeeCd: TEST_CODES[0],
+      email: "count-query1@example.com",
+      name: "カウントQuery1",
+      role: USER_ROLES.USER,
+    });
 
     const result = await query.execute({ criteria: {} });
-
-    expect(result).toBe(100);
-    expect(mockQueryService.count).toHaveBeenCalledWith({});
+    expect(result).toBeGreaterThanOrEqual(1);
   });
 
-  it("検索条件に一致する従業員数をカウントできる", async () => {
-    const criteria: EmployeeSearchCriteria = {
+  it("条件に一致する従業員数をカウントできる", async () => {
+    await createTestEmployeeWithUser({
+      employeeCd: TEST_CODES[0],
+      email: "count-query2@example.com",
+      name: "カウントQuery2",
       role: USER_ROLES.ADMIN,
-    };
+    });
 
-    vi.mocked(mockQueryService.count).mockResolvedValue(5);
-
-    const result = await query.execute({ criteria });
-
-    expect(result).toBe(5);
-    expect(mockQueryService.count).toHaveBeenCalledWith(criteria);
+    const result = await query.execute({
+      criteria: { role: USER_ROLES.ADMIN },
+    });
+    expect(result).toBeGreaterThanOrEqual(1);
   });
 
   it("条件に一致する従業員がいない場合は0を返す", async () => {
-    const criteria: EmployeeSearchCriteria = {
-      name: "存在しない名前",
-    };
-
-    vi.mocked(mockQueryService.count).mockResolvedValue(0);
-
-    const result = await query.execute({ criteria });
-
+    const result = await query.execute({
+      criteria: { name: "存在しないカウント名前" },
+    });
     expect(result).toBe(0);
   });
 });

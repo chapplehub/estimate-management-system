@@ -12,7 +12,6 @@ describe("EmployeeCdDuplicationCheckDomainService", () => {
   let repository: PrismaEmployeeRepository;
 
   const TEST_CODES = ["EMP999821", "EMP999822"];
-  const TEST_EMAIL = "ds-empcd-dup@example.com";
   const TEST_DEPT_ID = "dept-001";
 
   async function cleanup() {
@@ -52,7 +51,7 @@ describe("EmployeeCdDuplicationCheckDomainService", () => {
   it("重複がある場合、trueを返す", async () => {
     const employee = Employee.create(
       new EmployeeCd(TEST_CODES[0]),
-      new MailAddress(TEST_EMAIL),
+      new MailAddress("ds-empcd-dup@example.com"),
       new EmployeeName("テスト太郎"),
       TEST_DEPT_ID
     );
@@ -65,7 +64,7 @@ describe("EmployeeCdDuplicationCheckDomainService", () => {
   it("異なるEmployeeで重複がない場合、falseを返す", async () => {
     const employee = Employee.create(
       new EmployeeCd(TEST_CODES[0]),
-      new MailAddress(TEST_EMAIL),
+      new MailAddress("ds-empcd-dup@example.com"),
       new EmployeeName("テスト太郎"),
       TEST_DEPT_ID
     );

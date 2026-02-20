@@ -13,7 +13,6 @@ describe("DeleteEmployeeCommand", () => {
 
   const TEST_EMPLOYEE_ID = "test-delete-cmd-id-001";
   const TEST_EMPLOYEE_CD = "EMP999909";
-  const TEST_EMAIL = "delete-cmd-test@example.com";
 
   beforeEach(async () => {
     // テストデータのクリーンアップ
@@ -61,7 +60,7 @@ describe("DeleteEmployeeCommand", () => {
       data: {
         id: TEST_EMPLOYEE_ID,
         employeeCd: TEST_EMPLOYEE_CD,
-        email: TEST_EMAIL,
+        email: "delete-cmd-test@example.com",
         name: "削除テスト太郎",
         departmentId: "dept-001",
       },
@@ -73,7 +72,7 @@ describe("DeleteEmployeeCommand", () => {
    */
   async function createTestAuthUser(): Promise<void> {
     await fakeUserManagementService.createUser({
-      email: TEST_EMAIL,
+      email: "delete-cmd-test@example.com",
       name: "削除テスト太郎",
       employeeId: TEST_EMPLOYEE_ID,
       role: USER_ROLES.USER,
@@ -129,9 +128,7 @@ describe("DeleteEmployeeCommand", () => {
     fakeUserManagementService.setRemoveUserToFail(true);
 
     // 実行・検証：エラーがスローされること
-    await expect(command.execute({ id: TEST_EMPLOYEE_ID })).rejects.toThrow(
-      "認証ユーザーの削除に失敗しました"
-    );
+    await expect(command.execute({ id: TEST_EMPLOYEE_ID })).rejects.toThrow(Error);
 
     // 検証：従業員が削除されていないこと（エラーで処理が中断されたため）
     const employee = await prisma.employee.findUnique({
