@@ -81,6 +81,21 @@ describe("UpdateDepartmentCommand", () => {
     ).rejects.toThrow(NotFoundEntityError);
   });
 
+  it("部署を有効化できる", async () => {
+    // まず無効化
+    await prisma.department.update({
+      where: { id: baseDeptId },
+      data: { isActive: false },
+    });
+
+    const result = await command.execute({
+      id: baseDeptId,
+      isActive: true,
+    });
+
+    expect(result.isActive).toBe(true);
+  });
+
   it("部署を無効化できる", async () => {
     const result = await command.execute({
       id: baseDeptId,
@@ -131,6 +146,45 @@ describe("UpdateDepartmentCommand", () => {
     });
 
     expect(result.parentId).toBe(newParentId);
+  });
+
+  it("自分自身を親部署に設定するとエラー", async () => {
+    await expect(
+      command.execute({
+        id: baseDeptId,
+        parentId: baseDeptId,
+      })
+    ).rejects.toThrow(BusinessRuleViolationError);
+  });
+
+  it("存在しない部署を親部署に設定するとエラー", async () => {
+    await expect(
+      command.execute({
+        id: baseDeptId,
+        parentId: "non-existent-parent-id",
+      })
+    ).rejects.toThrow(BusinessRuleViolationError);
+  });
+
+  it("無効な部署を親部署に設定するとエラー", async () => {
+    const inactiveParentId = createId();
+    await prisma.department.create({
+      data: {
+        id: inactiveParentId,
+        departmentCd: TEST_CODES[1],
+        name: "無効親部署",
+        abbreviation: "無効親",
+        displayOrder: 1,
+        isActive: false,
+      },
+    });
+
+    await expect(
+      command.execute({
+        id: baseDeptId,
+        parentId: inactiveParentId,
+      })
+    ).rejects.toThrow(BusinessRuleViolationError);
   });
 
   it("循環参照になる親部署を設定するとエラー", async () => {
