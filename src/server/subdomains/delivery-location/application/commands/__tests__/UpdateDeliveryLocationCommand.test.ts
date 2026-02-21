@@ -115,6 +115,44 @@ describe("UpdateDeliveryLocationCommand", () => {
     expect(updated?.isActive).toBe(true);
   });
 
+  it("nullを渡すとオプション項目をクリアできる", async () => {
+    // まず値を設定
+    await command.execute({
+      id: testDeliveryLocationId,
+      name: "更新前納品先",
+      postalCode: "300-0003",
+      prefecture: "愛知県",
+      address: "名古屋市3-3-3",
+      phoneNumber: "052-1234-5678",
+      faxNumber: "052-1234-5679",
+      contactPerson: "配送更新担当",
+      deliveryNotes: "午前中のみ受付可能",
+    });
+
+    // nullで全クリア
+    await command.execute({
+      id: testDeliveryLocationId,
+      name: "更新前納品先",
+      postalCode: null,
+      prefecture: null,
+      address: null,
+      phoneNumber: null,
+      faxNumber: null,
+      contactPerson: null,
+      deliveryNotes: null,
+    });
+
+    const updated = await dlRepository.findById(testDeliveryLocationId);
+    expect(updated).not.toBeNull();
+    expect(updated?.postalCode).toBeNull();
+    expect(updated?.prefecture).toBeNull();
+    expect(updated?.address).toBeNull();
+    expect(updated?.phoneNumber).toBeNull();
+    expect(updated?.faxNumber).toBeNull();
+    expect(updated?.contactPerson).toBeNull();
+    expect(updated?.deliveryNotes).toBeNull();
+  });
+
   it("存在しないIDの場合は NotFoundEntityError", async () => {
     await expect(
       command.execute({

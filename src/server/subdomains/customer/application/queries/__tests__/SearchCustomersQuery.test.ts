@@ -137,29 +137,29 @@ describe("SearchCustomersQuery", () => {
 
   it("createdAfterで指定日時以降の得意先を取得できる", async () => {
     const before = new Date();
-    await createTestCustomer({ code: TEST_CODES[0], name: "日付検索得意先A" });
+    await createTestCustomer({ code: TEST_CODES[0], name: "SQ日付検索得意先A" });
 
-    const result = await query.execute({ createdAfter: before });
+    const result = await query.execute({ name: "SQ日付検索得意先", createdAfter: before });
 
     const codes = result.map((r) => r.code);
     expect(codes).toContain(TEST_CODES[0]);
   });
 
   it("createdAfterで指定日時以降に該当しない場合はヒットしない", async () => {
-    await createTestCustomer({ code: TEST_CODES[0], name: "日付検索得意先B" });
+    await createTestCustomer({ code: TEST_CODES[0], name: "SQ日付検索得意先B" });
     const future = new Date(Date.now() + 60_000);
 
-    const result = await query.execute({ createdAfter: future });
+    const result = await query.execute({ name: "SQ日付検索得意先", createdAfter: future });
 
     const codes = result.map((r) => r.code);
     expect(codes).not.toContain(TEST_CODES[0]);
   });
 
   it("createdBeforeで指定日時以前の得意先を取得できる", async () => {
-    await createTestCustomer({ code: TEST_CODES[0], name: "日付検索得意先C" });
+    await createTestCustomer({ code: TEST_CODES[0], name: "SQ日付検索得意先C" });
     const after = new Date(Date.now() + 60_000);
 
-    const result = await query.execute({ createdBefore: after });
+    const result = await query.execute({ name: "SQ日付検索得意先", createdBefore: after });
 
     const codes = result.map((r) => r.code);
     expect(codes).toContain(TEST_CODES[0]);
@@ -169,9 +169,9 @@ describe("SearchCustomersQuery", () => {
     const past = new Date();
     // 少し待ってからレコード作成（pastより後に作成される）
     await new Promise((resolve) => setTimeout(resolve, 50));
-    await createTestCustomer({ code: TEST_CODES[0], name: "日付検索得意先D" });
+    await createTestCustomer({ code: TEST_CODES[0], name: "SQ日付検索得意先D" });
 
-    const result = await query.execute({ createdBefore: past });
+    const result = await query.execute({ name: "SQ日付検索得意先", createdBefore: past });
 
     const codes = result.map((r) => r.code);
     expect(codes).not.toContain(TEST_CODES[0]);
