@@ -1,0 +1,153 @@
+import { createId } from "@paralleldrive/cuid2";
+import prisma from "@server/prisma";
+import { PrismaDepartmentQueryService } from "@subdomains/department/infrastructure/queries/PrismaDepartmentQueryService";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { SearchDepartmentsQuery } from "../SearchDepartmentsQuery";
+
+describe("SearchDepartmentsQuery", () => {
+  let query: SearchDepartmentsQuery;
+  const testDepartmentIds: string[] = [];
+
+  const TEST_CODES = ["DEPT979", "DEPT980", "DEPT981", "DEPT982"];
+
+  async function createTestDepartment(data: {
+    departmentCd: string;
+    name: string;
+    abbreviation: string;
+    displayOrder?: number;
+    isActive?: boolean;
+    parentId?: string | null;
+  }): Promise<string> {
+    const id = createId();
+    await prisma.department.create({ data: { id, ...data } });
+    testDepartmentIds.push(id);
+    return id;
+  }
+
+  async function cleanup() {
+    await prisma.department.deleteMany({
+      where: { parentId: { not: null }, departmentCd: { in: TEST_CODES } },
+    });
+    await prisma.department.deleteMany({
+      where: { departmentCd: { in: TEST_CODES } },
+    });
+  }
+
+  beforeEach(async () => {
+    testDepartmentIds.length = 0;
+    await cleanup();
+
+    query = new SearchDepartmentsQuery(new PrismaDepartmentQueryService());
+  });
+
+  afterEach(async () => {
+    await cleanup();
+  });
+
+  it("部署名で検索できる", async () => {
+    await createTestDepartment({
+      departmentCd: TEST_CODES[0],
+      name: "SQ検索営業部",
+      abbreviation: "SQ営業",
+    });
+    await createTestDepartment({
+      departmentCd: TEST_CODES[1],
+      name: "SQ検索開発部",
+      abbreviation: "SQ開発",
+    });
+
+    const result = await query.execute({
+      criteria: { name: "SQ検索営業" },
+    });
+
+    expect(result.length).toBe(1);
+    expect(result[0].name).toBe("SQ検索営業部");
+  });
+
+  it("略称で検索できる", async () => {
+    await createTestDepartment({
+      departmentCd: TEST_CODES[0],
+      name: "SQ略称検索部署A",
+      abbreviation: "SQ略称ターゲット",
+    });
+    await createTestDepartment({
+      departmentCd: TEST_CODES[1],
+      name: "SQ略称検索部署B",
+      abbreviation: "SQ略称その他",
+    });
+
+    const result = await query.execute({
+      criteria: { abbreviation: "SQ略称ターゲット" },
+    });
+
+    expect(result.length).toBe(1);
+    expect(result[0].abbreviation).toBe("SQ略称ターゲット");
+    expect(result[0].departmentCd).toBe(TEST_CODES[0]);
+  });
+
+  it("部署コードで検索できる", async () => {
+    await createTestDepartment({
+      departmentCd: TEST_CODES[0],
+      name: "検索コード部署",
+      abbreviation: "検索CD",
+    });
+
+    const result = await query.execute({
+      criteria: { departmentCd: TEST_CODES[0] },
+    });
+
+    expect(result.length).toBe(1);
+    expect(result[0].departmentCd).toBe(TEST_CODES[0]);
+  });
+
+  it("有効フラグで検索できる", async () => {
+    await createTestDepartment({
+      departmentCd: TEST_CODES[0],
+      name: "SQ有効部署",
+      abbreviation: "SQ有効",
+      isActive: true,
+    });
+    await createTestDepartment({
+      departmentCd: TEST_CODES[1],
+      name: "SQ無効部署",
+      abbreviation: "SQ無効",
+      isActive: false,
+    });
+
+    const result = await query.execute({
+      criteria: { isActive: true, name: "SQ" },
+    });
+
+    const departmentCds = result.map((r) => r.departmentCd);
+    expect(departmentCds).toContain(TEST_CODES[0]);
+    expect(departmentCds).not.toContain(TEST_CODES[1]);
+  });
+
+  it("検索条件とオプションを組み合わせて検索できる", async () => {
+    await createTestDepartment({
+      departmentCd: TEST_CODES[0],
+      name: "SQオプ検索部署A",
+      abbreviation: "SQオプA",
+    });
+    await createTestDepartment({
+      departmentCd: TEST_CODES[1],
+      name: "SQオプ検索部署B",
+      abbreviation: "SQオプB",
+    });
+
+    const result = await query.execute({
+      criteria: { name: "SQオプ検索" },
+      options: { limit: 1, orderBy: { field: "departmentCd", direction: "asc" } },
+    });
+
+    expect(result.length).toBe(1);
+  });
+
+  it("条件に一致する部署がない場合は空配列を返す", async () => {
+    const result = await query.execute({
+      criteria: { name: "存在しないSQ部署名" },
+    });
+
+    expect(result).toEqual([]);
+  });
+});
