@@ -65,6 +65,21 @@ describe("SearchDepartmentsQuery", () => {
     expect(departmentCds).not.toContain(TEST_CODES[1]);
   });
 
+  it("部署名が一致しない場合は検索結果に含まれない", async () => {
+    await createTestDepartment({
+      departmentCd: TEST_CODES[0],
+      name: "SQ第一営業部",
+      abbreviation: "SQ一営",
+    });
+
+    const result = await query.execute({
+      criteria: { name: "総務" },
+    });
+
+    const departmentCds = result.map((r) => r.departmentCd);
+    expect(departmentCds).not.toContain(TEST_CODES[0]);
+  });
+
   it("略称で部分一致検索できる", async () => {
     await createTestDepartment({
       departmentCd: TEST_CODES[0],
@@ -86,6 +101,21 @@ describe("SearchDepartmentsQuery", () => {
     expect(departmentCds).not.toContain(TEST_CODES[1]);
   });
 
+  it("略称が一致しない場合は検索結果に含まれない", async () => {
+    await createTestDepartment({
+      departmentCd: TEST_CODES[0],
+      name: "SQ略称検索部署A",
+      abbreviation: "SQ略称ターゲット",
+    });
+
+    const result = await query.execute({
+      criteria: { abbreviation: "該当なし" },
+    });
+
+    const departmentCds = result.map((r) => r.departmentCd);
+    expect(departmentCds).not.toContain(TEST_CODES[0]);
+  });
+
   it("部署コードで検索できる", async () => {
     await createTestDepartment({
       departmentCd: TEST_CODES[0],
@@ -99,6 +129,21 @@ describe("SearchDepartmentsQuery", () => {
 
     expect(result.length).toBe(1);
     expect(result[0].departmentCd).toBe(TEST_CODES[0]);
+  });
+
+  it("部署コードは完全一致検索のため部分一致ではヒットしない", async () => {
+    await createTestDepartment({
+      departmentCd: TEST_CODES[0],
+      name: "検索コード部署",
+      abbreviation: "検索CD",
+    });
+
+    const result = await query.execute({
+      criteria: { departmentCd: "DEPT97" },
+    });
+
+    const departmentCds = result.map((r) => r.departmentCd);
+    expect(departmentCds).not.toContain(TEST_CODES[0]);
   });
 
   it("有効フラグで検索できる", async () => {
