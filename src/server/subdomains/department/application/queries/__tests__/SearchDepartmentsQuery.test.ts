@@ -44,27 +44,28 @@ describe("SearchDepartmentsQuery", () => {
     await cleanup();
   });
 
-  it("部署名で検索できる", async () => {
+  it("部署名で部分一致検索できる", async () => {
     await createTestDepartment({
       departmentCd: TEST_CODES[0],
-      name: "SQ検索営業部",
-      abbreviation: "SQ営業",
+      name: "SQ第一営業部",
+      abbreviation: "SQ一営",
     });
     await createTestDepartment({
       departmentCd: TEST_CODES[1],
-      name: "SQ検索開発部",
+      name: "SQ開発部",
       abbreviation: "SQ開発",
     });
 
     const result = await query.execute({
-      criteria: { name: "SQ検索営業" },
+      criteria: { name: "営業" },
     });
 
-    expect(result.length).toBe(1);
-    expect(result[0].name).toBe("SQ検索営業部");
+    const departmentCds = result.map((r) => r.departmentCd);
+    expect(departmentCds).toContain(TEST_CODES[0]);
+    expect(departmentCds).not.toContain(TEST_CODES[1]);
   });
 
-  it("略称で検索できる", async () => {
+  it("略称で部分一致検索できる", async () => {
     await createTestDepartment({
       departmentCd: TEST_CODES[0],
       name: "SQ略称検索部署A",
@@ -77,12 +78,12 @@ describe("SearchDepartmentsQuery", () => {
     });
 
     const result = await query.execute({
-      criteria: { abbreviation: "SQ略称ターゲット" },
+      criteria: { abbreviation: "ターゲット" },
     });
 
-    expect(result.length).toBe(1);
-    expect(result[0].abbreviation).toBe("SQ略称ターゲット");
-    expect(result[0].departmentCd).toBe(TEST_CODES[0]);
+    const departmentCds = result.map((r) => r.departmentCd);
+    expect(departmentCds).toContain(TEST_CODES[0]);
+    expect(departmentCds).not.toContain(TEST_CODES[1]);
   });
 
   it("部署コードで検索できる", async () => {
