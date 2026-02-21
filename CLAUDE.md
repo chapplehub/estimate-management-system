@@ -16,7 +16,14 @@ pnpm db:migrate / db:generate / db:studio
 - defalut branch: `develop`
 - PR base branch: `develop`（not `main`）
 - branch naming rule: `feat/issue-{number}`, `fix/issue-{number}`, `docs/issue-{number}`
-- PR body に関連 issue がある場合は `Closes #XX` を必ず含める
+- PR body MUST include `Closes #XX` when there is a related issue
+
+## Implementation Workflow
+
+When implementing with a plan (plan mode), follow these rules:
+
+- **Commit at each plan step**: Create a commit when each step of the plan is completed. Do not implement everything at once and squash into a single commit.
+- **Record deviations from the plan**: When something does not go as planned during implementation (test failures requiring fixes, design changes, unexpected issues, etc.), record it in the memory file `implementation-deviations.md`.
 
 ## Critical: DDD Layering Rules
 
