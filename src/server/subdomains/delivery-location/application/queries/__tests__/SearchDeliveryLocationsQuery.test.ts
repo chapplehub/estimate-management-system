@@ -207,4 +207,64 @@ describe("SearchDeliveryLocationsQuery", () => {
     expect(result[0].code).toBe(DL_TEST_CODES[0]);
     expect(result[0].name).toBe("複合検索納品先A");
   });
+
+  describe("executeWithPagination", () => {
+    beforeEach(async () => {
+      await createTestDeliveryLocation({ code: DL_TEST_CODES[0], name: "SQページ納品先A" });
+      await createTestDeliveryLocation({ code: DL_TEST_CODES[1], name: "SQページ納品先B" });
+      await createTestDeliveryLocation({ code: DL_TEST_CODES[2], name: "SQページ納品先C" });
+    });
+
+    it("正常にページネーション結果を返す", async () => {
+      const result = await query.executeWithPagination({
+        criteria: { name: "SQページ納品先" },
+        pagination: { page: 1, pageSize: 2 },
+        orderBy: { field: "code", direction: "asc" },
+      });
+
+      expect(result.items.length).toBe(2);
+      expect(result.totalCount).toBe(3);
+      expect(result.totalPages).toBe(2);
+      expect(result.currentPage).toBe(1);
+      expect(result.pageSize).toBe(2);
+      expect(result.hasNextPage).toBe(true);
+      expect(result.hasPreviousPage).toBe(false);
+    });
+
+    it("2ページ目を取得できる", async () => {
+      const result = await query.executeWithPagination({
+        criteria: { name: "SQページ納品先" },
+        pagination: { page: 2, pageSize: 2 },
+        orderBy: { field: "code", direction: "asc" },
+      });
+
+      expect(result.items.length).toBe(1);
+      expect(result.hasNextPage).toBe(false);
+      expect(result.hasPreviousPage).toBe(true);
+    });
+
+    it("ページ範囲外の場合は空配列を返す", async () => {
+      const result = await query.executeWithPagination({
+        criteria: { name: "SQページ納品先" },
+        pagination: { page: 99, pageSize: 2 },
+      });
+
+      expect(result.items).toEqual([]);
+      expect(result.totalCount).toBe(3);
+      expect(result.hasNextPage).toBe(false);
+    });
+
+    it("0件の場合のページネーション", async () => {
+      const result = await query.executeWithPagination({
+        criteria: { name: "存在しないSQページ名前" },
+        pagination: { page: 1, pageSize: 10 },
+      });
+
+      expect(result.items).toEqual([]);
+      expect(result.totalCount).toBe(0);
+      expect(result.totalPages).toBe(0);
+      expect(result.hasNextPage).toBe(false);
+      expect(result.hasPreviousPage).toBe(false);
+    });
+  });
 });
