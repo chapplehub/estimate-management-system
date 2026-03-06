@@ -4,10 +4,7 @@ import {
   EmployeeSearchCriteria,
   ListOptions,
 } from "@subdomains/employee/application/queries/dto/EmployeeSearchCriteria";
-import {
-  PaginatedResult,
-  PaginationOptions,
-} from "@subdomains/employee/application/queries/dto/PaginatedResult";
+import { PaginatedResult, PaginationOptions } from "@server/shared/queries/PaginatedResult";
 
 export type SearchEmployeesInput = {
   criteria: EmployeeSearchCriteria;
