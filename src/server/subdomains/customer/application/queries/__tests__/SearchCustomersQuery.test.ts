@@ -9,7 +9,7 @@ describe("SearchCustomersQuery", () => {
   let query: SearchCustomersQuery;
   const testCompanyIds: string[] = [];
 
-  const TEST_CODES = ["CUST999924", "CUST999925", "CUST999926"];
+  const TEST_CODES = ["CUST999924", "CUST999925", "CUST999926", "CUST999927"];
 
   async function createTestCustomer(data: {
     code: string;
@@ -133,6 +133,66 @@ describe("SearchCustomersQuery", () => {
     expect(result.length).toBe(1);
     expect(result[0].code).toBe(TEST_CODES[0]);
     expect(result[0].name).toBe("複合検索得意先A");
+  });
+
+  describe("executeWithPagination", () => {
+    beforeEach(async () => {
+      await createTestCustomer({ code: TEST_CODES[0], name: "SQページ得意先A" });
+      await createTestCustomer({ code: TEST_CODES[1], name: "SQページ得意先B" });
+      await createTestCustomer({ code: TEST_CODES[2], name: "SQページ得意先C" });
+    });
+
+    it("正常にページネーション結果を返す", async () => {
+      const result = await query.executeWithPagination({
+        criteria: { name: "SQページ得意先" },
+        pagination: { page: 1, pageSize: 2 },
+        orderBy: { field: "code", direction: "asc" },
+      });
+
+      expect(result.items.length).toBe(2);
+      expect(result.totalCount).toBe(3);
+      expect(result.totalPages).toBe(2);
+      expect(result.currentPage).toBe(1);
+      expect(result.pageSize).toBe(2);
+      expect(result.hasNextPage).toBe(true);
+      expect(result.hasPreviousPage).toBe(false);
+    });
+
+    it("2ページ目を取得できる", async () => {
+      const result = await query.executeWithPagination({
+        criteria: { name: "SQページ得意先" },
+        pagination: { page: 2, pageSize: 2 },
+        orderBy: { field: "code", direction: "asc" },
+      });
+
+      expect(result.items.length).toBe(1);
+      expect(result.hasNextPage).toBe(false);
+      expect(result.hasPreviousPage).toBe(true);
+    });
+
+    it("ページ範囲外の場合は空配列を返す", async () => {
+      const result = await query.executeWithPagination({
+        criteria: { name: "SQページ得意先" },
+        pagination: { page: 99, pageSize: 2 },
+      });
+
+      expect(result.items).toEqual([]);
+      expect(result.totalCount).toBe(3);
+      expect(result.hasNextPage).toBe(false);
+    });
+
+    it("0件の場合のページネーション", async () => {
+      const result = await query.executeWithPagination({
+        criteria: { name: "存在しないSQページ名前" },
+        pagination: { page: 1, pageSize: 10 },
+      });
+
+      expect(result.items).toEqual([]);
+      expect(result.totalCount).toBe(0);
+      expect(result.totalPages).toBe(0);
+      expect(result.hasNextPage).toBe(false);
+      expect(result.hasPreviousPage).toBe(false);
+    });
   });
 
   it("createdAfterで指定日時以降の得意先を取得できる", async () => {

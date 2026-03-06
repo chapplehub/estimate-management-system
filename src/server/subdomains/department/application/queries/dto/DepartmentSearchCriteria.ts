@@ -1,3 +1,5 @@
+import type { SortOrder } from "@server/shared/queries/SortOrder";
+
 /**
  * 部署検索条件
  * 複数の条件を組み合わせて柔軟に検索できる
@@ -28,6 +30,17 @@ export type DepartmentSearchCriteria = {
 /**
  * リスト取得のオプション
  */
+export type DepartmentSortField =
+  | "name"
+  | "departmentCd"
+  | "abbreviation"
+  | "displayOrder"
+  | "createdAt"
+  | "updatedAt";
+
+/**
+ * リスト取得のオプション
+ */
 export type DepartmentListOptions = {
   /** 取得件数制限 */
   limit?: number;
@@ -36,8 +49,5 @@ export type DepartmentListOptions = {
   offset?: number;
 
   /** ソート順 */
-  orderBy?: {
-    field: "name" | "departmentCd" | "abbreviation" | "displayOrder" | "createdAt" | "updatedAt";
-    direction: "asc" | "desc";
-  };
+  orderBy?: SortOrder<DepartmentSortField>;
 };

@@ -1,3 +1,5 @@
+import type { SortOrder } from "@server/shared/queries/SortOrder";
+
 /**
  * 納品先検索条件
  */
@@ -15,11 +17,13 @@ export type DeliveryLocationSearchCriteria = {
 /**
  * リスト取得のオプション
  */
+export type DeliveryLocationSortField = "name" | "code" | "createdAt" | "updatedAt";
+
+/**
+ * リスト取得のオプション
+ */
 export type DeliveryLocationListOptions = {
   limit?: number;
   offset?: number;
-  orderBy?: {
-    field: "name" | "code" | "createdAt" | "updatedAt";
-    direction: "asc" | "desc";
-  };
+  orderBy?: SortOrder<DeliveryLocationSortField>;
 };
