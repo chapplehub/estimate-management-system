@@ -1,3 +1,5 @@
+import type { SortOrder } from "@server/shared/queries/SortOrder";
+
 /**
  * 得意先検索条件
  */
@@ -17,11 +19,13 @@ export type CustomerSearchCriteria = {
 /**
  * リスト取得のオプション
  */
+export type CustomerSortField = "name" | "code" | "createdAt" | "updatedAt";
+
+/**
+ * リスト取得のオプション
+ */
 export type CustomerListOptions = {
   limit?: number;
   offset?: number;
-  orderBy?: {
-    field: "name" | "code" | "createdAt" | "updatedAt";
-    direction: "asc" | "desc";
-  };
+  orderBy?: SortOrder<CustomerSortField>;
 };
