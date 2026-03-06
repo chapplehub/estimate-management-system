@@ -98,7 +98,10 @@
 
       "SlashCommand(/learn:*)",
 
-      "WebSearch"
+      "WebSearch",
+      
+      "mcp__context7",
+      "mcp__serena"
 
     ],
     "deny": [
