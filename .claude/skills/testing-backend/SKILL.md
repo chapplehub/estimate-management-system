@@ -1,6 +1,6 @@
 ---
 name: testing-backend
-description: バックエンドテスト作成パターン。Domain層・Application層のテスト作成時に使用。Value Object, Entity, Domain Service, Command, Query のテスト規約とパターンを提供
+description: バックエンドテスト作成パターン。Use when Domain層・Application層のテスト作成時に使用。Value Object, Entity, Domain Service, Command, Query のテスト規約とパターンを提供
 user-invokable: true
 ---
 

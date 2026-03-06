@@ -1,6 +1,6 @@
 ---
 name: create-issue
-description: GitHub issue を作成（タイプ自動判定・ラベル自動付与）
+description: GitHub issue を作成（タイプ自動判定・ラベル自動付与）。Use when issueの作成、issueの作成を依頼されたとき。
 ---
 
 # プロンプト内容
