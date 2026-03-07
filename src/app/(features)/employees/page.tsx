@@ -6,7 +6,7 @@ import type { EmployeeSearchCriteria } from "@subdomains/employee/application/qu
 import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
 import Link from "next/link";
 import { EmployeeSearchForm } from "./_components/EmployeeSearchForm";
-import { Pagination } from "./_components/Pagination";
+import { Pagination } from "@/app/_components/shared/Pagination";
 
 // NOTE: このページの検索機能の実装としては、URLのパスパラメタに基づいて検索を実行する。そのため初期検索は全件取得。
 // NOTE: 検索条件を入力して検索ボタンを押すと直接検索APIが実行されるのではなく、まず入力した検索条件をパスパラメタに設定してナビゲーションし、レンダリング時に検索処理が実行される。
