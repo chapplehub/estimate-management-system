@@ -14,9 +14,12 @@ pnpm db:migrate / db:generate / db:studio
 ## Git Branch Strategy
 
 - defalut branch: `develop`
-- PR base branch: `develop`（not `main`）
 - branch naming rule: `feat/issue-{number}`, `fix/issue-{number}`, `docs/issue-{number}`
-- PR body MUST include `Closes #XX` when there is a related issue
+
+## Issue, PR Creation
+
+Issueを作成する際は必ず `/create-issue` スキルを使用すること。`gh issue create` を直接実行しない。
+PRを作成する際は必ず `/create-pr` スキルを使用すること。`gh pr create` を直接実行しない。
 
 ## Implementation Workflow
 
