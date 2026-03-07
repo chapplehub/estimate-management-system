@@ -1,1 +1,1 @@
-export const DEFAULT_CALLBACK_URL = "/employees";
+export const DEFAULT_CALLBACK_URL = "/dashboard";
