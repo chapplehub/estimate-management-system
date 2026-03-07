@@ -45,6 +45,7 @@
   },
   "permissions": {
     "allow": [
+      "Bash(*)",
       "Bash(pnpm dev*)",
       "Bash(pnpm build*)",
       "Bash(pnpm start*)",
@@ -89,6 +90,7 @@
       "Bash(cat *)",
       "Bash(tree*)",
       "Bash(wc *)",
+      "Bash(ls *)",
       "Bash(find *)",
 
       "Read(/web/**)",
