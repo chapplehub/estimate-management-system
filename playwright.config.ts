@@ -12,7 +12,7 @@ dotenv.config({ path: path.resolve(__dirname, ".env") });
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
-  testDir: "./src/app/(features)",
+  testDir: "./src/app",
   testMatch: "**/*.e2e.ts",
   /* Run tests in files in parallel */
   fullyParallel: true,
@@ -45,8 +45,20 @@ export default defineConfig({
 
     {
       name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/admin.json",
+      },
+      dependencies: ["setup"],
+      testIgnore: /\(auth\)/,
+    },
+
+    /* Auth tests run without storageState (they manage their own login) */
+    {
+      name: "chromium-auth",
       use: { ...devices["Desktop Chrome"] },
       dependencies: ["setup"],
+      testMatch: /\(auth\)\/.*\.e2e\.ts/,
     },
 
     // {

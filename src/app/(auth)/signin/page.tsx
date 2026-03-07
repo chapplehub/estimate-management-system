@@ -1,4 +1,4 @@
-import { SigninForm } from "@/app/(features)/(auth)/signin/_components/signin-form";
+import { SigninForm } from "@/app/(auth)/signin/_components/signin-form";
 
 export default function Page() {
   return (

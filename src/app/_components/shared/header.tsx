@@ -1,4 +1,4 @@
-import { SignoutButton } from "@/app/(features)/(auth)/signout/signout-button";
+import { SignoutButton } from "@/app/(auth)/signout/signout-button";
 import { UserDisplay } from "./user-display";
 
 export const Header = () => {
