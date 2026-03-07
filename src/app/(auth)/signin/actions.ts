@@ -4,13 +4,13 @@ import { signIn } from "@server/shared/auth";
 import { parseWithZod } from "@conform-to/zod/v4";
 import { redirect } from "next/navigation";
 import { SigninFormSchema } from "./schema";
-import { DEFAULT_CALLBACK_URL } from "./consts";
+import { SIGN_IN_REDIRECT_URL } from "./consts";
 
 /**
  * サインイン Server Action
  *
  * Conformを使用してFormDataをバリデーションし、認証を行う。
- * 成功時はDEFAULT_CALLBACK_URLにリダイレクト。
+ * 成功時はSIGN_IN_REDIRECT_URLにリダイレクト。
  */
 export async function signinAction(prevState: unknown, formData: FormData) {
   const submission = parseWithZod(formData, {
@@ -33,5 +33,5 @@ export async function signinAction(prevState: unknown, formData: FormData) {
     });
   }
 
-  redirect(DEFAULT_CALLBACK_URL);
+  redirect(SIGN_IN_REDIRECT_URL);
 }

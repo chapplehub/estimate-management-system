@@ -12,7 +12,7 @@ dotenv.config({ path: path.resolve(__dirname, ".env") });
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
-  testDir: "./src/app/(features)",
+  testDir: "./src/app",
   testMatch: "**/*.e2e.ts",
   /* Run tests in files in parallel */
   fullyParallel: true,
