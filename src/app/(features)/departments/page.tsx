@@ -6,36 +6,15 @@ import {
 } from "@subdomains/department/application/factories/departmentQueryFactory";
 import type { DepartmentSearchCriteria } from "@subdomains/department/application/queries/dto/DepartmentSearchCriteria";
 import Link from "next/link";
-import { DepartmentSearchForm } from "./_components/DepartmentSearchForm";
+import { SearchForm, type SearchFieldDef } from "@/app/_components/shared/SearchForm";
 import { Pagination } from "@/app/_components/shared/Pagination";
 import { Badge } from "@/app/_components/shadcnui/badge";
-
-// ページネーション設定
-const PAGE_SIZE = 100;
-const MAX_PAGES = 10;
-
-type SearchParams = { [key: string]: string | string[] | undefined };
-
-// ヘルパー関数: 文字列値を安全に取得
-function getStringParam(params: SearchParams, key: string): string | undefined {
-  const value = params[key];
-  if (typeof value === "string" && value.trim() !== "") {
-    return value.trim();
-  }
-  return undefined;
-}
-
-// ヘルパー関数: ページ番号を安全に取得
-function getPageParam(params: SearchParams): number {
-  const value = params["page"];
-  if (typeof value === "string") {
-    const page = parseInt(value, 10);
-    if (!isNaN(page) && page >= 1 && page <= MAX_PAGES) {
-      return page;
-    }
-  }
-  return 1;
-}
+import {
+  type SearchParams,
+  LIST_PAGE_DEFAULTS,
+  getStringParam,
+  getPageParam,
+} from "@/app/_lib/searchParams";
 
 // ヘルパー関数: isActive値を検証
 function validateIsActive(value: string | undefined): boolean | undefined {
@@ -43,6 +22,22 @@ function validateIsActive(value: string | undefined): boolean | undefined {
   if (value === "false") return false;
   return undefined;
 }
+
+// 検索フォームのフィールド定義
+const searchFields: SearchFieldDef[] = [
+  { type: "text", key: "name", label: "部署名", placeholder: "部分一致" },
+  { type: "text", key: "abbreviation", label: "略称", placeholder: "部分一致" },
+  { type: "text", key: "departmentCd", label: "部署コード", placeholder: "完全一致" },
+  {
+    type: "select",
+    key: "isActive",
+    label: "状態",
+    options: [
+      { value: "true", label: "有効" },
+      { value: "false", label: "無効" },
+    ],
+  },
+];
 
 export default async function DepartmentPage({
   searchParams,
@@ -69,7 +64,7 @@ export default async function DepartmentPage({
     criteria,
     pagination: {
       page: currentPage,
-      pageSize: PAGE_SIZE,
+      pageSize: LIST_PAGE_DEFAULTS.PAGE_SIZE,
     },
     orderBy: { field: "displayOrder", direction: "asc" },
   });
@@ -103,7 +98,7 @@ export default async function DepartmentPage({
 
       {/* 検索フォーム */}
       <div className="px-4">
-        <DepartmentSearchForm defaultValues={defaultSearchValues} />
+        <SearchForm fields={searchFields} defaultValues={defaultSearchValues} />
       </div>
 
       {/* 一覧表示 */}
@@ -170,7 +165,7 @@ export default async function DepartmentPage({
             totalPages={result.totalPages}
             totalCount={result.totalCount}
             pageSize={result.pageSize}
-            maxPages={MAX_PAGES}
+            maxPages={LIST_PAGE_DEFAULTS.MAX_PAGES}
           />
         </div>
       </div>
