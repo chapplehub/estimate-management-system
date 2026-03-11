@@ -5,38 +5,17 @@ import { SearchEmployeesQuery } from "@subdomains/employee/application/queries/S
 import type { EmployeeSearchCriteria } from "@subdomains/employee/application/queries/dto/EmployeeSearchCriteria";
 import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
 import Link from "next/link";
-import { EmployeeSearchForm } from "./_components/EmployeeSearchForm";
+import { SearchForm, type SearchFieldDef } from "@/app/_components/shared/SearchForm";
 import { Pagination } from "@/app/_components/shared/Pagination";
+import {
+  type SearchParams,
+  LIST_PAGE_DEFAULTS,
+  getStringParam,
+  getPageParam,
+} from "@/app/_lib/searchParams";
 
 // NOTE: このページの検索機能の実装としては、URLのパスパラメタに基づいて検索を実行する。そのため初期検索は全件取得。
 // NOTE: 検索条件を入力して検索ボタンを押すと直接検索APIが実行されるのではなく、まず入力した検索条件をパスパラメタに設定してナビゲーションし、レンダリング時に検索処理が実行される。
-
-// ページネーション設定
-const PAGE_SIZE = 100;
-const MAX_PAGES = 10;
-
-type SearchParams = { [key: string]: string | string[] | undefined };
-
-// ヘルパー関数: 文字列値を安全に取得
-function getStringParam(params: SearchParams, key: string): string | undefined {
-  const value = params[key];
-  if (typeof value === "string" && value.trim() !== "") {
-    return value.trim();
-  }
-  return undefined;
-}
-
-// ヘルパー関数: ページ番号を安全に取得
-function getPageParam(params: SearchParams): number {
-  const value = params["page"];
-  if (typeof value === "string") {
-    const page = parseInt(value, 10);
-    if (!isNaN(page) && page >= 1 && page <= MAX_PAGES) {
-      return page;
-    }
-  }
-  return 1;
-}
 
 // ヘルパー関数: role値を検証
 function validateRole(value: string | undefined): UserRole | undefined {
@@ -45,6 +24,22 @@ function validateRole(value: string | undefined): UserRole | undefined {
   }
   return undefined;
 }
+
+// 検索フォームのフィールド定義
+const searchFields: SearchFieldDef[] = [
+  { type: "text", key: "name", label: "名前", placeholder: "部分一致" },
+  { type: "text", key: "employeeCd", label: "従業員コード", placeholder: "完全一致" },
+  { type: "text", key: "email", label: "メールアドレス", placeholder: "部分一致" },
+  {
+    type: "select",
+    key: "role",
+    label: "権限",
+    options: [
+      { value: USER_ROLES.USER, label: "一般ユーザー" },
+      { value: USER_ROLES.ADMIN, label: "管理者" },
+    ],
+  },
+];
 
 export default async function EmployeePage({
   searchParams,
@@ -72,7 +67,7 @@ export default async function EmployeePage({
     criteria,
     pagination: {
       page: currentPage,
-      pageSize: PAGE_SIZE,
+      pageSize: LIST_PAGE_DEFAULTS.PAGE_SIZE,
     },
     orderBy: { field: "employeeCd", direction: "asc" },
   });
@@ -101,7 +96,7 @@ export default async function EmployeePage({
 
       {/* 検索フォーム */}
       <div className="px-4">
-        <EmployeeSearchForm defaultValues={defaultSearchValues} />
+        <SearchForm fields={searchFields} defaultValues={defaultSearchValues} />
       </div>
 
       {/* 一覧表示 */}
@@ -168,7 +163,7 @@ export default async function EmployeePage({
             totalPages={result.totalPages}
             totalCount={result.totalCount}
             pageSize={result.pageSize}
-            maxPages={MAX_PAGES}
+            maxPages={LIST_PAGE_DEFAULTS.MAX_PAGES}
           />
         </div>
       </div>
