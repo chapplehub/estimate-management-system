@@ -2,7 +2,7 @@
 STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR)
 
 # Check if all staged files match docs-only patterns (docs/** or *.md at root)
-NON_DOC_FILES=$(echo "$STAGED_FILES" | grep -vE '^(docs/|\.claude/|\.serena/|\.github/|\.husky/|\.vscode/|[^/]*\.md$)' || true)
+NON_DOC_FILES=$(echo "$STAGED_FILES" | grep -vE '^(docs/|learning/|\.claude/|\.serena/|\.github/|\.husky/|\.vscode/|[^/]*\.md$)' || true)
 
 if [ -z "$STAGED_FILES" ]; then
   exit 0
