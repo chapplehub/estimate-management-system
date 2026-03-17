@@ -1,7 +1,7 @@
 import { createId } from "@paralleldrive/cuid2";
 import prisma from "@server/prisma";
 import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
-import { ValidationError } from "@server/shared/errors/DomainError";
+import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
 import { PrismaDepartmentRepository } from "@subdomains/department/infrastructure/prisma/PrismaDepartmentRepository";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DeleteDepartmentCommand } from "../DeleteDepartmentCommand";
@@ -81,6 +81,6 @@ describe("DeleteDepartmentCommand", () => {
       },
     });
 
-    await expect(command.execute({ id: parentId })).rejects.toThrow(ValidationError);
+    await expect(command.execute({ id: parentId })).rejects.toThrow(BusinessRuleViolationError);
   });
 });

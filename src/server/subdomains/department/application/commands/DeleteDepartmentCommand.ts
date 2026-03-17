@@ -1,6 +1,6 @@
 import { Department } from "@subdomains/department/domain/entities/Department";
 import { DepartmentRepository } from "@subdomains/department/domain/repositories/DepartmentRepository";
-import { ValidationError } from "@server/shared/errors/DomainError";
+import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
 import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 
 export type DeleteDepartmentInput = {
@@ -25,7 +25,7 @@ export class DeleteDepartmentCommand {
     // 子部署がある場合は削除できない
     const children = await this.departmentRepository.findChildren(input.id);
     if (children.length > 0) {
-      throw new ValidationError(
+      throw new BusinessRuleViolationError(
         "子部署が存在するため、この部署を削除できません。先に子部署を削除してください。"
       );
     }
