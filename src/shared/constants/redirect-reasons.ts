@@ -8,6 +8,9 @@ export const REDIRECT_REASON = {
   EMPLOYEE_CREATED: "employee_created",
   EMPLOYEE_UPDATED: "employee_updated",
   EMPLOYEE_DELETED: "employee_deleted",
+  DEPARTMENT_CREATED: "department_created",
+  DEPARTMENT_UPDATED: "department_updated",
+  DEPARTMENT_DELETED: "department_deleted",
 } as const;
 
 export type RedirectReason = (typeof REDIRECT_REASON)[keyof typeof REDIRECT_REASON];
