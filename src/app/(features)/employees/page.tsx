@@ -6,13 +6,9 @@ import type { EmployeeSearchCriteria } from "@subdomains/employee/application/qu
 import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
 import Link from "next/link";
 import { SearchForm, type SearchFieldDef } from "@/app/_components/shared/SearchForm";
-import { Pagination } from "@/app/_components/shared/Pagination";
-import {
-  type SearchParams,
-  LIST_PAGE_DEFAULTS,
-  getStringParam,
-  getPageParam,
-} from "@/app/_lib/searchParams";
+import { DataTable } from "@/app/_components/shared/DataTable";
+import { columns } from "./_components/columns";
+import { type SearchParams, LIST_FETCH_LIMIT, getStringParam } from "@/app/_lib/searchParams";
 
 // NOTE: このページの検索機能の実装としては、URLのパスパラメタに基づいて検索を実行する。そのため初期検索は全件取得。
 // NOTE: 検索条件を入力して検索ボタンを押すと直接検索APIが実行されるのではなく、まず入力した検索条件をパスパラメタに設定してナビゲーションし、レンダリング時に検索処理が実行される。
@@ -57,19 +53,12 @@ export default async function EmployeePage({
     role: validateRole(getStringParam(params, "role")),
   };
 
-  // ページ番号の取得
-  const currentPage = getPageParam(params);
-
-  // 検索実行（ページネーション付き）
+  // 検索実行（最大 LIST_FETCH_LIMIT 件を一括取得）
   const queryService = new PrismaEmployeeQueryService();
   const searchQuery = new SearchEmployeesQuery(queryService);
-  const result = await searchQuery.executeWithPagination({
+  const employees = await searchQuery.execute({
     criteria,
-    pagination: {
-      page: currentPage,
-      pageSize: LIST_PAGE_DEFAULTS.PAGE_SIZE,
-    },
-    orderBy: { field: "employeeCd", direction: "asc" },
+    options: { limit: LIST_FETCH_LIMIT },
   });
 
   // Client Componentに渡すdefaultValues
@@ -105,67 +94,7 @@ export default async function EmployeePage({
           <h2 className="text-xl font-semibold">従業員一覧</h2>
         </div>
 
-        {/* テーブルコンテナ - 縦スクロール可能 */}
-        <div className="flex-1 overflow-hidden px-8">
-          <div className="h-full overflow-y-auto">
-            <table className="min-w-full table-auto">
-              <thead className="bg-gray-200 sticky top-0 z-10">
-                <tr>
-                  <th className="px-4 py-2 text-left">従業員コード</th>
-                  <th className="px-4 py-2 text-left">名前</th>
-                  <th className="px-4 py-2 text-left">メールアドレス</th>
-                  <th className="px-4 py-2 text-left">権限</th>
-                </tr>
-              </thead>
-              <tbody>
-                {result.items.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-4 py-4 text-center text-gray-500">
-                      従業員が登録されていません
-                    </td>
-                  </tr>
-                ) : (
-                  result.items.map((employee) => (
-                    <tr key={employee.id} className="border-b hover:bg-gray-50">
-                      <td className="px-4 py-2">
-                        <Link
-                          href={`/employees/${employee.employeeCd}`}
-                          className="text-blue-600 hover:text-blue-800 hover:underline"
-                        >
-                          {employee.employeeCd}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-2">{employee.name}</td>
-                      <td className="px-4 py-2">{employee.email}</td>
-                      <td className="px-4 py-2">
-                        <span
-                          className={`px-2 py-1 rounded text-xs ${
-                            employee.role === USER_ROLES.ADMIN
-                              ? "bg-red-100 text-red-800"
-                              : "bg-blue-100 text-blue-800"
-                          }`}
-                        >
-                          {employee.role === USER_ROLES.ADMIN ? "管理者" : "一般"}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* ページネーション */}
-        <div className="shrink-0">
-          <Pagination
-            currentPage={result.currentPage}
-            totalPages={result.totalPages}
-            totalCount={result.totalCount}
-            pageSize={result.pageSize}
-            maxPages={LIST_PAGE_DEFAULTS.MAX_PAGES}
-          />
-        </div>
+        <DataTable columns={columns} data={employees} emptyMessage="従業員が登録されていません" />
       </div>
     </div>
   );
