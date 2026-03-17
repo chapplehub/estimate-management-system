@@ -7,14 +7,9 @@ import {
 import type { DepartmentSearchCriteria } from "@subdomains/department/application/queries/dto/DepartmentSearchCriteria";
 import Link from "next/link";
 import { SearchForm, type SearchFieldDef } from "@/app/_components/shared/SearchForm";
-import { Pagination } from "@/app/_components/shared/Pagination";
-import { Badge } from "@/app/_components/shadcnui/badge";
-import {
-  type SearchParams,
-  LIST_PAGE_DEFAULTS,
-  getStringParam,
-  getPageParam,
-} from "@/app/_lib/searchParams";
+import { DataTable } from "@/app/_components/shared/DataTable";
+import { columns, type DepartmentRow } from "./_components/columns";
+import { type SearchParams, LIST_FETCH_LIMIT, getStringParam } from "@/app/_lib/searchParams";
 
 // ヘルパー関数: isActive値を検証
 function validateIsActive(value: string | undefined): boolean | undefined {
@@ -55,24 +50,28 @@ export default async function DepartmentPage({
     isActive: validateIsActive(getStringParam(params, "isActive")),
   };
 
-  // ページ番号の取得
-  const currentPage = getPageParam(params);
-
-  // 検索実行（ページネーション付き）
+  // 検索実行（最大 LIST_FETCH_LIMIT 件を一括取得）
   const searchQuery = searchDepartmentsQueryFactory();
-  const result = await searchQuery.executeWithPagination({
+  const departments = await searchQuery.execute({
     criteria,
-    pagination: {
-      page: currentPage,
-      pageSize: LIST_PAGE_DEFAULTS.PAGE_SIZE,
-    },
-    orderBy: { field: "displayOrder", direction: "asc" },
+    options: { limit: LIST_FETCH_LIMIT },
   });
 
   // 親部署名解決: 全部署取得してMap構築
   const getAllQuery = getAllDepartmentsQueryFactory();
   const allDepartments = await getAllQuery.execute({});
   const parentNameMap = new Map(allDepartments.map((dept) => [dept.id, dept.name]));
+
+  // 表示用データに変換（parentId → parentDepartmentName）
+  const rows: DepartmentRow[] = departments.map((dept) => ({
+    id: dept.id,
+    departmentCd: dept.departmentCd,
+    name: dept.name,
+    abbreviation: dept.abbreviation,
+    parentDepartmentName: dept.parentId ? (parentNameMap.get(dept.parentId) ?? "-") : "-",
+    displayOrder: dept.displayOrder,
+    isActive: dept.isActive,
+  }));
 
   // Client Componentに渡すdefaultValues
   const defaultSearchValues = {
@@ -107,67 +106,7 @@ export default async function DepartmentPage({
           <h2 className="text-xl font-semibold">部署一覧</h2>
         </div>
 
-        {/* テーブルコンテナ - 縦スクロール可能 */}
-        <div className="flex-1 overflow-hidden px-8">
-          <div className="h-full overflow-y-auto">
-            <table className="min-w-full table-auto">
-              <thead className="bg-gray-200 sticky top-0 z-10">
-                <tr>
-                  <th className="px-4 py-2 text-left">部署コード</th>
-                  <th className="px-4 py-2 text-left">部署名</th>
-                  <th className="px-4 py-2 text-left">略称</th>
-                  <th className="px-4 py-2 text-left">親部署名</th>
-                  <th className="px-4 py-2 text-left">表示順</th>
-                  <th className="px-4 py-2 text-left">状態</th>
-                </tr>
-              </thead>
-              <tbody>
-                {result.items.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-4 text-center text-gray-500">
-                      部署が登録されていません
-                    </td>
-                  </tr>
-                ) : (
-                  result.items.map((dept) => (
-                    <tr key={dept.id} className="border-b hover:bg-gray-50">
-                      <td className="px-4 py-2">
-                        <Link
-                          href={`/departments/${dept.departmentCd}`}
-                          className="text-blue-600 hover:text-blue-800 hover:underline"
-                        >
-                          {dept.departmentCd}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-2">{dept.name}</td>
-                      <td className="px-4 py-2">{dept.abbreviation}</td>
-                      <td className="px-4 py-2">
-                        {dept.parentId ? (parentNameMap.get(dept.parentId) ?? "-") : "-"}
-                      </td>
-                      <td className="px-4 py-2">{dept.displayOrder}</td>
-                      <td className="px-4 py-2">
-                        <Badge variant={dept.isActive ? "default" : "secondary"}>
-                          {dept.isActive ? "有効" : "無効"}
-                        </Badge>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* ページネーション */}
-        <div className="shrink-0">
-          <Pagination
-            currentPage={result.currentPage}
-            totalPages={result.totalPages}
-            totalCount={result.totalCount}
-            pageSize={result.pageSize}
-            maxPages={LIST_PAGE_DEFAULTS.MAX_PAGES}
-          />
-        </div>
+        <DataTable columns={columns} data={rows} emptyMessage="部署が登録されていません" />
       </div>
     </div>
   );
