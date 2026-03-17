@@ -14,6 +14,12 @@ https://github.com/chapplehub/estimate-management-system/issues/101 完了
 
 ---
 
+### 17:35 - issue #102 完了
+
+https://github.com/chapplehub/estimate-management-system/issues/102 完了
+
+---
+
 ## 🎯 今日の目標
 
 - [ ] （後で記入）
