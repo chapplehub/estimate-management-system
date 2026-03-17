@@ -22,16 +22,21 @@ https://github.com/chapplehub/estimate-management-system/issues/102 完了
 
 ## 🎯 今日の目標
 
-- [ ] （後で記入）
+- [x] #110 一覧画面の DataTable 共通コンポーネント作成（TanStack Table 導入）
+- [x] #101 部署新規作成ページ
+- [x] #102 部署詳細・編集・削除ページ
 
 ## 📊 進捗状況
 
-（セッション終了時に記入）
+- 完了: 3 issue（#110, #101, #102）
+- 部署管理機能の CRUD 一通り完成（新規作成・詳細・編集・削除）
+- 一覧画面の DataTable 共通コンポーネント化（TanStack Table）も完了
 
 ## 💡 学びと気づき
 
-（随時追記）
+- TanStack Table を導入し、一覧画面の DataTable を共通コンポーネント化することで再利用性が向上した
+- 部署管理の CRUD を通じて DDD レイヤー構成（Domain → Application → Infrastructure → Presentation）の実装パターンが確立できた
 
 ## 🚀 明日への申し送り
 
-（本日終了時に記入）
+- 部署管理機能が完成したので、次の機能開発に着手可能
