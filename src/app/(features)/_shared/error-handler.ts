@@ -14,6 +14,20 @@ import type { ActionResult } from "@shared/types/ActionResult";
  * - BusinessRuleViolationError: ビジネスルール違反
  * - NotFoundEntityError/NotFoundError: リソース未発見
  * - その他の予期しないエラー
+ *
+ * サブドメイン固有のエラーハンドリングが必要な場合は、
+ * この関数をラップして固有エラーを先に処理し、
+ * フォールバックとしてこの関数を呼び出すパターンを推奨する。
+ *
+ * @example
+ * ```ts
+ * function handleMyDomainError(error: unknown): ActionResult {
+ *   if (error instanceof MyDomainSpecificError) {
+ *     return { success: false, error: error.message };
+ *   }
+ *   return handleCommandError(error);
+ * }
+ * ```
  */
 export function handleCommandError(error: unknown): ActionResult {
   console.error("Command failed:", error);

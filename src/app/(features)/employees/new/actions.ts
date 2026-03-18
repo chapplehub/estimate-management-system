@@ -6,7 +6,7 @@ import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
 import { createEmployeeCommandFactory } from "@subdomains/employee/application/factories/createEmployeeCommandFactory";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { handleCommandError } from "../_lib/error-handler";
+import { handleCommandError } from "../../_shared/error-handler";
 import { createEmployeeSchema } from "./schema";
 
 // ========================================
