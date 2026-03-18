@@ -39,11 +39,14 @@ git log --oneline develop..HEAD
 git diff develop..HEAD --stat
 ```
 
-### 逸脱記録
+### 実装計画・逸脱記録
 
-メモリファイル `implementation-deviations.md` を読み取る。
+`.claude/settings.local.json` を読み、`plansDirectory` の値を取得する。
 
-- ファイルが存在しない、または空の場合は「計画通りに完了」として扱う
+1. `plansDirectory` が設定されていて、ディレクトリ内に `.md` ファイルがある場合:
+   - `deviations.md` 以外の `.md` ファイルを全て **planファイル** として読み取る
+   - `deviations.md` があれば **逸脱記録** として読み取る
+2. 未設定 or ディレクトリが空 → 計画なしとして扱う
 
 ## ステップ 3: PR タイトル生成
 
@@ -66,6 +69,7 @@ git diff develop..HEAD --stat
 ## ステップ 4: PR description 生成
 
 以下のテンプレートに沿って PR description を生成する。
+条件に応じてセクションの出力を制御すること。
 
 ```markdown
 ## Summary
@@ -74,16 +78,27 @@ git diff develop..HEAD --stat
 
 Closes #{issue_number}
 
-## Implementation Notes
+## 実装計画
 
-(implementation-deviations.md の内容を整理して記述)
+<details>
+<summary>plan mode で作成した実装計画（クリックで展開）</summary>
 
-- 計画からの逸脱点
-- 試行錯誤した点
-- 不確実性の高い箇所
+（plansDirectory 内の plan ファイルの内容）
+（複数ファイルがある場合はファイル名を見出しにして掲載）
 
-※逸脱記録がない場合は以下を記述:
+</details>
+
+※計画ファイルが存在しない場合はこのセクション自体を省略
+
+## 計画からの逸脱
+
+（plansDirectory/deviations.md の内容を整理して記述）
+
+※逸脱記録がなく計画がある場合:
 「計画通りに実装が完了しました。特筆すべき逸脱はありません。」
+
+※計画も逸脱記録もない場合:
+「実装計画なしで実装を行いました。」
 
 ## Test Plan
 
@@ -97,7 +112,8 @@ Generated with [Claude Code](https://claude.ai/code)
 ```
 
 - Summary はコミット履歴と issue 内容を元に簡潔にまとめる
-- Implementation Notes は逸脱記録を開発者が読みやすい形に整理する
+- 実装計画は `<details>` で折りたたんでレビュアーが必要に応じて展開できるようにする
+- 計画からの逸脱は逸脱記録を開発者が読みやすい形に整理する
 - Test Plan はテスト関連の変更から自動生成し、不足があれば追記する
 
 ## ステップ 5: Push & PR 作成（確認不要）
