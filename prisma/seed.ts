@@ -147,35 +147,30 @@ const DEPARTMENTS = [
     departmentCd: "DEPT001",
     name: "営業部",
     abbreviation: "営業",
-    displayOrder: 1,
   },
   {
     id: "dept-002",
     departmentCd: "DEPT002",
     name: "開発部",
     abbreviation: "開発",
-    displayOrder: 2,
   },
   {
     id: "dept-003",
     departmentCd: "DEPT003",
     name: "総務部",
     abbreviation: "総務",
-    displayOrder: 3,
   },
   {
     id: "dept-004",
     departmentCd: "DEPT004",
     name: "人事部",
     abbreviation: "人事",
-    displayOrder: 4,
   },
   {
     id: "dept-005",
     departmentCd: "DEPT005",
     name: "経理部",
     abbreviation: "経理",
-    displayOrder: 5,
   },
 ];
 
@@ -905,7 +900,6 @@ async function main() {
         departmentCd: dept.departmentCd,
         name: dept.name,
         abbreviation: dept.abbreviation,
-        displayOrder: dept.displayOrder,
         isActive: true,
       },
     });

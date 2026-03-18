@@ -162,7 +162,6 @@ describe("UpdateDepartmentCommand", () => {
         departmentCd: TEST_CODES[1],
         name: "無効親部署",
         abbreviation: "無効親",
-        displayOrder: 1,
         isActive: false,
       },
     });
