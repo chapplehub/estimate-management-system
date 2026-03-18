@@ -7,6 +7,11 @@ const navigationItems = [
     title: "従業員管理",
     description: "従業員の一覧表示、登録、編集、削除を行います。",
   },
+  {
+    href: "/departments",
+    title: "部署管理",
+    description: "部署の一覧表示、登録、編集、削除を行います。",
+  },
 ] as const;
 
 export default async function DashboardPage() {
