@@ -9,7 +9,6 @@ export type UpdateDepartmentInput = {
   id: string;
   name?: string;
   abbreviation?: string;
-  displayOrder?: number;
   parentId?: string | null;
   isActive?: boolean;
 };
@@ -34,11 +33,6 @@ export class UpdateDepartmentCommand {
     // 略称の更新
     if (input.abbreviation !== undefined) {
       department.changeAbbreviation(new Abbreviation(input.abbreviation));
-    }
-
-    // 表示順の更新
-    if (input.displayOrder !== undefined) {
-      department.changeDisplayOrder(input.displayOrder);
     }
 
     // 親部署の更新

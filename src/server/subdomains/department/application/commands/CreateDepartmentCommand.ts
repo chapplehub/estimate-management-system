@@ -10,7 +10,6 @@ export type CreateDepartmentInput = {
   departmentCd: string;
   name: string;
   abbreviation: string;
-  displayOrder?: number;
   parentId?: string | null;
 };
 
@@ -53,7 +52,6 @@ export class CreateDepartmentCommand {
       departmentCd,
       name,
       abbreviation,
-      input.displayOrder ?? 0,
       input.parentId ?? null
     );
 

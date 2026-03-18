@@ -40,7 +40,6 @@ describe("DeleteDepartmentCommand", () => {
         departmentCd: TEST_CODES[0],
         name: "削除テスト部署",
         abbreviation: "削除テスト",
-        displayOrder: 1,
         isActive: true,
       },
     });
@@ -65,7 +64,6 @@ describe("DeleteDepartmentCommand", () => {
         departmentCd: TEST_CODES[0],
         name: "親部署",
         abbreviation: "親",
-        displayOrder: 1,
         isActive: true,
       },
     });
@@ -75,7 +73,6 @@ describe("DeleteDepartmentCommand", () => {
         departmentCd: TEST_CODES[1],
         name: "子部署",
         abbreviation: "子",
-        displayOrder: 1,
         isActive: true,
         parentId,
       },

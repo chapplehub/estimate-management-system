@@ -46,11 +46,10 @@ describe("CreateDepartmentCommand", () => {
     expect(saved?.departmentCd.value).toBe(TEST_CODES[0]);
     expect(saved?.name.value).toBe("テスト営業部");
     expect(saved?.abbreviation.value).toBe("テスト営業");
-    expect(saved?.displayOrder).toBe(0);
     expect(saved?.parentId).toBeNull();
   });
 
-  it("表示順と親部署を指定して登録できる", async () => {
+  it("親部署を指定して登録できる", async () => {
     const parentId = createId();
     await prisma.department.create({
       data: {
@@ -58,7 +57,6 @@ describe("CreateDepartmentCommand", () => {
         departmentCd: TEST_CODES[0],
         name: "親部署",
         abbreviation: "親",
-        displayOrder: 1,
         isActive: true,
       },
     });
@@ -67,13 +65,11 @@ describe("CreateDepartmentCommand", () => {
       departmentCd: TEST_CODES[1],
       name: "子部署",
       abbreviation: "子",
-      displayOrder: 10,
       parentId,
     });
 
     const saved = await repository.findByDepartmentCd(new DepartmentCd(TEST_CODES[1]));
     expect(saved).not.toBeNull();
-    expect(saved?.displayOrder).toBe(10);
     expect(saved?.parentId).toBe(parentId);
   });
 
@@ -112,7 +108,6 @@ describe("CreateDepartmentCommand", () => {
         departmentCd: TEST_CODES[0],
         name: "無効部署",
         abbreviation: "無効",
-        displayOrder: 1,
         isActive: false,
       },
     });
