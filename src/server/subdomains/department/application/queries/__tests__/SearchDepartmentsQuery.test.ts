@@ -14,7 +14,6 @@ describe("SearchDepartmentsQuery", () => {
     departmentCd: string;
     name: string;
     abbreviation: string;
-    displayOrder?: number;
     isActive?: boolean;
     parentId?: string | null;
   }): Promise<string> {

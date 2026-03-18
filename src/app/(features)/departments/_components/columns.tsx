@@ -10,7 +10,6 @@ export type DepartmentRow = {
   name: string;
   abbreviation: string;
   parentDepartmentName: string;
-  displayOrder: number;
   isActive: boolean;
 };
 
@@ -38,10 +37,6 @@ export const columns: ColumnDef<DepartmentRow, unknown>[] = [
   {
     accessorKey: "parentDepartmentName",
     header: "親部署名",
-  },
-  {
-    accessorKey: "displayOrder",
-    header: "表示順",
   },
   {
     accessorKey: "isActive",

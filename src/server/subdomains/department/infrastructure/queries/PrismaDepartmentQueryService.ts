@@ -80,7 +80,7 @@ export class PrismaDepartmentQueryService implements DepartmentQueryService {
   }
 
   async findChildren(parentId: string, options?: DepartmentListOptions): Promise<DepartmentDTO[]> {
-    const orderBy = this.buildOrderBy(options) ?? { displayOrder: "asc" as const };
+    const orderBy = this.buildOrderBy(options) ?? { departmentCd: "asc" as const };
 
     const departments = await prisma.department.findMany({
       where: { parentId },
@@ -94,7 +94,7 @@ export class PrismaDepartmentQueryService implements DepartmentQueryService {
   }
 
   async findRootDepartments(options?: DepartmentListOptions): Promise<DepartmentDTO[]> {
-    const orderBy = this.buildOrderBy(options) ?? { displayOrder: "asc" as const };
+    const orderBy = this.buildOrderBy(options) ?? { departmentCd: "asc" as const };
 
     const departments = await prisma.department.findMany({
       where: { parentId: null },
@@ -112,7 +112,7 @@ export class PrismaDepartmentQueryService implements DepartmentQueryService {
     const allDepartments = await prisma.department.findMany({
       where: { isActive: true },
       select: this.getSelectFields(),
-      orderBy: { displayOrder: "asc" },
+      orderBy: { departmentCd: "asc" },
     });
 
     const departmentDTOs = allDepartments.map((d) => this.toDTO(d));
@@ -193,7 +193,6 @@ export class PrismaDepartmentQueryService implements DepartmentQueryService {
       departmentCd: true,
       name: true,
       abbreviation: true,
-      displayOrder: true,
       isActive: true,
       parentId: true,
       createdAt: true,
@@ -209,7 +208,6 @@ export class PrismaDepartmentQueryService implements DepartmentQueryService {
     departmentCd: string;
     name: string;
     abbreviation: string;
-    displayOrder: number;
     isActive: boolean;
     parentId: string | null;
     createdAt: Date;
@@ -220,7 +218,6 @@ export class PrismaDepartmentQueryService implements DepartmentQueryService {
       departmentCd: department.departmentCd,
       name: department.name,
       abbreviation: department.abbreviation,
-      displayOrder: department.displayOrder,
       isActive: department.isActive,
       parentId: department.parentId,
       createdAt: department.createdAt,

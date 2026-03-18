@@ -14,7 +14,6 @@ describe("GetDepartmentByIdQuery", () => {
     departmentCd: string;
     name: string;
     abbreviation: string;
-    displayOrder?: number;
     isActive?: boolean;
     parentId?: string | null;
   }): Promise<string> {
@@ -49,7 +48,6 @@ describe("GetDepartmentByIdQuery", () => {
       departmentCd: TEST_CODES[0],
       name: "取得テスト部署",
       abbreviation: "取得テスト",
-      displayOrder: 5,
     });
 
     const result = await query.execute({ id: deptId });
@@ -59,7 +57,6 @@ describe("GetDepartmentByIdQuery", () => {
     expect(result?.departmentCd).toBe(TEST_CODES[0]);
     expect(result?.name).toBe("取得テスト部署");
     expect(result?.abbreviation).toBe("取得テスト");
-    expect(result?.displayOrder).toBe(5);
     expect(result?.isActive).toBe(true);
     expect(result?.parentId).toBeNull();
   });

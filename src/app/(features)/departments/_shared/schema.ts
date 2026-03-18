@@ -2,7 +2,7 @@ import { z } from "zod";
 
 /**
  * 部署フォームの基盤スキーマ
- * 作成・編集で共通のフィールド（name, abbreviation, displayOrder, parentId）
+ * 作成・編集で共通のフィールド（name, abbreviation, parentId）
  */
 export const departmentBaseSchema = z.object({
   name: z
@@ -15,10 +15,6 @@ export const departmentBaseSchema = z.object({
     .trim()
     .min(1, { error: "略称を入力してください" })
     .max(20, { error: "略称は20文字以内で入力してください" }),
-  displayOrder: z.coerce
-    .number({ error: "数値を入力してください" })
-    .int({ error: "整数を入力してください" })
-    .min(0, { error: "表示順は0以上で入力してください" }),
   parentId: z
     .string()
     .optional()
