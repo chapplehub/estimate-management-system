@@ -67,7 +67,6 @@ describe("SearchEmployeesQuery", () => {
         departmentCd: "DEPT001",
         name: "テスト部署",
         abbreviation: "テスト",
-        displayOrder: 1,
         isActive: true,
       },
     });

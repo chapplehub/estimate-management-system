@@ -26,7 +26,7 @@ export async function createDepartment(prevState: unknown, formData: FormData) {
     return submission.reply();
   }
 
-  const { departmentCd, name, abbreviation, displayOrder, parentId } = submission.value;
+  const { departmentCd, name, abbreviation, parentId } = submission.value;
 
   try {
     const command = createDepartmentCommandFactory();
@@ -35,7 +35,6 @@ export async function createDepartment(prevState: unknown, formData: FormData) {
       departmentCd,
       name,
       abbreviation,
-      displayOrder,
       parentId,
     });
 

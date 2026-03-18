@@ -35,7 +35,6 @@ describe("UpdateDepartmentCommand", () => {
         departmentCd: TEST_CODES[0],
         name: "営業部",
         abbreviation: "営業",
-        displayOrder: 0,
         isActive: true,
       },
     });
@@ -61,15 +60,6 @@ describe("UpdateDepartmentCommand", () => {
     });
 
     expect(result.abbreviation.value).toBe("新営業");
-  });
-
-  it("表示順を更新できる", async () => {
-    const result = await command.execute({
-      id: baseDeptId,
-      displayOrder: 10,
-    });
-
-    expect(result.displayOrder).toBe(10);
   });
 
   it("存在しない部署を更新しようとするとエラー", async () => {
@@ -113,7 +103,6 @@ describe("UpdateDepartmentCommand", () => {
         departmentCd: TEST_CODES[1],
         name: "子部署",
         abbreviation: "子",
-        displayOrder: 1,
         isActive: true,
         parentId: baseDeptId,
       },
@@ -135,7 +124,6 @@ describe("UpdateDepartmentCommand", () => {
         departmentCd: TEST_CODES[1],
         name: "新親部署",
         abbreviation: "新親",
-        displayOrder: 1,
         isActive: true,
       },
     });
@@ -174,7 +162,6 @@ describe("UpdateDepartmentCommand", () => {
         departmentCd: TEST_CODES[1],
         name: "無効親部署",
         abbreviation: "無効親",
-        displayOrder: 1,
         isActive: false,
       },
     });
@@ -198,7 +185,6 @@ describe("UpdateDepartmentCommand", () => {
         departmentCd: TEST_CODES[1],
         name: "部署B",
         abbreviation: "B",
-        displayOrder: 1,
         isActive: true,
         parentId: baseDeptId,
       },
@@ -209,7 +195,6 @@ describe("UpdateDepartmentCommand", () => {
         departmentCd: TEST_CODES[2],
         name: "部署C",
         abbreviation: "C",
-        displayOrder: 2,
         isActive: true,
         parentId: deptBId,
       },

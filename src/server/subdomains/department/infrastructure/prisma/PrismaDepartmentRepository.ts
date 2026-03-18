@@ -78,7 +78,7 @@ export class PrismaDepartmentRepository implements DepartmentRepository {
   async findChildren(parentId: string): Promise<Department[]> {
     const prismaDepartments = await prisma.department.findMany({
       where: { parentId: parentId },
-      orderBy: { displayOrder: "asc" },
+      orderBy: { departmentCd: "asc" },
     });
 
     return prismaDepartments.map(DepartmentMapper.toDomain);
@@ -92,7 +92,7 @@ export class PrismaDepartmentRepository implements DepartmentRepository {
   async findRootDepartments(): Promise<Department[]> {
     const prismaDepartments = await prisma.department.findMany({
       where: { parentId: null },
-      orderBy: { displayOrder: "asc" },
+      orderBy: { departmentCd: "asc" },
     });
 
     return prismaDepartments.map(DepartmentMapper.toDomain);

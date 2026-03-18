@@ -14,7 +14,6 @@ describe("GetDepartmentTreeQuery", () => {
     departmentCd: string;
     name: string;
     abbreviation: string;
-    displayOrder?: number;
     isActive?: boolean;
     parentId?: string | null;
   }): Promise<string> {
@@ -49,14 +48,12 @@ describe("GetDepartmentTreeQuery", () => {
       departmentCd: TEST_CODES[0],
       name: "ルート部署",
       abbreviation: "ルート",
-      displayOrder: 1,
       isActive: true,
     });
     const childId = await createTestDepartment({
       departmentCd: TEST_CODES[1],
       name: "子部署",
       abbreviation: "子",
-      displayOrder: 1,
       isActive: true,
       parentId: rootId,
     });
@@ -64,7 +61,6 @@ describe("GetDepartmentTreeQuery", () => {
       departmentCd: TEST_CODES[2],
       name: "孫部署",
       abbreviation: "孫",
-      displayOrder: 1,
       isActive: true,
       parentId: childId,
     });
@@ -88,14 +84,12 @@ describe("GetDepartmentTreeQuery", () => {
       departmentCd: TEST_CODES[0],
       name: "ルート部署",
       abbreviation: "ルート",
-      displayOrder: 1,
       isActive: true,
     });
     await createTestDepartment({
       departmentCd: TEST_CODES[1],
       name: "子部署",
       abbreviation: "子",
-      displayOrder: 1,
       isActive: true,
       parentId: rootId,
     });
@@ -113,14 +107,12 @@ describe("GetDepartmentTreeQuery", () => {
       departmentCd: TEST_CODES[0],
       name: "有効ルート部署",
       abbreviation: "有効ルート",
-      displayOrder: 1,
       isActive: true,
     });
     await createTestDepartment({
       departmentCd: TEST_CODES[1],
       name: "無効子部署",
       abbreviation: "無効子",
-      displayOrder: 1,
       isActive: false,
       parentId: rootId,
     });

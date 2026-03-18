@@ -40,7 +40,7 @@ export async function updateDepartment(
     return submission.reply();
   }
 
-  const { name, abbreviation, displayOrder, parentId, isActive } = submission.value;
+  const { name, abbreviation, parentId, isActive } = submission.value;
 
   // departmentCdからidを取得
   const queryService = new PrismaDepartmentQueryService();
@@ -60,7 +60,6 @@ export async function updateDepartment(
       id,
       name,
       abbreviation,
-      displayOrder,
       parentId: parentId ?? null,
       isActive,
     });

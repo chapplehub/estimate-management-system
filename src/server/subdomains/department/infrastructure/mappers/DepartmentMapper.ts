@@ -26,7 +26,6 @@ export class DepartmentMapper {
       departmentCd,
       name,
       abbreviation,
-      prismaDepartment.displayOrder,
       prismaDepartment.isActive,
       prismaDepartment.parentId,
       prismaDepartment.createdAt,
@@ -46,7 +45,6 @@ export class DepartmentMapper {
       departmentCd: department.departmentCd.value,
       name: department.name.value,
       abbreviation: department.abbreviation.value,
-      displayOrder: department.displayOrder,
       isActive: department.isActive,
       parentId: department.parentId,
     };
@@ -62,7 +60,6 @@ export class DepartmentMapper {
     return {
       name: department.name.value,
       abbreviation: department.abbreviation.value,
-      displayOrder: department.displayOrder,
       isActive: department.isActive,
       parentId: department.parentId,
       updatedAt: department.updatedAt,

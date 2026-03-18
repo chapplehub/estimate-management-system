@@ -69,7 +69,6 @@ export default async function DepartmentPage({
     name: dept.name,
     abbreviation: dept.abbreviation,
     parentDepartmentName: dept.parentId ? (parentNameMap.get(dept.parentId) ?? "-") : "-",
-    displayOrder: dept.displayOrder,
     isActive: dept.isActive,
   }));
 

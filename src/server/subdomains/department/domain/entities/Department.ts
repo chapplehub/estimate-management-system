@@ -2,7 +2,7 @@ import { createId } from "@paralleldrive/cuid2";
 import { DepartmentCd } from "../values/DepartmentCd";
 import { DepartmentName } from "../values/DepartmentName";
 import { Abbreviation } from "../values/Abbreviation";
-import { ValidationError, BusinessRuleViolationError } from "@server/shared/errors/DomainError";
+import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
 
 /**
  * 部署エンティティ
@@ -18,7 +18,6 @@ export class Department {
     private readonly _departmentCd: DepartmentCd,
     private _name: DepartmentName,
     private _abbreviation: Abbreviation,
-    private _displayOrder: number,
     private _isActive: boolean,
     private _parentId: string | null,
     private readonly _createdAt: Date,
@@ -31,7 +30,6 @@ export class Department {
    * @param departmentCd 部署コード
    * @param name 部署名
    * @param abbreviation 略称
-   * @param displayOrder 表示順（デフォルト: 0）
    * @param parentId 親部署ID（ルート部署の場合は null）
    * @returns 部署エンティティ
    */
@@ -39,11 +37,8 @@ export class Department {
     departmentCd: DepartmentCd,
     name: DepartmentName,
     abbreviation: Abbreviation,
-    displayOrder: number = 0,
     parentId: string | null = null
   ): Department {
-    Department.validateDisplayOrder(displayOrder);
-
     const now = new Date();
 
     return new Department(
@@ -51,7 +46,6 @@ export class Department {
       departmentCd,
       name,
       abbreviation,
-      displayOrder,
       true, // 新規作成時は有効
       parentId,
       now,
@@ -66,7 +60,6 @@ export class Department {
    * @param departmentCd 部署コード
    * @param name 部署名
    * @param abbreviation 略称
-   * @param displayOrder 表示順
    * @param isActive 有効フラグ
    * @param parentId 親部署ID
    * @param createdAt 作成日時
@@ -78,7 +71,6 @@ export class Department {
     departmentCd: DepartmentCd,
     name: DepartmentName,
     abbreviation: Abbreviation,
-    displayOrder: number,
     isActive: boolean,
     parentId: string | null,
     createdAt: Date,
@@ -89,25 +81,11 @@ export class Department {
       departmentCd,
       name,
       abbreviation,
-      displayOrder,
       isActive,
       parentId,
       createdAt,
       updatedAt
     );
-  }
-
-  // ========================================
-  // バリデーション
-  // ========================================
-
-  private static validateDisplayOrder(displayOrder: number): void {
-    if (!Number.isInteger(displayOrder)) {
-      throw new ValidationError("表示順は整数である必要があります");
-    }
-    if (displayOrder < 0) {
-      throw new ValidationError("表示順は0以上である必要があります");
-    }
   }
 
   // ========================================
@@ -127,15 +105,6 @@ export class Department {
    */
   changeAbbreviation(newAbbreviation: Abbreviation): void {
     this._abbreviation = newAbbreviation;
-    this._updatedAt = new Date();
-  }
-
-  /**
-   * 表示順を変更
-   */
-  changeDisplayOrder(newDisplayOrder: number): void {
-    Department.validateDisplayOrder(newDisplayOrder);
-    this._displayOrder = newDisplayOrder;
     this._updatedAt = new Date();
   }
 
@@ -194,10 +163,6 @@ export class Department {
 
   get abbreviation(): Abbreviation {
     return this._abbreviation;
-  }
-
-  get displayOrder(): number {
-    return this._displayOrder;
   }
 
   get isActive(): boolean {

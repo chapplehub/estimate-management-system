@@ -34,7 +34,6 @@ export type DepartmentSortField =
   | "name"
   | "departmentCd"
   | "abbreviation"
-  | "displayOrder"
   | "createdAt"
   | "updatedAt";
 

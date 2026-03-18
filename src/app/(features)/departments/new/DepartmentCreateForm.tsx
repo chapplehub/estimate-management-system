@@ -90,26 +90,6 @@ export function DepartmentCreateForm({ parentDepartmentSelectSlot }: Props) {
         </div>
 
         <div>
-          <label
-            htmlFor={fields.displayOrder.id}
-            className="block text-gray-700 text-sm font-bold mb-2"
-          >
-            表示順
-          </label>
-          <input
-            {...getInputProps(fields.displayOrder, { type: "number" })}
-            defaultValue={0}
-            disabled={isPending}
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
-          />
-          {fields.displayOrder.errors && (
-            <p className="text-red-500 text-xs mt-1" id={fields.displayOrder.errorId}>
-              {fields.displayOrder.errors[0]}
-            </p>
-          )}
-        </div>
-
-        <div>
           <label htmlFor="parentId" className="block text-gray-700 text-sm font-bold mb-2">
             親部署
           </label>

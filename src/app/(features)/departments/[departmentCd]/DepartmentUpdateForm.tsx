@@ -10,7 +10,6 @@ type Department = {
   departmentCd: string;
   name: string;
   abbreviation: string;
-  displayOrder: number;
   isActive: boolean;
   parentId: string | null;
 };
@@ -31,7 +30,6 @@ export function DepartmentUpdateForm({ department, canUpdate, parentDepartmentSe
     defaultValue: {
       name: department.name,
       abbreviation: department.abbreviation,
-      displayOrder: department.displayOrder,
       parentId: department.parentId ?? "",
       isActive: department.isActive,
     },
@@ -104,25 +102,6 @@ export function DepartmentUpdateForm({ department, canUpdate, parentDepartmentSe
           {fields.abbreviation.errors && (
             <p className="text-red-500 text-xs mt-1" id={fields.abbreviation.errorId}>
               {fields.abbreviation.errors[0]}
-            </p>
-          )}
-        </div>
-
-        <div>
-          <label
-            htmlFor={fields.displayOrder.id}
-            className="block text-gray-700 text-sm font-bold mb-2"
-          >
-            表示順
-          </label>
-          <input
-            {...getInputProps(fields.displayOrder, { type: "number" })}
-            disabled={isPending || !canUpdate}
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
-          />
-          {fields.displayOrder.errors && (
-            <p className="text-red-500 text-xs mt-1" id={fields.displayOrder.errorId}>
-              {fields.displayOrder.errors[0]}
             </p>
           )}
         </div>
