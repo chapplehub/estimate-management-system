@@ -6,7 +6,7 @@ import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
 import { createDepartmentCommandFactory } from "@subdomains/department/application/factories";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { handleCommandError } from "../_lib/error-handler";
+import { handleCommandError } from "../../_shared/error-handler";
 import { createDepartmentSchema } from "./schema";
 
 // ========================================

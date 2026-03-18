@@ -9,7 +9,7 @@ import { updateDepartmentCommandFactory } from "@subdomains/department/applicati
 import { PrismaDepartmentQueryService } from "@subdomains/department/infrastructure/queries/PrismaDepartmentQueryService";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { handleCommandError } from "../_lib/error-handler";
+import { handleCommandError } from "../../_shared/error-handler";
 import { updateDepartmentSchema } from "./schema";
 
 // ========================================

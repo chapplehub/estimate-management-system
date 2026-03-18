@@ -9,7 +9,7 @@ import { updateEmployeeCommandFactory } from "@subdomains/employee/application/f
 import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { handleCommandError } from "../_lib/error-handler";
+import { handleCommandError } from "../../_shared/error-handler";
 import { updateEmployeeSchema } from "./schema";
 
 // ========================================
