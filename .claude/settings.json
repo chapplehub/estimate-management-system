@@ -115,6 +115,15 @@
             "command": "bash -c 'BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo \"unknown\"); INPUT=$(cat); if ! command -v jq &>/dev/null; then if echo \"$INPUT\" | grep -q \"git\"; then echo \"❌ ERROR: git commands blocked (jq not installed for safety check).\" >&2; exit 2; fi; exit 0; fi; CMD=$(echo \"$INPUT\" | jq -r \".tool_input.command // empty\" 2>/dev/null); if [ -z \"$CMD\" ]; then exit 0; fi; if echo \"$CMD\" | grep -qE \"git\\s+(push|commit)\"; then if [ \"$BRANCH\" = \"main\" ] || [ \"$BRANCH\" = \"master\" ] || [ \"$BRANCH\" = \"develop\" ]; then echo \"❌ ERROR: git push/commit to $BRANCH branch is blocked.\" >&2; echo \"Please use a feature branch or git worktree for development.\" >&2; exit 2; fi; fi'"
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'INPUT=$(cat); if ! command -v jq &>/dev/null; then exit 0; fi; CMD=$(echo \"$INPUT\" | jq -r \".tool_input.command // empty\" 2>/dev/null); if [ -z \"$CMD\" ]; then exit 0; fi; if ! echo \"$CMD\" | grep -qE \"git\\s+commit\"; then exit 0; fi; SETTINGS=\".claude/settings.local.json\"; if [ ! -f \"$SETTINGS\" ]; then exit 0; fi; PLANS_DIR=$(jq -r \".plansDirectory // empty\" \"$SETTINGS\" 2>/dev/null); if [ -z \"$PLANS_DIR\" ]; then exit 0; fi; PLAN_FILES=$(find \"$PLANS_DIR\" -maxdepth 1 -name \"*.md\" ! -name \"deviations.md\" 2>/dev/null); if [ -z \"$PLAN_FILES\" ]; then exit 0; fi; echo \"📋 リマインド: 実装計画が存在します。計画からの逸脱があれば ${PLANS_DIR}/deviations.md に追記してください。\"; exit 0'"
+          }
+        ]
       }
     ]
   },
