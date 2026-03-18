@@ -26,7 +26,7 @@ PRを作成する際は必ず `/create-pr` スキルを使用すること。`gh 
 When implementing with a plan (plan mode), follow these rules:
 
 - **Commit at each plan step**: Create a commit when each step of the plan is completed. Do not implement everything at once and squash into a single commit.
-- **Record deviations from the plan**: When something does not go as planned during implementation (test failures requiring fixes, design changes, unexpected issues, etc.), record it in the memory file `implementation-deviations.md`.
+- **Record deviations from the plan**: When something does not go as planned during implementation (test failures requiring fixes, design changes, unexpected issues, etc.), record it in `{plansDirectory}/deviations.md`. The `plansDirectory` is configured in `.claude/settings.local.json` (e.g. `docs/claude-plans/issue-121`). Create the file only when deviations occur; append each deviation as it happens.
 
 ## Critical: DDD Layering Rules
 
