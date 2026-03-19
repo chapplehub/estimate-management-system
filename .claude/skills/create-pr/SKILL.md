@@ -1,7 +1,7 @@
 ---
 name: create-pr
 description: GitHub PRを作成する。Use when PRの作成、プルリクエストの作成を依頼されたとき。実装振り返りレポート付きで作成する。
-user-invokable: true
+user-invocable: true
 ---
 
 # プロンプト内容
