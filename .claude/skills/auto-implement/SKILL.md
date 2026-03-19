@@ -128,6 +128,13 @@ mkdir -p docs/claude-plans/issue-{number}
 - 各ステップは **「1コミット単位」** で設計する（CLAUDE.md 規約: "Commit at each plan step"）
 - 計画をユーザーに表示する（確認は求めない — 自動承認）
 
+計画ファイルを作成したら、実装開始前にコミットする:
+
+```bash
+git add docs/claude-plans/issue-{number}/plan.md
+git commit -m "docs: Issue #{number} の実装計画を作成"
+```
+
 計画ファイルのフォーマット:
 
 ```markdown
