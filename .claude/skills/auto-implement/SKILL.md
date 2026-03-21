@@ -29,39 +29,10 @@ user-invocable: true
 
 ### 1.2 Issue 作成（説明文モードのみ）
 
-**Skill(create-issue) は使用しない**（Skill 呼び出しはプロンプトがロードされ、完了報告で処理が停止するため）。
-以下の手順でインライン作成する:
+`Skill(create-issue, args: "{$ARGUMENTS の内容}")` で Issue 作成を委譲する。
 
-**① タイプ判定** — `$ARGUMENTS` のキーワードからタイプを推定する:
-
-| タイプ | キーワード例 | タイトル接頭辞 | ラベル |
-|--------|-------------|---------------|--------|
-| enhancement | 機能追加, 実装, 新規, feat, 追加 | `feat:` | `Type: enhancement` |
-| bug | バグ, エラー, 不具合, 修正, fix, 壊れ | `fix:` | `Type: bug` |
-| refactor | リファクタ, 整理, 削除, cleanup, 統合, 分離 | `refactor:` | `Type: refactor` |
-| documentation | ドキュメント, 記録, docs, README | `docs:` | `Type: documentation` |
-| その他 | — | `feat:` | `Type: enhancement` |
-
-**② Issue 作成** — `gh issue create` で直接作成する:
-
-```bash
-gh issue create \
-  --title "{prefix}: {タイトル}" \
-  --label "Type: {type}" \
-  --body "## 概要
-
-{$ARGUMENTS の内容を要約}
-
-## 実装タスク
-
-- [ ] （$ARGUMENTS から推定）
-
-## 受け入れ条件
-
-- [ ] （$ARGUMENTS から推定）"
-```
-
-**③ 番号取得** — 作成コマンドの出力から Issue 番号を取得する
+- create-issue は `context: fork` により自動的にサブエージェントとして実行される
+- 返却値から Issue 番号を抽出して処理を継続する
 
 ### 1.3 Issue 情報取得 & ブランチタイプ判定
 
@@ -236,8 +207,11 @@ pnpm test
 
 ### 4.1 PR 作成
 
-- `Skill(create-pr, args: "#{number}")` で PR 作成を委譲する
-- lint/test が通らなかった場合: PR タイトルの末尾に `[draft]` を付与し、ドラフト PR として作成するよう指示する
+`Skill(create-pr, args: "#{number}")` で PR 作成を委譲する。
+
+- create-pr は `context: fork` により自動的にサブエージェントとして実行される
+- lint/test が通らなかった場合: `Skill(create-pr, args: "--draft #{number}")` でドラフト PR を作成する
+- 返却値から PR URL を取得して最終報告に使用する
 
 ### 4.2 最終報告
 

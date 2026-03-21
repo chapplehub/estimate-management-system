@@ -1,6 +1,7 @@
 ---
 name: create-issue
 description: GitHub issue を作成（タイプ自動判定・ラベル自動付与）。Use when issueの作成、issueの作成を依頼されたとき。
+context: fork
 ---
 
 # プロンプト内容
@@ -29,7 +30,7 @@ description: GitHub issue を作成（タイプ自動判定・ラベル自動付
 ## ステップ 2: ラベル存在チェック
 
 `gh label list --search "Type: xxx"` でラベルの存在を確認する。
-ラベルが存在しない場合はユーザーに報告し、ラベルなしで作成するか確認する。
+ラベルが存在しない場合はラベルなしで作成する（確認不要）。
 
 ## ステップ 3: 優先度判定（オプション）
 
@@ -220,6 +221,6 @@ gh issue create \
 - `$ARGUMENTS` の内容を分析してテンプレートの各セクションを埋める
 - 関連 issue があれば本文中にリンクする
 
-## ステップ 6: ユーザーに通知
+## ステップ 6: 結果を返す
 
-作成した issue の番号と URL を簡潔に通知する。
+作成した issue の番号と URL を簡潔に返す。

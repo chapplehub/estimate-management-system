@@ -2,6 +2,7 @@
 name: create-pr
 description: GitHub PRを作成する。Use when PRの作成、プルリクエストの作成を依頼されたとき。実装振り返りレポート付きで作成する。
 user-invocable: true
+context: fork
 ---
 
 # プロンプト内容
@@ -15,7 +16,7 @@ user-invocable: true
 
 - `#123` や `123` のような番号が含まれていればそれを使う
 - 番号がない場合はブランチ名（`feat/issue-87` など）から issue 番号を抽出する
-- どちらでも特定できない場合はユーザーに確認する
+- どちらでも特定できない場合はエラーとして処理を終了し、理由を返す
 
 ```bash
 gh issue view {番号}
@@ -127,7 +128,8 @@ gh pr create --base develop --title "{title}" --body "{body}"
 ```
 
 - base は必ず `develop`（CLAUDE.md の規約）
+- `$ARGUMENTS` に `--draft` が含まれている場合は `gh pr create --draft` フラグを使用する
 
-## ステップ 6: クリーンアップ & 通知
+## ステップ 6: 結果を返す
 
-- 作成した PR の番号と URL を簡潔に通知する
+- 作成した PR の番号と URL を簡潔に返す
