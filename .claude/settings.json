@@ -52,10 +52,10 @@
       "mcp__serena"
     ],
     "deny": [
-      "Bash(git reset*)",
       "Bash(git rebase*)",
       "Bash(git commit --no-verify *)",
-      "Bash(rm *)",
+      "Bash(git push --force *)",
+      "Bash(git reset --hard *)",
       "Bash(rm -rf *)",
       "Bash(sudo *)",
       "Bash(curl *)",
@@ -76,6 +76,25 @@
     ]
   },
   "model": "opus",
+  "sandbox": {
+    "enabled": true,
+    "filesystem": {
+      "allowWrite": [".", "src/", "tests/", "/tmp"],
+      "denyWrite": [".env", ".env.local", "config/production.json"],
+      "denyRead": ["~/.ssh"],
+      "allowRead": ["."]
+    },
+    "network": {
+      "allowedDomains": [
+        "registry.npmjs.org",
+        "*.npmjs.org",
+        "github.com",
+        "*.github.com",
+        "api.github.com"
+      ],
+      "deniedDomains": []
+    }
+  },
   "hooks": {
     "SessionStart": [
       {
