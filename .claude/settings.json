@@ -74,6 +74,7 @@
     ]
   },
   "model": "opus",
+  "defaultMode": "acceptEdits",
   "sandbox": {
     "enabled": true,
     "filesystem": {
