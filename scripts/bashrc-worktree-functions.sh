@@ -45,13 +45,16 @@ wta() {
     echo "=========================================="
     echo ""
 
-    # .env のコピー
-    echo "[1/4] .env ファイルをコピー..."
-    if [ -f "$root/.env" ]; then
-        cp "$root/.env" "$path/.env"
-        echo "  -> コピー完了: .env"
+    # .worktreeinclude に基づくファイルコピー
+    echo "[1/4] .worktreeinclude のファイルをコピー..."
+    if [ -f "$root/scripts/setup-worktree.sh" ]; then
+        bash "$root/scripts/setup-worktree.sh" "$path" "$root"
     else
-        echo "  -> スキップ: $root/.env が見つかりません"
+        echo "  -> スキップ: setup-worktree.sh が見つかりません"
+        if [ -f "$root/.env" ]; then
+            cp "$root/.env" "$path/.env"
+            echo "  -> コピー完了: .env (フォールバック)"
+        fi
     fi
 
     # pnpm install
