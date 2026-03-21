@@ -78,7 +78,7 @@
   "sandbox": {
     "enabled": true,
     "filesystem": {
-      "allowWrite": [".", "src/", "tests/", "/tmp"],
+      "allowWrite": [".", "src/", "tests/", "/tmp", "~/.local/share/pnpm"],
       "denyWrite": [".env", ".env.local", "config/production.json"],
       "denyRead": ["~/.ssh"],
       "allowRead": ["."]

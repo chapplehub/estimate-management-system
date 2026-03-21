@@ -87,17 +87,13 @@ SOURCE_ROOT=$(git worktree list | head -1 | awk '{print $1}')
 bash "$SOURCE_ROOT/scripts/setup-worktree.sh" "$(pwd)" "$SOURCE_ROOT"
 ```
 
-**③ リモートの最新 develop を起点にブランチ作成**
+**③ ローカル develop を起点にブランチ作成**
 
 ```bash
-git fetch origin develop
-git checkout -B {type}/issue-{number} origin/develop
+git checkout -B {type}/issue-{number}
 ```
 
 例: `feat/issue-126`
-
-> `git reset --hard` は deny リストでブロックされるため使用しない。
-> `checkout -B` でリセットとブランチリネームを1手順で実現する。
 
 **④ 依存関係インストール & Prisma クライアント生成**
 
