@@ -29,23 +29,10 @@ user-invocable: true
 
 ### 1.2 Issue 作成（説明文モードのみ）
 
-Agent ツールを使用してサブエージェントに Issue 作成を委譲する:
+`Skill(create-issue, args: "{$ARGUMENTS の内容}")` で Issue 作成を委譲する。
 
-- **description:** `"Create GitHub issue"`
-- **prompt:**
-
-```
-まず `.claude/skills/create-issue/SKILL.md` を Read で読み、その手順に従って GitHub Issue を作成してください。
-
-作成する内容: {$ARGUMENTS}
-
-重要:
-- SKILL.md の手順（タイプ判定・ラベルチェック・テンプレート選択）に従うこと
-- ユーザーへの確認は不要（そのまま作成する）
-- 作成後、Issue 番号（数字のみ）だけを返すこと（他の説明は不要）
-```
-
-Agent の返却値から Issue 番号を取得して処理を継続する。
+- create-issue は `context: fork` により自動的にサブエージェントとして実行される
+- 返却値から Issue 番号を抽出して処理を継続する
 
 ### 1.3 Issue 情報取得 & ブランチタイプ判定
 
@@ -220,24 +207,11 @@ pnpm test
 
 ### 4.1 PR 作成
 
-Agent ツールを使用してサブエージェントに PR 作成を委譲する:
+`Skill(create-pr, args: "#{number}")` で PR 作成を委譲する。
 
-- **description:** `"Create pull request"`
-- **prompt:**
-
-```
-まず `.claude/skills/create-pr/SKILL.md` を Read で読み、その手順に従って PR を作成してください。
-
-対象 Issue: #{number}
-{lint/test が通らなかった場合は以下を追記: ドラフト PR として作成すること（--draft フラグを使用）}
-
-重要:
-- SKILL.md の手順（コンテキスト収集・タイトル生成・description生成）に従うこと
-- ユーザーへの確認は不要（そのまま作成する）
-- 作成後、PR の URL のみを返すこと（他の説明は不要）
-```
-
-Agent の返却値から PR URL を取得して最終報告に使用する。
+- create-pr は `context: fork` により自動的にサブエージェントとして実行される
+- lint/test が通らなかった場合: `Skill(create-pr, args: "--draft #{number}")` でドラフト PR を作成する
+- 返却値から PR URL を取得して最終報告に使用する
 
 ### 4.2 最終報告
 
