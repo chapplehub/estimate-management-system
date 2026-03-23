@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# 責務: .worktreeinclude に記載されたファイルを worktree にコピーする
+# 廃止条件: Claude Code が .worktreeinclude をネイティブサポートしたら
 set -euo pipefail
 
 WORKTREE_PATH="$1"
@@ -6,7 +8,7 @@ SOURCE_ROOT="$2"
 INCLUDE_FILE="$SOURCE_ROOT/.worktreeinclude"
 
 if [ ! -f "$INCLUDE_FILE" ]; then
-    echo "setup-worktree: .worktreeinclude not found, skipping"
+    echo "worktree-copy-includes: .worktreeinclude not found, skipping"
     exit 0
 fi
 
