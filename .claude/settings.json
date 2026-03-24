@@ -76,7 +76,7 @@
   "model": "opus",
   "defaultMode": "acceptEdits",
   "sandbox": {
-    "enabled": false,
+    "enabled": true,
     "filesystem": {
       "allowWrite": [".", "~/.local/share/pnpm", "~/.npm"],
       "denyWrite": [".env", ".env.local", "config/production.json"],
