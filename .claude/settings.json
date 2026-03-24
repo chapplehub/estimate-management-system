@@ -1,7 +1,6 @@
 {
   "permissions": {
     "allow": [
-      "Bash(*)",
       "Bash(pnpm dev*)",
       "Bash(pnpm build*)",
       "Bash(pnpm start*)",
@@ -41,11 +40,12 @@
       "Bash(wc *)",
       "Bash(ls *)",
       "Bash(find *)",
-      "Read(/web/**)",
-      "Write(/web/src/**)",
-      "Edit(/web/src/**)",
-      "Write(/learn/**)",
-      "Edit(/learn/**)",
+      "Write(/src/**)",
+      "Edit(/src/**)",
+      "Write(/docs/**)",
+      "Edit(/docs/**)",
+      "Write(/learning/**)",
+      "Edit(/learning/**)",
       "SlashCommand(/learn*)",
       "WebSearch",
       "mcp__context7",
