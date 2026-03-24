@@ -7,7 +7,7 @@ export abstract class ValueObject<T extends Primitives, U> {
    * ブランドプロパティ: 構造的型付けを回避し、型の誤用を防ぐ
    * このプロパティは実行時には存在せず、コンパイル時の型チェックのみに使用される
    */
-  private declare _type: U;
+  declare private _type: U;
   protected readonly _value: T;
 
   constructor(value: T) {

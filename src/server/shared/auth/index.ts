@@ -5,21 +5,15 @@
  * 実装の詳細（Better Auth）は隠蔽される。
  */
 
-export type { IAuthService } from "./IAuthService";
-export type { IUserManagementService } from "./IUserManagementService";
+export type { AuthService } from "./AuthService";
+export type { UserManagementService } from "./UserManagementService";
 export type {
   CreateAuthUserInput,
   CreateAuthUserResult,
   RemoveAuthUserResult,
   UpdateAuthUserEmailResult,
-} from "./IUserManagementService";
-export type {
-  AuthSession,
-  AuthUser,
-  SignInInput,
-  SignInResult,
-  SignOutResult,
-} from "./types";
+} from "./UserManagementService";
+export type { AuthSession, AuthUser, SignInInput, SignInResult, SignOutResult } from "./types";
 
 // 認可チェックヘルパー関数
 export { isAdmin, isOwner } from "./verify/authorization";

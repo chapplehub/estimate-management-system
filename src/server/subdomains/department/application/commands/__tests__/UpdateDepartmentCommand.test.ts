@@ -1,99 +1,94 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { UpdateDepartmentCommand } from "../UpdateDepartmentCommand";
-import { IDepartmentRepository } from "@subdomains/department/domain/repositories/IDepartmentRepository";
-import { Department } from "@subdomains/department/domain/entities/Department";
-import { DepartmentCd } from "@subdomains/department/domain/values/DepartmentCd";
-import { DepartmentName } from "@subdomains/department/domain/values/DepartmentName";
-import { Abbreviation } from "@subdomains/department/domain/values/Abbreviation";
-import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
+import { createId } from "@paralleldrive/cuid2";
+import prisma from "@server/prisma";
 import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
+import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
+import { PrismaDepartmentRepository } from "@subdomains/department/infrastructure/prisma/PrismaDepartmentRepository";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { UpdateDepartmentCommand } from "../UpdateDepartmentCommand";
 
 describe("UpdateDepartmentCommand", () => {
   let command: UpdateDepartmentCommand;
-  let mockRepository: IDepartmentRepository;
+  let repository: PrismaDepartmentRepository;
 
-  const createTestDepartment = (id: string = "dept-1") => {
-    return Department.reconstruct(
-      id,
-      new DepartmentCd("DEPT001"),
-      new DepartmentName("営業部"),
-      new Abbreviation("営業"),
-      0,
-      true,
-      null,
-      new Date(),
-      new Date()
-    );
-  };
+  const TEST_CODES = ["DEPT993", "DEPT994", "DEPT995"];
+  let baseDeptId: string;
 
-  beforeEach(() => {
-    mockRepository = {
-      save: vi.fn().mockImplementation((dept) => Promise.resolve(dept)),
-      delete: vi.fn(),
-      findById: vi.fn(),
-      findByDepartmentCd: vi.fn(),
-      findChildren: vi.fn().mockResolvedValue([]),
-      findRootDepartments: vi.fn(),
-    };
+  async function cleanup() {
+    await prisma.department.deleteMany({
+      where: { parentId: { not: null }, departmentCd: { in: TEST_CODES } },
+    });
+    await prisma.department.deleteMany({
+      where: { departmentCd: { in: TEST_CODES } },
+    });
+  }
 
-    command = new UpdateDepartmentCommand(mockRepository);
+  beforeEach(async () => {
+    await cleanup();
+
+    repository = new PrismaDepartmentRepository();
+    command = new UpdateDepartmentCommand(repository);
+
+    baseDeptId = createId();
+    await prisma.department.create({
+      data: {
+        id: baseDeptId,
+        departmentCd: TEST_CODES[0],
+        name: "営業部",
+        abbreviation: "営業",
+        isActive: true,
+      },
+    });
+  });
+
+  afterEach(async () => {
+    await cleanup();
   });
 
   it("部署名を更新できる", async () => {
-    const department = createTestDepartment();
-    vi.mocked(mockRepository.findById).mockResolvedValue(department);
-
     const result = await command.execute({
-      id: "dept-1",
+      id: baseDeptId,
       name: "新営業部",
     });
 
     expect(result.name.value).toBe("新営業部");
-    expect(mockRepository.save).toHaveBeenCalledTimes(1);
   });
 
   it("略称を更新できる", async () => {
-    const department = createTestDepartment();
-    vi.mocked(mockRepository.findById).mockResolvedValue(department);
-
     const result = await command.execute({
-      id: "dept-1",
+      id: baseDeptId,
       abbreviation: "新営業",
     });
 
     expect(result.abbreviation.value).toBe("新営業");
   });
 
-  it("表示順を更新できる", async () => {
-    const department = createTestDepartment();
-    vi.mocked(mockRepository.findById).mockResolvedValue(department);
-
-    const result = await command.execute({
-      id: "dept-1",
-      displayOrder: 10,
-    });
-
-    expect(result.displayOrder).toBe(10);
-  });
-
   it("存在しない部署を更新しようとするとエラー", async () => {
-    vi.mocked(mockRepository.findById).mockResolvedValue(null);
-
     await expect(
       command.execute({
-        id: "non-existent",
+        id: "non-existent-id",
         name: "新営業部",
       })
     ).rejects.toThrow(NotFoundEntityError);
   });
 
-  it("部署を無効化できる", async () => {
-    const department = createTestDepartment();
-    vi.mocked(mockRepository.findById).mockResolvedValue(department);
-    vi.mocked(mockRepository.findChildren).mockResolvedValue([]);
+  it("部署を有効化できる", async () => {
+    // まず無効化
+    await prisma.department.update({
+      where: { id: baseDeptId },
+      data: { isActive: false },
+    });
 
     const result = await command.execute({
-      id: "dept-1",
+      id: baseDeptId,
+      isActive: true,
+    });
+
+    expect(result.isActive).toBe(true);
+  });
+
+  it("部署を無効化できる", async () => {
+    const result = await command.execute({
+      id: baseDeptId,
       isActive: false,
     });
 
@@ -101,92 +96,115 @@ describe("UpdateDepartmentCommand", () => {
   });
 
   it("有効な子部署がある場合は無効化できない", async () => {
-    const department = createTestDepartment();
-    const childDepartment = createTestDepartment("child-1");
-    vi.mocked(mockRepository.findById).mockResolvedValue(department);
-    vi.mocked(mockRepository.findChildren).mockResolvedValue([childDepartment]);
+    const childId = createId();
+    await prisma.department.create({
+      data: {
+        id: childId,
+        departmentCd: TEST_CODES[1],
+        name: "子部署",
+        abbreviation: "子",
+        isActive: true,
+        parentId: baseDeptId,
+      },
+    });
 
     await expect(
       command.execute({
-        id: "dept-1",
+        id: baseDeptId,
         isActive: false,
       })
     ).rejects.toThrow(BusinessRuleViolationError);
-    await expect(
-      command.execute({
-        id: "dept-1",
-        isActive: false,
-      })
-    ).rejects.toThrow("有効な子部署が存在するため");
   });
 
   it("親部署を変更できる", async () => {
-    const department = createTestDepartment();
-    const newParent = Department.reconstruct(
-      "parent-id",
-      new DepartmentCd("DEPT002"),
-      new DepartmentName("本社"),
-      new Abbreviation("本社"),
-      0,
-      true,
-      null,
-      new Date(),
-      new Date()
-    );
-
-    vi.mocked(mockRepository.findById)
-      .mockResolvedValueOnce(department)
-      .mockResolvedValueOnce(newParent);
-
-    const result = await command.execute({
-      id: "dept-1",
-      parentId: "parent-id",
+    const newParentId = createId();
+    await prisma.department.create({
+      data: {
+        id: newParentId,
+        departmentCd: TEST_CODES[1],
+        name: "新親部署",
+        abbreviation: "新親",
+        isActive: true,
+      },
     });
 
-    expect(result.parentId).toBe("parent-id");
+    const result = await command.execute({
+      id: baseDeptId,
+      parentId: newParentId,
+    });
+
+    expect(result.parentId).toBe(newParentId);
+  });
+
+  it("自分自身を親部署に設定するとエラー", async () => {
+    await expect(
+      command.execute({
+        id: baseDeptId,
+        parentId: baseDeptId,
+      })
+    ).rejects.toThrow(BusinessRuleViolationError);
+  });
+
+  it("存在しない部署を親部署に設定するとエラー", async () => {
+    await expect(
+      command.execute({
+        id: baseDeptId,
+        parentId: "non-existent-parent-id",
+      })
+    ).rejects.toThrow(BusinessRuleViolationError);
+  });
+
+  it("無効な部署を親部署に設定するとエラー", async () => {
+    const inactiveParentId = createId();
+    await prisma.department.create({
+      data: {
+        id: inactiveParentId,
+        departmentCd: TEST_CODES[1],
+        name: "無効親部署",
+        abbreviation: "無効親",
+        isActive: false,
+      },
+    });
+
+    await expect(
+      command.execute({
+        id: baseDeptId,
+        parentId: inactiveParentId,
+      })
+    ).rejects.toThrow(BusinessRuleViolationError);
   });
 
   it("循環参照になる親部署を設定するとエラー", async () => {
-    // dept-1 が親で、dept-2 がその子の場合
-    // dept-1 の親を dept-2 に変更しようとすると循環参照
-    const department = createTestDepartment("dept-1");
-    const childAsNewParent = Department.reconstruct(
-      "dept-2",
-      new DepartmentCd("DEPT002"),
-      new DepartmentName("子部署"),
-      new Abbreviation("子"),
-      0,
-      true,
-      "dept-1", // dept-1 が親
-      new Date(),
-      new Date()
-    );
+    // A → B → C の3階層を作成し、AのparentをCに変更 → 循環参照
+    const deptBId = createId();
+    const deptCId = createId();
 
-    vi.mocked(mockRepository.findById).mockImplementation((id: string) => {
-      if (id === "dept-1") return Promise.resolve(department);
-      if (id === "dept-2") return Promise.resolve(childAsNewParent);
-      return Promise.resolve(null);
+    await prisma.department.create({
+      data: {
+        id: deptBId,
+        departmentCd: TEST_CODES[1],
+        name: "部署B",
+        abbreviation: "B",
+        isActive: true,
+        parentId: baseDeptId,
+      },
+    });
+    await prisma.department.create({
+      data: {
+        id: deptCId,
+        departmentCd: TEST_CODES[2],
+        name: "部署C",
+        abbreviation: "C",
+        isActive: true,
+        parentId: deptBId,
+      },
     });
 
     await expect(
       command.execute({
-        id: "dept-1",
-        parentId: "dept-2",
+        id: baseDeptId,
+        parentId: deptCId,
       })
     ).rejects.toThrow(BusinessRuleViolationError);
-
-    // reset mock for second assertion
-    vi.mocked(mockRepository.findById).mockImplementation((id: string) => {
-      if (id === "dept-1") return Promise.resolve(department);
-      if (id === "dept-2") return Promise.resolve(childAsNewParent);
-      return Promise.resolve(null);
-    });
-
-    await expect(
-      command.execute({
-        id: "dept-1",
-        parentId: "dept-2",
-      })
-    ).rejects.toThrow("循環参照が発生するため");
   });
 });

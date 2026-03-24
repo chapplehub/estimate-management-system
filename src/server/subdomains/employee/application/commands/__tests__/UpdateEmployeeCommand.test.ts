@@ -1,6 +1,7 @@
+import prisma from "@server/prisma";
 import { FakeUserManagementService } from "@server/shared/auth/fake/FakeUserManagementService";
 import { USER_ROLES } from "@server/shared/auth/types";
-import prisma from "@server/prisma";
+import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { ValidationError } from "@server/shared/errors/DomainError";
 import { MailAddressDuplicationCheckDomainService } from "@subdomains/employee/domain/services/MailAddressDuplicationCheckDomainService";
 import { PrismaEmployeeRepository } from "@subdomains/employee/infrastructure/prisma/PrismaEmployeeRepository";
@@ -21,7 +22,7 @@ describe("UpdateEmployeeCommand", () => {
     await prisma.employee.deleteMany({
       where: {
         employeeCd: {
-          in: ["EMP999902", "EMP999903"],
+          in: ["EMP999912", "EMP999913"],
         },
       },
     });
@@ -35,7 +36,6 @@ describe("UpdateEmployeeCommand", () => {
         departmentCd: "DEPT001",
         name: "テスト部署",
         abbreviation: "テスト",
-        displayOrder: 1,
         isActive: true,
       },
     });
@@ -44,7 +44,7 @@ describe("UpdateEmployeeCommand", () => {
     await prisma.employee.create({
       data: {
         id: TEST_EMPLOYEE_ID,
-        employeeCd: "EMP999902",
+        employeeCd: "EMP999912",
         email: "existing@example.com",
         name: "既存従業員",
         departmentId: "dept-001",
@@ -55,7 +55,7 @@ describe("UpdateEmployeeCommand", () => {
     await prisma.employee.create({
       data: {
         id: ANOTHER_EMPLOYEE_ID,
-        employeeCd: "EMP999903",
+        employeeCd: "EMP999913",
         email: "another@example.com",
         name: "別従業員",
         departmentId: "dept-001",
@@ -64,9 +64,7 @@ describe("UpdateEmployeeCommand", () => {
 
     // 5. 依存オブジェクト初期化
     repository = new PrismaEmployeeRepository();
-    mailDuplicationCheckService = new MailAddressDuplicationCheckDomainService(
-      repository
-    );
+    mailDuplicationCheckService = new MailAddressDuplicationCheckDomainService(repository);
     fakeUserManagementService = new FakeUserManagementService();
 
     // 6. 既存の認証ユーザーを登録
@@ -89,7 +87,7 @@ describe("UpdateEmployeeCommand", () => {
     await prisma.employee.deleteMany({
       where: {
         employeeCd: {
-          in: ["EMP999902", "EMP999903"],
+          in: ["EMP999912", "EMP999913"],
         },
       },
     });
@@ -99,7 +97,7 @@ describe("UpdateEmployeeCommand", () => {
   it("従業員情報を更新できる（email変更なし）", async () => {
     await command.execute({
       id: TEST_EMPLOYEE_ID,
-      employeeCd: "EMP999902",
+      employeeCd: "EMP999912",
       email: "existing@example.com", // 変更なし
       name: "更新後従業員",
       departmentId: "dept-001",
@@ -118,7 +116,7 @@ describe("UpdateEmployeeCommand", () => {
   it("email変更時に認証ユーザーのemailも同期される", async () => {
     await command.execute({
       id: TEST_EMPLOYEE_ID,
-      employeeCd: "EMP999902",
+      employeeCd: "EMP999912",
       email: "newemail@example.com", // 変更
       name: "既存従業員",
       departmentId: "dept-001",
@@ -139,7 +137,7 @@ describe("UpdateEmployeeCommand", () => {
   it("role変更時に認証ユーザーのroleも同期される", async () => {
     await command.execute({
       id: TEST_EMPLOYEE_ID,
-      employeeCd: "EMP999902",
+      employeeCd: "EMP999912",
       email: "existing@example.com",
       name: "既存従業員",
       departmentId: "dept-001",
@@ -151,11 +149,24 @@ describe("UpdateEmployeeCommand", () => {
     expect(authUser?.role).toBe(USER_ROLES.ADMIN);
   });
 
+  it("存在しない従業員IDの場合はNotFoundEntityErrorがスローされる", async () => {
+    await expect(
+      command.execute({
+        id: "non-existent-id-99999",
+        employeeCd: "EMP999912",
+        email: "existing@example.com",
+        name: "更新テスト",
+        departmentId: "dept-001",
+        role: USER_ROLES.USER,
+      })
+    ).rejects.toThrow(NotFoundEntityError);
+  });
+
   it("重複するメールアドレスの場合はエラー", async () => {
     await expect(
       command.execute({
         id: TEST_EMPLOYEE_ID,
-        employeeCd: "EMP999902",
+        employeeCd: "EMP999912",
         email: "another@example.com", // 別従業員と同じemail
         name: "既存従業員",
         departmentId: "dept-001",

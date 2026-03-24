@@ -1,11 +1,11 @@
 import { Employee } from "@subdomains/employee/domain/entities/Employee";
-import { IEmployeeRepository } from "@subdomains/employee/domain/repositories/IEmployeeRepository";
+import { EmployeeRepository } from "@subdomains/employee/domain/repositories/EmployeeRepository";
 import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
 import { EmployeeMapper } from "@subdomains/employee/infrastructure/mappers/EmployeeMapper";
 import prisma from "@server/prisma";
 
-export class PrismaEmployeeRepository implements IEmployeeRepository {
+export class PrismaEmployeeRepository implements EmployeeRepository {
   // ClientManagerをDIする
   // constructor(private prisma: PrismaClientManager) {}
 
@@ -86,5 +86,4 @@ export class PrismaEmployeeRepository implements IEmployeeRepository {
 
     return prismaEmployee ? EmployeeMapper.toDomain(prismaEmployee) : null;
   }
-
 }

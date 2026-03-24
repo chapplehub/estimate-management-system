@@ -1,77 +1,83 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { DeleteDepartmentCommand } from "../DeleteDepartmentCommand";
-import { IDepartmentRepository } from "@subdomains/department/domain/repositories/IDepartmentRepository";
-import { Department } from "@subdomains/department/domain/entities/Department";
-import { DepartmentCd } from "@subdomains/department/domain/values/DepartmentCd";
-import { DepartmentName } from "@subdomains/department/domain/values/DepartmentName";
-import { Abbreviation } from "@subdomains/department/domain/values/Abbreviation";
-import { ValidationError } from "@server/shared/errors/DomainError";
+import { createId } from "@paralleldrive/cuid2";
+import prisma from "@server/prisma";
 import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
+import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
+import { PrismaDepartmentRepository } from "@subdomains/department/infrastructure/prisma/PrismaDepartmentRepository";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { DeleteDepartmentCommand } from "../DeleteDepartmentCommand";
 
 describe("DeleteDepartmentCommand", () => {
   let command: DeleteDepartmentCommand;
-  let mockRepository: IDepartmentRepository;
+  let repository: PrismaDepartmentRepository;
 
-  const createTestDepartment = (id: string = "dept-1") => {
-    return Department.reconstruct(
-      id,
-      new DepartmentCd("DEPT001"),
-      new DepartmentName("営業部"),
-      new Abbreviation("営業"),
-      0,
-      true,
-      null,
-      new Date(),
-      new Date()
-    );
-  };
+  const TEST_CODES = ["DEPT996", "DEPT997"];
 
-  beforeEach(() => {
-    mockRepository = {
-      save: vi.fn(),
-      delete: vi.fn(),
-      findById: vi.fn(),
-      findByDepartmentCd: vi.fn(),
-      findChildren: vi.fn().mockResolvedValue([]),
-      findRootDepartments: vi.fn(),
-    };
+  async function cleanup() {
+    await prisma.department.deleteMany({
+      where: { parentId: { not: null }, departmentCd: { in: TEST_CODES } },
+    });
+    await prisma.department.deleteMany({
+      where: { departmentCd: { in: TEST_CODES } },
+    });
+  }
 
-    command = new DeleteDepartmentCommand(mockRepository);
+  beforeEach(async () => {
+    await cleanup();
+
+    repository = new PrismaDepartmentRepository();
+    command = new DeleteDepartmentCommand(repository);
+  });
+
+  afterEach(async () => {
+    await cleanup();
   });
 
   it("部署を削除できる", async () => {
-    const department = createTestDepartment();
-    vi.mocked(mockRepository.findById).mockResolvedValue(department);
-    vi.mocked(mockRepository.findChildren).mockResolvedValue([]);
+    const deptId = createId();
+    await prisma.department.create({
+      data: {
+        id: deptId,
+        departmentCd: TEST_CODES[0],
+        name: "削除テスト部署",
+        abbreviation: "削除テスト",
+        isActive: true,
+      },
+    });
 
-    await command.execute({ id: "dept-1" });
+    await command.execute({ id: deptId });
 
-    expect(mockRepository.delete).toHaveBeenCalledWith("dept-1");
+    const deleted = await prisma.department.findUnique({ where: { id: deptId } });
+    expect(deleted).toBeNull();
   });
 
   it("存在しない部署を削除しようとするとエラー", async () => {
-    vi.mocked(mockRepository.findById).mockResolvedValue(null);
-
-    await expect(command.execute({ id: "non-existent" })).rejects.toThrow(
-      NotFoundEntityError
-    );
-
-    expect(mockRepository.delete).not.toHaveBeenCalled();
+    await expect(command.execute({ id: "non-existent-id" })).rejects.toThrow(NotFoundEntityError);
   });
 
   it("子部署がある場合は削除できない", async () => {
-    const department = createTestDepartment();
-    const childDepartment = createTestDepartment("child-1");
-    vi.mocked(mockRepository.findById).mockResolvedValue(department);
-    vi.mocked(mockRepository.findChildren).mockResolvedValue([childDepartment]);
+    const parentId = createId();
+    const childId = createId();
 
-    await expect(command.execute({ id: "dept-1" })).rejects.toThrow(
-      ValidationError
-    );
-    await expect(command.execute({ id: "dept-1" })).rejects.toThrow(
-      "子部署が存在するため"
-    );
+    await prisma.department.create({
+      data: {
+        id: parentId,
+        departmentCd: TEST_CODES[0],
+        name: "親部署",
+        abbreviation: "親",
+        isActive: true,
+      },
+    });
+    await prisma.department.create({
+      data: {
+        id: childId,
+        departmentCd: TEST_CODES[1],
+        name: "子部署",
+        abbreviation: "子",
+        isActive: true,
+        parentId,
+      },
+    });
 
-    expect(mockRepository.delete).not.toHaveBeenCalled();
+    await expect(command.execute({ id: parentId })).rejects.toThrow(BusinessRuleViolationError);
   });
 });

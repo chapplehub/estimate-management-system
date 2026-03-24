@@ -1,6 +1,6 @@
 import { DepartmentDTO } from "./dto/DepartmentDTO";
 import { DepartmentListOptions } from "./dto/DepartmentSearchCriteria";
-import { IDepartmentQueryService } from "./IDepartmentQueryService";
+import { DepartmentQueryService } from "./DepartmentQueryService";
 
 export type GetActiveDepartmentsInput = {
   options?: DepartmentListOptions;
@@ -10,9 +10,7 @@ export type GetActiveDepartmentsInput = {
  * 有効な部署のみ取得クエリ
  */
 export class GetActiveDepartmentsQuery {
-  public constructor(
-    private readonly departmentQueryService: IDepartmentQueryService
-  ) {}
+  public constructor(private readonly departmentQueryService: DepartmentQueryService) {}
 
   async execute(input: GetActiveDepartmentsInput): Promise<DepartmentDTO[]> {
     return await this.departmentQueryService.findActive(input.options);

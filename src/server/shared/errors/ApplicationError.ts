@@ -32,10 +32,7 @@ export class NotFoundError extends ApplicationError {
  * // → "従業員が見つかりません: EMPLOYEECD=EMP000001"
  */
 export class NotFoundEntityError extends ApplicationError {
-  constructor(
-    entityClass: { ENTITY_NAME: string },
-    identifier: Record<string, unknown>
-  ) {
+  constructor(entityClass: { ENTITY_NAME: string }, identifier: Record<string, unknown>) {
     const entityName = entityClass.ENTITY_NAME;
     const identifierStr = Object.entries(identifier)
       .map(([key, value]) => `${key.toUpperCase()}=${value}`)

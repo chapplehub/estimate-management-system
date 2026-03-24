@@ -749,31 +749,31 @@ NODE_ENV=production
 
 ```bash
 # 開発サーバー起動
-npm run dev
+pnpm dev
 
 # ビルド
-npm run build
+pnpm build
 
 # 本番サーバー起動
-npm start
+pnpm start
 
 # テスト実行
-npm test
+pnpm test
 
 # テストカバレッジ
-npm run test:coverage
+pnpm test:coverage
 
 # Prisma マイグレーション
-npx prisma migrate dev
+pnpm exec prisma migrate dev
 
 # Prisma Studio起動
-npx prisma studio
+pnpm exec prisma studio
 
 # リント
-npm run lint
+pnpm lint
 
 # フォーマット
-npm run format
+pnpm format
 ```
 
 ---

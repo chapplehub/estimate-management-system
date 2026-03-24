@@ -1,18 +1,12 @@
 import { headers } from "next/headers";
-import type { IAuthService } from "../IAuthService";
-import type {
-  AuthSession,
-  AuthUser,
-  SignInInput,
-  SignInResult,
-  SignOutResult,
-} from "../types";
+import type { AuthService } from "../AuthService";
+import type { AuthSession, AuthUser, SignInInput, SignInResult, SignOutResult } from "../types";
 import { auth } from "./auth";
 
 /**
- * Better Auth による IAuthService の実装
+ * Better Auth による AuthService の実装
  */
-export class BetterAuthService implements IAuthService {
+export class BetterAuthService implements AuthService {
   async getCurrentSession(): Promise<AuthSession | null> {
     const session = await auth.api.getSession({
       headers: await headers(),

@@ -1,9 +1,6 @@
 "use server";
 
-import {
-  verifyAdmin,
-  verifyOwnerOrAdmin,
-} from "@/app/_lib/verifyAuthentication";
+import { verifyAdmin, verifyOwnerOrAdmin } from "@/app/_lib/verifyAuthentication";
 import { parseWithZod } from "@conform-to/zod/v4";
 import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
 import type { ActionResult } from "@shared/types/ActionResult";
@@ -12,7 +9,7 @@ import { updateEmployeeCommandFactory } from "@subdomains/employee/application/f
 import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { handleCommandError } from "../_lib/error-handler";
+import { handleCommandError } from "../../_shared/error-handler";
 import { updateEmployeeSchema } from "./schema";
 
 // ========================================
@@ -25,11 +22,7 @@ import { updateEmployeeSchema } from "./schema";
  * @param prevState - 前回の状態（Conform用）
  * @param formData - フォームデータ
  */
-export async function updateEmployee(
-  employeeCd: string,
-  prevState: unknown,
-  formData: FormData
-) {
+export async function updateEmployee(employeeCd: string, prevState: unknown, formData: FormData) {
   // Conformを使用してFormDataをパース・バリデーション
   const submission = parseWithZod(formData, {
     schema: updateEmployeeSchema,
@@ -74,8 +67,7 @@ export async function updateEmployee(
   } catch (error) {
     // ドメイン層エラーをConform形式に変換
     const errorResult = handleCommandError(error);
-    const errorMessage =
-      !errorResult.success && errorResult.error ? errorResult.error : undefined;
+    const errorMessage = !errorResult.success && errorResult.error ? errorResult.error : undefined;
     return submission.reply({
       formErrors: errorMessage ? [errorMessage] : [],
     });

@@ -62,13 +62,9 @@ export type SignInInput = {
 /**
  * サインイン結果
  */
-export type SignInResult =
-  | { success: true; user: AuthUser }
-  | { success: false; error: string };
+export type SignInResult = { success: true; user: AuthUser } | { success: false; error: string };
 
 /**
  * サインアウト結果
  */
-export type SignOutResult =
-  | { success: true }
-  | { success: false; error: string };
+export type SignOutResult = { success: true } | { success: false; error: string };

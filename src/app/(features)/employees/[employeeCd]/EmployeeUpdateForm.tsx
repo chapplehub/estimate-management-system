@@ -1,15 +1,9 @@
 "use client";
 
-import {
-  getFormProps,
-  getInputProps,
-  getSelectProps,
-  useForm,
-} from "@conform-to/react";
-import { parseWithZod } from "@conform-to/zod/v4";
+import { getFormProps, getInputProps, getSelectProps } from "@conform-to/react";
+import { useServerForm } from "@/app/_hooks/useServerForm";
 import type { UserRole } from "@server/shared/auth/types";
 import { USER_ROLES } from "@server/shared/auth/types";
-import { useActionState } from "react";
 import { updateEmployee } from "./actions";
 import { updateEmployeeSchema } from "./schema";
 
@@ -29,35 +23,19 @@ type Props = {
   departmentSelectSlot: React.ReactNode;
 };
 
-export function EmployeeUpdateForm({
-  employee,
-  canUpdate,
-  departmentSelectSlot,
-}: Props) {
+export function EmployeeUpdateForm({ employee, canUpdate, departmentSelectSlot }: Props) {
   // LEARN: bind()でemployeeCdを事前にバインド(server-action-bind-vs-formdata.md)
-  const updateEmployeeWithEmployeeCd = updateEmployee.bind(
-    null,
-    employee.employeeCd
-  );
+  const updateEmployeeWithEmployeeCd = updateEmployee.bind(null, employee.employeeCd);
 
-  const [lastResult, formAction, isPending] = useActionState(
-    updateEmployeeWithEmployeeCd,
-    undefined
-  );
-
-  const [form, fields] = useForm({
-    lastResult,
+  const { form, fields, isPending } = useServerForm({
+    action: updateEmployeeWithEmployeeCd,
+    schema: updateEmployeeSchema,
     defaultValue: {
       name: employee.name,
       email: employee.email,
       departmentId: employee.departmentId,
       role: employee.role ?? USER_ROLES.USER,
     },
-    onValidate({ formData }) {
-      return parseWithZod(formData, { schema: updateEmployeeSchema });
-    },
-    shouldValidate: "onBlur",
-    shouldRevalidate: "onInput",
   });
 
   return (
@@ -77,17 +55,9 @@ export function EmployeeUpdateForm({
         </div>
       )}
 
-      <form
-        {...getFormProps(form)}
-        action={formAction}
-        noValidate
-        className="space-y-4"
-      >
+      <form {...getFormProps(form)} noValidate className="space-y-4">
         <div>
-          <label
-            htmlFor={fields.name.id}
-            className="block text-gray-700 text-sm font-bold mb-2"
-          >
+          <label htmlFor={fields.name.id} className="block text-gray-700 text-sm font-bold mb-2">
             名前
           </label>
           <input
@@ -103,10 +73,7 @@ export function EmployeeUpdateForm({
         </div>
 
         <div>
-          <label
-            htmlFor={fields.email.id}
-            className="block text-gray-700 text-sm font-bold mb-2"
-          >
+          <label htmlFor={fields.email.id} className="block text-gray-700 text-sm font-bold mb-2">
             メールアドレス
           </label>
           <input
@@ -136,34 +103,23 @@ export function EmployeeUpdateForm({
             readOnly
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline bg-gray-100"
           />
-          <p className="text-gray-600 text-xs mt-1">
-            形式: EMP + 6桁の数字（例: EMP000001）
-          </p>
+          <p className="text-gray-600 text-xs mt-1">形式: EMP + 6桁の数字（例: EMP000001）</p>
         </div>
 
         <div>
-          <label
-            htmlFor="departmentId"
-            className="block text-gray-700 text-sm font-bold mb-2"
-          >
+          <label htmlFor="departmentId" className="block text-gray-700 text-sm font-bold mb-2">
             所属部署
           </label>
           {departmentSelectSlot}
           {fields.departmentId.errors && (
-            <p
-              className="text-red-500 text-xs mt-1"
-              id={fields.departmentId.errorId}
-            >
+            <p className="text-red-500 text-xs mt-1" id={fields.departmentId.errorId}>
               {fields.departmentId.errors[0]}
             </p>
           )}
         </div>
 
         <div>
-          <label
-            htmlFor={fields.role.id}
-            className="block text-gray-700 text-sm font-bold mb-2"
-          >
+          <label htmlFor={fields.role.id} className="block text-gray-700 text-sm font-bold mb-2">
             権限
           </label>
           <select

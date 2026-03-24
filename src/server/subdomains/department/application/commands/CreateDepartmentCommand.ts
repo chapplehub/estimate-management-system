@@ -1,5 +1,5 @@
 import { Department } from "@subdomains/department/domain/entities/Department";
-import { IDepartmentRepository } from "@subdomains/department/domain/repositories/IDepartmentRepository";
+import { DepartmentRepository } from "@subdomains/department/domain/repositories/DepartmentRepository";
 import { DepartmentCdDuplicationCheckDomainService } from "@subdomains/department/domain/services/DepartmentCdDuplicationCheckDomainService";
 import { DepartmentCd } from "@subdomains/department/domain/values/DepartmentCd";
 import { DepartmentName } from "@subdomains/department/domain/values/DepartmentName";
@@ -10,7 +10,6 @@ export type CreateDepartmentInput = {
   departmentCd: string;
   name: string;
   abbreviation: string;
-  displayOrder?: number;
   parentId?: string | null;
 };
 
@@ -19,7 +18,7 @@ export type CreateDepartmentInput = {
  */
 export class CreateDepartmentCommand {
   public constructor(
-    private readonly departmentRepository: IDepartmentRepository,
+    private readonly departmentRepository: DepartmentRepository,
     private readonly departmentCdDuplicationCheckDomainService: DepartmentCdDuplicationCheckDomainService
   ) {}
 
@@ -30,20 +29,14 @@ export class CreateDepartmentCommand {
     const isCdDuplicated =
       await this.departmentCdDuplicationCheckDomainService.execute(departmentCd);
     if (isCdDuplicated) {
-      throw new ValidationError(
-        `既に存在する部署コードです: CD=${departmentCd.value}`
-      );
+      throw new ValidationError(`既に存在する部署コードです: CD=${departmentCd.value}`);
     }
 
     // 親部署が指定されている場合、存在確認
     if (input.parentId) {
-      const parentDepartment = await this.departmentRepository.findById(
-        input.parentId
-      );
+      const parentDepartment = await this.departmentRepository.findById(input.parentId);
       if (!parentDepartment) {
-        throw new ValidationError(
-          `親部署が存在しません: ID=${input.parentId}`
-        );
+        throw new ValidationError(`親部署が存在しません: ID=${input.parentId}`);
       }
       if (!parentDepartment.isActive) {
         throw new ValidationError(
@@ -59,7 +52,6 @@ export class CreateDepartmentCommand {
       departmentCd,
       name,
       abbreviation,
-      input.displayOrder ?? 0,
       input.parentId ?? null
     );
 

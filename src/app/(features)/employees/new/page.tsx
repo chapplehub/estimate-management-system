@@ -6,10 +6,7 @@ export default function EmployeeNewPage() {
   return (
     <div className="container mx-auto p-8">
       <div className="mb-8">
-        <Link
-          href="/employees"
-          className="text-blue-600 hover:text-blue-800 hover:underline"
-        >
+        <Link href="/employees" className="text-blue-600 hover:text-blue-800 hover:underline">
           ← 従業員一覧に戻る
         </Link>
       </div>
@@ -18,9 +15,7 @@ export default function EmployeeNewPage() {
 
       {/* 作成フォーム */}
       <EmployeeCreateForm
-        departmentSelectSlot={
-          <DepartmentSelectField name="departmentId" id="departmentId" />
-        }
+        departmentSelectSlot={<DepartmentSelectField name="departmentId" id="departmentId" />}
       />
 
       <div className="mt-4">

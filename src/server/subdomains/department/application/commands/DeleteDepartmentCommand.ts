@@ -1,6 +1,6 @@
 import { Department } from "@subdomains/department/domain/entities/Department";
-import { IDepartmentRepository } from "@subdomains/department/domain/repositories/IDepartmentRepository";
-import { ValidationError } from "@server/shared/errors/DomainError";
+import { DepartmentRepository } from "@subdomains/department/domain/repositories/DepartmentRepository";
+import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
 import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 
 export type DeleteDepartmentInput = {
@@ -14,9 +14,7 @@ export type DeleteDepartmentInput = {
  * 論理削除（無効化）を行う場合は UpdateDepartmentCommand の isActive を使用すること。
  */
 export class DeleteDepartmentCommand {
-  public constructor(
-    private readonly departmentRepository: IDepartmentRepository
-  ) {}
+  public constructor(private readonly departmentRepository: DepartmentRepository) {}
 
   async execute(input: DeleteDepartmentInput): Promise<void> {
     const department = await this.departmentRepository.findById(input.id);
@@ -27,7 +25,7 @@ export class DeleteDepartmentCommand {
     // 子部署がある場合は削除できない
     const children = await this.departmentRepository.findChildren(input.id);
     if (children.length > 0) {
-      throw new ValidationError(
+      throw new BusinessRuleViolationError(
         "子部署が存在するため、この部署を削除できません。先に子部署を削除してください。"
       );
     }

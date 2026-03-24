@@ -29,7 +29,6 @@ describe("PrismaEmployeeRepository", () => {
         departmentCd: "DEPT001",
         name: "テスト部署",
         abbreviation: "テスト",
-        displayOrder: 1,
         isActive: true,
       },
     });
@@ -166,9 +165,7 @@ describe("PrismaEmployeeRepository", () => {
       await repository.save(employee);
 
       // findByEmployeeCdで検索
-      const found = await repository.findByEmployeeCd(
-        new EmployeeCd("EMP999002")
-      );
+      const found = await repository.findByEmployeeCd(new EmployeeCd("EMP999002"));
 
       expect(found).not.toBeNull();
       expect(found?.employeeCd.value).toBe("EMP999002");
@@ -177,9 +174,7 @@ describe("PrismaEmployeeRepository", () => {
     });
 
     it("存在しない社員コードの場合nullを返す", async () => {
-      const found = await repository.findByEmployeeCd(
-        new EmployeeCd("EMP999999")
-      );
+      const found = await repository.findByEmployeeCd(new EmployeeCd("EMP999999"));
 
       expect(found).toBeNull();
     });
@@ -203,9 +198,7 @@ describe("PrismaEmployeeRepository", () => {
       await repository.save(employee2);
 
       // EMP999003を検索
-      const found = await repository.findByEmployeeCd(
-        new EmployeeCd("EMP999003")
-      );
+      const found = await repository.findByEmployeeCd(new EmployeeCd("EMP999003"));
 
       expect(found).not.toBeNull();
       expect(found?.employeeCd.value).toBe("EMP999003");
@@ -213,6 +206,6 @@ describe("PrismaEmployeeRepository", () => {
     });
   });
 
-  // findAll は IEmployeeRepository から削除されました
-  // 一覧取得には IEmployeeQueryService を使用してください
+  // findAll は EmployeeRepository から削除されました
+  // 一覧取得には EmployeeQueryService を使用してください
 });

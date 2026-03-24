@@ -72,15 +72,7 @@ export class Employee {
     createdAt: Date,
     updatedAt: Date
   ): Employee {
-    return new Employee(
-      id,
-      employeeCd,
-      email,
-      name,
-      departmentId,
-      createdAt,
-      updatedAt
-    );
+    return new Employee(id, employeeCd, email, name, departmentId, createdAt, updatedAt);
   }
 
   // ========================================

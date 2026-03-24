@@ -48,7 +48,7 @@ export function SelectField({
   defaultValue = "",
   placeholder = "選択してください",
   disabled = false,
-  required = false,
+  required = true,
   className,
   ...rest
 }: SelectFieldProps) {
@@ -67,7 +67,7 @@ export function SelectField({
       className={cn(baseClassName, className)}
       {...rest}
     >
-      <option value="" disabled>
+      <option value="" disabled={required}>
         {placeholder}
       </option>
       {options.map((option) => (

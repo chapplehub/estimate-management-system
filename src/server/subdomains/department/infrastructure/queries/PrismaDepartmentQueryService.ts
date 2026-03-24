@@ -6,7 +6,7 @@ import {
   DepartmentSearchCriteria,
   DepartmentListOptions,
 } from "@subdomains/department/application/queries/dto/DepartmentSearchCriteria";
-import { IDepartmentQueryService } from "@subdomains/department/application/queries/IDepartmentQueryService";
+import { DepartmentQueryService } from "@subdomains/department/application/queries/DepartmentQueryService";
 import prisma from "@server/prisma";
 import { Prisma } from "@generated/prisma/client";
 
@@ -15,7 +15,7 @@ import { Prisma } from "@generated/prisma/client";
  *
  * データベースから直接DTOを取得し、軽量で高速な読み取りを実現
  */
-export class PrismaDepartmentQueryService implements IDepartmentQueryService {
+export class PrismaDepartmentQueryService implements DepartmentQueryService {
   async findById(id: string): Promise<DepartmentDTO | null> {
     const department = await prisma.department.findUnique({
       where: { id },
@@ -79,11 +79,8 @@ export class PrismaDepartmentQueryService implements IDepartmentQueryService {
     return departments.map((d) => this.toDTO(d));
   }
 
-  async findChildren(
-    parentId: string,
-    options?: DepartmentListOptions
-  ): Promise<DepartmentDTO[]> {
-    const orderBy = this.buildOrderBy(options) ?? { displayOrder: "asc" as const };
+  async findChildren(parentId: string, options?: DepartmentListOptions): Promise<DepartmentDTO[]> {
+    const orderBy = this.buildOrderBy(options) ?? { departmentCd: "asc" as const };
 
     const departments = await prisma.department.findMany({
       where: { parentId },
@@ -96,10 +93,8 @@ export class PrismaDepartmentQueryService implements IDepartmentQueryService {
     return departments.map((d) => this.toDTO(d));
   }
 
-  async findRootDepartments(
-    options?: DepartmentListOptions
-  ): Promise<DepartmentDTO[]> {
-    const orderBy = this.buildOrderBy(options) ?? { displayOrder: "asc" as const };
+  async findRootDepartments(options?: DepartmentListOptions): Promise<DepartmentDTO[]> {
+    const orderBy = this.buildOrderBy(options) ?? { departmentCd: "asc" as const };
 
     const departments = await prisma.department.findMany({
       where: { parentId: null },
@@ -117,7 +112,7 @@ export class PrismaDepartmentQueryService implements IDepartmentQueryService {
     const allDepartments = await prisma.department.findMany({
       where: { isActive: true },
       select: this.getSelectFields(),
-      orderBy: { displayOrder: "asc" },
+      orderBy: { departmentCd: "asc" },
     });
 
     const departmentDTOs = allDepartments.map((d) => this.toDTO(d));
@@ -134,9 +129,7 @@ export class PrismaDepartmentQueryService implements IDepartmentQueryService {
   /**
    * 検索条件からPrismaのWHERE句を構築
    */
-  private buildWhereClause(
-    criteria: DepartmentSearchCriteria
-  ): Prisma.DepartmentWhereInput {
+  private buildWhereClause(criteria: DepartmentSearchCriteria): Prisma.DepartmentWhereInput {
     const where: Prisma.DepartmentWhereInput = {};
 
     if (criteria.name) {
@@ -200,7 +193,6 @@ export class PrismaDepartmentQueryService implements IDepartmentQueryService {
       departmentCd: true,
       name: true,
       abbreviation: true,
-      displayOrder: true,
       isActive: true,
       parentId: true,
       createdAt: true,
@@ -216,7 +208,6 @@ export class PrismaDepartmentQueryService implements IDepartmentQueryService {
     departmentCd: string;
     name: string;
     abbreviation: string;
-    displayOrder: number;
     isActive: boolean;
     parentId: string | null;
     createdAt: Date;
@@ -227,7 +218,6 @@ export class PrismaDepartmentQueryService implements IDepartmentQueryService {
       departmentCd: department.departmentCd,
       name: department.name,
       abbreviation: department.abbreviation,
-      displayOrder: department.displayOrder,
       isActive: department.isActive,
       parentId: department.parentId,
       createdAt: department.createdAt,
@@ -238,10 +228,7 @@ export class PrismaDepartmentQueryService implements IDepartmentQueryService {
   /**
    * フラットなDTOリストから階層構造を構築
    */
-  private buildTree(
-    departments: DepartmentDTO[],
-    parentId: string | null
-  ): DepartmentTreeDTO[] {
+  private buildTree(departments: DepartmentDTO[], parentId: string | null): DepartmentTreeDTO[] {
     return departments
       .filter((d) => d.parentId === parentId)
       .map((d) => ({

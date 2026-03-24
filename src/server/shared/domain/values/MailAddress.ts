@@ -7,10 +7,8 @@ export class MailAddress extends StringValueObject<"MailAddress"> {
    * メールアドレスの最大文字数（RFC 5321に基づく）
    */
   protected static readonly MAX_LENGTH = 254;
-  protected static readonly ERROR_MESSAGE_TOO_SHORT =
-    "メールアドレスは必須です";
-  protected static readonly ERROR_MESSAGE_INVALID_FORMAT =
-    "メールアドレスの形式が正しくありません";
+  protected static readonly ERROR_MESSAGE_TOO_SHORT = "メールアドレスは必須です";
+  protected static readonly ERROR_MESSAGE_INVALID_FORMAT = "メールアドレスの形式が正しくありません";
 
   constructor(value: string) {
     super(value.toLowerCase().trim());

@@ -1,4 +1,5 @@
 import type { UserRole } from "@server/shared/auth/types";
+import type { SortOrder } from "@server/shared/queries/SortOrder";
 
 /**
  * 従業員検索条件
@@ -30,6 +31,11 @@ export type EmployeeSearchCriteria = {
 /**
  * リスト取得のオプション
  */
+export type EmployeeSortField = "name" | "employeeCd" | "email" | "createdAt" | "updatedAt";
+
+/**
+ * リスト取得のオプション
+ */
 export type ListOptions = {
   /** 取得件数制限 */
   limit?: number;
@@ -38,8 +44,5 @@ export type ListOptions = {
   offset?: number;
 
   /** ソート順 */
-  orderBy?: {
-    field: "name" | "employeeCd" | "email" | "createdAt" | "updatedAt";
-    direction: "asc" | "desc";
-  };
+  orderBy?: SortOrder<EmployeeSortField>;
 };

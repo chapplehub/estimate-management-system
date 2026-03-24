@@ -1,0 +1,23 @@
+node_modules
+.next
+build
+coverage
+generated
+pnpm-lock.yaml
+
+# Documentation (Markdown formatting may break)
+docs
+learning
+
+# Tool configurations
+.claude
+.serena
+.husky
+
+# Database (except seed.ts is handled separately)
+prisma/*.prisma
+
+# Test artifacts
+test-results
+playwright-report
+blob-report

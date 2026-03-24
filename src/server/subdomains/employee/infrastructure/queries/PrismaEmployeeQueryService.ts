@@ -3,7 +3,7 @@ import {
   EmployeeSearchCriteria,
   ListOptions,
 } from "@subdomains/employee/application/queries/dto/EmployeeSearchCriteria";
-import { IEmployeeQueryService } from "@subdomains/employee/application/queries/IEmployeeQueryService";
+import { EmployeeQueryService } from "@subdomains/employee/application/queries/EmployeeQueryService";
 import prisma from "@server/prisma";
 import { Prisma } from "@generated/prisma/client";
 import type { UserRole } from "@server/shared/auth/types";
@@ -14,7 +14,7 @@ import type { UserRole } from "@server/shared/auth/types";
  * データベースから直接DTOを取得し、軽量で高速な読み取りを実現
  * Note: roleはUser.roleから取得する
  */
-export class PrismaEmployeeQueryService implements IEmployeeQueryService {
+export class PrismaEmployeeQueryService implements EmployeeQueryService {
   async findById(id: string): Promise<EmployeeDTO | null> {
     const employee = await prisma.employee.findUnique({
       where: { id },
@@ -42,10 +42,7 @@ export class PrismaEmployeeQueryService implements IEmployeeQueryService {
     return employee ? this.toDTO(employee) : null;
   }
 
-  async search(
-    criteria: EmployeeSearchCriteria,
-    options?: ListOptions
-  ): Promise<EmployeeDTO[]> {
+  async search(criteria: EmployeeSearchCriteria, options?: ListOptions): Promise<EmployeeDTO[]> {
     const where = this.buildWhereClause(criteria);
     const orderBy = this.buildOrderBy(options);
 
@@ -81,9 +78,7 @@ export class PrismaEmployeeQueryService implements IEmployeeQueryService {
   /**
    * 検索条件からPrismaのWHERE句を構築
    */
-  private buildWhereClause(
-    criteria: EmployeeSearchCriteria
-  ): Prisma.EmployeeWhereInput {
+  private buildWhereClause(criteria: EmployeeSearchCriteria): Prisma.EmployeeWhereInput {
     const where: Prisma.EmployeeWhereInput = {};
 
     if (criteria.name) {
@@ -122,9 +117,7 @@ export class PrismaEmployeeQueryService implements IEmployeeQueryService {
   /**
    * ListOptionsからPrismaのOrderBy句を構築
    */
-  private buildOrderBy(
-    options?: ListOptions
-  ): Prisma.EmployeeOrderByWithRelationInput | undefined {
+  private buildOrderBy(options?: ListOptions): Prisma.EmployeeOrderByWithRelationInput | undefined {
     if (!options?.orderBy) {
       return undefined;
     }

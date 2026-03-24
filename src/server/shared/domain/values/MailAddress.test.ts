@@ -34,18 +34,14 @@ describe("MailAddress 値オブジェクト", () => {
     });
 
     it("不正な形式の場合はエラー", () => {
-      expect(() => new MailAddress("invalid-mailAddress")).toThrow(
-        ValidationError
-      );
+      expect(() => new MailAddress("invalid-mailAddress")).toThrow(ValidationError);
       expect(() => new MailAddress("invalid-mailAddress")).toThrow(
         "メールアドレスの形式が正しくありません"
       );
     });
 
     it("@がない場合はエラー", () => {
-      expect(() => new MailAddress("tanaka.company.com")).toThrow(
-        ValidationError
-      );
+      expect(() => new MailAddress("tanaka.company.com")).toThrow(ValidationError);
     });
 
     it("ドメインがない場合はエラー", () => {

@@ -1,61 +1,65 @@
-```markdown
-# Git Worktree エイリアス運用ルール
+# Git Worktree 管理関数 運用ルール
 
 ## 概要
 
-複数ブランチを同時に作業するための worktree を簡単に管理するエイリアス。
+複数ブランチを同時に作業するための worktree を簡単に管理するシェル関数。
+worktree 作成時に自動で環境セットアップ（pnpm install、prisma generate、.env コピー）を行い、作成したディレクトリに移動します。
 
 ## ディレクトリ構造
-```
 
+```
 my-project/
 ├── .git/
 ├── src/
-├── worktrees/ ← worktree はここに作成される
-│ ├── feature-login/
-│ ├── feature-signup/
-│ └── hotfix-bug-123/
-└── .gitignore ← /worktrees/ を追加しておく
+├── worktrees/           ← worktree はここに作成される
+│   ├── feature-login/
+│   ├── feature-signup/
+│   └── hotfix-bug-123/
+└── .gitignore           ← /worktrees/ を追加しておく
+```
 
-````
-
-## エイリアス一覧
+## コマンド一覧
 
 | コマンド | 説明 |
 |----------|------|
-| `git wta <branch>` | worktree を追加 |
-| `git wtr <branch> [opt]` | worktree を削除 |
-| `git wtl` | worktree 一覧表示 |
+| `wta <branch>` | worktree を追加（自動セットアップ + cd） |
+| `wtr <branch> [opt]` | worktree を削除 |
+| `wtl` | worktree 一覧表示 |
 
 ## 使い方
 
 ### worktree 追加
 
 ```bash
-git wta feature/new-feature
-````
+wta feature/new-feature
+```
 
-- ブランチが存在すれば、そのブランチで worktree 作成
-- ブランチが存在しなければ、新規ブランチを作成して worktree 作成
+実行される処理：
+1. worktree 作成（ブランチがなければ新規作成）
+2. `.env` ファイルのコピー
+3. `pnpm install`
+4. `prisma generate`
+5. 作成したディレクトリに `cd`
+
 - `feature/new-feature` → `worktrees/feature-new-feature/` に配置
 
 ### worktree 削除
 
 ```bash
 # worktree のみ削除（ブランチは残る）
-git wtr feature/new-feature
+wtr feature/new-feature
 
 # worktree + ブランチ削除（マージ済みのみ）
-git wtr feature/new-feature -d
+wtr feature/new-feature -d
 
 # 強制削除（未コミット変更・未マージでも削除）
-git wtr feature/new-feature -D
+wtr feature/new-feature -D
 ```
 
 ### 一覧表示
 
 ```bash
-git wtl
+wtl
 ```
 
 ## オプション早見表
@@ -68,62 +72,47 @@ git wtl
 
 ## セットアップ
 
-### 1. ~/.gitconfig に追加
+### 1. ~/.bashrc に関数を追加
 
-```ini
-[alias]
-    wta = "!f() { \
-        branch=\"$1\"; \
-        safe_branch=$(echo \"$branch\" | sed 's/\\//-/g'); \
-        root=$(git rev-parse --show-toplevel); \
-        worktrees_dir=\"$root/worktrees\"; \
-        mkdir -p \"$worktrees_dir\"; \
-        path=\"$worktrees_dir/$safe_branch\"; \
-        if git show-ref --verify --quiet \"refs/heads/$branch\"; then \
-            git worktree add \"$path\" \"$branch\"; \
-        else \
-            git worktree add -b \"$branch\" \"$path\"; \
-        fi; \
-    }; f"
+以下のどちらかの方法で設定してください。
 
-    wtr = "!f() { \
-        branch=\"$1\"; \
-        opt=\"$2\"; \
-        worktree_path=$(git worktree list --porcelain | grep -B2 \"branch refs/heads/$branch\" | grep \"worktree\" | cut -d' ' -f2); \
-        if [ -z \"$worktree_path\" ]; then \
-            echo \"Worktree for branch '$branch' not found\"; \
-            return 1; \
-        fi; \
-        if [ \"$opt\" = \"-D\" ]; then \
-            git worktree remove --force \"$worktree_path\"; \
-        else \
-            git worktree remove \"$worktree_path\"; \
-        fi; \
-        if [ \"$opt\" = \"-d\" ]; then \
-            git branch -d \"$branch\"; \
-        elif [ \"$opt\" = \"-D\" ]; then \
-            git branch -D \"$branch\"; \
-        fi; \
-    }; f"
+#### 方法A: source で読み込む（推奨）
 
-    wtl = worktree list
+`~/.bashrc` に以下を追加：
+
+```bash
+# Git Worktree 管理関数を読み込む
+if [ -f ~/dev/estimate-management-system/scripts/bashrc-worktree-functions.sh ]; then
+    source ~/dev/estimate-management-system/scripts/bashrc-worktree-functions.sh
+fi
 ```
 
-### 2. .gitignore に追加
+#### 方法B: 直接コピー
+
+`scripts/bashrc-worktree-functions.sh` の内容を `~/.bashrc` に直接コピー。
+
+### 2. 設定を反映
+
+```bash
+source ~/.bashrc
+```
+
+### 3. .gitignore に追加
 
 ```gitignore
 /worktrees/
 ```
 
+## カスタマイズ
+
+`scripts/bashrc-worktree-functions.sh` の `wta` 関数を編集することで、プロジェクト固有の初期化処理を追加できます。
+
+例：Claude Code を自動起動したい場合は、`wta` 関数の最後に `cc` を追加。
+
 ## 注意事項
 
+- git worktree add で作ったブランチに引き継がれるのは コミット済みの履歴だけ で、インデックスとワーキングディレクトリは独立した新しいものが作られる
 - worktree 内で作業中のファイルは、削除前にコミットまたはスタッシュすること
 - `-D` は未マージの作業も消えるので慎重に使う
-- メインの作業ディレクトリでエイリアスを実行すること
-
-```
-
----
-
-これでどうかな？追加したい項目とかある？
-```
+- メインの作業ディレクトリでコマンドを実行すること
+- `git wta` ではなく `wta` で実行（シェル関数のため）

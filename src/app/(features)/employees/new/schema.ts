@@ -1,9 +1,5 @@
 import { z } from "zod";
-import {
-  employeeBaseSchema,
-  employeeCdSchema,
-  passwordSchema,
-} from "../_shared/schema";
+import { employeeBaseSchema, employeeCdSchema, passwordSchema } from "../_shared/schema";
 
 /**
  * 従業員作成フォームのバリデーションスキーマ
@@ -12,7 +8,7 @@ import {
 export const createEmployeeSchema = employeeBaseSchema.extend({
   employeeCd: employeeCdSchema,
   password: passwordSchema,
-  departmentId: z.string().min(1, "部署を選択してください"),
+  departmentId: z.string({ error: "部署を選択してください" }).min(1, "部署を選択してください"),
 });
 
 export type CreateEmployeeInput = z.infer<typeof createEmployeeSchema>;

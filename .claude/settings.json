@@ -1,6 +1,99 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(*)",
+      "Bash(pnpm dev*)",
+      "Bash(pnpm build*)",
+      "Bash(pnpm start*)",
+      "Bash(pnpm test*)",
+      "Bash(vitest*)",
+      "Bash(pnpm lint*)",
+      "Bash(eslint*)",
+      "Bash(pnpm db:studio*)",
+      "Bash(pnpm db:generate*)",
+      "Bash(prisma generate*)",
+      "Bash(prisma studio*)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)",
+      "Bash(git branch*)",
+      "Bash(git add*)",
+      "Bash(git checkout*)",
+      "Bash(git commit*)",
+      "Bash(git push*)",
+      "Bash(git worktree add*)",
+      "Bash(git worktree list*)",
+      "Bash(git worktree remove*)",
+      "Bash(pnpm install*)",
+      "Bash(pnpm add*)",
+      "Bash(gh issue view*)",
+      "Bash(gh issue list*)",
+      "Bash(gh issue create*)",
+      "Bash(gh issue comment*)",
+      "Bash(gh issue close*)",
+      "Bash(gh pr create*)",
+      "Bash(gh pr view*)",
+      "Bash(gh pr list*)",
+      "Bash(gh label list*)",
+      "Bash(cat *)",
+      "Bash(tree*)",
+      "Bash(wc *)",
+      "Bash(ls *)",
+      "Bash(find *)",
+      "Read(/web/**)",
+      "Write(/web/src/**)",
+      "Edit(/web/src/**)",
+      "Write(/learn/**)",
+      "Edit(/learn/**)",
+      "SlashCommand(/learn*)",
+      "WebSearch",
+      "mcp__context7",
+      "mcp__serena"
+    ],
+    "deny": [
+      "Bash(git rebase*)",
+      "Bash(git commit --no-verify *)",
+      "Bash(git push --force *)",
+      "Bash(git reset --hard *)",
+      "Bash(rm -rf *)",
+      "Bash(sudo *)",
+      "Bash(curl *)",
+      "Bash(wget *)",
+      "Bash(nc *)",
+      "Read(.env*)",
+      "Read(id_rsa)",
+      "Read(id_ed25519)",
+      "Write(.env*)",
+      "Write(**/secrets/**)",
+      "Bash(pnpm db:migrate*)",
+      "Bash(pnpm db:push*)",
+      "Bash(pnpm db:seed*)",
+      "Bash(prisma migrate*)",
+      "Bash(prisma db push*)"
+    ]
+  },
   "model": "opus",
-  "alwaysThinkingEnabled": true,
+  "defaultMode": "acceptEdits",
+  "sandbox": {
+    "enabled": false,
+    "filesystem": {
+      "allowWrite": [".", "~/.local/share/pnpm", "~/.npm"],
+      "denyWrite": [".env", ".env.local", "config/production.json"],
+      "denyRead": ["~/.ssh"],
+      "allowRead": ["."]
+    },
+    "network": {
+      "allowedDomains": [
+        "registry.npmjs.org",
+        "*.npmjs.org",
+        "github.com",
+        "*.github.com",
+        "api.github.com"
+      ],
+      "deniedDomains": []
+    }
+  },
   "hooks": {
     "SessionStart": [
       {
@@ -12,7 +105,26 @@
         ]
       }
     ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'INPUT=$(cat); SID=$(echo \"$INPUT\" | jq -r \".session_id\" | cut -c1-5); curl -s -d \"Claude Code [${SID}]: Completed🚀\" ntfy.sh/chapple-claude-kmy4b7lnj927 > /dev/null 2>&1 &'"
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'INPUT=$(cat); SID=$(echo \"$INPUT\" | jq -r \".session_id\" | cut -c1-5); curl -s -d \"Claude Code [${SID}]: Question❓\" ntfy.sh/chapple-claude-kmy4b7lnj927 > /dev/null 2>&1 &'"
+          }
+        ]
+      },
       {
         "matcher": "Bash",
         "hooks": [
@@ -21,89 +133,26 @@
             "command": "bash -c 'BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo \"unknown\"); INPUT=$(cat); if ! command -v jq &>/dev/null; then if echo \"$INPUT\" | grep -q \"git\"; then echo \"❌ ERROR: git commands blocked (jq not installed for safety check).\" >&2; exit 2; fi; exit 0; fi; CMD=$(echo \"$INPUT\" | jq -r \".tool_input.command // empty\" 2>/dev/null); if [ -z \"$CMD\" ]; then exit 0; fi; if echo \"$CMD\" | grep -qE \"git\\s+(push|commit)\"; then if [ \"$BRANCH\" = \"main\" ] || [ \"$BRANCH\" = \"master\" ] || [ \"$BRANCH\" = \"develop\" ]; then echo \"❌ ERROR: git push/commit to $BRANCH branch is blocked.\" >&2; echo \"Please use a feature branch or git worktree for development.\" >&2; exit 2; fi; fi'"
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'INPUT=$(cat); if ! command -v jq &>/dev/null; then exit 0; fi; CMD=$(echo \"$INPUT\" | jq -r \".tool_input.command // empty\" 2>/dev/null); if [ -z \"$CMD\" ]; then exit 0; fi; if ! echo \"$CMD\" | grep -qE \"git\\s+commit\"; then exit 0; fi; SETTINGS=\".claude/settings.local.json\"; if [ ! -f \"$SETTINGS\" ]; then exit 0; fi; PLANS_DIR=$(jq -r \".plansDirectory // empty\" \"$SETTINGS\" 2>/dev/null); if [ -z \"$PLANS_DIR\" ]; then exit 0; fi; PLAN_FILES=$(find \"$PLANS_DIR\" -maxdepth 1 -name \"*.md\" ! -name \"deviations.md\" 2>/dev/null); if [ -z \"$PLAN_FILES\" ]; then exit 0; fi; echo \"📋 リマインド: 実装計画が存在します。計画からの逸脱があれば ${PLANS_DIR}/deviations.md に追記してください。\"; exit 0'"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'INPUT=$(cat); if ! command -v jq &>/dev/null; then exit 0; fi; CMD=$(echo \"$INPUT\" | jq -r \".tool_input.command // empty\" 2>/dev/null); if [ -z \"$CMD\" ]; then exit 0; fi; if ! echo \"$CMD\" | grep -qE \"git\\s+commit\"; then exit 0; fi; SETTINGS=\".claude/settings.local.json\"; if [ ! -f \"$SETTINGS\" ]; then exit 0; fi; PLANS_DIR=$(jq -r \".plansDirectory // empty\" \"$SETTINGS\" 2>/dev/null); if [ -z \"$PLANS_DIR\" ]; then exit 0; fi; if [ ! -d \"$PLANS_DIR\" ]; then exit 0; fi; UNCOMMITTED=$(git status --porcelain \"$PLANS_DIR\" 2>/dev/null); if [ -n \"$UNCOMMITTED\" ]; then echo \"📋 注意: ${PLANS_DIR} に未コミットのファイルがあります。計画ファイルも一緒にコミットしてください。\"; fi; exit 0'"
+          }
+        ]
       }
     ]
   },
-  "permissions": {
-    "allow": [
-      "Bash(npm run dev:*)",
-      "Bash(npm run build:*)",
-      "Bash(npm run start:*)",
-      "Bash(npm start:*)",
-
-      "Bash(npm test:*)",
-      "Bash(npm run test:*)",
-      "Bash(vitest:*)",
-
-      "Bash(npm run lint:*)",
-      "Bash(eslint:*)",
-
-      "Bash(npm run db:studio:*)",
-      "Bash(npm run db:generate:*)",
-      "Bash(prisma generate:*)",
-      "Bash(prisma studio:*)",
-
-      "Bash(git status:*)",
-      "Bash(git diff:*)",
-      "Bash(git log:*)",
-      "Bash(git show:*)",
-      "Bash(git branch:*)",
-      "Bash(git add:*)",
-      "Bash(git checkout:*)",
-      "Bash(git commit:*)",
-      "Bash(git push:*)",
-      "Bash(git worktree add:*)",
-      "Bash(git worktree list:*)",
-      "Bash(git worktree remove:*)",
-
-      "Bash(npm install:*)",
-      "Bash(npm ci:*)",
-
-      "Bash(gh issue view:*)",
-      "Bash(gh issue list:*)",
-      "Bash(gh issue create:*)",
-      "Bash(gh issue comment:*)",
-      "Bash(gh issue close:*)",
-      "Bash(gh pr create:*)",
-      "Bash(gh pr view:*)",
-      "Bash(gh pr list:*)",
-
-      "Bash(cat:*)",
-      "Bash(tree:*)",
-      "Bash(wc:*)",
-
-      "Read(/web/**)",
-      "Write(/web/src/**)",
-      "Edit(/web/src/**)",
-      "Write(/learn/**)",
-      "Edit(/learn/**)",
-
-      "SlashCommand(/learn:*)"
-    ],
-    "deny": [
-      "Bash(git reset:*)",
-      "Bash(git rebase:*)",
-      "Bash(rm:*)",
-      "Bash(rm -rf:*)",
-      "Bash(sudo:*)",
-      "Bash(curl:*)",
-      "Bash(wget:*)",
-      "Bash(nc:*)",
-
-      "Read(.env*)",
-      "Read(id_rsa)",
-      "Read(id_ed25519)",
-      "Read(**/*token*)",
-      "Read(**/*key*)",
-
-      "Write(.env*)",
-      "Write(**/secrets/**)",
-
-      "Bash(npm run db:migrate:*)",
-      "Bash(npm run db:push:*)",
-      "Bash(npm run db:seed:*)",
-      "Bash(prisma migrate:*)",
-      "Bash(prisma db push:*)"
-    ]
-  }
+  "alwaysThinkingEnabled": true
 }

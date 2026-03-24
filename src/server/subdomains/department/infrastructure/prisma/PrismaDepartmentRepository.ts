@@ -1,10 +1,10 @@
 import { Department } from "@subdomains/department/domain/entities/Department";
-import { IDepartmentRepository } from "@subdomains/department/domain/repositories/IDepartmentRepository";
+import { DepartmentRepository } from "@subdomains/department/domain/repositories/DepartmentRepository";
 import { DepartmentCd } from "@subdomains/department/domain/values/DepartmentCd";
 import { DepartmentMapper } from "@subdomains/department/infrastructure/mappers/DepartmentMapper";
 import prisma from "@server/prisma";
 
-export class PrismaDepartmentRepository implements IDepartmentRepository {
+export class PrismaDepartmentRepository implements DepartmentRepository {
   /**
    * 部署を保存（新規作成・更新の両方に対応）
    *
@@ -52,9 +52,7 @@ export class PrismaDepartmentRepository implements IDepartmentRepository {
       where: { id: id },
     });
 
-    return prismaDepartment
-      ? DepartmentMapper.toDomain(prismaDepartment)
-      : null;
+    return prismaDepartment ? DepartmentMapper.toDomain(prismaDepartment) : null;
   }
 
   /**
@@ -68,9 +66,7 @@ export class PrismaDepartmentRepository implements IDepartmentRepository {
       where: { departmentCd: departmentCd.value },
     });
 
-    return prismaDepartment
-      ? DepartmentMapper.toDomain(prismaDepartment)
-      : null;
+    return prismaDepartment ? DepartmentMapper.toDomain(prismaDepartment) : null;
   }
 
   /**
@@ -82,7 +78,7 @@ export class PrismaDepartmentRepository implements IDepartmentRepository {
   async findChildren(parentId: string): Promise<Department[]> {
     const prismaDepartments = await prisma.department.findMany({
       where: { parentId: parentId },
-      orderBy: { displayOrder: "asc" },
+      orderBy: { departmentCd: "asc" },
     });
 
     return prismaDepartments.map(DepartmentMapper.toDomain);
@@ -96,7 +92,7 @@ export class PrismaDepartmentRepository implements IDepartmentRepository {
   async findRootDepartments(): Promise<Department[]> {
     const prismaDepartments = await prisma.department.findMany({
       where: { parentId: null },
-      orderBy: { displayOrder: "asc" },
+      orderBy: { departmentCd: "asc" },
     });
 
     return prismaDepartments.map(DepartmentMapper.toDomain);

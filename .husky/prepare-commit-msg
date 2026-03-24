@@ -1,0 +1,4 @@
+if [ "$(git rev-parse --git-dir)" != "$(git rev-parse --git-common-dir)" ]; then
+  exit 0
+fi
+exec < /dev/tty && npx cz --hook || true

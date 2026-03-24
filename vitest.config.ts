@@ -17,9 +17,7 @@ export default defineConfig({
           name: { label: "FrontEnd", color: "white" },
           root: "./src/app",
           environment: "jsdom",
-          setupFiles: [
-            path.resolve(__dirname, "./vitest-cleanup-after-each.ts"),
-          ],
+          setupFiles: [path.resolve(__dirname, "./vitest-cleanup-after-each.ts")],
           clearMocks: true,
         },
         resolve: {

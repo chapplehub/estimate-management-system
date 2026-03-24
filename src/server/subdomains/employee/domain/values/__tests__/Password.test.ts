@@ -61,7 +61,9 @@ describe("Password 値オブジェクト", () => {
 
     it("長すぎる（25文字）場合はエラー", () => {
       expect(() => new Password("Abcd123!@#Abcd123!@#ABCDE")).toThrow(ValidationError);
-      expect(() => new Password("Abcd123!@#Abcd123!@#ABCDE")).toThrow("パスワードは24文字以内で入力してください");
+      expect(() => new Password("Abcd123!@#Abcd123!@#ABCDE")).toThrow(
+        "パスワードは24文字以内で入力してください"
+      );
     });
   });
 

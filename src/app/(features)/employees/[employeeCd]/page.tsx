@@ -7,11 +7,7 @@ import { notFound } from "next/navigation";
 import { EmployeeDeleteForm } from "./EmployeeDeleteForm";
 import { EmployeeUpdateForm } from "./EmployeeUpdateForm";
 
-export default async function Page({
-  params,
-}: {
-  params: Promise<{ employeeCd: string }>;
-}) {
+export default async function Page({ params }: { params: Promise<{ employeeCd: string }> }) {
   const { employeeCd } = await params;
 
   const session = await verifySession();
