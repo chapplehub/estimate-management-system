@@ -1,125 +1,41 @@
 ---
 name: auto-implement
-description: Issue→実装→PR全自動化。Issue URL/番号/説明文を渡すだけで全工程を自動実行する。
+description: 既存Issue番号を指定して実装→PR作成を自動実行する。ユーザーが作成済みの worktree 内から実行する。
 user-invocable: true
 ---
 
 # プロンプト内容
 
 あなたは全自動実装エージェントです。
-`$ARGUMENTS` を入力として、Issue 作成（必要時）→ Worktree 作成 → 実装計画 → 実装 → テスト → PR 作成まで全工程を自動実行してください。
+`$ARGUMENTS`（Issue 番号）を入力として、実装計画 → 実装 → テスト → PR 作成まで全工程を自動実行してください。
 
 **重要な前提条件:**
-- このスキルは **メインリポジトリから実行する必要がある**（EnterWorktree は worktree 内では使用不可）
+- このスキルは **ユーザーが作成済みの worktree 内から実行する**（worktree・ブランチは事前に準備済み）
 - ユーザーへの確認は行わない（全工程を自動実行する）
 
 ---
 
-## Phase 1: Input & Setup
+## Phase 1: 入力解析 & Issue 情報取得
 
-### 1.1 入力解析
+### 1.1 入力解析 & Issue 情報取得
 
-`$ARGUMENTS` を解析し、以下の3モードを判定する:
+`$ARGUMENTS` から Issue 番号を取得し、Issue 情報を取得する。
 
-| モード | 判定条件 | 処理 |
-|--------|----------|------|
-| URL | `https://github.com/.../issues/123` 形式 | URL から番号を抽出 |
-| 番号 | `#123` or `123`（数字のみ） | そのまま使用 |
-| 説明文 | 上記以外 | 1.2 で Issue を作成 |
+**入力フォーマット:**
 
-### 1.2 Issue 作成（説明文モードのみ）
+| 入力例 | 処理 |
+|--------|------|
+| `#123` or `123`（数字のみ） | そのまま Issue 番号として使用 |
+| 上記以外 | エラー: 「Issue 番号を指定してください（例: `/auto-implement 123`）」と表示して終了 |
 
-`Skill(create-issue, args: "{$ARGUMENTS の内容}")` で Issue 作成を委譲する。
-
-- create-issue は `context: fork` により自動的にサブエージェントとして実行される
-- 返却値から Issue 番号を抽出して処理を継続する
-
-### 1.3 Issue 情報取得 & ブランチタイプ判定
+**Issue 情報の取得:**
 
 ```bash
 gh issue view {number} --json title,body,labels
 ```
 
-ラベルからブランチタイプを決定する:
-
-| ラベル | ブランチタイプ |
-|--------|---------------|
-| `Type: enhancement` | `feat` |
-| `Type: bug` | `fix` |
-| `Type: refactor` | `refactor` |
-| `Type: documentation` | `docs` |
-| その他 / ラベルなし | `feat`（デフォルト） |
-
-### 1.4 複雑度チェック
-
-Issue 内容を分析し、以下に **いずれか** 該当する場合は **中断を推奨** する:
-
-- DB スキーマ変更・マイグレーションが必要（Prisma schema の変更）
-- 3つ以上のサブドメインにまたがる変更
-- 明示的に「大規模」「段階的」「フェーズ」等のキーワードがある
-
-**中断時の出力:**
-```
-⚠️ このIssueは自動実装に適さない可能性があります。
-理由: {該当する理由}
-
-手動実装の手順:
-  1. wta {type}/issue-{number}
-  2. 実装
-  3. /create-pr #{number}
-```
-中断時はここで処理を終了する。
-
-### 1.5 Worktree 作成 & 環境セットアップ
-
-以下の順序で実行する:
-
-**① EnterWorktree でワークツリーを作成**
-
-EnterWorktree を実行する。Claude Code が `.claude/worktrees/` に worktree を作成する。
-
-**② ベースブランチ修正 & ファイルコピー（自動）**
-
-EnterWorktree の `PostToolUse` hook により、以下が自動実行される（手動実行不要）:
-- `worktree-fix-base-branch.sh`: origin/main → origin/develop へのリセット
-- `worktree-copy-includes.sh`: `.worktreeinclude` に記載されたファイルのコピー
-
-> **なぜ hook か**: `git reset --hard` は sandbox の Mandatory Deny Paths（`.claude/` 等）への書き込みがブロックされるため、sandbox 外で実行される hook で処理する。
-
-**③ 作業ブランチ作成**
-
-```bash
-git checkout -B {type}/issue-{number}
-```
-
-例: `feat/issue-126`
-
-**④ 依存関係インストール & Prisma クライアント生成**
-
-```bash
-pnpm install && pnpm db:generate
-```
-
-**⑤ settings.local.json の plansDirectory を更新**
-
-②でコピー済みの `.claude/settings.local.json` の `plansDirectory` のみを更新する:
-
-```bash
-if [ -f .claude/settings.local.json ]; then
-    jq --arg dir "docs/claude-plans/issue-{number}" '.plansDirectory = $dir' \
-      .claude/settings.local.json > .claude/settings.local.json.tmp \
-      && mv .claude/settings.local.json.tmp .claude/settings.local.json
-else
-    mkdir -p .claude
-    echo '{"plansDirectory": "docs/claude-plans/issue-{number}"}' > .claude/settings.local.json
-fi
-```
-
-**⑥ 計画ディレクトリの作成**
-
-```bash
-mkdir -p docs/claude-plans/issue-{number}
-```
+- 取得した `title` と `body` は Phase 2（計画作成）で使用する
+- Issue が存在しない場合はエラーメッセージを表示して終了する
 
 ---
 
@@ -232,11 +148,9 @@ pnpm test
 📋 Issue: #{number} {title}
 🔗 PR: {PR URL}
 📝 変更: {変更ファイル数} files changed
-🌿 Branch: {type}/issue-{number}
+🌿 Branch: {現在のブランチ名}
 
-💡 このセッションは worktree 内に留まっています。
-   修正が必要な場合はそのまま指示してください（修正 → commit → push で PR に反映されます）。
-   worktree の後片付け: wtr {type}/issue-{number}
+💡 修正が必要な場合はそのまま指示してください（修正 → commit → push で PR に反映されます）。
 ```
 
 ---
@@ -248,4 +162,4 @@ pnpm test
 | 軽微 | lint 失敗 | 自動修正 → 再コミット |
 | 中程度 | test 失敗 | 最大3回修正試行 → 失敗ならドラフト PR |
 | 重大 | 実装不能（設計判断が必要等） | 進捗をコミット → ドラフト PR → 問題点を PR コメントに記載 |
-| 致命的 | Worktree 作成失敗等 | エラーメッセージを表示して終了 |
+| 致命的 | Issue 取得失敗等 | エラーメッセージを表示して終了 |
