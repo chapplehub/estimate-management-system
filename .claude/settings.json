@@ -76,7 +76,8 @@
   "model": "opus",
   "defaultMode": "acceptEdits",
   "sandbox": {
-    "enabled": true,
+    "enabled": false,
+    "excludedCommands" :["pnpm", "vitest"],
     "filesystem": {
       "allowWrite": [".", "~/.local/share/pnpm", "~/.npm"],
       "denyWrite": [".env", ".env.local", "config/production.json"],
@@ -91,7 +92,7 @@
         "*.github.com",
         "api.github.com"
       ],
-      "deniedDomains": []
+      "deniedDomains": [] 
     }
   },
   "hooks": {
