@@ -1,3 +1,6 @@
+import { DataTable } from "@/app/_components/shared/DataTable";
+import { SearchForm, type SearchFieldDef } from "@/app/_components/shared/SearchForm";
+import { LIST_FETCH_LIMIT, getStringParam, type SearchParams } from "@/app/_lib/searchParams";
 import { verifySession } from "@/app/_lib/verifyAuthentication";
 import { isAdmin } from "@server/shared/auth";
 import { USER_ROLES, type UserRole } from "@server/shared/auth/types";
@@ -5,10 +8,7 @@ import { SearchEmployeesQuery } from "@subdomains/employee/application/queries/S
 import type { EmployeeSearchCriteria } from "@subdomains/employee/application/queries/dto/EmployeeSearchCriteria";
 import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
 import Link from "next/link";
-import { SearchForm, type SearchFieldDef } from "@/app/_components/shared/SearchForm";
-import { DataTable } from "@/app/_components/shared/DataTable";
 import { columns } from "./_components/columns";
-import { type SearchParams, LIST_FETCH_LIMIT, getStringParam } from "@/app/_lib/searchParams";
 
 // NOTE: このページの検索機能の実装としては、URLのパスパラメタに基づいて検索を実行する。そのため初期検索は全件取得。
 // NOTE: 検索条件を入力して検索ボタンを押すと直接検索APIが実行されるのではなく、まず入力した検索条件をパスパラメタに設定してナビゲーションし、レンダリング時に検索処理が実行される。
@@ -58,7 +58,7 @@ export default async function EmployeePage({
   const searchQuery = new SearchEmployeesQuery(queryService);
   const employees = await searchQuery.execute({
     criteria,
-    options: { limit: LIST_FETCH_LIMIT },
+    options: { limit: LIST_FETCH_LIMIT, orderBy: { field: "employeeCd", direction: "asc" } },
   });
 
   // Client Componentに渡すdefaultValues

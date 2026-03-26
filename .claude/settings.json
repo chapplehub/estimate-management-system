@@ -76,7 +76,7 @@
   "model": "opus",
   "defaultMode": "acceptEdits",
   "sandbox": {
-    "enabled": false,
+    "enabled": true,
     "excludedCommands" :["pnpm", "vitest"],
     "filesystem": {
       "allowWrite": [".", "~/.local/share/pnpm", "~/.npm"],

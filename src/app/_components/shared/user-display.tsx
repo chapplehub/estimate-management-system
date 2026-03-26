@@ -1,5 +1,6 @@
 "use client";
 
+import { useIsClient } from "@/app/_hooks/useIsClient";
 import { useSession } from "@/app/_lib/auth-client";
 import { Loader2Icon } from "lucide-react";
 
@@ -12,9 +13,10 @@ import { Loader2Icon } from "lucide-react";
  * @see learning/auth-responsibilities-and-changeability.md
  */
 export const UserDisplay = () => {
+  const isClient = useIsClient();
   const { data: session, isPending } = useSession();
 
-  if (isPending) {
+  if (!isClient || isPending) {
     return <Loader2Icon className="size-4 animate-spin" />;
   }
 
