@@ -1,8 +1,9 @@
-import { getCurrentSession } from "@server/shared/auth";
+import { getCurrentSession, isAdmin } from "@server/shared/auth";
 import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
 import { NextRequest, NextResponse } from "next/server";
 
 const publicRoutes = ["/signin", "/"];
+const adminRoutes = ["/employees/new"];
 
 export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
@@ -16,6 +17,13 @@ export async function proxy(request: NextRequest) {
       new URL(`/signin?reason=${REDIRECT_REASON.SESSION_EXPIRED}`, request.url)
     );
   }
+
+  if (session && adminRoutes.includes(path) && !isAdmin(session)) {
+    return NextResponse.redirect(
+      new URL(`/signin?reason=${REDIRECT_REASON.FORBIDDEN}`, request.url)
+    );
+  }
+
   return NextResponse.next();
 }
 export const config = {
