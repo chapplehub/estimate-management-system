@@ -1,3 +1,5 @@
 # Skip Commitizen in non-interactive environments (e.g., Claude Code)
-exec < /dev/tty 2>/dev/null || exit 0
-npx cz --hook || true
+if [ -t 1 ]; then
+  exec < /dev/tty
+  npx cz --hook || true
+fi
