@@ -24,13 +24,13 @@ GitHub は CI ワークフローファイルの変更に対して、通常の `r
 
 ### 解決方法
 
-#### 方法1: workflow スコープを追加する（今回採用）
+#### 方法1: workflow スコープを追加する（一旦採用したがのちにSSHプロトコルに切り替えた）
 
 ```bash
 gh auth refresh -s workflow
 ```
 
-#### 方法2: SSH プロトコルに切り替える
+#### 方法2: SSH プロトコルに切り替える(最終的に採用)
 
 SSH 経由なら OAuth トークンのスコープは関係ないため、問題を回避できる。
 
@@ -91,6 +91,33 @@ CI ワークフローは `run:` ステップで任意のコマンドを実行で
 - **HTTPS**: OAuth トークン（`gho_****`）で認証。スコープの制約を受ける
 - **SSH**: SSH 鍵で認証。OAuth スコープは無関係
 
+#### なぜ SSH にはスコープがないのか
+
+| | HTTPS (OAuth/PAT) | SSH |
+|---|---|---|
+| 認証方式 | トークン文字列 | 公開鍵/秘密鍵ペア |
+| 権限制御 | トークンにスコープを付与して細かく制限 | 鍵がアカウントに紐づき、アカウントの権限がそのまま適用 |
+| workflow変更 | `workflow` スコープが必要 | アカウントに書き込み権限があればそのまま可能 |
+
+設計思想の違い:
+
+- **HTTPS + トークン**: トークンが漏洩した場合の被害を最小限にするため、「このトークンで何ができるか」をスコープで絞れる仕組み。漏洩リスクが比較的高い（URLに含まれる、ログに残る等）ため、細かい権限制御が必要
+- **SSH鍵**: 秘密鍵はローカルマシンから出ないため漏洩リスクが低い。そのためスコープによる制限を設けず、アカウントの権限をフルに使える
+
+#### GitHub は HTTPS と SSH のどちらを推奨しているか
+
+GitHub は公式ドキュメント上で**どちらも明確に「推奨」していない**。
+両方を並列に紹介しており、環境に合わせて選んでよいというスタンス。
+
+GitHub が推奨しているのはプロトコルではなく**認証方式**について:
+
+- PAT を使うなら **fine-grained PAT**（classic PAT より推奨）
+- より制御が必要なら **GitHub App** の使用を推奨
+
+参考: https://docs.github.com/ja/authentication/keeping-your-account-and-data-secure/about-authentication-to-github
+
+#### `gh auth status` と実際のプロトコルの乖離に注意
+
 `gh auth status` で `Git operations protocol: ssh` と表示されていても、remote URL が `https://` なら実際は HTTPS が使われる。
 `git remote -v` で実際のプロトコルを確認すること。
 
@@ -98,3 +125,4 @@ CI ワークフローは `run:` ステップで任意のコマンドを実行で
 
 - `.github/workflows/playwright.yml` - 今回変更したワークフロー
 - [GitHub OAuth scopes documentation](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps)
+- [GitHub 認証について](https://docs.github.com/ja/authentication/keeping-your-account-and-data-secure/about-authentication-to-github)
