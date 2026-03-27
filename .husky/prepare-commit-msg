@@ -1,4 +1,3 @@
-if [ "$(git rev-parse --git-dir)" != "$(git rev-parse --git-common-dir)" ]; then
-  exit 0
-fi
-exec < /dev/tty && npx cz --hook || true
+# Skip Commitizen in non-interactive environments (e.g., Claude Code)
+exec < /dev/tty 2>/dev/null || exit 0
+npx cz --hook || true
