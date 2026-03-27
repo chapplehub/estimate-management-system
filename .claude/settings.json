@@ -96,16 +96,6 @@
     }
   },
   "hooks": {
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -c 'BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo \"unknown\"); echo \"Current branch: $BRANCH\"; if [ \"$BRANCH\" = \"main\" ] || [ \"$BRANCH\" = \"master\" ] || [ \"$BRANCH\" = \"develop\" ]; then echo \"\"; echo \"⚠️  WARNING: You are on the $BRANCH branch.\"; echo \"For parallel development, consider using git worktree:\"; echo \"  git worktree add ../$(basename $PWD)-<task-name> -b <branch-name>\"; echo \"\"; fi'"
-          }
-        ]
-      }
-    ],
     "Stop": [
       {
         "hooks": [
