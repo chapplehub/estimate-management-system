@@ -174,6 +174,14 @@ const DEPARTMENTS = [
   },
 ];
 
+// 役職リスト
+const POSITIONS = [
+  { id: "pos-001", name: "課長", superiorPositionId: "pos-002" as string | null },
+  { id: "pos-002", name: "部長", superiorPositionId: "pos-003" as string | null },
+  { id: "pos-003", name: "本部長", superiorPositionId: "pos-004" as string | null },
+  { id: "pos-004", name: "社長", superiorPositionId: null },
+];
+
 // 得意先・納品先データ
 const CUSTOMERS = [
   {
@@ -886,7 +894,10 @@ async function main() {
   await prisma.account.deleteMany();
   await prisma.session.deleteMany();
   await prisma.user.deleteMany();
+  await prisma.employeeRole.deleteMany();
   await prisma.employee.deleteMany();
+  await prisma.role.deleteMany();
+  await prisma.position.deleteMany();
   await prisma.department.deleteMany();
   console.log("Deleted existing data");
   console.log("");
@@ -905,6 +916,15 @@ async function main() {
     });
   }
   console.log(`Created ${DEPARTMENTS.length} departments`);
+  console.log("");
+
+  // 役職を作成（FK制約を考慮して上位から作成）
+  console.log("Creating positions...");
+  const positionsOrdered = [...POSITIONS].reverse();
+  for (const pos of positionsOrdered) {
+    await prisma.position.create({ data: pos });
+  }
+  console.log(`Created ${POSITIONS.length} positions`);
   console.log("");
 
   // 得意先・納品先を作成
@@ -954,6 +974,7 @@ async function main() {
   console.log(`Created ${TOTAL_EMPLOYEES} employees:`);
   console.log(`  - Admins: ${adminCount}`);
   console.log(`  - Users: ${userCount}`);
+  console.log(`Created ${POSITIONS.length} positions`);
   console.log(`Created ${customerCount} customers`);
   console.log(`Created ${deliveryLocationCount} delivery locations`);
   console.log(`Default password for all users: ${DEFAULT_PASSWORD}`);
