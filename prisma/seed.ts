@@ -138,6 +138,8 @@ interface SeedUser {
   name: string;
   role: UserRole;
   departmentId: string;
+  superiorRoleId: string | null;
+  assignedRoleId?: string; // 役割を持つ従業員の場合
 }
 
 // 部署リスト
@@ -181,6 +183,57 @@ const POSITIONS = [
   { id: "pos-003", name: "本部長", superiorPositionId: "pos-004" as string | null },
   { id: "pos-004", name: "社長", superiorPositionId: null },
 ];
+
+// 役割リスト（FK制約を考慮して上位から定義）
+const ROLES: { id: string; name: string; positionId: string; superiorRoleId: string | null }[] = [
+  // 社長（最上位）
+  { id: "role-01", name: "社長", positionId: "pos-004", superiorRoleId: null },
+  // 本部長
+  { id: "role-02", name: "営業本部長", positionId: "pos-003", superiorRoleId: "role-01" },
+  { id: "role-03", name: "管理本部長", positionId: "pos-003", superiorRoleId: "role-01" },
+  // 部長
+  { id: "role-04", name: "営業部長", positionId: "pos-002", superiorRoleId: "role-02" },
+  { id: "role-05", name: "開発部長", positionId: "pos-002", superiorRoleId: "role-03" },
+  { id: "role-06", name: "総務部長", positionId: "pos-002", superiorRoleId: "role-03" },
+  { id: "role-07", name: "人事部長", positionId: "pos-002", superiorRoleId: "role-03" },
+  { id: "role-08", name: "経理部長", positionId: "pos-002", superiorRoleId: "role-03" },
+  // 課長
+  { id: "role-09", name: "営業一課長", positionId: "pos-001", superiorRoleId: "role-04" },
+  { id: "role-10", name: "営業二課長", positionId: "pos-001", superiorRoleId: "role-04" },
+  { id: "role-11", name: "開発一課長", positionId: "pos-001", superiorRoleId: "role-05" },
+  { id: "role-12", name: "開発二課長", positionId: "pos-001", superiorRoleId: "role-05" },
+  { id: "role-13", name: "総務課長", positionId: "pos-001", superiorRoleId: "role-06" },
+  { id: "role-14", name: "人事課長", positionId: "pos-001", superiorRoleId: "role-07" },
+  { id: "role-15", name: "経理課長", positionId: "pos-001", superiorRoleId: "role-08" },
+];
+
+// 役割を持つ従業員の設定（EMP000001〜EMP000015）
+const ROLE_EMPLOYEE_CONFIGS = [
+  { roleId: "role-01", departmentId: "dept-001" }, // 社長 → 営業部（便宜上）
+  { roleId: "role-02", departmentId: "dept-001" }, // 営業本部長 → 営業部
+  { roleId: "role-03", departmentId: "dept-003" }, // 管理本部長 → 総務部
+  { roleId: "role-04", departmentId: "dept-001" }, // 営業部長 → 営業部
+  { roleId: "role-05", departmentId: "dept-002" }, // 開発部長 → 開発部
+  { roleId: "role-06", departmentId: "dept-003" }, // 総務部長 → 総務部
+  { roleId: "role-07", departmentId: "dept-004" }, // 人事部長 → 人事部
+  { roleId: "role-08", departmentId: "dept-005" }, // 経理部長 → 経理部
+  { roleId: "role-09", departmentId: "dept-001" }, // 営業一課長 → 営業部
+  { roleId: "role-10", departmentId: "dept-001" }, // 営業二課長 → 営業部
+  { roleId: "role-11", departmentId: "dept-002" }, // 開発一課長 → 開発部
+  { roleId: "role-12", departmentId: "dept-002" }, // 開発二課長 → 開発部
+  { roleId: "role-13", departmentId: "dept-003" }, // 総務課長 → 総務部
+  { roleId: "role-14", departmentId: "dept-004" }, // 人事課長 → 人事部
+  { roleId: "role-15", departmentId: "dept-005" }, // 経理課長 → 経理部
+];
+
+// 部署ごとの一般従業員の上位役割候補
+const DEPARTMENT_SUPERIOR_ROLES = new Map<string, string[]>([
+  ["dept-001", ["role-09", "role-10"]], // 営業部 → 営業一課長 or 営業二課長
+  ["dept-002", ["role-11", "role-12"]], // 開発部 → 開発一課長 or 開発二課長
+  ["dept-003", ["role-13"]], // 総務部 → 総務課長
+  ["dept-004", ["role-14"]], // 人事部 → 人事課長
+  ["dept-005", ["role-15"]], // 経理部 → 経理課長
+]);
 
 // 得意先・納品先データ
 const CUSTOMERS = [
@@ -739,13 +792,32 @@ function determineRole(index: number): UserRole {
 function generateSeedUsers(count: number): SeedUser[] {
   const users: SeedUser[] = [];
   for (let i = 1; i <= count; i++) {
-    users.push({
-      employeeCd: generateEmployeeCd(i),
-      email: generateEmail(i),
-      name: generateName(),
-      role: determineRole(i),
-      departmentId: randomChoice(DEPARTMENTS).id,
-    });
+    if (i <= ROLE_EMPLOYEE_CONFIGS.length) {
+      // 役割を持つ従業員（EMP000001〜EMP000015）
+      const config = ROLE_EMPLOYEE_CONFIGS[i - 1];
+      const assignedRole = ROLES.find((r) => r.id === config.roleId)!;
+      users.push({
+        employeeCd: generateEmployeeCd(i),
+        email: generateEmail(i),
+        name: generateName(),
+        role: i === 1 ? USER_ROLES.ADMIN : determineRole(i),
+        departmentId: config.departmentId,
+        superiorRoleId: assignedRole.superiorRoleId,
+        assignedRoleId: config.roleId,
+      });
+    } else {
+      // 一般従業員（部署に応じた課長を上位役割に設定）
+      const departmentId = randomChoice(DEPARTMENTS).id;
+      const candidates = DEPARTMENT_SUPERIOR_ROLES.get(departmentId)!;
+      users.push({
+        employeeCd: generateEmployeeCd(i),
+        email: generateEmail(i),
+        name: generateName(),
+        role: determineRole(i),
+        departmentId,
+        superiorRoleId: randomChoice(candidates),
+      });
+    }
   }
   return users;
 }
@@ -765,6 +837,7 @@ async function createUserWithEmployee(userData: SeedUser, hashedPassword: string
         email: userData.email,
         name: userData.name,
         departmentId: userData.departmentId,
+        superiorRoleId: userData.superiorRoleId,
       },
     });
 
@@ -927,6 +1000,14 @@ async function main() {
   console.log(`Created ${POSITIONS.length} positions`);
   console.log("");
 
+  // 役割を作成（ID順 = 上位から作成でFK制約を満たす）
+  console.log("Creating roles...");
+  for (const role of ROLES) {
+    await prisma.role.create({ data: role });
+  }
+  console.log(`Created ${ROLES.length} roles`);
+  console.log("");
+
   // 得意先・納品先を作成
   const { customerCount, deliveryLocationCount } = await seedCustomersAndDeliveryLocations();
 
@@ -944,10 +1025,16 @@ async function main() {
   // 各ユーザーを作成（バッチごとに進捗表示）
   console.log("Creating users...");
   const startTime = Date.now();
+  const employeeRoleData: { employeeId: string; roleId: string }[] = [];
 
   for (let i = 0; i < users.length; i++) {
     const userData = users[i];
-    await createUserWithEmployee(userData, hashedPassword);
+    const { employee } = await createUserWithEmployee(userData, hashedPassword);
+
+    // 役割を持つ従業員の場合、EmployeeRole 用のデータを収集
+    if (userData.assignedRoleId) {
+      employeeRoleData.push({ employeeId: employee.id, roleId: userData.assignedRoleId });
+    }
 
     if (userData.role === USER_ROLES.ADMIN) {
       adminCount++;
@@ -965,6 +1052,14 @@ async function main() {
     }
   }
 
+  // 従業員役割を作成
+  console.log("");
+  console.log("Creating employee roles...");
+  for (const data of employeeRoleData) {
+    await prisma.employeeRole.create({ data });
+  }
+  console.log(`Created ${employeeRoleData.length} employee role assignments`);
+
   const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
   console.log("");
   console.log("");
@@ -975,6 +1070,8 @@ async function main() {
   console.log(`  - Admins: ${adminCount}`);
   console.log(`  - Users: ${userCount}`);
   console.log(`Created ${POSITIONS.length} positions`);
+  console.log(`Created ${ROLES.length} roles`);
+  console.log(`Created ${employeeRoleData.length} employee role assignments`);
   console.log(`Created ${customerCount} customers`);
   console.log(`Created ${deliveryLocationCount} delivery locations`);
   console.log(`Default password for all users: ${DEFAULT_PASSWORD}`);
