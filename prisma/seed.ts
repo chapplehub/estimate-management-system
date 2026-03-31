@@ -144,36 +144,11 @@ interface SeedUser {
 
 // 部署リスト
 const DEPARTMENTS = [
-  {
-    id: "dept-001",
-    departmentCd: "DEPT001",
-    name: "営業部",
-    abbreviation: "営業",
-  },
-  {
-    id: "dept-002",
-    departmentCd: "DEPT002",
-    name: "開発部",
-    abbreviation: "開発",
-  },
-  {
-    id: "dept-003",
-    departmentCd: "DEPT003",
-    name: "総務部",
-    abbreviation: "総務",
-  },
-  {
-    id: "dept-004",
-    departmentCd: "DEPT004",
-    name: "人事部",
-    abbreviation: "人事",
-  },
-  {
-    id: "dept-005",
-    departmentCd: "DEPT005",
-    name: "経理部",
-    abbreviation: "経理",
-  },
+  { departmentCd: "DEPT001", name: "営業部", abbreviation: "営業" },
+  { departmentCd: "DEPT002", name: "開発部", abbreviation: "開発" },
+  { departmentCd: "DEPT003", name: "総務部", abbreviation: "総務" },
+  { departmentCd: "DEPT004", name: "人事部", abbreviation: "人事" },
+  { departmentCd: "DEPT005", name: "経理部", abbreviation: "経理" },
 ];
 
 // 役職リスト（cdで定義、idはシード時にCUID生成）
@@ -239,30 +214,30 @@ const ROLES = [
 
 // 役割を持つ従業員の設定（EMP000001〜EMP000015）
 const ROLE_EMPLOYEE_CONFIGS = [
-  { roleCd: "ROLE001", departmentId: "dept-001" }, // 社長 → 営業部（便宜上）
-  { roleCd: "ROLE002", departmentId: "dept-001" }, // 営業本部長 → 営業部
-  { roleCd: "ROLE003", departmentId: "dept-003" }, // 管理本部長 → 総務部
-  { roleCd: "ROLE004", departmentId: "dept-001" }, // 営業部長 → 営業部
-  { roleCd: "ROLE005", departmentId: "dept-002" }, // 開発部長 → 開発部
-  { roleCd: "ROLE006", departmentId: "dept-003" }, // 総務部長 → 総務部
-  { roleCd: "ROLE007", departmentId: "dept-004" }, // 人事部長 → 人事部
-  { roleCd: "ROLE008", departmentId: "dept-005" }, // 経理部長 → 経理部
-  { roleCd: "ROLE009", departmentId: "dept-001" }, // 営業一課長 → 営業部
-  { roleCd: "ROLE010", departmentId: "dept-001" }, // 営業二課長 → 営業部
-  { roleCd: "ROLE011", departmentId: "dept-002" }, // 開発一課長 → 開発部
-  { roleCd: "ROLE012", departmentId: "dept-002" }, // 開発二課長 → 開発部
-  { roleCd: "ROLE013", departmentId: "dept-003" }, // 総務課長 → 総務部
-  { roleCd: "ROLE014", departmentId: "dept-004" }, // 人事課長 → 人事部
-  { roleCd: "ROLE015", departmentId: "dept-005" }, // 経理課長 → 経理部
+  { roleCd: "ROLE001", departmentCd: "DEPT001" }, // 社長 → 営業部（便宜上）
+  { roleCd: "ROLE002", departmentCd: "DEPT001" }, // 営業本部長 → 営業部
+  { roleCd: "ROLE003", departmentCd: "DEPT003" }, // 管理本部長 → 総務部
+  { roleCd: "ROLE004", departmentCd: "DEPT001" }, // 営業部長 → 営業部
+  { roleCd: "ROLE005", departmentCd: "DEPT002" }, // 開発部長 → 開発部
+  { roleCd: "ROLE006", departmentCd: "DEPT003" }, // 総務部長 → 総務部
+  { roleCd: "ROLE007", departmentCd: "DEPT004" }, // 人事部長 → 人事部
+  { roleCd: "ROLE008", departmentCd: "DEPT005" }, // 経理部長 → 経理部
+  { roleCd: "ROLE009", departmentCd: "DEPT001" }, // 営業一課長 → 営業部
+  { roleCd: "ROLE010", departmentCd: "DEPT001" }, // 営業二課長 → 営業部
+  { roleCd: "ROLE011", departmentCd: "DEPT002" }, // 開発一課長 → 開発部
+  { roleCd: "ROLE012", departmentCd: "DEPT002" }, // 開発二課長 → 開発部
+  { roleCd: "ROLE013", departmentCd: "DEPT003" }, // 総務課長 → 総務部
+  { roleCd: "ROLE014", departmentCd: "DEPT004" }, // 人事課長 → 人事部
+  { roleCd: "ROLE015", departmentCd: "DEPT005" }, // 経理課長 → 経理部
 ];
 
 // 部署ごとの一般従業員の上位役割候補（roleCdで指定）
 const DEPARTMENT_SUPERIOR_ROLE_CDS = new Map<string, string[]>([
-  ["dept-001", ["ROLE009", "ROLE010"]], // 営業部 → 営業一課長 or 営業二課長
-  ["dept-002", ["ROLE011", "ROLE012"]], // 開発部 → 開発一課長 or 開発二課長
-  ["dept-003", ["ROLE013"]], // 総務部 → 総務課長
-  ["dept-004", ["ROLE014"]], // 人事部 → 人事課長
-  ["dept-005", ["ROLE015"]], // 経理部 → 経理課長
+  ["DEPT001", ["ROLE009", "ROLE010"]], // 営業部 → 営業一課長 or 営業二課長
+  ["DEPT002", ["ROLE011", "ROLE012"]], // 開発部 → 開発一課長 or 開発二課長
+  ["DEPT003", ["ROLE013"]], // 総務部 → 総務課長
+  ["DEPT004", ["ROLE014"]], // 人事部 → 人事課長
+  ["DEPT005", ["ROLE015"]], // 経理部 → 経理課長
 ]);
 
 // 得意先・納品先データ
@@ -820,8 +795,12 @@ function determineRole(index: number): UserRole {
   return Math.random() < ADMIN_RATIO ? USER_ROLES.ADMIN : USER_ROLES.USER;
 }
 
-// シードユーザーデータを生成（roleIdMap: roleCd → CUID）
-function generateSeedUsers(count: number, roleIdMap: Map<string, string>): SeedUser[] {
+// シードユーザーデータを生成（roleIdMap: roleCd → CUID, departmentIdMap: departmentCd → CUID）
+function generateSeedUsers(
+  count: number,
+  roleIdMap: Map<string, string>,
+  departmentIdMap: Map<string, string>
+): SeedUser[] {
   const users: SeedUser[] = [];
   for (let i = 1; i <= count; i++) {
     if (i <= ROLE_EMPLOYEE_CONFIGS.length) {
@@ -836,14 +815,15 @@ function generateSeedUsers(count: number, roleIdMap: Map<string, string>): SeedU
         email: generateEmail(i),
         name: generateName(),
         role: i === 1 ? USER_ROLES.ADMIN : determineRole(i),
-        departmentId: config.departmentId,
+        departmentId: departmentIdMap.get(config.departmentCd)!,
         superiorRoleId,
         assignedRoleId: roleIdMap.get(config.roleCd),
       });
     } else {
       // 一般従業員（部署に応じた課長を上位役割に設定）
-      const departmentId = randomChoice(DEPARTMENTS).id;
-      const candidateCds = DEPARTMENT_SUPERIOR_ROLE_CDS.get(departmentId)!;
+      const dept = randomChoice(DEPARTMENTS);
+      const departmentId = departmentIdMap.get(dept.departmentCd)!;
+      const candidateCds = DEPARTMENT_SUPERIOR_ROLE_CDS.get(dept.departmentCd)!;
       const superiorRoleCd = randomChoice(candidateCds);
       users.push({
         employeeCd: generateEmployeeCd(i),
@@ -1011,12 +991,15 @@ async function main() {
   console.log("Deleted existing data");
   console.log("");
 
-  // 部署を作成
+  // 部署を作成（cdで定義、idはシード時にCUID生成）
   console.log("Creating departments...");
+  const departmentIdMap = new Map<string, string>(); // departmentCd → CUID
   for (const dept of DEPARTMENTS) {
+    const id = createId();
+    departmentIdMap.set(dept.departmentCd, id);
     await prisma.department.create({
       data: {
-        id: dept.id,
+        id,
         departmentCd: dept.departmentCd,
         name: dept.name,
         abbreviation: dept.abbreviation,
@@ -1075,7 +1058,7 @@ async function main() {
   console.log("");
 
   // ユーザーデータを生成
-  const users = generateSeedUsers(TOTAL_EMPLOYEES, roleIdMap);
+  const users = generateSeedUsers(TOTAL_EMPLOYEES, roleIdMap, departmentIdMap);
   let adminCount = 0;
   let userCount = 0;
 

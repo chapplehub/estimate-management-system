@@ -1,3 +1,4 @@
+import { createId } from "@paralleldrive/cuid2";
 import { Employee } from "@subdomains/employee/domain/entities/Employee";
 import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
 import { EmployeeName } from "@subdomains/employee/domain/values/EmployeeName";
@@ -8,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 describe("PrismaEmployeeRepository", () => {
   let repository: PrismaEmployeeRepository;
+  let TEST_DEPT_ID: string;
 
   beforeEach(async () => {
     repository = new PrismaEmployeeRepository();
@@ -21,17 +23,18 @@ describe("PrismaEmployeeRepository", () => {
     });
 
     // テスト用部署を作成（存在しない場合）
-    await prisma.department.upsert({
-      where: { id: "dept-001" },
+    const dept = await prisma.department.upsert({
+      where: { departmentCd: "TEST_DEPT" },
       update: {},
       create: {
-        id: "dept-001",
-        departmentCd: "DEPT001",
+        id: createId(),
+        departmentCd: "TEST_DEPT",
         name: "テスト部署",
         abbreviation: "テスト",
         isActive: true,
       },
     });
+    TEST_DEPT_ID = dept.id;
   });
 
   afterEach(async () => {
@@ -51,7 +54,7 @@ describe("PrismaEmployeeRepository", () => {
         new EmployeeCd("EMP999001"),
         new MailAddress("test-save@example.com"),
         new EmployeeName("テスト太郎"),
-        "dept-001"
+        TEST_DEPT_ID
       );
 
       const savedEmployee = await repository.save(employee);
@@ -82,7 +85,7 @@ describe("PrismaEmployeeRepository", () => {
         new EmployeeCd("EMP999001"),
         new MailAddress("test-update@example.com"),
         new EmployeeName("更新前の名前"),
-        "dept-001"
+        TEST_DEPT_ID
       );
       const savedEmployee = await repository.save(employee);
 
@@ -110,7 +113,7 @@ describe("PrismaEmployeeRepository", () => {
         new EmployeeCd("EMP999001"),
         new MailAddress("test-delete@example.com"),
         new EmployeeName("削除テスト"),
-        "dept-001"
+        TEST_DEPT_ID
       );
       const savedEmployee = await repository.save(employee);
 
@@ -132,7 +135,7 @@ describe("PrismaEmployeeRepository", () => {
         new EmployeeCd("EMP999001"),
         new MailAddress("test-findbyid@example.com"),
         new EmployeeName("ID検索テスト"),
-        "dept-001"
+        TEST_DEPT_ID
       );
       const savedEmployee = await repository.save(employee);
 
@@ -160,7 +163,7 @@ describe("PrismaEmployeeRepository", () => {
         new EmployeeCd("EMP999002"),
         new MailAddress("test-findbycd@example.com"),
         new EmployeeName("社員コード検索テスト"),
-        "dept-001"
+        TEST_DEPT_ID
       );
       await repository.save(employee);
 
@@ -185,13 +188,13 @@ describe("PrismaEmployeeRepository", () => {
         new EmployeeCd("EMP999002"),
         new MailAddress("test1@example.com"),
         new EmployeeName("テスト1"),
-        "dept-001"
+        TEST_DEPT_ID
       );
       const employee2 = Employee.create(
         new EmployeeCd("EMP999003"),
         new MailAddress("test2@example.com"),
         new EmployeeName("テスト2"),
-        "dept-001"
+        TEST_DEPT_ID
       );
 
       await repository.save(employee1);

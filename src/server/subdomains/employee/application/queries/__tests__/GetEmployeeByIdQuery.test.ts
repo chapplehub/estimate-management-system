@@ -12,6 +12,7 @@ describe("GetEmployeeByIdQuery", () => {
   const testUserIds: string[] = [];
 
   const TEST_CODES = ["EMP999954"];
+  let TEST_DEPT_ID: string;
 
   async function createTestEmployeeWithUser(data: {
     employeeCd: string;
@@ -29,7 +30,7 @@ describe("GetEmployeeByIdQuery", () => {
         employeeCd: data.employeeCd,
         email: data.email,
         name: data.name,
-        departmentId: data.departmentId ?? "dept-001",
+        departmentId: data.departmentId ?? TEST_DEPT_ID,
       },
     });
 
@@ -59,17 +60,18 @@ describe("GetEmployeeByIdQuery", () => {
       where: { employeeCd: { in: TEST_CODES } },
     });
 
-    await prisma.department.upsert({
-      where: { id: "dept-001" },
+    const dept = await prisma.department.upsert({
+      where: { departmentCd: "TEST_DEPT" },
       update: {},
       create: {
-        id: "dept-001",
-        departmentCd: "DEPT001",
+        id: createId(),
+        departmentCd: "TEST_DEPT",
         name: "テスト部署",
         abbreviation: "テスト",
         isActive: true,
       },
     });
+    TEST_DEPT_ID = dept.id;
 
     query = new GetEmployeeByIdQuery(new PrismaEmployeeQueryService());
   });

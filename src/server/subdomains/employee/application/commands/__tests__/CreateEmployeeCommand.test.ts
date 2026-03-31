@@ -1,3 +1,4 @@
+import { createId } from "@paralleldrive/cuid2";
 import { FakeUserManagementService } from "@server/shared/auth/fake/FakeUserManagementService";
 import { USER_ROLES } from "@server/shared/auth/types";
 import { ValidationError } from "@server/shared/errors/DomainError";
@@ -17,24 +18,25 @@ describe("CreateEmployeeCommand", () => {
   let fakeUserManagementService: FakeUserManagementService;
 
   const TEST_CODES = ["EMP999911", "EMP999914"];
-  const TEST_DEPT_ID = "dept-001";
+  let TEST_DEPT_ID: string;
 
   beforeEach(async () => {
     await prisma.employee.deleteMany({
       where: { employeeCd: { in: TEST_CODES } },
     });
 
-    await prisma.department.upsert({
-      where: { id: TEST_DEPT_ID },
+    const dept = await prisma.department.upsert({
+      where: { departmentCd: "TEST_DEPT" },
       update: {},
       create: {
-        id: TEST_DEPT_ID,
-        departmentCd: "DEPT001",
+        id: createId(),
+        departmentCd: "TEST_DEPT",
         name: "テスト部署",
         abbreviation: "テスト",
         isActive: true,
       },
     });
+    TEST_DEPT_ID = dept.id;
 
     repository = new PrismaEmployeeRepository();
     cdDuplicationCheckService = new EmployeeCdDuplicationCheckDomainService(repository);
