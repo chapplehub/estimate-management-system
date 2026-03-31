@@ -1,3 +1,4 @@
+import { createId } from "@paralleldrive/cuid2";
 import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
 import { EmployeeName } from "@subdomains/employee/domain/values/EmployeeName";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
@@ -14,7 +15,7 @@ describe("Employee エンティティ", () => {
     employeeCd = new EmployeeCd("EMP000001");
     email = new MailAddress("test@example.com");
     name = new EmployeeName("山田太郎");
-    departmentId = "dept-001";
+    departmentId = createId();
   });
 
   describe("ファクトリメソッド", () => {
@@ -27,7 +28,7 @@ describe("Employee エンティティ", () => {
         expect(employee.employeeCd.value).toBe("EMP000001");
         expect(employee.email.value).toBe("test@example.com");
         expect(employee.name.value).toBe("山田太郎");
-        expect(employee.departmentId).toBe("dept-001");
+        expect(employee.departmentId).toBe(departmentId);
       });
 
       it("作成日時と更新日時が設定される", () => {
@@ -65,7 +66,7 @@ describe("Employee エンティティ", () => {
         expect(employee.employeeCd.value).toBe("EMP000001");
         expect(employee.email.value).toBe("test@example.com");
         expect(employee.name.value).toBe("山田太郎");
-        expect(employee.departmentId).toBe("dept-001");
+        expect(employee.departmentId).toBe(departmentId);
         expect(employee.createdAt).toEqual(createdAt);
         expect(employee.updatedAt).toEqual(updatedAt);
       });
@@ -119,17 +120,17 @@ describe("Employee エンティティ", () => {
   describe("部署変更", () => {
     it("所属部署を変更できる", () => {
       const employee = Employee.create(employeeCd, email, name, departmentId);
-      const newDepartmentId = "dept-002";
+      const newDepartmentId = createId();
 
       employee.changeDepartment(newDepartmentId);
 
-      expect(employee.departmentId).toBe("dept-002");
+      expect(employee.departmentId).toBe(newDepartmentId);
     });
 
     it("更新日時が更新される", () => {
       const employee = Employee.create(employeeCd, email, name, departmentId);
       const oldUpdatedAt = employee.updatedAt;
-      const newDepartmentId = "dept-002";
+      const newDepartmentId = createId();
 
       setTimeout(() => {
         employee.changeDepartment(newDepartmentId);
