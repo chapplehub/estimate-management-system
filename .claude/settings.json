@@ -40,6 +40,7 @@
       "Bash(wc *)",
       "Bash(ls *)",
       "Bash(find *)",
+      "Bash(grep *)",
       "Write(/src/**)",
       "Edit(/src/**)",
       "Write(/docs/**)",
@@ -145,6 +146,15 @@
       }
     ],
     "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/claude-hooks/post-bash-commit-fail-check.sh"
+          }
+        ]
+      },
       {
         "matcher": "EnterWorktree",
         "hooks": [

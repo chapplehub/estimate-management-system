@@ -1,3 +1,4 @@
+import { createId } from "@paralleldrive/cuid2";
 import prisma from "@server/prisma";
 import { FakeUserManagementService } from "@server/shared/auth/fake/FakeUserManagementService";
 import { USER_ROLES } from "@server/shared/auth/types";
@@ -16,6 +17,7 @@ describe("UpdateEmployeeCommand", () => {
 
   const TEST_EMPLOYEE_ID = "test-update-id-001";
   const ANOTHER_EMPLOYEE_ID = "test-update-id-002";
+  let TEST_DEPT_ID: string;
 
   beforeEach(async () => {
     // 1. テストデータクリーンアップ
@@ -28,17 +30,18 @@ describe("UpdateEmployeeCommand", () => {
     });
 
     // 2. テスト用部署を upsert
-    await prisma.department.upsert({
-      where: { id: "dept-001" },
+    const dept = await prisma.department.upsert({
+      where: { departmentCd: "TEST_DEPT" },
       update: {},
       create: {
-        id: "dept-001",
-        departmentCd: "DEPT001",
+        id: createId(),
+        departmentCd: "TEST_DEPT",
         name: "テスト部署",
         abbreviation: "テスト",
         isActive: true,
       },
     });
+    TEST_DEPT_ID = dept.id;
 
     // 3. 更新対象の既存従業員を作成
     await prisma.employee.create({
@@ -47,7 +50,7 @@ describe("UpdateEmployeeCommand", () => {
         employeeCd: "EMP999912",
         email: "existing@example.com",
         name: "既存従業員",
-        departmentId: "dept-001",
+        departmentId: TEST_DEPT_ID,
       },
     });
 
@@ -58,7 +61,7 @@ describe("UpdateEmployeeCommand", () => {
         employeeCd: "EMP999913",
         email: "another@example.com",
         name: "別従業員",
-        departmentId: "dept-001",
+        departmentId: TEST_DEPT_ID,
       },
     });
 
@@ -100,7 +103,7 @@ describe("UpdateEmployeeCommand", () => {
       employeeCd: "EMP999912",
       email: "existing@example.com", // 変更なし
       name: "更新後従業員",
-      departmentId: "dept-001",
+      departmentId: TEST_DEPT_ID,
       role: USER_ROLES.USER,
     });
 
@@ -119,7 +122,7 @@ describe("UpdateEmployeeCommand", () => {
       employeeCd: "EMP999912",
       email: "newemail@example.com", // 変更
       name: "既存従業員",
-      departmentId: "dept-001",
+      departmentId: TEST_DEPT_ID,
       role: USER_ROLES.USER,
     });
 
@@ -140,7 +143,7 @@ describe("UpdateEmployeeCommand", () => {
       employeeCd: "EMP999912",
       email: "existing@example.com",
       name: "既存従業員",
-      departmentId: "dept-001",
+      departmentId: TEST_DEPT_ID,
       role: USER_ROLES.ADMIN, // USER -> ADMIN に変更
     });
 
@@ -156,7 +159,7 @@ describe("UpdateEmployeeCommand", () => {
         employeeCd: "EMP999912",
         email: "existing@example.com",
         name: "更新テスト",
-        departmentId: "dept-001",
+        departmentId: TEST_DEPT_ID,
         role: USER_ROLES.USER,
       })
     ).rejects.toThrow(NotFoundEntityError);
@@ -169,7 +172,7 @@ describe("UpdateEmployeeCommand", () => {
         employeeCd: "EMP999912",
         email: "another@example.com", // 別従業員と同じemail
         name: "既存従業員",
-        departmentId: "dept-001",
+        departmentId: TEST_DEPT_ID,
         role: USER_ROLES.USER,
       })
     ).rejects.toThrow(ValidationError);

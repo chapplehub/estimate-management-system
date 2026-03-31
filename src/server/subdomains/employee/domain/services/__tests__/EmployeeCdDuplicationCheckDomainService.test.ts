@@ -1,3 +1,4 @@
+import { createId } from "@paralleldrive/cuid2";
 import prisma from "@server/prisma";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
 import { Employee } from "@subdomains/employee/domain/entities/Employee";
@@ -12,7 +13,7 @@ describe("EmployeeCdDuplicationCheckDomainService", () => {
   let repository: PrismaEmployeeRepository;
 
   const TEST_CODES = ["EMP999821", "EMP999822"];
-  const TEST_DEPT_ID = "dept-001";
+  let TEST_DEPT_ID: string;
 
   async function cleanup() {
     await prisma.employee.deleteMany({
@@ -24,17 +25,18 @@ describe("EmployeeCdDuplicationCheckDomainService", () => {
     await cleanup();
 
     // 外部キー依存のフィクスチャ（upsert で冪等に作成）
-    await prisma.department.upsert({
-      where: { id: TEST_DEPT_ID },
+    const dept = await prisma.department.upsert({
+      where: { departmentCd: "TEST_DEPT" },
       update: {},
       create: {
-        id: TEST_DEPT_ID,
-        departmentCd: "DEPT001",
+        id: createId(),
+        departmentCd: "TEST_DEPT",
         name: "テスト部署",
         abbreviation: "テスト",
         isActive: true,
       },
     });
+    TEST_DEPT_ID = dept.id;
 
     repository = new PrismaEmployeeRepository();
     service = new EmployeeCdDuplicationCheckDomainService(repository);

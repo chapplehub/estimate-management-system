@@ -1,3 +1,4 @@
+import { createId } from "@paralleldrive/cuid2";
 import prisma from "@server/prisma";
 import { FakeUserManagementService } from "@server/shared/auth/fake/FakeUserManagementService";
 import { USER_ROLES } from "@server/shared/auth/types";
@@ -13,6 +14,7 @@ describe("DeleteEmployeeCommand", () => {
 
   const TEST_EMPLOYEE_ID = "test-delete-cmd-id-001";
   const TEST_EMPLOYEE_CD = "EMP999909";
+  let TEST_DEPT_ID: string;
 
   beforeEach(async () => {
     // テストデータのクリーンアップ
@@ -23,17 +25,18 @@ describe("DeleteEmployeeCommand", () => {
     });
 
     // テスト用部署を作成（存在しない場合）
-    await prisma.department.upsert({
-      where: { id: "dept-001" },
+    const dept = await prisma.department.upsert({
+      where: { departmentCd: "TEST_DEPT" },
       update: {},
       create: {
-        id: "dept-001",
-        departmentCd: "DEPT001",
+        id: createId(),
+        departmentCd: "TEST_DEPT",
         name: "テスト部署",
         abbreviation: "テスト",
         isActive: true,
       },
     });
+    TEST_DEPT_ID = dept.id;
 
     repository = new PrismaEmployeeRepository();
     fakeUserManagementService = new FakeUserManagementService();
@@ -61,7 +64,7 @@ describe("DeleteEmployeeCommand", () => {
         employeeCd: TEST_EMPLOYEE_CD,
         email: "delete-cmd-test@example.com",
         name: "削除テスト太郎",
-        departmentId: "dept-001",
+        departmentId: TEST_DEPT_ID,
       },
     });
   }
