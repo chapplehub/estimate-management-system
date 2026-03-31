@@ -15,6 +15,59 @@ datasource db {
 }
 
 // ========================================
+// 役職・役割関連
+// ========================================
+
+model Position {
+  id         String @id // ドメイン層でCUID生成
+  positionCd String @unique @map("position_cd") // POS001 形式
+  name       String @unique // 役職名（課長・部長・本部長・社長）
+
+  // 上位役職（自己参照）：社長は NULL
+  superiorPositionId String?    @map("superior_position_id")
+  superiorPosition   Position?  @relation("PositionHierarchy", fields: [superiorPositionId], references: [id])
+  subordinates       Position[] @relation("PositionHierarchy")
+
+  // 逆参照
+  roles Role[]
+
+  @@map("positions")
+}
+
+model Role {
+  id     String @id // ドメイン層でCUID生成
+  roleCd String @unique @map("role_cd") // ROLE001 形式
+  name   String // 役割名（大阪市南課長・大阪市部長など）
+
+  // 上位役割（自己参照）
+  superiorRoleId String? @map("superior_role_id")
+  superiorRole   Role?   @relation("RoleHierarchy", fields: [superiorRoleId], references: [id])
+  subordinates   Role[]  @relation("RoleHierarchy")
+
+  // 所属役職
+  positionId String   @map("position_id")
+  position   Position @relation(fields: [positionId], references: [id])
+
+  // 逆参照
+  employeeRoles       EmployeeRole[]
+  employeesAsSuperior Employee[]     @relation("EmployeeSuperiorRole")
+
+  @@index([positionId])
+  @@map("roles")
+}
+
+model EmployeeRole {
+  // 複合PK（従業員ID + 役割ID）
+  employeeId String   @map("employee_id")
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  roleId     String   @map("role_id")
+  role       Role     @relation(fields: [roleId], references: [id])
+
+  @@id([employeeId, roleId])
+  @@map("employee_roles")
+}
+
+// ========================================
 // 従業員関連
 // ========================================
 
@@ -29,6 +82,13 @@ model Employee {
   departmentId String     @map("department_id")
   department   Department @relation(fields: [departmentId], references: [id])
 
+  // 上位役割（承認フローの起点）
+  superiorRoleId String? @map("superior_role_id")
+  superiorRole   Role?   @relation("EmployeeSuperiorRole", fields: [superiorRoleId], references: [id])
+
+  // 従業員役割（逆参照）
+  employeeRoles EmployeeRole[]
+
   // タイムスタンプ
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -37,6 +97,7 @@ model Employee {
   user User?
 
   @@index([departmentId])
+  @@index([superiorRoleId])
   @@map("employees")
 }
 
