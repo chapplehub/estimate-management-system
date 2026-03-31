@@ -19,8 +19,9 @@ datasource db {
 // ========================================
 
 model Position {
-  id   String @id // シードデータで固定ID
-  name String @unique // 役職名（課長・部長・本部長・社長）
+  id         String @id // ドメイン層でCUID生成
+  positionCd String @unique @map("position_cd") // POS001 形式
+  name       String @unique // 役職名（課長・部長・本部長・社長）
 
   // 上位役職（自己参照）：社長は NULL
   superiorPositionId String?    @map("superior_position_id")
@@ -34,8 +35,9 @@ model Position {
 }
 
 model Role {
-  id   String @id // ドメイン層でCUID生成
-  name String // 役割名（大阪市南課長・大阪市部長など）
+  id     String @id // ドメイン層でCUID生成
+  roleCd String @unique @map("role_cd") // ROLE001 形式
+  name   String // 役割名（大阪市南課長・大阪市部長など）
 
   // 上位役割（自己参照）
   superiorRoleId String? @map("superior_role_id")
