@@ -723,6 +723,8 @@ function generateEmail(index: number): string {
 function determineRole(index: number): UserRole {
   // 最初の1人は必ず管理者
   if (index === 1) return USER_ROLES.ADMIN;
+  // 2人目は必ず一般ユーザ（auth.setup.tsのE2Eテストと整合性を保つため）
+  if (index === 2) return USER_ROLES.USER;
   // それ以降は確率で決定
   return Math.random() < ADMIN_RATIO ? USER_ROLES.ADMIN : USER_ROLES.USER;
 }
