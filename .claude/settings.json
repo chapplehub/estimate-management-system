@@ -156,7 +156,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash scripts/claude-hooks/post-bash-commit-fail-check.sh"
+            "command": "bash .claude/hooks/post-bash-commit-fail-check.sh"
           }
         ]
       },
