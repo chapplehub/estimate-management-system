@@ -165,7 +165,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'INPUT=$(cat); WORKTREE_PATH=$(echo \"$INPUT\" | jq -r \".tool_result.path // empty\"); if [ -z \"$WORKTREE_PATH\" ] || [ \"$WORKTREE_PATH\" = \"null\" ]; then exit 0; fi; SOURCE_ROOT=$(git worktree list | head -1 | awk \"{print \\$1}\"); bash \"$SOURCE_ROOT/scripts/worktree-fix-base-branch.sh\" \"$WORKTREE_PATH\"; bash \"$SOURCE_ROOT/scripts/worktree-copy-includes.sh\" \"$WORKTREE_PATH\" \"$SOURCE_ROOT\"'"
+            "command": "bash .claude/hooks/post-worktree-setup.sh"
           }
         ]
       }
