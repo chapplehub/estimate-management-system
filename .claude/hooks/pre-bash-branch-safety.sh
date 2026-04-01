@@ -1,5 +1,5 @@
 #!/bin/bash
-# PreToolUse hook (Bash): main/master/develop ブランチへの git push/commit をブロックする
+# PreToolUse hook (Bash): main/master ブランチへの git push/commit をブロックする
 # stdin: Claude Code から渡される JSON（tool_input.command 等）
 # exit 2 = ツール実行をブロック
 
@@ -20,7 +20,7 @@ if [ -z "$CMD" ]; then
 fi
 
 if echo "$CMD" | grep -qE 'git\s+(push|commit)'; then
-  if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "master" ] || [ "$BRANCH" = "develop" ]; then
+  if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "master" ]; then
     echo "❌ ERROR: git push/commit to $BRANCH branch is blocked." >&2
     echo "Please use a feature branch or git worktree for development." >&2
     exit 2
