@@ -148,6 +148,16 @@
             "command": "bash .claude/hooks/pre-bash-plan-file-check.sh"
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/pipe-stage-permissions.sh",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "PostToolUse": [
