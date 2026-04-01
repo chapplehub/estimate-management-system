@@ -107,7 +107,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'INPUT=$(cat); SID=$(echo \"$INPUT\" | jq -r \".session_id\" | cut -c1-5); curl -s -d \"Claude Code [${SID}]: Completed🚀\" ntfy.sh/chapple-claude-kmy4b7lnj927 > /dev/null 2>&1 &'"
+            "command": "bash .claude/hooks/stop-notify-completion.sh"
           }
         ]
       }
@@ -118,7 +118,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'INPUT=$(cat); SID=$(echo \"$INPUT\" | jq -r \".session_id\" | cut -c1-5); curl -s -d \"Claude Code [${SID}]: Question❓\" ntfy.sh/chapple-claude-kmy4b7lnj927 > /dev/null 2>&1 &'"
+            "command": "bash .claude/hooks/pre-ask-notify-question.sh"
           }
         ]
       },
