@@ -107,7 +107,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'INPUT=$(cat); SID=$(echo \"$INPUT\" | jq -r \".session_id\" | cut -c1-5); curl -s -d \"Claude Code [${SID}]: Completed🚀\" ntfy.sh/chapple-claude-kmy4b7lnj927 > /dev/null 2>&1 &'"
+            "command": "bash .claude/hooks/stop-notify-completion.sh"
           }
         ]
       }
@@ -118,7 +118,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'INPUT=$(cat); SID=$(echo \"$INPUT\" | jq -r \".session_id\" | cut -c1-5); curl -s -d \"Claude Code [${SID}]: Question❓\" ntfy.sh/chapple-claude-kmy4b7lnj927 > /dev/null 2>&1 &'"
+            "command": "bash .claude/hooks/pre-ask-notify-question.sh"
           }
         ]
       },
@@ -127,7 +127,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo \"unknown\"); INPUT=$(cat); if ! command -v jq &>/dev/null; then if echo \"$INPUT\" | grep -q \"git\"; then echo \"❌ ERROR: git commands blocked (jq not installed for safety check).\" >&2; exit 2; fi; exit 0; fi; CMD=$(echo \"$INPUT\" | jq -r \".tool_input.command // empty\" 2>/dev/null); if [ -z \"$CMD\" ]; then exit 0; fi; if echo \"$CMD\" | grep -qE \"git\\s+(push|commit)\"; then if [ \"$BRANCH\" = \"main\" ] || [ \"$BRANCH\" = \"master\" ] || [ \"$BRANCH\" = \"develop\" ]; then echo \"❌ ERROR: git push/commit to $BRANCH branch is blocked.\" >&2; echo \"Please use a feature branch or git worktree for development.\" >&2; exit 2; fi; fi'"
+            "command": "bash .claude/hooks/pre-bash-branch-safety.sh"
           }
         ]
       },
@@ -136,7 +136,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'INPUT=$(cat); if ! command -v jq &>/dev/null; then exit 0; fi; CMD=$(echo \"$INPUT\" | jq -r \".tool_input.command // empty\" 2>/dev/null); if [ -z \"$CMD\" ]; then exit 0; fi; if ! echo \"$CMD\" | grep -qE \"git\\s+commit\"; then exit 0; fi; SETTINGS=\".claude/settings.local.json\"; if [ ! -f \"$SETTINGS\" ]; then exit 0; fi; PLANS_DIR=$(jq -r \".plansDirectory // empty\" \"$SETTINGS\" 2>/dev/null); if [ -z \"$PLANS_DIR\" ]; then exit 0; fi; PLAN_FILES=$(find \"$PLANS_DIR\" -maxdepth 1 -name \"*.md\" ! -name \"deviations.md\" 2>/dev/null); if [ -z \"$PLAN_FILES\" ]; then exit 0; fi; echo \"📋 リマインド: 実装計画が存在します。計画からの逸脱があれば ${PLANS_DIR}/deviations.md に追記してください。\"; exit 0'"
+            "command": "bash .claude/hooks/pre-bash-plan-reminder.sh"
           }
         ]
       },
@@ -145,7 +145,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'INPUT=$(cat); if ! command -v jq &>/dev/null; then exit 0; fi; CMD=$(echo \"$INPUT\" | jq -r \".tool_input.command // empty\" 2>/dev/null); if [ -z \"$CMD\" ]; then exit 0; fi; if ! echo \"$CMD\" | grep -qE \"git\\s+commit\"; then exit 0; fi; SETTINGS=\".claude/settings.local.json\"; if [ ! -f \"$SETTINGS\" ]; then exit 0; fi; PLANS_DIR=$(jq -r \".plansDirectory // empty\" \"$SETTINGS\" 2>/dev/null); if [ -z \"$PLANS_DIR\" ]; then exit 0; fi; if [ ! -d \"$PLANS_DIR\" ]; then exit 0; fi; UNCOMMITTED=$(git status --porcelain \"$PLANS_DIR\" 2>/dev/null); if [ -n \"$UNCOMMITTED\" ]; then echo \"📋 注意: ${PLANS_DIR} に未コミットのファイルがあります。計画ファイルも一緒にコミットしてください。\"; fi; exit 0'"
+            "command": "bash .claude/hooks/pre-bash-plan-file-check.sh"
           }
         ]
       }
@@ -156,7 +156,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash scripts/claude-hooks/post-bash-commit-fail-check.sh"
+            "command": "bash .claude/hooks/post-bash-commit-fail-check.sh"
           }
         ]
       },
@@ -165,7 +165,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'INPUT=$(cat); WORKTREE_PATH=$(echo \"$INPUT\" | jq -r \".tool_result.path // empty\"); if [ -z \"$WORKTREE_PATH\" ] || [ \"$WORKTREE_PATH\" = \"null\" ]; then exit 0; fi; SOURCE_ROOT=$(git worktree list | head -1 | awk \"{print \\$1}\"); bash \"$SOURCE_ROOT/scripts/worktree-fix-base-branch.sh\" \"$WORKTREE_PATH\"; bash \"$SOURCE_ROOT/scripts/worktree-copy-includes.sh\" \"$WORKTREE_PATH\" \"$SOURCE_ROOT\"'"
+            "command": "bash .claude/hooks/post-worktree-setup.sh"
           }
         ]
       }
