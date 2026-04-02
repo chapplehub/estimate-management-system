@@ -11,21 +11,12 @@ context: fork
 
 ## ステップ 1: タイプ自動判定
 
-`$ARGUMENTS` のキーワードから issue タイプを推定する。
-
-| タイプ | キーワード例 | タイトル接頭辞 | ラベル |
-|--------|-------------|---------------|--------|
-| enhancement | 機能追加, 実装, 新規, feat, 追加 | `feat:` | `Type: enhancement` |
-| bug | バグ, エラー, 不具合, 修正, fix, 壊れ | `fix:` | `Type: bug` |
-| refactor | リファクタ, 整理, 削除, cleanup, 統合, 分離 | `refactor:` | `Type: refactor` |
-| documentation | ドキュメント, 記録, docs, README | `docs:` | `Type: documentation` |
-| test | テスト, カバレッジ, test, spec | `test:` | `Type: test` |
-| ci | CI, pipeline, deploy, hook, lint | `ci:` | `Type: ci` |
-| question | 疑問, 検討, 方針, 議論, 質問, どうすべき | `question:` | `Type: question` |
-| architecture | アーキテクチャ, 設計判断, 設計方針 | `arch:` | `Type: architecture` |
+まず `.claude/references/commit-types.md` を読み、マッピングテーブルを取得する。
+`$ARGUMENTS` のキーワードとテーブルの `keywords` 列を照合して issue タイプを推定する。
+テーブルの `prefix` 列をタイトル接頭辞に、`label` 列を GitHub ラベルに使用する。
 
 - 複数マッチした場合は最も適切なものを選択
-- どれにも該当しない場合は `enhancement` をデフォルトとする
+- どれにも該当しない場合は `feat`（`Type: enhancement`）をデフォルトとする
 
 ## ステップ 2: ラベル存在チェック
 

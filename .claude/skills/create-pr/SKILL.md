@@ -54,16 +54,7 @@ git diff develop..HEAD --stat
 優先順位:
 
 1. `$ARGUMENTS` に明示的なタイトルがあればそれを使用
-2. ブランチ接頭辞 + issue タイトルから生成する
-
-ブランチ接頭辞マッピング:
-
-| ブランチ接頭辞 | タイトル接頭辞 |
-|---------------|---------------|
-| `feat/` | `feat:` |
-| `fix/` | `fix:` |
-| `docs/` | `docs:` |
-| `refactor/` | `refactor:` |
+2. `.claude/references/commit-types.md` のマッピングテーブルを参照し、ブランチ接頭辞（`branch` 列）からタイトル接頭辞（`prefix` 列）を決定する
 
 例: ブランチ `feat/issue-87` + issue タイトル「振り返りレポート付きPR作成スキル」→ `feat: 振り返りレポート付きPR作成スキル`
 

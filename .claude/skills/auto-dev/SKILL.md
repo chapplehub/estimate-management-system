@@ -40,15 +40,8 @@ user-invocable: true
 gh issue view {number} --json title,body,labels
 ```
 
-ラベルからブランチタイプを決定する:
-
-| ラベル | ブランチタイプ |
-|--------|---------------|
-| `Type: enhancement` | `feat` |
-| `Type: bug` | `fix` |
-| `Type: refactor` | `refactor` |
-| `Type: documentation` | `docs` |
-| その他 / ラベルなし | `feat`（デフォルト） |
+`.claude/references/commit-types.md` のマッピングテーブルを参照し、ラベル（`label` 列）からブランチタイプ（`branch` 列）を決定する。
+`branch` が `—` のタイプ、またはラベルなしの場合は `feat`（デフォルト）を使用する。
 
 ### 1.4 複雑度チェック
 
