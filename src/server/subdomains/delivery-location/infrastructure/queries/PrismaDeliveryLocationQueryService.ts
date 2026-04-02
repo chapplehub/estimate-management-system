@@ -28,23 +28,6 @@ export class PrismaDeliveryLocationQueryService implements DeliveryLocationQuery
     return dl ? this.toDTO(dl) : null;
   }
 
-  async findByCustomerId(
-    customerId: string,
-    options?: DeliveryLocationListOptions
-  ): Promise<DeliveryLocationDTO[]> {
-    const orderBy = this.buildOrderBy(options);
-
-    const dls = await prisma.deliveryLocation.findMany({
-      where: { customerId },
-      select: this.getSelectFields(),
-      orderBy,
-      take: options?.limit,
-      skip: options?.offset,
-    });
-
-    return dls.map((dl) => this.toDTO(dl));
-  }
-
   async search(
     criteria: DeliveryLocationSearchCriteria,
     options?: DeliveryLocationListOptions
@@ -61,24 +44,6 @@ export class PrismaDeliveryLocationQueryService implements DeliveryLocationQuery
     });
 
     return dls.map((dl) => this.toDTO(dl));
-  }
-
-  async findAll(options?: DeliveryLocationListOptions): Promise<DeliveryLocationDTO[]> {
-    const orderBy = this.buildOrderBy(options);
-
-    const dls = await prisma.deliveryLocation.findMany({
-      select: this.getSelectFields(),
-      orderBy,
-      take: options?.limit,
-      skip: options?.offset,
-    });
-
-    return dls.map((dl) => this.toDTO(dl));
-  }
-
-  async count(criteria: DeliveryLocationSearchCriteria): Promise<number> {
-    const where = this.buildWhereClause(criteria);
-    return await prisma.deliveryLocation.count({ where });
   }
 
   private buildWhereClause(
