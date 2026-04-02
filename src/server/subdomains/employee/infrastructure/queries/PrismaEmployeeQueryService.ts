@@ -24,15 +24,6 @@ export class PrismaEmployeeQueryService implements EmployeeQueryService {
     return employee ? this.toDTO(employee) : null;
   }
 
-  async findByEmail(email: string): Promise<EmployeeDTO | null> {
-    const employee = await prisma.employee.findUnique({
-      where: { email },
-      select: this.getSelectFields(),
-    });
-
-    return employee ? this.toDTO(employee) : null;
-  }
-
   async findByEmployeeCd(employeeCd: string): Promise<EmployeeDTO | null> {
     const employee = await prisma.employee.findFirst({
       where: { employeeCd },
@@ -55,24 +46,6 @@ export class PrismaEmployeeQueryService implements EmployeeQueryService {
     });
 
     return employees.map((e) => this.toDTO(e));
-  }
-
-  async findAll(options?: ListOptions): Promise<EmployeeDTO[]> {
-    const orderBy = this.buildOrderBy(options);
-
-    const employees = await prisma.employee.findMany({
-      select: this.getSelectFields(),
-      orderBy,
-      take: options?.limit,
-      skip: options?.offset,
-    });
-
-    return employees.map((e) => this.toDTO(e));
-  }
-
-  async count(criteria: EmployeeSearchCriteria): Promise<number> {
-    const where = this.buildWhereClause(criteria);
-    return await prisma.employee.count({ where });
   }
 
   /**

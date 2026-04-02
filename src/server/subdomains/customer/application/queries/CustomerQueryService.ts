@@ -8,6 +8,4 @@ export interface CustomerQueryService {
   findById(id: string): Promise<CustomerDTO | null>;
   findByCode(code: string): Promise<CustomerDTO | null>;
   search(criteria: CustomerSearchCriteria, options?: CustomerListOptions): Promise<CustomerDTO[]>;
-  findAll(options?: CustomerListOptions): Promise<CustomerDTO[]>;
-  count(criteria: CustomerSearchCriteria): Promise<number>;
 }

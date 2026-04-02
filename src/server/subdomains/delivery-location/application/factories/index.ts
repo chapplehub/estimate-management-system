@@ -3,6 +3,5 @@ export { updateDeliveryLocationCommandFactory } from "./updateDeliveryLocationCo
 export { deleteDeliveryLocationCommandFactory } from "./deleteDeliveryLocationCommandFactory";
 export {
   getDeliveryLocationByIdQueryFactory,
-  getDeliveryLocationsByCustomerIdQueryFactory,
   searchDeliveryLocationsQueryFactory,
 } from "./deliveryLocationQueryFactory";
