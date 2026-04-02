@@ -121,11 +121,6 @@ export class PrismaDepartmentQueryService implements DepartmentQueryService {
     return this.buildTree(departmentDTOs, rootId ?? null);
   }
 
-  async count(criteria: DepartmentSearchCriteria): Promise<number> {
-    const where = this.buildWhereClause(criteria);
-    return await prisma.department.count({ where });
-  }
-
   /**
    * 検索条件からPrismaのWHERE句を構築
    */
