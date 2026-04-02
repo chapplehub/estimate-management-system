@@ -20,13 +20,6 @@ export interface EmployeeQueryService {
   findById(id: string): Promise<EmployeeDTO | null>;
 
   /**
-   * メールアドレスで従業員を取得
-   * @param email メールアドレス
-   * @returns 従業員DTO（存在しない場合null）
-   */
-  findByEmail(email: string): Promise<EmployeeDTO | null>;
-
-  /**
    * 従業員CDで従業員を取得
    * @param employeeCd 従業員CD
    * @returns 従業員DTO（存在しない場合null）
@@ -40,18 +33,4 @@ export interface EmployeeQueryService {
    * @returns 従業員DTOの配列
    */
   search(criteria: EmployeeSearchCriteria, options?: ListOptions): Promise<EmployeeDTO[]>;
-
-  /**
-   * 全従業員を取得
-   * @param options リスト取得オプション
-   * @returns 従業員DTOの配列
-   */
-  findAll(options?: ListOptions): Promise<EmployeeDTO[]>;
-
-  /**
-   * 検索条件に一致する従業員数をカウント
-   * @param criteria 検索条件
-   * @returns 従業員数
-   */
-  count(criteria: EmployeeSearchCriteria): Promise<number>;
 }
