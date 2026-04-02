@@ -46,24 +46,6 @@ export class PrismaCustomerQueryService implements CustomerQueryService {
     return customers.map((c) => this.toDTO(c));
   }
 
-  async findAll(options?: CustomerListOptions): Promise<CustomerDTO[]> {
-    const orderBy = this.buildOrderBy(options);
-
-    const customers = await prisma.customer.findMany({
-      select: this.getSelectFields(),
-      orderBy,
-      take: options?.limit,
-      skip: options?.offset,
-    });
-
-    return customers.map((c) => this.toDTO(c));
-  }
-
-  async count(criteria: CustomerSearchCriteria): Promise<number> {
-    const where = this.buildWhereClause(criteria);
-    return await prisma.customer.count({ where });
-  }
-
   private buildWhereClause(criteria: CustomerSearchCriteria): Prisma.CustomerWhereInput {
     const where: Prisma.CustomerWhereInput = {};
     const companyWhere: Prisma.CompanyWhereInput = { type: CompanyType.CUSTOMER };
