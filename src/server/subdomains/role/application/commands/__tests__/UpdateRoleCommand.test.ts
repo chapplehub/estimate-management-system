@@ -139,8 +139,7 @@ describe("UpdateRoleCommand", () => {
     expect(updated.name.value).toBe("テスト役割");
   });
 
-  it("循環参照が発生する上位役割を指定するとエラー", async () => {
-    // buchou -> kachou の順番で作成し、kachouの上位をbuchouにする
+  it("自分自身を上位役割に指定するとエラー", async () => {
     const buchouRole = Role.create(
       new RoleCd(TEST_ROLE_CDS[0]),
       new RoleName("テスト部長"),
@@ -148,21 +147,59 @@ describe("UpdateRoleCommand", () => {
     );
     await roleRepository.save(buchouRole);
 
+    await expect(
+      command.execute({
+        id: buchouRole.id,
+        superiorRoleId: buchouRole.id,
+      })
+    ).rejects.toThrow(BusinessRuleViolationError);
+  });
+
+  it("下位役割を上位役割に指定するとエラー（チェーン循環防止）", async () => {
+    // 部長 ← 課長 の階層で、部長の上位を課長にしようとする → B → K → B の循環
+    const buchouRole = Role.create(
+      new RoleCd(TEST_ROLE_CDS[0]),
+      new RoleName("循環テスト部長"),
+      buchouPositionId
+    );
+    await roleRepository.save(buchouRole);
+
     const kachouRole = Role.create(
       new RoleCd(TEST_ROLE_CDS[1]),
-      new RoleName("テスト課長"),
+      new RoleName("循環テスト課長"),
       kachouPositionId,
       buchouRole.id
     );
     await roleRepository.save(kachouRole);
 
-    // buchouの上位をkachouにしようとする → 循環参照エラー
-    // ただし役職チェックで先に弾かれる可能性があるため、
-    // 同じ役職レベルでテストする
     await expect(
       command.execute({
         id: buchouRole.id,
-        superiorRoleId: buchouRole.id,
+        superiorRoleId: kachouRole.id,
+      })
+    ).rejects.toThrow(BusinessRuleViolationError);
+  });
+
+  it("同一役職レベルの役割を上位役割に指定するとエラー", async () => {
+    const kachouRole1 = Role.create(
+      new RoleCd(TEST_ROLE_CDS[0]),
+      new RoleName("同一レベルA課長"),
+      kachouPositionId
+    );
+    await roleRepository.save(kachouRole1);
+
+    const kachouRole2 = Role.create(
+      new RoleCd(TEST_ROLE_CDS[1]),
+      new RoleName("同一レベルB課長"),
+      kachouPositionId
+    );
+    await roleRepository.save(kachouRole2);
+
+    // 課長の上位は部長でなければならないため、同一役職レベルは設定不可
+    await expect(
+      command.execute({
+        id: kachouRole1.id,
+        superiorRoleId: kachouRole2.id,
       })
     ).rejects.toThrow(BusinessRuleViolationError);
   });

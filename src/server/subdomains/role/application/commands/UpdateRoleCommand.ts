@@ -63,6 +63,11 @@ export class UpdateRoleCommand {
   /**
    * 循環参照がないことを検証
    * 指定した上位役割が、自分自身または自分の下位役割でないことを確認
+   *
+   * 注: 現在の役職階層（課長 < 部長 < 本部長 < 社長）では、
+   * SuperiorRoleValidationDomainService の役職レベルチェックにより
+   * 祖先チェーンの循環は構造的に発生しない。
+   * 自己参照チェックと祖先走査は防御的プログラミングとして残す。
    */
   private async validateNoCircularReference(
     roleId: string,
