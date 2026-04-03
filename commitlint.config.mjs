@@ -1,7 +1,7 @@
 const config = {
   extends: ["@commitlint/config-conventional"],
   rules: {
-    "subject-case": [2, "never", ["upper-case"]],
+    "subject-case": [0],
     "type-enum": [
       2,
       "always",
