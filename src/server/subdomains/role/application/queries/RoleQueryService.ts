@@ -27,4 +27,9 @@ export interface RoleQueryService {
    * 役職IDで役割を取得
    */
   findByPositionId(positionId: string, options?: RoleListOptions): Promise<RoleDTO[]>;
+
+  /**
+   * 役割コードで役割を取得
+   */
+  findByRoleCd(roleCd: string): Promise<RoleDTO | null>;
 }

@@ -50,6 +50,15 @@ export class PrismaRoleQueryService implements RoleQueryService {
     return roles.map((r) => this.toDTO(r));
   }
 
+  async findByRoleCd(roleCd: string): Promise<RoleDTO | null> {
+    const role = await prisma.role.findUnique({
+      where: { roleCd },
+      select: this.getSelectFields(),
+    });
+
+    return role ? this.toDTO(role) : null;
+  }
+
   async findByPositionId(positionId: string, options?: RoleListOptions): Promise<RoleDTO[]> {
     const orderBy = this.buildOrderBy(options) ?? { roleCd: "asc" as const };
 
