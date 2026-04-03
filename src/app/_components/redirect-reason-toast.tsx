@@ -45,6 +45,18 @@ const FLASH_MESSAGES: Record<RedirectReason, FlashMessage> = {
     type: FLASH_MESSAGE_TYPE.SUCCESS,
     message: "部署を削除しました。",
   },
+  [REDIRECT_REASON.ROLE_CREATED]: {
+    type: FLASH_MESSAGE_TYPE.SUCCESS,
+    message: "役割を登録しました。",
+  },
+  [REDIRECT_REASON.ROLE_UPDATED]: {
+    type: FLASH_MESSAGE_TYPE.SUCCESS,
+    message: "役割情報を更新しました。",
+  },
+  [REDIRECT_REASON.ROLE_DELETED]: {
+    type: FLASH_MESSAGE_TYPE.SUCCESS,
+    message: "役割を削除しました。",
+  },
 };
 
 function RedirectReasonToastInner() {

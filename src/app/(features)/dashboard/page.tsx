@@ -12,6 +12,11 @@ const navigationItems = [
     title: "部署管理",
     description: "部署の一覧表示、登録、編集、削除を行います。",
   },
+  {
+    href: "/roles",
+    title: "役割管理",
+    description: "役割の一覧表示、登録、編集、削除を行います。",
+  },
 ] as const;
 
 export default async function DashboardPage() {
