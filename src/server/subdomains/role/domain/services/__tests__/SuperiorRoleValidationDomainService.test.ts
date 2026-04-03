@@ -12,7 +12,7 @@ describe("SuperiorRoleValidationDomainService", () => {
   let service: SuperiorRoleValidationDomainService;
   let roleRepository: PrismaRoleRepository;
 
-  const TEST_ROLE_CDS = ["ROLE996", "ROLE997"];
+  const TEST_ROLE_CDS = ["ROLE995", "ROLE996"];
 
   // シードデータの役職ID
   let kachouPositionId: string; // 課長 (POS001) - 上位: 部長
