@@ -28,7 +28,7 @@ export default async function RolePage({ searchParams }: { searchParams: Promise
   const searchQuery = searchRolesQueryFactory();
   const roles = await searchQuery.execute({
     criteria,
-    options: { limit: LIST_FETCH_LIMIT },
+    options: { limit: LIST_FETCH_LIMIT, orderBy: { field: "roleCd", direction: "asc" } },
   });
 
   // 表示用データに変換

@@ -54,7 +54,7 @@ export default async function DepartmentPage({
   const searchQuery = searchDepartmentsQueryFactory();
   const departments = await searchQuery.execute({
     criteria,
-    options: { limit: LIST_FETCH_LIMIT },
+    options: { limit: LIST_FETCH_LIMIT, orderBy: { field: "departmentCd", direction: "asc" } },
   });
 
   // 親部署名解決: 全部署取得してMap構築
