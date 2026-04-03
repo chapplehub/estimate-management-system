@@ -1,5 +1,6 @@
 import { GetAllRolesQuery } from "../queries/GetAllRolesQuery";
 import { GetRoleByIdQuery } from "../queries/GetRoleByIdQuery";
+import { GetRoleByRoleCdQuery } from "../queries/GetRoleByRoleCdQuery";
 import { GetRolesByPositionQuery } from "../queries/GetRolesByPositionQuery";
 import { SearchRolesQuery } from "../queries/SearchRolesQuery";
 import { PrismaRoleQueryService } from "../../infrastructure/queries/PrismaRoleQueryService";
@@ -21,6 +22,11 @@ export function getRoleByIdQueryFactory(): GetRoleByIdQuery {
 export function searchRolesQueryFactory(): SearchRolesQuery {
   const queryService = new PrismaRoleQueryService();
   return new SearchRolesQuery(queryService);
+}
+
+export function getRoleByRoleCdQueryFactory(): GetRoleByRoleCdQuery {
+  const queryService = new PrismaRoleQueryService();
+  return new GetRoleByRoleCdQuery(queryService);
 }
 
 export function getRolesByPositionQueryFactory(): GetRolesByPositionQuery {
