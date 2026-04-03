@@ -25,6 +25,7 @@ PRを作成する際は必ず `/create-pr` スキルを使用すること。`gh 
 
 When implementing with a plan (plan mode), follow these rules:
 
+- **Plan file format**: Planファイルは `docs/claude-plans/PLAN_TEMPLATE.md` のフォーマットに従って作成すること。
 - **Commit at each plan step**: Create a commit when each step of the plan is completed. Do not implement everything at once and squash into a single commit.
 
 ## Critical: DDD Layering Rules
