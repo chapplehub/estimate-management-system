@@ -21,6 +21,7 @@
 | # | タイトル | ステータス | 起票日 |
 |---|---------|-----------|--------|
 | [0009](0009-migrate-id-generation-from-cuid2-to-uuidv7.md) | ID生成方式をCUID2からUUIDv7に移行する | 採用 | 2026-04-04 |
+| [0010](0010-migrate-datetime-to-timestamptz.md) | 全テーブルのDateTimeカラムをtimestamptzに移行する | 採用 | 2026-04-04 |
 
 ## アプリケーション（フロントエンド・認可）
 
