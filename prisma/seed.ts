@@ -785,12 +785,16 @@ function generateEmail(index: number): string {
   return `employee${index}@example.com`;
 }
 
+// 固定ユーザー（画面上で管理者/一般ユーザを識別しやすくする）
+const FIXED_USERS = [
+  { name: "管理 ユーザ", role: USER_ROLES.ADMIN },
+  { name: "一般 ユーザ", role: USER_ROLES.USER },
+] as const;
+
 // 役割を決定（約5%が管理者）
 function determineRole(index: number): UserRole {
-  // 最初の1人は必ず管理者
-  if (index === 1) return USER_ROLES.ADMIN;
-  // 2人目は必ず一般ユーザ（auth.setup.tsのE2Eテストと整合性を保つため）
-  if (index === 2) return USER_ROLES.USER;
+  // 固定ユーザーはFIXED_USERSで決定済み
+  if (index <= FIXED_USERS.length) return FIXED_USERS[index - 1].role;
   // それ以降は確率で決定
   return Math.random() < ADMIN_RATIO ? USER_ROLES.ADMIN : USER_ROLES.USER;
 }
@@ -803,8 +807,25 @@ function generateSeedUsers(
 ): SeedUser[] {
   const users: SeedUser[] = [];
   for (let i = 1; i <= count; i++) {
-    if (i <= ROLE_EMPLOYEE_CONFIGS.length) {
-      // 役割を持つ従業員（EMP000001〜EMP000015）
+    if (i <= FIXED_USERS.length) {
+      // 固定ユーザー（EMP000001: 管理ユーザ, EMP000002: 一般ユーザ）
+      const fixedUser = FIXED_USERS[i - 1];
+      const config = ROLE_EMPLOYEE_CONFIGS[i - 1];
+      const assignedRole = ROLES.find((r) => r.cd === config.roleCd)!;
+      const superiorRoleId = assignedRole.superiorCd
+        ? roleIdMap.get(assignedRole.superiorCd)!
+        : null;
+      users.push({
+        employeeCd: generateEmployeeCd(i),
+        email: generateEmail(i),
+        name: fixedUser.name,
+        role: fixedUser.role,
+        departmentId: departmentIdMap.get(config.departmentCd)!,
+        superiorRoleId,
+        assignedRoleId: roleIdMap.get(config.roleCd),
+      });
+    } else if (i <= ROLE_EMPLOYEE_CONFIGS.length) {
+      // 役割を持つ従業員（EMP000003〜EMP000015）
       const config = ROLE_EMPLOYEE_CONFIGS[i - 1];
       const assignedRole = ROLES.find((r) => r.cd === config.roleCd)!;
       const superiorRoleId = assignedRole.superiorCd
@@ -814,7 +835,7 @@ function generateSeedUsers(
         employeeCd: generateEmployeeCd(i),
         email: generateEmail(i),
         name: generateName(),
-        role: i === 1 ? USER_ROLES.ADMIN : determineRole(i),
+        role: determineRole(i),
         departmentId: departmentIdMap.get(config.departmentCd)!,
         superiorRoleId,
         assignedRoleId: roleIdMap.get(config.roleCd),
