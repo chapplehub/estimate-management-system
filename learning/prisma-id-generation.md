@@ -1,200 +1,107 @@
 # Prisma ID生成の仕組み
 
-## `@id @default(cuid())` の意味
+## 現在の方式: UUIDv7（ドメイン層で生成）
 
-Prismaのモデル定義で以下のような指定を見かけます：
+このプロジェクトでは、ID生成にUUIDv7を使用している。
+Prismaの `@default(cuid())` や `@default(uuid())` は使わず、ドメイン層の `generateId()` 関数で生成したIDをPrismaに渡す方式を採用。
+
+### UUIDv7とは？
+
+UUIDv7はRFC 9562で標準化されたID形式。
+
+| 特徴 | 説明 |
+|------|------|
+| 形式 | `0192d38a-e5b7-7c80-9e1a-...`（36文字） |
+| ソート可能 | 先頭48ビットがミリ秒タイムスタンプ → 生成順 = 辞書順 |
+| 標準規格 | RFC 9562準拠 |
+| 安全性 | 分散システムでも衝突しない |
+| DB互換性 | PostgreSQLのネイティブUUID型と互換 |
+
+### UUIDv7の構造
+
+```
+0192d38a-e5b7-7c80-9e1a-4b5c6d7e8f9a
+├─────────────┘ │  │     └─ ランダムビット
+│              │  └─ バリアント (10xx)
+│              └─ バージョン (7)
+└─ ミリ秒タイムスタンプ (48ビット)
+```
+
+## ID生成の仕組み
+
+### 生成場所: ドメイン層（アプリケーション側）
+
+```typescript
+// src/server/shared/generateId.ts
+import { v7 as uuidv7 } from "uuid";
+
+export function generateId(): string {
+  return uuidv7();
+}
+```
+
+### エンティティでの使用パターン
+
+```typescript
+// Entity.create() でIDを生成
+import { generateId } from "@server/shared/generateId";
+
+export class Employee {
+  static create(employeeCd: EmployeeCd, ...): Employee {
+    return new Employee(
+      generateId(), // UUIDv7を生成
+      employeeCd,
+      ...
+    );
+  }
+
+  // DBからの復元時はIDを受け取る（生成しない）
+  static reconstruct(id: string, ...): Employee {
+    return new Employee(id, ...);
+  }
+}
+```
+
+### Prismaスキーマでの定義
 
 ```prisma
 model Employee {
-  id  String  @id @default(cuid())
+  id  String  @id  // ドメイン層でUUIDv7生成（DEFAULT句なし）
   // ...
 }
 ```
 
-### 各属性の意味
+DBのテーブル定義には `DEFAULT` 句がない。アプリケーション側で生成したIDをINSERT文に含めて送信する。
 
-#### 1. `@id`
-- このフィールドが**主キー（Primary Key）**であることを示す
-- テーブル内でレコードを一意に識別するための識別子
-- データベースでは `PRIMARY KEY` 制約として作成される
+### better-authテーブル
 
-#### 2. `@default(cuid())`
-- レコード作成時に**自動的にデフォルト値を生成**する
-- `cuid()` = **CUID (Collision-resistant Unique Identifier)** を生成する関数
-
-## CUIDとは？
-
-**CUID (Collision-resistant Unique Identifier)** の特徴：
-
-| 特徴 | 説明 |
-|------|------|
-| 形式 | ランダムで衝突しにくい一意な文字列 |
-| 例 | `clxyz123abc456def789` |
-| 長さ | 約25文字 |
-| ソート可能 | タイムスタンプベースで生成順にソート可能 |
-| 安全性 | 分散システムでも安全に使える |
-| URL適合性 | ハイフンがないのでURLに使いやすい |
-
-## 重要：生成場所はどこ？
-
-**答え：Prisma Client（プログラム側）で生成される**
-
-❌ **誤解しやすい点：**
-- DBで自動採番されるわけではない
-
-✅ **正しい理解：**
-- Prisma Clientがアプリケーション側で生成してDBに送信する
-
-### 具体的な動作フロー
-
-```typescript
-// 1. あなたが書くコード
-const employee = await prisma.employee.create({
-  data: {
-    // id は指定しない！
-    employeeCd: "EMP000001",
-    email: "test@example.com",
-    name: "山田太郎",
-  }
-});
-
-// 2. Prisma Clientが自動的に行うこと
-// ① プログラム側でCUIDを生成: "clxyz123abc456def789"
-// ② DBに送信するSQL:
-//    INSERT INTO employees (id, employee_cd, email, name, ...)
-//    VALUES ('clxyz123abc456def789', 'EMP000001', 'test@example.com', ...)
-
-// 3. 結果
-console.log(employee.id); // => "clxyz123abc456def789"
-```
-
-### 実際のDBテーブル定義
-
-```sql
-CREATE TABLE "employees" (
-    "id" TEXT NOT NULL,  -- ← DEFAULT句なし！
-    "employee_cd" TEXT NOT NULL,
-    ...
-    CONSTRAINT "employees_pkey" PRIMARY KEY ("id")
-);
-```
-
-**ポイント：**
-- DBのテーブル定義には `DEFAULT` 句がない
-- Prismaが値を生成してINSERT文に含めて送信する
+認証関連テーブル（User/Session/Account/Verification）も `better-auth` の `advanced.database.generateId` コールバックで同じ `generateId()` を使用し、プロジェクト全体でUUIDv7に統一している。
 
 ## ID生成方法の比較
 
-| Prisma指定 | 生成場所 | データ型 | 例 | 用途 |
-|-----------|---------|---------|-----|------|
-| `@default(cuid())` | **Prisma Client** | String | `"clxyz123..."` | 推奨：セキュアで予測不可能 |
-| `@default(uuid())` | **Prisma Client** | String | `"550e8400-..."` | UUID標準に準拠したい場合 |
-| `@default(autoincrement())` | **PostgreSQL** | Int | `1, 2, 3, ...` | シンプルな連番が欲しい場合 |
-| `@default(now())` | **PostgreSQL** | DateTime | `2025-10-28 12:34:56` | タイムスタンプ |
+| 方式 | 生成場所 | ソート | 長さ | 特徴 |
+|------|---------|--------|------|------|
+| **UUIDv7（採用）** | アプリ側 | 時系列順 | 36文字 | RFC標準、タイムスタンプ内蔵 |
+| UUIDv4 | アプリ側 | 不可 | 36文字 | 完全ランダム |
+| CUID2（旧方式） | アプリ側 | 不可 | 25文字 | 独自フォーマット |
+| autoincrement | DB側 | 連番順 | 可変 | 予測可能（セキュリティ注意） |
 
-### 詳細比較
+## なぜUUIDv7を使うのか？
 
-```prisma
-// 1. CUID（このプロジェクトで採用）
-id  String  @id @default(cuid())
-// 生成場所：Prisma Client
-// 例：      "clxyz123abc456def789"
-// 特徴：    短い、予測不可能、ソート可能
+### CUID2からの移行理由
 
-// 2. UUID
-id  String  @id @default(uuid())
-// 生成場所：Prisma Client
-// 例：      "550e8400-e29b-41d4-a716-446655440000"
-// 特徴：    標準規格、少し長い
+1. **ソート不可**: CUID2はセキュリティのためタイムスタンプベースのソートを排除
+2. **DB互換性**: CUIDは独自フォーマットでPostgreSQLネイティブUUID型と互換性なし
+3. **標準規格**: UUIDv7はRFC 9562で標準化されており、エコシステムのサポートが広い
 
-// 3. 自動インクリメント整数
-id  Int     @id @default(autoincrement())
-// 生成場所：PostgreSQL
-// 例：      1, 2, 3, 4, ...
-// 特徴：    シンプル、予測可能（セキュリティ注意）
+### UUIDv7のメリット
 
-// 4. MongoDB ObjectID
-id  String  @id @default(auto()) @db.ObjectId @map("_id")
-// 生成場所：MongoDB
-// 例：      "507f1f77bcf86cd799439011"
-// 特徴：    MongoDB専用
-```
-
-## なぜCUIDを使うのか？
-
-### メリット
-
-| メリット | 説明 |
-|---------|------|
-| ✅ URL適合性 | ハイフンがないのでURLに使いやすい |
-| ✅ コンパクト | UUIDより短い（25文字 vs 36文字） |
-| ✅ ソート可能 | タイムスタンプ順にソート可能 |
-| ✅ セキュア | 予測不可能でセキュリティ向上 |
-| ✅ 分散対応 | 複数サーバーで同時生成しても衝突しない |
-| ✅ DB非依存 | PostgreSQL、MySQL等どのDBでも使える |
-
-### 整数IDとの違い
-
-**整数ID（autoincrement）の問題点：**
-```
-/users/1      ← 予測可能！
-/users/2      ← 順番に試せる
-/users/3      ← セキュリティリスク
-```
-
-**CUIDの利点：**
-```
-/users/clxyz123abc...  ← 予測不可能
-/users/clabc456def...  ← ランダム
-/users/cldef789ghi...  ← セキュア
-```
-
-## まとめ
-
-### 開発者が覚えるべきポイント
-
-1. **`@default(cuid())`は自動生成される**
-   - コードで`id`を指定する必要はない
-   - Prisma Clientが自動で生成する
-
-2. **生成はプログラム側**
-   - DBではなくPrisma Client（Node.js）で生成
-   - DBには生成済みの値が送信される
-
-3. **レコード作成前にIDが分かる**
-   ```typescript
-   const employee = await prisma.employee.create({ ... });
-   console.log(employee.id); // すぐに使える
-   ```
-
-4. **このプロジェクトではCUIDを採用**
-   - セキュリティとスケーラビリティを重視
-   - URLに使いやすく、予測不可能
-
-### 実装時の注意点
-
-```typescript
-// ✅ 正しい：idは指定しない
-await prisma.employee.create({
-  data: {
-    employeeCd: "EMP000001",
-    email: "test@example.com",
-    name: "山田太郎",
-  }
-});
-
-// ❌ 間違い：idを手動で指定する必要はない（できるけど通常不要）
-await prisma.employee.create({
-  data: {
-    id: "何か手動で生成したID", // 通常は不要
-    employeeCd: "EMP000001",
-    // ...
-  }
-});
-```
+- B-treeインデックスへの挿入がシーケンシャルになり、断片化を軽減
+- 辞書順ソート = 時間順ソートが成立
+- `generateId()` に集約されており、将来の変更が1箇所で完結
 
 ## 参考リンク
 
-- [Prisma - ID fields](https://www.prisma.io/docs/concepts/components/prisma-schema/data-model#id-fields)
-- [CUID specification](https://github.com/paralleldrive/cuid)
-- [UUID vs CUID comparison](https://blog.bitsrc.io/why-cuid-is-better-than-uuid-for-database-ids-602eaa14b7e5)
+- [RFC 9562 - UUIDs](https://www.rfc-editor.org/rfc/rfc9562)
+- [uuid npm package](https://www.npmjs.com/package/uuid)
+- [ADR-0009: ID生成方式をCUID2からUUIDv7に移行する](../docs/adr/0009-migrate-id-generation-from-cuid2-to-uuidv7.md)
