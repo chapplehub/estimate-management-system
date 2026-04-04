@@ -16,6 +16,10 @@
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
     "test": "vitest",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "e2e:headed": "playwright test --headed",
+    "e2e:report": "playwright show-report",
     "coverage": "vitest run --coverage",
     "prepare": "node .husky/install.mjs",
     "cm": "cz"
