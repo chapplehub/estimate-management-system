@@ -1,4 +1,4 @@
-import { createId } from "@paralleldrive/cuid2";
+import { generateId } from "@server/shared/generateId";
 import prisma from "@server/prisma";
 import type { UserRole } from "@server/shared/auth/types";
 import { USER_ROLES } from "@server/shared/auth/types";
@@ -21,8 +21,8 @@ describe("SearchEmployeesQuery", () => {
     role: UserRole;
     departmentId?: string;
   }) {
-    const employeeId = createId();
-    const userId = createId();
+    const employeeId = generateId();
+    const userId = generateId();
 
     await prisma.employee.create({
       data: {
@@ -64,7 +64,7 @@ describe("SearchEmployeesQuery", () => {
       where: { departmentCd: "TEST_DEPT" },
       update: {},
       create: {
-        id: createId(),
+        id: generateId(),
         departmentCd: "TEST_DEPT",
         name: "テスト部署",
         abbreviation: "テスト",

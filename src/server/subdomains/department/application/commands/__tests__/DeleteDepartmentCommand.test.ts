@@ -1,4 +1,4 @@
-import { createId } from "@paralleldrive/cuid2";
+import { generateId } from "@server/shared/generateId";
 import prisma from "@server/prisma";
 import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
@@ -33,7 +33,7 @@ describe("DeleteDepartmentCommand", () => {
   });
 
   it("部署を削除できる", async () => {
-    const deptId = createId();
+    const deptId = generateId();
     await prisma.department.create({
       data: {
         id: deptId,
@@ -55,8 +55,8 @@ describe("DeleteDepartmentCommand", () => {
   });
 
   it("子部署がある場合は削除できない", async () => {
-    const parentId = createId();
-    const childId = createId();
+    const parentId = generateId();
+    const childId = generateId();
 
     await prisma.department.create({
       data: {

@@ -1,4 +1,4 @@
-import { createId } from "@paralleldrive/cuid2";
+import { generateId } from "@server/shared/generateId";
 import { FakeUserManagementService } from "@server/shared/auth/fake/FakeUserManagementService";
 import { USER_ROLES } from "@server/shared/auth/types";
 import { ValidationError } from "@server/shared/errors/DomainError";
@@ -29,7 +29,7 @@ describe("CreateEmployeeCommand", () => {
       where: { departmentCd: "TEST_DEPT" },
       update: {},
       create: {
-        id: createId(),
+        id: generateId(),
         departmentCd: "TEST_DEPT",
         name: "テスト部署",
         abbreviation: "テスト",

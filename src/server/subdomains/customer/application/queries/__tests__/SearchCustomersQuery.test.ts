@@ -1,4 +1,4 @@
-import { createId } from "@paralleldrive/cuid2";
+import { generateId } from "@server/shared/generateId";
 import prisma from "@server/prisma";
 import { CompanyType } from "@generated/prisma/client";
 import { PrismaCustomerQueryService } from "@subdomains/customer/infrastructure/queries/PrismaCustomerQueryService";
@@ -17,8 +17,8 @@ describe("SearchCustomersQuery", () => {
     marginRate?: number;
     isActive?: boolean;
   }) {
-    const companyId = createId();
-    const customerId = createId();
+    const companyId = generateId();
+    const customerId = generateId();
 
     await prisma.company.create({
       data: {
