@@ -1,4 +1,4 @@
-import { createId } from "@paralleldrive/cuid2";
+import { generateId } from "@server/shared/generateId";
 import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
 import { EmployeeName } from "@subdomains/employee/domain/values/EmployeeName";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
@@ -41,7 +41,7 @@ export class Employee {
     const now = new Date();
 
     return new Employee(
-      createId(), // CUIDを生成
+      generateId(), // UUIDv7を生成
       employeeCd,
       email,
       name,

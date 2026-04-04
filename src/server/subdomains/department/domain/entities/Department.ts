@@ -1,4 +1,4 @@
-import { createId } from "@paralleldrive/cuid2";
+import { generateId } from "@server/shared/generateId";
 import { DepartmentCd } from "../values/DepartmentCd";
 import { DepartmentName } from "../values/DepartmentName";
 import { Abbreviation } from "../values/Abbreviation";
@@ -42,7 +42,7 @@ export class Department {
     const now = new Date();
 
     return new Department(
-      createId(), // CUIDを生成
+      generateId(), // UUIDv7を生成
       departmentCd,
       name,
       abbreviation,
