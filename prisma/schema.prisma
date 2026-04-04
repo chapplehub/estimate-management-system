@@ -19,7 +19,7 @@ datasource db {
 // ========================================
 
 model Position {
-  id         String @id // ドメイン層でCUID生成
+  id         String @id // ドメイン層でUUIDv7生成
   positionCd String @unique @map("position_cd") // POS001 形式
   name       String @unique // 役職名（課長・部長・本部長・社長）
 
@@ -39,7 +39,7 @@ model Position {
 }
 
 model Role {
-  id     String @id // ドメイン層でCUID生成
+  id     String @id // ドメイン層でUUIDv7生成
   roleCd String @unique @map("role_cd") // ROLE001 形式
   name   String // 役割名（大阪市南課長・大阪市部長など）
 
@@ -84,7 +84,7 @@ model EmployeeRole {
 // ========================================
 
 model Employee {
-  id         String @id // ドメイン層でCUID生成
+  id         String @id // ドメイン層でUUIDv7生成
   employeeCd String @unique @map("employee_cd") // EMP000001 形式
   email      String @unique
   name       String
@@ -118,7 +118,7 @@ model Employee {
 // ========================================
 
 model Department {
-  id           String  @id // ドメイン層でCUID生成
+  id           String  @id // ドメイン層でUUIDv7生成
   departmentCd String  @unique @map("department_cd") // DEPT001 形式
   name         String
   abbreviation String  // 略称
@@ -228,7 +228,7 @@ enum CompanyType {
 }
 
 model Company {
-  id   String      @id // ドメイン層でCUID生成
+  id   String      @id // ドメイン層でUUIDv7生成
   code String      @unique // 手入力（例: C001, D001）
   name String
   type CompanyType
@@ -261,7 +261,7 @@ model Company {
 }
 
 model Customer {
-  id        String  @id // ドメイン層でCUID生成
+  id        String  @id // ドメイン層でUUIDv7生成
   companyId String  @unique @map("company_id")
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
@@ -279,7 +279,7 @@ model Customer {
 }
 
 model DeliveryLocation {
-  id        String  @id // ドメイン層でCUID生成
+  id        String  @id // ドメイン層でUUIDv7生成
   companyId String  @unique @map("company_id")
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 

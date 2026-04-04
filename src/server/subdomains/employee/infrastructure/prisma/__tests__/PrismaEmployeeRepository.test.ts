@@ -1,4 +1,4 @@
-import { createId } from "@paralleldrive/cuid2";
+import { generateId } from "@server/shared/generateId";
 import { Employee } from "@subdomains/employee/domain/entities/Employee";
 import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
 import { EmployeeName } from "@subdomains/employee/domain/values/EmployeeName";
@@ -27,7 +27,7 @@ describe("PrismaEmployeeRepository", () => {
       where: { departmentCd: "TEST_DEPT" },
       update: {},
       create: {
-        id: createId(),
+        id: generateId(),
         departmentCd: "TEST_DEPT",
         name: "テスト部署",
         abbreviation: "テスト",

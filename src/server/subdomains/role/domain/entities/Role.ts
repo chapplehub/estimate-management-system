@@ -1,4 +1,4 @@
-import { createId } from "@paralleldrive/cuid2";
+import { generateId } from "@server/shared/generateId";
 import { RoleCd } from "../values/RoleCd";
 import { RoleName } from "../values/RoleName";
 import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
@@ -34,7 +34,7 @@ export class Role {
     superiorRoleId: string | null = null
   ): Role {
     const now = new Date();
-    return new Role(createId(), roleCd, name, positionId, superiorRoleId, now, now);
+    return new Role(generateId(), roleCd, name, positionId, superiorRoleId, now, now);
   }
 
   /**

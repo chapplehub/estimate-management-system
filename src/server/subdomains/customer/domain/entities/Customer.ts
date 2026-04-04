@@ -1,4 +1,4 @@
-import { createId } from "@paralleldrive/cuid2";
+import { generateId } from "@server/shared/generateId";
 import { Address } from "@server/shared/domain/values/Address";
 import { CompanyCode } from "@server/shared/domain/values/CompanyCode";
 import { CompanyName } from "@server/shared/domain/values/CompanyName";
@@ -51,8 +51,8 @@ export class Customer {
     const now = new Date();
 
     return new Customer(
-      createId(),
-      createId(),
+      generateId(),
+      generateId(),
       code,
       name,
       options?.postalCode ?? null,

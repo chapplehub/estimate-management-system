@@ -1,4 +1,4 @@
-import { createId } from "@paralleldrive/cuid2";
+import { generateId } from "@server/shared/generateId";
 import prisma from "@server/prisma";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
 import { Employee } from "@subdomains/employee/domain/entities/Employee";
@@ -29,7 +29,7 @@ describe("MailAddressDuplicationCheckDomainService", () => {
       where: { departmentCd: "TEST_DEPT" },
       update: {},
       create: {
-        id: createId(),
+        id: generateId(),
         departmentCd: "TEST_DEPT",
         name: "テスト部署",
         abbreviation: "テスト",

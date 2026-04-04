@@ -1,4 +1,4 @@
-import { createId } from "@paralleldrive/cuid2";
+import { generateId } from "@server/shared/generateId";
 import prisma from "@server/prisma";
 import { CompanyType } from "@generated/prisma/client";
 import { PrismaDeliveryLocationQueryService } from "@subdomains/delivery-location/infrastructure/queries/PrismaDeliveryLocationQueryService";
@@ -19,8 +19,8 @@ describe("GetDeliveryLocationByIdQuery", () => {
     name: string;
     deliveryNotes?: string;
   }) {
-    const companyId = createId();
-    const dlId = createId();
+    const companyId = generateId();
+    const dlId = generateId();
 
     await prisma.company.create({
       data: {
@@ -56,8 +56,8 @@ describe("GetDeliveryLocationByIdQuery", () => {
     });
 
     // テスト用得意先をDB直接投入
-    customerCompanyId = createId();
-    testCustomerId = createId();
+    customerCompanyId = generateId();
+    testCustomerId = generateId();
 
     await prisma.company.create({
       data: {

@@ -1,4 +1,4 @@
-import { createId } from "@paralleldrive/cuid2";
+import { generateId } from "@server/shared/generateId";
 import prisma from "@server/prisma";
 import { ValidationError } from "@server/shared/errors/DomainError";
 import { DepartmentCdDuplicationCheckDomainService } from "@subdomains/department/domain/services/DepartmentCdDuplicationCheckDomainService";
@@ -50,7 +50,7 @@ describe("CreateDepartmentCommand", () => {
   });
 
   it("親部署を指定して登録できる", async () => {
-    const parentId = createId();
+    const parentId = generateId();
     await prisma.department.create({
       data: {
         id: parentId,
@@ -101,7 +101,7 @@ describe("CreateDepartmentCommand", () => {
   });
 
   it("無効な部署を親部署に指定するとエラー", async () => {
-    const inactiveParentId = createId();
+    const inactiveParentId = generateId();
     await prisma.department.create({
       data: {
         id: inactiveParentId,

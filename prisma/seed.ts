@@ -1,4 +1,4 @@
-import { createId } from "@paralleldrive/cuid2";
+import { generateId } from "../src/server/shared/generateId";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { config } from "dotenv";
 import { hashPassword } from "better-auth/crypto";
@@ -839,9 +839,9 @@ function generateSeedUsers(
 }
 
 async function createUserWithEmployee(userData: SeedUser, hashedPassword: string) {
-  const employeeId = createId();
-  const userId = createId();
-  const accountId = createId();
+  const employeeId = generateId();
+  const userId = generateId();
+  const accountId = generateId();
 
   // トランザクションでEmployee, User, Accountを一括作成
   const result = await prisma.$transaction(async (tx) => {
@@ -893,8 +893,8 @@ async function seedCustomersAndDeliveryLocations() {
 
   for (const customerData of CUSTOMERS) {
     // Company + Customer を作成
-    const companyId = createId();
-    const customerId = createId();
+    const companyId = generateId();
+    const customerId = generateId();
 
     await prisma.$transaction(async (tx) => {
       await tx.company.create({
@@ -926,8 +926,8 @@ async function seedCustomersAndDeliveryLocations() {
 
     // 各納品先を作成
     for (const dlData of customerData.deliveryLocations) {
-      const dlCompanyId = createId();
-      const dlId = createId();
+      const dlCompanyId = generateId();
+      const dlId = generateId();
 
       await prisma.$transaction(async (tx) => {
         await tx.company.create({
@@ -995,7 +995,7 @@ async function main() {
   console.log("Creating departments...");
   const departmentIdMap = new Map<string, string>(); // departmentCd → CUID
   for (const dept of DEPARTMENTS) {
-    const id = createId();
+    const id = generateId();
     departmentIdMap.set(dept.departmentCd, id);
     await prisma.department.create({
       data: {
@@ -1015,7 +1015,7 @@ async function main() {
   const positionIdMap = new Map<string, string>(); // cd → CUID
   const positionsOrdered = [...POSITIONS].reverse();
   for (const pos of positionsOrdered) {
-    const id = createId();
+    const id = generateId();
     positionIdMap.set(pos.cd, id);
     await prisma.position.create({
       data: {
@@ -1033,7 +1033,7 @@ async function main() {
   console.log("Creating roles...");
   const roleIdMap = new Map<string, string>(); // cd → CUID
   for (const role of ROLES) {
-    const id = createId();
+    const id = generateId();
     roleIdMap.set(role.cd, id);
     await prisma.role.create({
       data: {

@@ -1,4 +1,4 @@
-import { createId } from "@paralleldrive/cuid2";
+import { generateId } from "@server/shared/generateId";
 import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
 import { EmployeeName } from "@subdomains/employee/domain/values/EmployeeName";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
@@ -15,7 +15,7 @@ describe("Employee エンティティ", () => {
     employeeCd = new EmployeeCd("EMP000001");
     email = new MailAddress("test@example.com");
     name = new EmployeeName("山田太郎");
-    departmentId = createId();
+    departmentId = generateId();
   });
 
   describe("ファクトリメソッド", () => {
@@ -120,7 +120,7 @@ describe("Employee エンティティ", () => {
   describe("部署変更", () => {
     it("所属部署を変更できる", () => {
       const employee = Employee.create(employeeCd, email, name, departmentId);
-      const newDepartmentId = createId();
+      const newDepartmentId = generateId();
 
       employee.changeDepartment(newDepartmentId);
 
@@ -130,7 +130,7 @@ describe("Employee エンティティ", () => {
     it("更新日時が更新される", () => {
       const employee = Employee.create(employeeCd, email, name, departmentId);
       const oldUpdatedAt = employee.updatedAt;
-      const newDepartmentId = createId();
+      const newDepartmentId = generateId();
 
       setTimeout(() => {
         employee.changeDepartment(newDepartmentId);

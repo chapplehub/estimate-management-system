@@ -1,4 +1,4 @@
-import { createId } from "@paralleldrive/cuid2";
+import { generateId } from "@server/shared/generateId";
 import prisma from "@server/prisma";
 import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
@@ -28,7 +28,7 @@ describe("UpdateDepartmentCommand", () => {
     repository = new PrismaDepartmentRepository();
     command = new UpdateDepartmentCommand(repository);
 
-    baseDeptId = createId();
+    baseDeptId = generateId();
     await prisma.department.create({
       data: {
         id: baseDeptId,
@@ -96,7 +96,7 @@ describe("UpdateDepartmentCommand", () => {
   });
 
   it("有効な子部署がある場合は無効化できない", async () => {
-    const childId = createId();
+    const childId = generateId();
     await prisma.department.create({
       data: {
         id: childId,
@@ -117,7 +117,7 @@ describe("UpdateDepartmentCommand", () => {
   });
 
   it("親部署を変更できる", async () => {
-    const newParentId = createId();
+    const newParentId = generateId();
     await prisma.department.create({
       data: {
         id: newParentId,
@@ -155,7 +155,7 @@ describe("UpdateDepartmentCommand", () => {
   });
 
   it("無効な部署を親部署に設定するとエラー", async () => {
-    const inactiveParentId = createId();
+    const inactiveParentId = generateId();
     await prisma.department.create({
       data: {
         id: inactiveParentId,
@@ -176,8 +176,8 @@ describe("UpdateDepartmentCommand", () => {
 
   it("循環参照になる親部署を設定するとエラー", async () => {
     // A → B → C の3階層を作成し、AのparentをCに変更 → 循環参照
-    const deptBId = createId();
-    const deptCId = createId();
+    const deptBId = generateId();
+    const deptCId = generateId();
 
     await prisma.department.create({
       data: {
