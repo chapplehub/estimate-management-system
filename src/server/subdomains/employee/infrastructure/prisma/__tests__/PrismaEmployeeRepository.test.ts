@@ -1,4 +1,4 @@
-import { generateId } from "@server/shared/generateId";
+import { ensureTestDepartment } from "@server/__tests__/helpers/ensureTestDepartment";
 import { Employee } from "@subdomains/employee/domain/entities/Employee";
 import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
 import { EmployeeName } from "@subdomains/employee/domain/values/EmployeeName";
@@ -22,19 +22,8 @@ describe("PrismaEmployeeRepository", () => {
       },
     });
 
-    // テスト用部署を作成（存在しない場合）
-    const dept = await prisma.department.upsert({
-      where: { departmentCd: "TEST_DEPT" },
-      update: {},
-      create: {
-        id: generateId(),
-        departmentCd: "TEST_DEPT",
-        name: "テスト部署",
-        abbreviation: "テスト",
-        isActive: true,
-      },
-    });
-    TEST_DEPT_ID = dept.id;
+    // テスト用部署を確保
+    TEST_DEPT_ID = await ensureTestDepartment();
   });
 
   afterEach(async () => {

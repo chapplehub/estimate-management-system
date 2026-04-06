@@ -1,3 +1,4 @@
+import { ensureTestDepartment } from "@server/__tests__/helpers/ensureTestDepartment";
 import { generateId } from "@server/shared/generateId";
 import prisma from "@server/prisma";
 import type { UserRole } from "@server/shared/auth/types";
@@ -60,18 +61,7 @@ describe("SearchEmployeesQuery", () => {
       where: { employeeCd: { in: TEST_CODES } },
     });
 
-    const dept = await prisma.department.upsert({
-      where: { departmentCd: "TEST_DEPT" },
-      update: {},
-      create: {
-        id: generateId(),
-        departmentCd: "TEST_DEPT",
-        name: "テスト部署",
-        abbreviation: "テスト",
-        isActive: true,
-      },
-    });
-    TEST_DEPT_ID = dept.id;
+    TEST_DEPT_ID = await ensureTestDepartment();
 
     query = new SearchEmployeesQuery(new PrismaEmployeeQueryService());
   });

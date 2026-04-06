@@ -1,4 +1,4 @@
-import { generateId } from "@server/shared/generateId";
+import { ensureTestDepartment } from "@server/__tests__/helpers/ensureTestDepartment";
 import { FakeUserManagementService } from "@server/shared/auth/fake/FakeUserManagementService";
 import { USER_ROLES } from "@server/shared/auth/types";
 import { ValidationError } from "@server/shared/errors/DomainError";
@@ -25,18 +25,7 @@ describe("CreateEmployeeCommand", () => {
       where: { employeeCd: { in: TEST_CODES } },
     });
 
-    const dept = await prisma.department.upsert({
-      where: { departmentCd: "TEST_DEPT" },
-      update: {},
-      create: {
-        id: generateId(),
-        departmentCd: "TEST_DEPT",
-        name: "テスト部署",
-        abbreviation: "テスト",
-        isActive: true,
-      },
-    });
-    TEST_DEPT_ID = dept.id;
+    TEST_DEPT_ID = await ensureTestDepartment();
 
     repository = new PrismaEmployeeRepository();
     cdDuplicationCheckService = new EmployeeCdDuplicationCheckDomainService(repository);
