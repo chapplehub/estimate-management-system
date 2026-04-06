@@ -11,7 +11,7 @@ describe("GetRoleByRoleCdQuery", () => {
   let query: GetRoleByRoleCdQuery;
   let roleRepository: PrismaRoleRepository;
 
-  const TEST_ROLE_CDS = ["ROLE941"];
+  const TEST_ROLE_CDS = ["ROLE943"];
 
   let kachouPositionId: string;
 
