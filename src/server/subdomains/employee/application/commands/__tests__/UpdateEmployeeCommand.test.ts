@@ -15,8 +15,8 @@ describe("UpdateEmployeeCommand", () => {
   let mailDuplicationCheckService: MailAddressDuplicationCheckDomainService;
   let fakeUserManagementService: FakeUserManagementService;
 
-  const TEST_EMPLOYEE_ID = "test-update-id-001";
-  const ANOTHER_EMPLOYEE_ID = "test-update-id-002";
+  const TEST_EMPLOYEE_ID = "00000000-0000-7000-8000-100000000001";
+  const ANOTHER_EMPLOYEE_ID = "00000000-0000-7000-8000-100000000002";
   let TEST_DEPT_ID: string;
 
   beforeEach(async () => {
@@ -144,7 +144,7 @@ describe("UpdateEmployeeCommand", () => {
   it("存在しない従業員IDの場合はNotFoundEntityErrorがスローされる", async () => {
     await expect(
       command.execute({
-        id: "non-existent-id-99999",
+        id: "00000000-0000-7000-8000-000000000003",
         employeeCd: "EMP999912",
         email: "existing@example.com",
         name: "更新テスト",

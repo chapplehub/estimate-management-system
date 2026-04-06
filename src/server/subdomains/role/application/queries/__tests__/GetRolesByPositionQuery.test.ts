@@ -64,7 +64,7 @@ describe("GetRolesByPositionQuery", () => {
   });
 
   it("該当する役割がない場合は空配列を返す", async () => {
-    const result = await query.execute({ positionId: "non-existent-position-id" });
+    const result = await query.execute({ positionId: "00000000-0000-7000-8000-000000000005" });
     expect(result).toEqual([]);
   });
 });

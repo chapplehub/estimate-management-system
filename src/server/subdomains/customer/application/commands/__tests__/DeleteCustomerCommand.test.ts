@@ -45,6 +45,8 @@ describe("DeleteCustomerCommand", () => {
   });
 
   it("存在しないIDの場合は NotFoundEntityError", async () => {
-    await expect(command.execute({ id: "non-existent-id" })).rejects.toThrow(NotFoundEntityError);
+    await expect(command.execute({ id: "00000000-0000-7000-8000-000000000000" })).rejects.toThrow(
+      NotFoundEntityError
+    );
   });
 });

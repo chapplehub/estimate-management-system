@@ -62,7 +62,7 @@ describe("GetDepartmentByIdQuery", () => {
   });
 
   it("存在しないIDの場合nullを返す", async () => {
-    const result = await query.execute({ id: "non-existent-id" });
+    const result = await query.execute({ id: "00000000-0000-7000-8000-000000000000" });
     expect(result).toBeNull();
   });
 });

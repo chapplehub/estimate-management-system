@@ -153,7 +153,7 @@ describe("SearchDeliveryLocationsQuery", () => {
   it("customerIdで検索してヒットしない場合は空配列を返す", async () => {
     await createTestDeliveryLocation({ code: DL_TEST_CODES[0], name: "得意先ID検索C" });
 
-    const result = await query.execute({ customerId: "non-existent-customer-id" });
+    const result = await query.execute({ customerId: "00000000-0000-7000-8000-000000000002" });
 
     expect(result).toEqual([]);
   });

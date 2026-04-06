@@ -94,7 +94,7 @@ describe("UpdateRoleCommand", () => {
   it("存在しない役割を更新しようとするとエラー", async () => {
     await expect(
       command.execute({
-        id: "non-existent-id",
+        id: "00000000-0000-7000-8000-000000000000",
         name: "テスト",
       })
     ).rejects.toThrow(NotFoundEntityError);

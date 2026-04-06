@@ -94,11 +94,11 @@ describe("SuperiorRoleValidationDomainService", () => {
   });
 
   it("存在しない上位役割を指定するとエラー", async () => {
-    await expect(service.execute(kachouPositionId, "non-existent-id")).rejects.toThrow(
-      BusinessRuleViolationError
-    );
-    await expect(service.execute(kachouPositionId, "non-existent-id")).rejects.toThrow(
-      "上位役割が存在しません"
-    );
+    await expect(
+      service.execute(kachouPositionId, "00000000-0000-7000-8000-000000000000")
+    ).rejects.toThrow(BusinessRuleViolationError);
+    await expect(
+      service.execute(kachouPositionId, "00000000-0000-7000-8000-000000000000")
+    ).rejects.toThrow("上位役割が存在しません");
   });
 });

@@ -139,7 +139,7 @@ describe("PrismaEmployeeRepository", () => {
     });
 
     it("存在しないIDの場合nullを返す", async () => {
-      const found = await repository.findById("non-existent-id");
+      const found = await repository.findById("00000000-0000-7000-8000-000000000000");
 
       expect(found).toBeNull();
     });
