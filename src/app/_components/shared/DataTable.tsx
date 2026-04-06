@@ -1,13 +1,13 @@
 "use client";
 
+import { LIST_PAGE_SIZE } from "@/app/_lib/searchParams";
 import {
-  useReactTable,
+  flexRender,
   getCoreRowModel,
   getPaginationRowModel,
-  flexRender,
+  useReactTable,
   type ColumnDef,
 } from "@tanstack/react-table";
-import { LIST_PAGE_SIZE } from "@/app/_lib/searchParams";
 
 type DataTableProps<TData> = {
   columns: ColumnDef<TData, unknown>[];
@@ -22,6 +22,8 @@ export function DataTable<TData>({
   emptyMessage,
   pageSize = LIST_PAGE_SIZE,
 }: DataTableProps<TData>) {
+  "use no memo";
+  // eslint-disable-next-line react-hooks/incompatible-library -- "use no memo" で対処済み
   const table = useReactTable({
     data,
     columns,
