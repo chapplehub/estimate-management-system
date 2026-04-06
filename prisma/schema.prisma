@@ -19,12 +19,12 @@ datasource db {
 // ========================================
 
 model Position {
-  id         String @id // ドメイン層でUUIDv7生成
+  id         String @id @db.Uuid // ドメイン層でUUIDv7生成
   positionCd String @unique @map("position_cd") // POS001 形式
   name       String @unique // 役職名（課長・部長・本部長・社長）
 
   // 上位役職（自己参照）：社長は NULL
-  superiorPositionId String?    @map("superior_position_id")
+  superiorPositionId String?    @map("superior_position_id") @db.Uuid
   superiorPosition   Position?  @relation("PositionHierarchy", fields: [superiorPositionId], references: [id])
   subordinates       Position[] @relation("PositionHierarchy")
 
@@ -39,17 +39,17 @@ model Position {
 }
 
 model Role {
-  id     String @id // ドメイン層でUUIDv7生成
+  id     String @id @db.Uuid // ドメイン層でUUIDv7生成
   roleCd String @unique @map("role_cd") // ROLE001 形式
   name   String // 役割名（大阪市南課長・大阪市部長など）
 
   // 上位役割（自己参照）
-  superiorRoleId String? @map("superior_role_id")
+  superiorRoleId String? @map("superior_role_id") @db.Uuid
   superiorRole   Role?   @relation("RoleHierarchy", fields: [superiorRoleId], references: [id])
   subordinates   Role[]  @relation("RoleHierarchy")
 
   // 所属役職
-  positionId String   @map("position_id")
+  positionId String   @map("position_id") @db.Uuid
   position   Position @relation(fields: [positionId], references: [id])
 
   // 逆参照
@@ -66,9 +66,9 @@ model Role {
 
 model EmployeeRole {
   // 複合PK（従業員ID + 役割ID）
-  employeeId String   @map("employee_id")
+  employeeId String   @map("employee_id") @db.Uuid
   employee   Employee @relation(fields: [employeeId], references: [id])
-  roleId     String   @map("role_id")
+  roleId     String   @map("role_id") @db.Uuid
   role       Role     @relation(fields: [roleId], references: [id])
 
   // タイムスタンプ
@@ -84,18 +84,18 @@ model EmployeeRole {
 // ========================================
 
 model Employee {
-  id         String @id // ドメイン層でUUIDv7生成
+  id         String @id @db.Uuid // ドメイン層でUUIDv7生成
   employeeCd String @unique @map("employee_cd") // EMP000001 形式
   email      String @unique
   name       String
   // role は User.role に移動（better-auth Admin Plugin用）
 
   // 所属部署
-  departmentId String     @map("department_id")
+  departmentId String     @map("department_id") @db.Uuid
   department   Department @relation(fields: [departmentId], references: [id])
 
   // 上位役割（承認フローの起点）
-  superiorRoleId String? @map("superior_role_id")
+  superiorRoleId String? @map("superior_role_id") @db.Uuid
   superiorRole   Role?   @relation("EmployeeSuperiorRole", fields: [superiorRoleId], references: [id])
 
   // 従業員役割（逆参照）
@@ -118,14 +118,14 @@ model Employee {
 // ========================================
 
 model Department {
-  id           String  @id // ドメイン層でUUIDv7生成
+  id           String  @id @db.Uuid // ドメイン層でUUIDv7生成
   departmentCd String  @unique @map("department_cd") // DEPT001 形式
   name         String
   abbreviation String  // 略称
   isActive     Boolean @default(true) @map("is_active")
 
   // 階層構造（自己参照）
-  parentId String?      @map("parent_id")
+  parentId String?      @map("parent_id") @db.Uuid
   parent   Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id])
   children Department[] @relation("DepartmentHierarchy")
 
@@ -141,7 +141,7 @@ model Department {
 }
 
 model User {
-  id            String    @id
+  id            String    @id @db.Uuid
   name          String
   email         String
   emailVerified Boolean   @default(false)
@@ -152,7 +152,7 @@ model User {
   accounts      Account[]
 
   // 従業員との関連（認証ユーザー → ドメインエンティティ）
-  employeeId String?   @unique @map("employee_id")
+  employeeId String?   @unique @map("employee_id") @db.Uuid
   employee   Employee? @relation(fields: [employeeId], references: [id])
 
   // better-auth Admin Plugin用フィールド
@@ -168,18 +168,18 @@ model User {
 }
 
 model Session {
-  id        String   @id
+  id        String   @id @db.Uuid
   expiresAt DateTime @db.Timestamptz(3)
   token     String
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
   ipAddress String?
   userAgent String?
-  userId    String
+  userId    String   @db.Uuid
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // better-auth Admin Plugin用（なりすまし管理者ID）
-  impersonatedBy String?
+  impersonatedBy String? @db.Uuid
 
   @@unique([token])
   @@index([userId])
@@ -187,10 +187,10 @@ model Session {
 }
 
 model Account {
-  id                    String    @id
+  id                    String    @id @db.Uuid
   accountId             String
   providerId            String
-  userId                String
+  userId                String    @db.Uuid
   user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   accessToken           String?
   refreshToken          String?
@@ -207,7 +207,7 @@ model Account {
 }
 
 model Verification {
-  id         String   @id
+  id         String   @id @db.Uuid
   identifier String
   value      String
   expiresAt  DateTime @db.Timestamptz(3)
@@ -228,7 +228,7 @@ enum CompanyType {
 }
 
 model Company {
-  id   String      @id // ドメイン層でUUIDv7生成
+  id   String      @id @db.Uuid // ドメイン層でUUIDv7生成
   code String      @unique // 手入力（例: C001, D001）
   name String
   type CompanyType
@@ -261,8 +261,8 @@ model Company {
 }
 
 model Customer {
-  id        String  @id // ドメイン層でUUIDv7生成
-  companyId String  @unique @map("company_id")
+  id        String  @id @db.Uuid // ドメイン層でUUIDv7生成
+  companyId String  @unique @map("company_id") @db.Uuid
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   // 得意先固有の属性
@@ -279,12 +279,12 @@ model Customer {
 }
 
 model DeliveryLocation {
-  id        String  @id // ドメイン層でUUIDv7生成
-  companyId String  @unique @map("company_id")
+  id        String  @id @db.Uuid // ドメイン層でUUIDv7生成
+  companyId String  @unique @map("company_id") @db.Uuid
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   // 親得意先への参照
-  customerId String   @map("customer_id")
+  customerId String   @map("customer_id") @db.Uuid
   customer   Customer @relation(fields: [customerId], references: [id])
 
   // 納品先固有の属性

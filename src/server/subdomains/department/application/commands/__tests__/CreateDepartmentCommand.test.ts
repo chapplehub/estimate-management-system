@@ -95,7 +95,7 @@ describe("CreateDepartmentCommand", () => {
         departmentCd: TEST_CODES[0],
         name: "営業部",
         abbreviation: "営業",
-        parentId: "non-existent-id",
+        parentId: "00000000-0000-7000-8000-000000000000",
       })
     ).rejects.toThrow(ValidationError);
   });

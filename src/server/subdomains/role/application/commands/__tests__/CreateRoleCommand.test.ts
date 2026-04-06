@@ -124,7 +124,7 @@ describe("CreateRoleCommand", () => {
       command.execute({
         roleCd: TEST_ROLE_CDS[0],
         name: "登録テスト役割",
-        positionId: "non-existent-id",
+        positionId: "00000000-0000-7000-8000-000000000000",
       })
     ).rejects.toThrow(ValidationError);
   });

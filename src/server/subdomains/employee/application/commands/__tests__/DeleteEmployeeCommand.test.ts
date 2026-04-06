@@ -12,7 +12,7 @@ describe("DeleteEmployeeCommand", () => {
   let repository: PrismaEmployeeRepository;
   let fakeUserManagementService: FakeUserManagementService;
 
-  const TEST_EMPLOYEE_ID = "test-delete-cmd-id-001";
+  const TEST_EMPLOYEE_ID = "00000000-0000-7000-8000-100000000003";
   const TEST_EMPLOYEE_CD = "EMP999909";
   let TEST_DEPT_ID: string;
 
@@ -105,7 +105,7 @@ describe("DeleteEmployeeCommand", () => {
   });
 
   it("存在しない従業員を削除しようとするとNotFoundEntityErrorがスローされる", async () => {
-    const nonExistentId = "non-existent-id-12345";
+    const nonExistentId = "00000000-0000-7000-8000-000000000004";
 
     await expect(command.execute({ id: nonExistentId })).rejects.toThrow(NotFoundEntityError);
   });

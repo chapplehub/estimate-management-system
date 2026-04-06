@@ -122,7 +122,7 @@ describe("CreateDeliveryLocationCommand", () => {
       command.execute({
         code: DL_TEST_CODES[0],
         name: "親なし納品先",
-        customerId: "non-existent-customer-id",
+        customerId: "00000000-0000-7000-8000-000000000002",
       })
     ).rejects.toThrow(NotFoundEntityError);
   });

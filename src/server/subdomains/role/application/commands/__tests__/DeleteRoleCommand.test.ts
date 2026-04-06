@@ -59,7 +59,9 @@ describe("DeleteRoleCommand", () => {
   });
 
   it("存在しない役割を削除しようとするとエラー", async () => {
-    await expect(command.execute({ id: "non-existent-id" })).rejects.toThrow(NotFoundEntityError);
+    await expect(command.execute({ id: "00000000-0000-7000-8000-000000000000" })).rejects.toThrow(
+      NotFoundEntityError
+    );
   });
 
   it("下位役割がある場合は削除できない", async () => {

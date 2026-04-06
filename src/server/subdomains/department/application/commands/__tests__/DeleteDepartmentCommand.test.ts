@@ -51,7 +51,9 @@ describe("DeleteDepartmentCommand", () => {
   });
 
   it("存在しない部署を削除しようとするとエラー", async () => {
-    await expect(command.execute({ id: "non-existent-id" })).rejects.toThrow(NotFoundEntityError);
+    await expect(command.execute({ id: "00000000-0000-7000-8000-000000000000" })).rejects.toThrow(
+      NotFoundEntityError
+    );
   });
 
   it("子部署がある場合は削除できない", async () => {

@@ -65,7 +65,7 @@ describe("UpdateDepartmentCommand", () => {
   it("存在しない部署を更新しようとするとエラー", async () => {
     await expect(
       command.execute({
-        id: "non-existent-id",
+        id: "00000000-0000-7000-8000-000000000000",
         name: "新営業部",
       })
     ).rejects.toThrow(NotFoundEntityError);
@@ -149,7 +149,7 @@ describe("UpdateDepartmentCommand", () => {
     await expect(
       command.execute({
         id: baseDeptId,
-        parentId: "non-existent-parent-id",
+        parentId: "00000000-0000-7000-8000-000000000001",
       })
     ).rejects.toThrow(BusinessRuleViolationError);
   });
