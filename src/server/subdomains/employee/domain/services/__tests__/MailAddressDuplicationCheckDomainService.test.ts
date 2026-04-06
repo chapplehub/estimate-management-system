@@ -1,4 +1,4 @@
-import { generateId } from "@server/shared/generateId";
+import { ensureTestDepartment } from "@server/__tests__/helpers/ensureTestDepartment";
 import prisma from "@server/prisma";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
 import { Employee } from "@subdomains/employee/domain/entities/Employee";
@@ -24,19 +24,7 @@ describe("MailAddressDuplicationCheckDomainService", () => {
   beforeEach(async () => {
     await cleanup();
 
-    // 外部キー依存のフィクスチャ（upsert で冪等に作成）
-    const dept = await prisma.department.upsert({
-      where: { departmentCd: "TEST_DEPT" },
-      update: {},
-      create: {
-        id: generateId(),
-        departmentCd: "TEST_DEPT",
-        name: "テスト部署",
-        abbreviation: "テスト",
-        isActive: true,
-      },
-    });
-    TEST_DEPT_ID = dept.id;
+    TEST_DEPT_ID = await ensureTestDepartment();
 
     repository = new PrismaEmployeeRepository();
     service = new MailAddressDuplicationCheckDomainService(repository);

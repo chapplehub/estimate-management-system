@@ -1,4 +1,4 @@
-import { generateId } from "@server/shared/generateId";
+import { ensureTestDepartment } from "@server/__tests__/helpers/ensureTestDepartment";
 import prisma from "@server/prisma";
 import { FakeUserManagementService } from "@server/shared/auth/fake/FakeUserManagementService";
 import { USER_ROLES } from "@server/shared/auth/types";
@@ -29,19 +29,8 @@ describe("UpdateEmployeeCommand", () => {
       },
     });
 
-    // 2. テスト用部署を upsert
-    const dept = await prisma.department.upsert({
-      where: { departmentCd: "TEST_DEPT" },
-      update: {},
-      create: {
-        id: generateId(),
-        departmentCd: "TEST_DEPT",
-        name: "テスト部署",
-        abbreviation: "テスト",
-        isActive: true,
-      },
-    });
-    TEST_DEPT_ID = dept.id;
+    // 2. テスト用部署を確保
+    TEST_DEPT_ID = await ensureTestDepartment();
 
     // 3. 更新対象の既存従業員を作成
     await prisma.employee.create({
