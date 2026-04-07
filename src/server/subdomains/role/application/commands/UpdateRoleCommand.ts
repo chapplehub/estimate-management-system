@@ -1,5 +1,6 @@
 import { Role } from "@subdomains/role/domain/entities/Role";
 import { RoleRepository } from "@subdomains/role/domain/repositories/RoleRepository";
+import { RoleId } from "@subdomains/role/domain/values/RoleId";
 import { RoleName } from "@subdomains/role/domain/values/RoleName";
 import { RoleNameDuplicationCheckDomainService } from "@subdomains/role/domain/services/RoleNameDuplicationCheckDomainService";
 import { SuperiorRoleValidationDomainService } from "@subdomains/role/domain/services/SuperiorRoleValidationDomainService";
@@ -26,7 +27,8 @@ export class UpdateRoleCommand {
   ) {}
 
   async execute(input: UpdateRoleInput): Promise<Role> {
-    const role = await this.roleRepository.findById(input.id);
+    const roleId = new RoleId(input.id);
+    const role = await this.roleRepository.findById(roleId);
     if (!role) {
       throw new NotFoundEntityError(Role, { id: input.id });
     }
@@ -45,16 +47,15 @@ export class UpdateRoleCommand {
 
     // 上位役割の更新
     if (input.superiorRoleId !== undefined) {
-      if (input.superiorRoleId !== null) {
+      const newSuperiorRoleId =
+        input.superiorRoleId !== null ? new RoleId(input.superiorRoleId) : null;
+      if (newSuperiorRoleId !== null) {
         // 上位役割バリデーション
-        await this.superiorRoleValidationDomainService.execute(
-          role.positionId,
-          input.superiorRoleId
-        );
+        await this.superiorRoleValidationDomainService.execute(role.positionId, newSuperiorRoleId);
         // 循環参照チェック
-        await this.validateNoCircularReference(role.id, input.superiorRoleId);
+        await this.validateNoCircularReference(role.id, newSuperiorRoleId);
       }
-      role.changeSuperiorRole(input.superiorRoleId);
+      role.changeSuperiorRole(newSuperiorRoleId);
     }
 
     return await this.roleRepository.save(role);
@@ -70,22 +71,22 @@ export class UpdateRoleCommand {
    * 自己参照チェックと祖先走査は防御的プログラミングとして残す。
    */
   private async validateNoCircularReference(
-    roleId: string,
-    newSuperiorRoleId: string
+    roleId: RoleId,
+    newSuperiorRoleId: RoleId
   ): Promise<void> {
-    if (roleId === newSuperiorRoleId) {
+    if (roleId.equals(newSuperiorRoleId)) {
       throw new BusinessRuleViolationError("自分自身を上位役割にすることはできません");
     }
 
     // 新しい上位役割の祖先を辿って、自分自身がいないことを確認
-    let currentSuperiorId: string | null = newSuperiorRoleId;
+    let currentSuperiorId: RoleId | null = newSuperiorRoleId;
     while (currentSuperiorId !== null) {
       const superiorRole = await this.roleRepository.findById(currentSuperiorId);
       if (!superiorRole) {
         break;
       }
       currentSuperiorId = superiorRole.superiorRoleId;
-      if (currentSuperiorId === roleId) {
+      if (currentSuperiorId !== null && currentSuperiorId.equals(roleId)) {
         throw new BusinessRuleViolationError(
           "循環参照が発生するため、この上位役割は設定できません"
         );

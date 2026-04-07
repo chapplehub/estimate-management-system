@@ -1,4 +1,5 @@
 import { PositionCd } from "../values/PositionCd";
+import { PositionId } from "../values/PositionId";
 import { PositionName } from "../values/PositionName";
 
 /**
@@ -12,10 +13,10 @@ export class Position {
   static readonly ENTITY_NAME = "役職";
 
   private constructor(
-    private readonly _id: string,
+    private readonly _id: PositionId,
     private readonly _positionCd: PositionCd,
     private readonly _name: PositionName,
-    private readonly _superiorPositionId: string | null,
+    private readonly _superiorPositionId: PositionId | null,
     private readonly _createdAt: Date,
     private readonly _updatedAt: Date
   ) {}
@@ -24,10 +25,10 @@ export class Position {
    * DBから役職を再構築
    */
   static reconstruct(
-    id: string,
+    id: PositionId,
     positionCd: PositionCd,
     name: PositionName,
-    superiorPositionId: string | null,
+    superiorPositionId: PositionId | null,
     createdAt: Date,
     updatedAt: Date
   ): Position {
@@ -45,7 +46,7 @@ export class Position {
   // ゲッター
   // ========================================
 
-  get id(): string {
+  get id(): PositionId {
     return this._id;
   }
 
@@ -57,7 +58,7 @@ export class Position {
     return this._name;
   }
 
-  get superiorPositionId(): string | null {
+  get superiorPositionId(): PositionId | null {
     return this._superiorPositionId;
   }
 

@@ -1,7 +1,9 @@
+import { PositionId } from "@subdomains/position/domain/values/PositionId";
 import { Role } from "@subdomains/role/domain/entities/Role";
 import { RoleRepository } from "@subdomains/role/domain/repositories/RoleRepository";
 import { PositionRepository } from "@subdomains/role/domain/repositories/PositionRepository";
 import { RoleCd } from "@subdomains/role/domain/values/RoleCd";
+import { RoleId } from "@subdomains/role/domain/values/RoleId";
 import { RoleName } from "@subdomains/role/domain/values/RoleName";
 import { RoleCdDuplicationCheckDomainService } from "@subdomains/role/domain/services/RoleCdDuplicationCheckDomainService";
 import { RoleNameDuplicationCheckDomainService } from "@subdomains/role/domain/services/RoleNameDuplicationCheckDomainService";
@@ -44,18 +46,19 @@ export class CreateRoleCommand {
     }
 
     // 役職存在確認
-    const positionExists = await this.positionRepository.exists(input.positionId);
+    const positionId = new PositionId(input.positionId);
+    const positionExists = await this.positionRepository.exists(positionId);
     if (!positionExists) {
       throw new ValidationError(`役職が存在しません: ID=${input.positionId}`);
     }
 
     // 上位役割バリデーション
-    const superiorRoleId = input.superiorRoleId ?? null;
+    const superiorRoleId = input.superiorRoleId ? new RoleId(input.superiorRoleId) : null;
     if (superiorRoleId) {
-      await this.superiorRoleValidationDomainService.execute(input.positionId, superiorRoleId);
+      await this.superiorRoleValidationDomainService.execute(positionId, superiorRoleId);
     }
 
-    const newRole = Role.create(roleCd, roleName, input.positionId, superiorRoleId);
+    const newRole = Role.create(roleCd, roleName, positionId, superiorRoleId);
 
     return await this.roleRepository.save(newRole);
   }

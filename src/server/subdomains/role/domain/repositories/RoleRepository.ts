@@ -1,5 +1,6 @@
 import { Role } from "../entities/Role";
 import { RoleCd } from "../values/RoleCd";
+import { RoleId } from "../values/RoleId";
 
 /**
  * 役割リポジトリインターフェース
@@ -16,12 +17,12 @@ export interface RoleRepository {
   /**
    * 役割を削除
    */
-  delete(id: string): Promise<void>;
+  delete(id: RoleId): Promise<void>;
 
   /**
    * IDで役割を取得
    */
-  findById(id: string): Promise<Role | null>;
+  findById(id: RoleId): Promise<Role | null>;
 
   /**
    * 役割コードで役割を取得（重複チェック等で Entity が必要な場合に使用）
@@ -37,11 +38,11 @@ export interface RoleRepository {
    * 下位役割を取得
    * @param superiorRoleId 上位役割ID
    */
-  findSubordinates(superiorRoleId: string): Promise<Role[]>;
+  findSubordinates(superiorRoleId: RoleId): Promise<Role[]>;
 
   /**
    * 役割が使用中かどうかを確認
    * EmployeeRole または Employee.superiorRoleId で参照されている場合は true
    */
-  isInUse(roleId: string): Promise<boolean>;
+  isInUse(roleId: RoleId): Promise<boolean>;
 }

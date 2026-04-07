@@ -1,7 +1,8 @@
-import { generateId } from "@server/shared/generateId";
-import { RoleCd } from "../values/RoleCd";
-import { RoleName } from "../values/RoleName";
+import { PositionId } from "@subdomains/position/domain/values/PositionId";
 import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
+import { RoleCd } from "../values/RoleCd";
+import { RoleId } from "../values/RoleId";
+import { RoleName } from "../values/RoleName";
 
 /**
  * 役割エンティティ
@@ -15,11 +16,11 @@ export class Role {
   static readonly ENTITY_NAME = "役割";
 
   private constructor(
-    private readonly _id: string,
+    private readonly _id: RoleId,
     private readonly _roleCd: RoleCd,
     private _name: RoleName,
-    private readonly _positionId: string,
-    private _superiorRoleId: string | null,
+    private readonly _positionId: PositionId,
+    private _superiorRoleId: RoleId | null,
     private readonly _createdAt: Date,
     private _updatedAt: Date
   ) {}
@@ -30,22 +31,22 @@ export class Role {
   static create(
     roleCd: RoleCd,
     name: RoleName,
-    positionId: string,
-    superiorRoleId: string | null = null
+    positionId: PositionId,
+    superiorRoleId: RoleId | null = null
   ): Role {
     const now = new Date();
-    return new Role(generateId(), roleCd, name, positionId, superiorRoleId, now, now);
+    return new Role(RoleId.generate(), roleCd, name, positionId, superiorRoleId, now, now);
   }
 
   /**
    * DBから役割を再構築
    */
   static reconstruct(
-    id: string,
+    id: RoleId,
     roleCd: RoleCd,
     name: RoleName,
-    positionId: string,
-    superiorRoleId: string | null,
+    positionId: PositionId,
+    superiorRoleId: RoleId | null,
     createdAt: Date,
     updatedAt: Date
   ): Role {
@@ -70,8 +71,8 @@ export class Role {
    * 自分自身を上位役割に設定することはできない。
    * 上位役職に属する役割かどうかの検証はドメインサービスで行う。
    */
-  changeSuperiorRole(newSuperiorRoleId: string | null): void {
-    if (newSuperiorRoleId === this._id) {
+  changeSuperiorRole(newSuperiorRoleId: RoleId | null): void {
+    if (newSuperiorRoleId !== null && newSuperiorRoleId.equals(this._id)) {
       throw new BusinessRuleViolationError("自分自身を上位役割にすることはできません");
     }
     this._superiorRoleId = newSuperiorRoleId;
@@ -82,7 +83,7 @@ export class Role {
   // ゲッター
   // ========================================
 
-  get id(): string {
+  get id(): RoleId {
     return this._id;
   }
 
@@ -94,11 +95,11 @@ export class Role {
     return this._name;
   }
 
-  get positionId(): string {
+  get positionId(): PositionId {
     return this._positionId;
   }
 
-  get superiorRoleId(): string | null {
+  get superiorRoleId(): RoleId | null {
     return this._superiorRoleId;
   }
 

@@ -62,7 +62,7 @@ describe("CreateRoleCommand", () => {
     expect(saved).not.toBeNull();
     expect(saved?.roleCd.value).toBe(TEST_ROLE_CDS[0]);
     expect(saved?.name.value).toBe("登録テスト課長");
-    expect(saved?.positionId).toBe(kachouPositionId);
+    expect(saved?.positionId.value).toBe(kachouPositionId);
     expect(saved?.superiorRoleId).toBeNull();
   });
 
@@ -80,11 +80,11 @@ describe("CreateRoleCommand", () => {
       roleCd: TEST_ROLE_CDS[1],
       name: "登録テスト課長2",
       positionId: kachouPositionId,
-      superiorRoleId: buchouRole!.id,
+      superiorRoleId: buchouRole!.id.value,
     });
 
     const saved = await roleRepository.findByRoleCd(new RoleCd(TEST_ROLE_CDS[1]));
-    expect(saved?.superiorRoleId).toBe(buchouRole!.id);
+    expect(saved?.superiorRoleId?.value).toBe(buchouRole!.id.value);
   });
 
   it("既に存在する役割コードの場合はエラー", async () => {

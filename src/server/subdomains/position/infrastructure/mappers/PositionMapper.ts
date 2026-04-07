@@ -1,5 +1,6 @@
 import { Position } from "@subdomains/position/domain/entities/Position";
 import { PositionCd } from "@subdomains/position/domain/values/PositionCd";
+import { PositionId } from "@subdomains/position/domain/values/PositionId";
 import { PositionName } from "@subdomains/position/domain/values/PositionName";
 import { Position as PrismaPosition } from "@generated/prisma/client";
 
@@ -18,10 +19,10 @@ export class PositionMapper {
     const name = new PositionName(prismaPosition.name);
 
     return Position.reconstruct(
-      prismaPosition.id,
+      new PositionId(prismaPosition.id),
       positionCd,
       name,
-      prismaPosition.superiorPositionId,
+      prismaPosition.superiorPositionId ? new PositionId(prismaPosition.superiorPositionId) : null,
       prismaPosition.createdAt,
       prismaPosition.updatedAt
     );

@@ -1,5 +1,6 @@
 import { Position } from "../entities/Position";
 import { PositionCd } from "../values/PositionCd";
+import { PositionId } from "../values/PositionId";
 
 /**
  * 役職リポジトリインターフェース
@@ -11,7 +12,7 @@ export interface PositionRepository {
   /**
    * IDで役職を取得
    */
-  findById(id: string): Promise<Position | null>;
+  findById(id: PositionId): Promise<Position | null>;
 
   /**
    * 役職コードで役職を取得

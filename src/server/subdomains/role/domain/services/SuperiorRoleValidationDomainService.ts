@@ -1,4 +1,6 @@
+import { PositionId } from "@subdomains/position/domain/values/PositionId";
 import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
+import { RoleId } from "../values/RoleId";
 import { RoleRepository } from "../repositories/RoleRepository";
 import { PositionRepository } from "../repositories/PositionRepository";
 
@@ -21,7 +23,7 @@ export class SuperiorRoleValidationDomainService {
    * @param superiorRoleId 設定しようとする上位役割ID
    * @throws BusinessRuleViolationError バリデーション失敗時
    */
-  async execute(positionId: string, superiorRoleId: string): Promise<void> {
+  async execute(positionId: PositionId, superiorRoleId: RoleId): Promise<void> {
     // 1. 当該役職の上位役職IDを取得
     const superiorPositionId = await this.positionRepository.findSuperiorPositionId(positionId);
 
@@ -33,11 +35,11 @@ export class SuperiorRoleValidationDomainService {
     // 3. 上位役割を取得
     const superiorRole = await this.roleRepository.findById(superiorRoleId);
     if (!superiorRole) {
-      throw new BusinessRuleViolationError(`上位役割が存在しません: ID=${superiorRoleId}`);
+      throw new BusinessRuleViolationError(`上位役割が存在しません: ID=${superiorRoleId.value}`);
     }
 
     // 4. 上位役割の役職が、当該役職の上位役職と一致するか検証
-    if (superiorRole.positionId !== superiorPositionId) {
+    if (!superiorRole.positionId.equals(superiorPositionId)) {
       throw new BusinessRuleViolationError(
         "上位役割に指定できるのは、選択した役職の上位役職に属する役割のみです"
       );
