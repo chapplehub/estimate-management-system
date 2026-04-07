@@ -3,6 +3,7 @@ import { CompanyType } from "@generated/prisma/client";
 import prisma from "@server/prisma";
 import { DeliveryLocation } from "@subdomains/delivery-location/domain/entities/DeliveryLocation";
 import { DeliveryLocationRepository } from "@subdomains/delivery-location/domain/repositories/DeliveryLocationRepository";
+import { DeliveryLocationId } from "@subdomains/delivery-location/domain/values/DeliveryLocationId";
 import { DeliveryLocationMapper } from "@subdomains/delivery-location/infrastructure/mappers/DeliveryLocationMapper";
 
 const INCLUDE_COMPANY = { company: true } as const;
@@ -10,14 +11,14 @@ const INCLUDE_COMPANY = { company: true } as const;
 export class PrismaDeliveryLocationRepository implements DeliveryLocationRepository {
   async save(deliveryLocation: DeliveryLocation): Promise<DeliveryLocation> {
     const existing = await prisma.deliveryLocation.findUnique({
-      where: { id: deliveryLocation.id },
+      where: { id: deliveryLocation.id.value },
     });
 
     let prismaDeliveryLocation;
 
     if (existing) {
       prismaDeliveryLocation = await prisma.deliveryLocation.update({
-        where: { id: deliveryLocation.id },
+        where: { id: deliveryLocation.id.value },
         data: DeliveryLocationMapper.toPrismaUpdate(deliveryLocation),
         include: INCLUDE_COMPANY,
       });
@@ -31,9 +32,9 @@ export class PrismaDeliveryLocationRepository implements DeliveryLocationReposit
     return DeliveryLocationMapper.toDomain(prismaDeliveryLocation);
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(id: DeliveryLocationId): Promise<void> {
     const deliveryLocation = await prisma.deliveryLocation.findUnique({
-      where: { id },
+      where: { id: id.value },
       select: { companyId: true },
     });
 
@@ -44,9 +45,9 @@ export class PrismaDeliveryLocationRepository implements DeliveryLocationReposit
     }
   }
 
-  async findById(id: string): Promise<DeliveryLocation | null> {
+  async findById(id: DeliveryLocationId): Promise<DeliveryLocation | null> {
     const prismaDeliveryLocation = await prisma.deliveryLocation.findUnique({
-      where: { id },
+      where: { id: id.value },
       include: INCLUDE_COMPANY,
     });
 

@@ -5,6 +5,7 @@ import { CompanyName } from "@server/shared/domain/values/CompanyName";
 import { Customer } from "@subdomains/customer/domain/entities/Customer";
 import { PrismaCustomerRepository } from "@subdomains/customer/infrastructure/prisma/PrismaCustomerRepository";
 import { DeliveryLocation } from "@subdomains/delivery-location/domain/entities/DeliveryLocation";
+import { DeliveryLocationId } from "@subdomains/delivery-location/domain/values/DeliveryLocationId";
 import { PrismaDeliveryLocationRepository } from "@subdomains/delivery-location/infrastructure/prisma/PrismaDeliveryLocationRepository";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { UpdateDeliveryLocationCommand } from "../UpdateDeliveryLocationCommand";
@@ -13,7 +14,6 @@ describe("UpdateDeliveryLocationCommand", () => {
   let command: UpdateDeliveryLocationCommand;
   let dlRepository: PrismaDeliveryLocationRepository;
   let customerRepository: PrismaCustomerRepository;
-  let testCustomerId: string;
   let testDeliveryLocationId: string;
 
   const DL_TEST_CODES = ["DL999913"];
@@ -37,16 +37,14 @@ describe("UpdateDeliveryLocationCommand", () => {
       new CompanyName("更新テスト用得意先")
     );
     const savedCustomer = await customerRepository.save(customer);
-    testCustomerId = savedCustomer.id;
-
     // テスト用納品先を事前作成
     const dl = DeliveryLocation.create(
       new CompanyCode(DL_TEST_CODES[0]),
       new CompanyName("更新前納品先"),
-      testCustomerId
+      savedCustomer.id
     );
     const savedDl = await dlRepository.save(dl);
-    testDeliveryLocationId = savedDl.id;
+    testDeliveryLocationId = savedDl.id.value;
   });
 
   afterEach(async () => {
@@ -64,7 +62,7 @@ describe("UpdateDeliveryLocationCommand", () => {
       name: "更新後納品先",
     });
 
-    const updated = await dlRepository.findById(testDeliveryLocationId);
+    const updated = await dlRepository.findById(new DeliveryLocationId(testDeliveryLocationId));
     expect(updated).not.toBeNull();
     expect(updated?.name.value).toBe("更新後納品先");
   });
@@ -82,7 +80,7 @@ describe("UpdateDeliveryLocationCommand", () => {
       deliveryNotes: "午前中のみ受付可能",
     });
 
-    const updated = await dlRepository.findById(testDeliveryLocationId);
+    const updated = await dlRepository.findById(new DeliveryLocationId(testDeliveryLocationId));
     expect(updated).not.toBeNull();
     expect(updated?.postalCode?.value).toBe("3000003");
     expect(updated?.prefecture?.value).toBe("愛知県");
@@ -101,7 +99,7 @@ describe("UpdateDeliveryLocationCommand", () => {
       isActive: false,
     });
 
-    let updated = await dlRepository.findById(testDeliveryLocationId);
+    let updated = await dlRepository.findById(new DeliveryLocationId(testDeliveryLocationId));
     expect(updated?.isActive).toBe(false);
 
     // activate
@@ -111,7 +109,7 @@ describe("UpdateDeliveryLocationCommand", () => {
       isActive: true,
     });
 
-    updated = await dlRepository.findById(testDeliveryLocationId);
+    updated = await dlRepository.findById(new DeliveryLocationId(testDeliveryLocationId));
     expect(updated?.isActive).toBe(true);
   });
 
@@ -142,7 +140,7 @@ describe("UpdateDeliveryLocationCommand", () => {
       deliveryNotes: null,
     });
 
-    const updated = await dlRepository.findById(testDeliveryLocationId);
+    const updated = await dlRepository.findById(new DeliveryLocationId(testDeliveryLocationId));
     expect(updated).not.toBeNull();
     expect(updated?.postalCode).toBeNull();
     expect(updated?.prefecture).toBeNull();

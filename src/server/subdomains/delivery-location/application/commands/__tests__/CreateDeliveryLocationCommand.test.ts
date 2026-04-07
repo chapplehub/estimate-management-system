@@ -4,6 +4,7 @@ import { ValidationError } from "@server/shared/errors/DomainError";
 import { CompanyCode } from "@server/shared/domain/values/CompanyCode";
 import { CompanyName } from "@server/shared/domain/values/CompanyName";
 import { Customer } from "@subdomains/customer/domain/entities/Customer";
+import { CustomerId } from "@subdomains/customer/domain/values/CustomerId";
 import { PrismaCustomerRepository } from "@subdomains/customer/infrastructure/prisma/PrismaCustomerRepository";
 import { DeliveryLocationCodeDuplicationCheckDomainService } from "@subdomains/delivery-location/domain/services/DeliveryLocationCodeDuplicationCheckDomainService";
 import { PrismaDeliveryLocationRepository } from "@subdomains/delivery-location/infrastructure/prisma/PrismaDeliveryLocationRepository";
@@ -47,7 +48,7 @@ describe("CreateDeliveryLocationCommand", () => {
       new CompanyName("納品先テスト用得意先")
     );
     const saved = await customerRepository.save(customer);
-    testCustomerId = saved.id;
+    testCustomerId = saved.id.value;
   });
 
   afterEach(async () => {
@@ -70,7 +71,7 @@ describe("CreateDeliveryLocationCommand", () => {
     expect(saved).not.toBeNull();
     expect(saved?.name.value).toBe("テスト納品先A");
     expect(saved?.code.value).toBe(DL_TEST_CODES[0]);
-    expect(saved?.customerId).toBe(testCustomerId);
+    expect(saved?.customerId.value).toBe(testCustomerId);
     expect(saved?.isActive).toBe(true);
     expect(saved?.deliveryNotes).toBeNull();
   });
@@ -129,7 +130,7 @@ describe("CreateDeliveryLocationCommand", () => {
 
   it("親得意先が無効化されている場合は ValidationError", async () => {
     // 得意先を無効化
-    const customer = await customerRepository.findById(testCustomerId);
+    const customer = await customerRepository.findById(new CustomerId(testCustomerId));
     customer!.deactivate();
     await customerRepository.save(customer!);
 

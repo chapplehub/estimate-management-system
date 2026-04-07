@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { Customer } from "../Customer";
 import { CompanyCode } from "@server/shared/domain/values/CompanyCode";
+import { CompanyId } from "@server/shared/domain/values/CompanyId";
 import { CompanyName } from "@server/shared/domain/values/CompanyName";
+import { CustomerId } from "@subdomains/customer/domain/values/CustomerId";
 import { MarginRate } from "@subdomains/customer/domain/values/MarginRate";
 import { PostalCode } from "@server/shared/domain/values/PostalCode";
 import { Prefecture } from "@server/shared/domain/values/Prefecture";
@@ -56,9 +58,11 @@ describe("Customer Entity", () => {
   describe("reconstruct", () => {
     it("DBからの再構築が正しく動作する", () => {
       const now = new Date();
+      const id = CustomerId.generate();
+      const companyId = CompanyId.generate();
       const customer = Customer.reconstruct(
-        "test-id",
-        "test-company-id",
+        id,
+        companyId,
         new CompanyCode("CUST001"),
         new CompanyName("株式会社テスト"),
         null,
@@ -73,8 +77,8 @@ describe("Customer Entity", () => {
         now
       );
 
-      expect(customer.id).toBe("test-id");
-      expect(customer.companyId).toBe("test-company-id");
+      expect(customer.id.value).toBe(id.value);
+      expect(customer.companyId.value).toBe(companyId.value);
       expect(customer.createdAt).toBe(now);
     });
   });
