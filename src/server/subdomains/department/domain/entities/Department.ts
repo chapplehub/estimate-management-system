@@ -1,4 +1,4 @@
-import { generateId } from "@server/shared/generateId";
+import { DepartmentId } from "../values/DepartmentId";
 import { DepartmentCd } from "../values/DepartmentCd";
 import { DepartmentName } from "../values/DepartmentName";
 import { Abbreviation } from "../values/Abbreviation";
@@ -14,12 +14,12 @@ export class Department {
   static readonly ENTITY_NAME = "部署";
 
   private constructor(
-    private readonly _id: string,
+    private readonly _id: DepartmentId,
     private readonly _departmentCd: DepartmentCd,
     private _name: DepartmentName,
     private _abbreviation: Abbreviation,
     private _isActive: boolean,
-    private _parentId: string | null,
+    private _parentId: DepartmentId | null,
     private readonly _createdAt: Date,
     private _updatedAt: Date
   ) {}
@@ -37,12 +37,12 @@ export class Department {
     departmentCd: DepartmentCd,
     name: DepartmentName,
     abbreviation: Abbreviation,
-    parentId: string | null = null
+    parentId: DepartmentId | null = null
   ): Department {
     const now = new Date();
 
     return new Department(
-      generateId(), // UUIDv7を生成
+      DepartmentId.generate(),
       departmentCd,
       name,
       abbreviation,
@@ -67,12 +67,12 @@ export class Department {
    * @returns 部署エンティティ
    */
   static reconstruct(
-    id: string,
+    id: DepartmentId,
     departmentCd: DepartmentCd,
     name: DepartmentName,
     abbreviation: Abbreviation,
     isActive: boolean,
-    parentId: string | null,
+    parentId: DepartmentId | null,
     createdAt: Date,
     updatedAt: Date
   ): Department {
@@ -113,9 +113,9 @@ export class Department {
    *
    * @param newParentId 新しい親部署ID（ルートにする場合は null）
    */
-  changeParent(newParentId: string | null): void {
+  changeParent(newParentId: DepartmentId | null): void {
     // 自分自身を親にすることはできない
-    if (newParentId === this._id) {
+    if (newParentId !== null && newParentId.equals(this._id)) {
       throw new BusinessRuleViolationError("自分自身を親部署にすることはできません");
     }
     this._parentId = newParentId;
@@ -149,7 +149,7 @@ export class Department {
   // ゲッター
   // ========================================
 
-  get id(): string {
+  get id(): DepartmentId {
     return this._id;
   }
 
@@ -169,7 +169,7 @@ export class Department {
     return this._isActive;
   }
 
-  get parentId(): string | null {
+  get parentId(): DepartmentId | null {
     return this._parentId;
   }
 

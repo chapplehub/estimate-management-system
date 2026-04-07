@@ -1,6 +1,7 @@
 import { Department } from "@subdomains/department/domain/entities/Department";
 import { DepartmentRepository } from "@subdomains/department/domain/repositories/DepartmentRepository";
 import { DepartmentCd } from "@subdomains/department/domain/values/DepartmentCd";
+import { DepartmentId } from "@subdomains/department/domain/values/DepartmentId";
 import { DepartmentMapper } from "@subdomains/department/infrastructure/mappers/DepartmentMapper";
 import prisma from "@server/prisma";
 
@@ -14,10 +15,10 @@ export class PrismaDepartmentRepository implements DepartmentRepository {
   async save(department: Department): Promise<Department> {
     let prismaDepartment;
 
-    if (department.id) {
+    if (department.id.value) {
       // IDが存在する場合：upsert（更新 or 作成）
       prismaDepartment = await prisma.department.upsert({
-        where: { id: department.id },
+        where: { id: department.id.value },
         create: DepartmentMapper.toPrismaCreate(department),
         update: DepartmentMapper.toPrismaUpdate(department),
       });
@@ -35,9 +36,9 @@ export class PrismaDepartmentRepository implements DepartmentRepository {
    *
    * @param id 部署ID
    */
-  async delete(id: string): Promise<void> {
+  async delete(id: DepartmentId): Promise<void> {
     await prisma.department.delete({
-      where: { id: id },
+      where: { id: id.value },
     });
   }
 
@@ -47,9 +48,9 @@ export class PrismaDepartmentRepository implements DepartmentRepository {
    * @param id 部署ID
    * @returns 部署エンティティ（見つからない場合はnull）
    */
-  async findById(id: string): Promise<Department | null> {
+  async findById(id: DepartmentId): Promise<Department | null> {
     const prismaDepartment = await prisma.department.findUnique({
-      where: { id: id },
+      where: { id: id.value },
     });
 
     return prismaDepartment ? DepartmentMapper.toDomain(prismaDepartment) : null;
@@ -75,9 +76,9 @@ export class PrismaDepartmentRepository implements DepartmentRepository {
    * @param parentId 親部署ID
    * @returns 子部署の配列
    */
-  async findChildren(parentId: string): Promise<Department[]> {
+  async findChildren(parentId: DepartmentId): Promise<Department[]> {
     const prismaDepartments = await prisma.department.findMany({
-      where: { parentId: parentId },
+      where: { parentId: parentId.value },
       orderBy: { departmentCd: "asc" },
     });
 
