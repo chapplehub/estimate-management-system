@@ -1,6 +1,7 @@
 import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { Employee } from "@subdomains/employee/domain/entities/Employee";
 import { EmployeeRepository } from "@subdomains/employee/domain/repositories/EmployeeRepository";
+import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
 import type { UserManagementService } from "@server/shared/auth/UserManagementService";
 
 export type DeleteEmployeeInput = {
@@ -20,7 +21,8 @@ export class DeleteEmployeeCommand {
   ) {}
 
   async execute(input: DeleteEmployeeInput): Promise<void> {
-    const targetEmployee = await this.employeeRepository.findById(input.id);
+    const employeeId = new EmployeeId(input.id);
+    const targetEmployee = await this.employeeRepository.findById(employeeId);
     if (!targetEmployee) {
       throw new NotFoundEntityError(Employee, {
         id: input.id,
@@ -37,6 +39,6 @@ export class DeleteEmployeeCommand {
     }
 
     // Employee を削除
-    await this.employeeRepository.delete(input.id);
+    await this.employeeRepository.delete(employeeId);
   }
 }

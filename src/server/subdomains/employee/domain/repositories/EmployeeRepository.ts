@@ -1,5 +1,6 @@
 import { Employee } from "@subdomains/employee/domain/entities/Employee";
 import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
+import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
 
 /**
@@ -19,13 +20,13 @@ export interface EmployeeRepository {
   /**
    * 従業員を削除
    */
-  delete(id: string): Promise<void>;
+  delete(id: EmployeeId): Promise<void>;
 
   /**
    * IDで従業員を取得（Entity の完全な再構築が必要な場合に使用）
    * 単なる表示目的の場合は EmployeeQueryService を使用すること
    */
-  findById(id: string): Promise<Employee | null>;
+  findById(id: EmployeeId): Promise<Employee | null>;
 
   /**
    * 従業員CDで従業員を取得（重複チェック等で Entity が必要な場合に使用）

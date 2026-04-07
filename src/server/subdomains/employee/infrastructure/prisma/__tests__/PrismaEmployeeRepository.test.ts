@@ -1,15 +1,17 @@
 import { ensureTestDepartment } from "@server/__tests__/helpers/ensureTestDepartment";
 import { Employee } from "@subdomains/employee/domain/entities/Employee";
 import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
+import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
 import { EmployeeName } from "@subdomains/employee/domain/values/EmployeeName";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
+import { DepartmentId } from "@subdomains/department/domain/values/DepartmentId";
 import { PrismaEmployeeRepository } from "../PrismaEmployeeRepository";
 import prisma from "@server/prisma";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 describe("PrismaEmployeeRepository", () => {
   let repository: PrismaEmployeeRepository;
-  let TEST_DEPT_ID: string;
+  let TEST_DEPT_ID: DepartmentId;
 
   beforeEach(async () => {
     repository = new PrismaEmployeeRepository();
@@ -23,7 +25,7 @@ describe("PrismaEmployeeRepository", () => {
     });
 
     // テスト用部署を確保
-    TEST_DEPT_ID = await ensureTestDepartment();
+    TEST_DEPT_ID = new DepartmentId(await ensureTestDepartment());
   });
 
   afterEach(async () => {
@@ -50,7 +52,7 @@ describe("PrismaEmployeeRepository", () => {
 
       // 保存されたエンティティを確認
       expect(savedEmployee).not.toBeNull();
-      expect(savedEmployee.id).toBeTruthy();
+      expect(savedEmployee.id.value).toBeTruthy();
       expect(savedEmployee.employeeCd.value).toBe("EMP999001");
       expect(savedEmployee.email.value).toBe("test-save@example.com");
       expect(savedEmployee.name.value).toBe("テスト太郎");
@@ -84,7 +86,7 @@ describe("PrismaEmployeeRepository", () => {
 
       // 更新されたエンティティを確認
       expect(updatedEmployee.name.value).toBe("更新後の名前");
-      expect(updatedEmployee.id).toBe(savedEmployee.id);
+      expect(updatedEmployee.id.value).toBe(savedEmployee.id.value);
 
       // DBから再取得して確認
       const updated = await prisma.employee.findUnique({
@@ -111,7 +113,7 @@ describe("PrismaEmployeeRepository", () => {
 
       // 削除されたことを確認
       const deleted = await prisma.employee.findUnique({
-        where: { id: savedEmployee.id },
+        where: { id: savedEmployee.id.value },
       });
       expect(deleted).toBeNull();
     });
@@ -132,14 +134,16 @@ describe("PrismaEmployeeRepository", () => {
       const found = await repository.findById(savedEmployee.id);
 
       expect(found).not.toBeNull();
-      expect(found?.id).toBe(savedEmployee.id);
+      expect(found?.id.value).toBe(savedEmployee.id.value);
       expect(found?.name.value).toBe("ID検索テスト");
       expect(found?.email.value).toBe("test-findbyid@example.com");
       expect(found?.employeeCd.value).toBe("EMP999001");
     });
 
     it("存在しないIDの場合nullを返す", async () => {
-      const found = await repository.findById("00000000-0000-7000-8000-000000000000");
+      const found = await repository.findById(
+        new EmployeeId("00000000-0000-7000-8000-000000000000")
+      );
 
       expect(found).toBeNull();
     });

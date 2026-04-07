@@ -60,7 +60,7 @@ describe("CreateEmployeeCommand", () => {
     expect(saved).not.toBeNull();
     expect(saved?.email.value).toBe("test-create-cmd@example.com");
     expect(saved?.name.value).toBe("テスト太郎");
-    expect(saved?.departmentId).toBe(TEST_DEPT_ID);
+    expect(saved?.departmentId.value).toBe(TEST_DEPT_ID);
   });
 
   it("社員コードが重複している場合はエラー", async () => {

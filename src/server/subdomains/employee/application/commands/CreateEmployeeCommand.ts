@@ -2,6 +2,7 @@ import type { UserManagementService } from "@server/shared/auth/UserManagementSe
 import type { UserRole } from "@server/shared/auth/types";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
 import { ValidationError } from "@server/shared/errors/DomainError";
+import { DepartmentId } from "@subdomains/department/domain/values/DepartmentId";
 import { Employee } from "@subdomains/employee/domain/entities/Employee";
 import { EmployeeRepository } from "@subdomains/employee/domain/repositories/EmployeeRepository";
 import { EmployeeCdDuplicationCheckDomainService } from "@subdomains/employee/domain/services/EmployeeCdDuplicationCheckDomainService";
@@ -53,7 +54,8 @@ export class CreateEmployeeCommand {
     }
 
     const employeeName = new EmployeeName(input.name);
-    const newEmployee = Employee.create(employeeCd, mailAddress, employeeName, input.departmentId);
+    const departmentId = new DepartmentId(input.departmentId);
+    const newEmployee = Employee.create(employeeCd, mailAddress, employeeName, departmentId);
 
     // Employee を保存
     await this.employeeRepository.save(newEmployee);
@@ -63,7 +65,7 @@ export class CreateEmployeeCommand {
       email: input.email,
       password: input.password,
       name: input.name,
-      employeeId: newEmployee.id,
+      employeeId: newEmployee.id.value,
       role: input.role,
     });
 

@@ -1,6 +1,7 @@
 import { Employee } from "@subdomains/employee/domain/entities/Employee";
 import { EmployeeRepository } from "@subdomains/employee/domain/repositories/EmployeeRepository";
 import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
+import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
 import { EmployeeMapper } from "@subdomains/employee/infrastructure/mappers/EmployeeMapper";
 import prisma from "@server/prisma";
@@ -18,10 +19,10 @@ export class PrismaEmployeeRepository implements EmployeeRepository {
   async save(employee: Employee): Promise<Employee> {
     let prismaEmployee;
 
-    if (employee.id) {
+    if (employee.id.value) {
       // IDが存在する場合：upsert（更新 or 作成）
       prismaEmployee = await prisma.employee.upsert({
-        where: { id: employee.id },
+        where: { id: employee.id.value },
         create: EmployeeMapper.toPrismaCreate(employee),
         update: EmployeeMapper.toPrismaUpdate(employee),
       });
@@ -39,9 +40,9 @@ export class PrismaEmployeeRepository implements EmployeeRepository {
    *
    * @param id
    */
-  async delete(id: string): Promise<void> {
+  async delete(id: EmployeeId): Promise<void> {
     await prisma.employee.delete({
-      where: { id: id },
+      where: { id: id.value },
     });
   }
 
@@ -51,9 +52,9 @@ export class PrismaEmployeeRepository implements EmployeeRepository {
    * @param id
    * @returns 従業員エンティティ（見つからない場合はnull）
    */
-  async findById(id: string): Promise<Employee | null> {
+  async findById(id: EmployeeId): Promise<Employee | null> {
     const prismaEmployee = await prisma.employee.findUnique({
-      where: { id: id },
+      where: { id: id.value },
     });
 
     return prismaEmployee ? EmployeeMapper.toDomain(prismaEmployee) : null;

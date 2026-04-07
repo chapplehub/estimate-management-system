@@ -1,6 +1,7 @@
 import { ensureTestDepartment } from "@server/__tests__/helpers/ensureTestDepartment";
 import prisma from "@server/prisma";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
+import { DepartmentId } from "@subdomains/department/domain/values/DepartmentId";
 import { Employee } from "@subdomains/employee/domain/entities/Employee";
 import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
 import { EmployeeName } from "@subdomains/employee/domain/values/EmployeeName";
@@ -13,7 +14,7 @@ describe("MailAddressDuplicationCheckDomainService", () => {
   let repository: PrismaEmployeeRepository;
 
   const TEST_CODES = ["EMP999831"];
-  let TEST_DEPT_ID: string;
+  let TEST_DEPT_ID: DepartmentId;
 
   async function cleanup() {
     await prisma.employee.deleteMany({
@@ -24,7 +25,7 @@ describe("MailAddressDuplicationCheckDomainService", () => {
   beforeEach(async () => {
     await cleanup();
 
-    TEST_DEPT_ID = await ensureTestDepartment();
+    TEST_DEPT_ID = new DepartmentId(await ensureTestDepartment());
 
     repository = new PrismaEmployeeRepository();
     service = new MailAddressDuplicationCheckDomainService(repository);
