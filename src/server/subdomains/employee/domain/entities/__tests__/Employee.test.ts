@@ -1,7 +1,8 @@
-import { generateId } from "@server/shared/generateId";
+import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
 import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
 import { EmployeeName } from "@subdomains/employee/domain/values/EmployeeName";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
+import { DepartmentId } from "@subdomains/department/domain/values/DepartmentId";
 import { describe, expect, it, beforeEach } from "vitest";
 import { Employee } from "../Employee";
 
@@ -9,13 +10,13 @@ describe("Employee エンティティ", () => {
   let employeeCd: EmployeeCd;
   let email: MailAddress;
   let name: EmployeeName;
-  let departmentId: string;
+  let departmentId: DepartmentId;
 
   beforeEach(() => {
     employeeCd = new EmployeeCd("EMP000001");
     email = new MailAddress("test@example.com");
     name = new EmployeeName("山田太郎");
-    departmentId = generateId();
+    departmentId = DepartmentId.generate();
   });
 
   describe("ファクトリメソッド", () => {
@@ -23,8 +24,8 @@ describe("Employee エンティティ", () => {
       it("新規従業員を作成できる", () => {
         const employee = Employee.create(employeeCd, email, name, departmentId);
 
-        expect(employee.id).toBeTruthy(); // IDが生成されている
-        expect(employee.id).not.toBe(""); // 空文字ではない
+        expect(employee.id).toBeInstanceOf(EmployeeId);
+        expect(employee.id.value).toBeTruthy();
         expect(employee.employeeCd.value).toBe("EMP000001");
         expect(employee.email.value).toBe("test@example.com");
         expect(employee.name.value).toBe("山田太郎");
@@ -42,13 +43,13 @@ describe("Employee エンティティ", () => {
         const employee1 = Employee.create(employeeCd, email, name, departmentId);
         const employee2 = Employee.create(employeeCd, email, name, departmentId);
 
-        expect(employee1.id).not.toBe(employee2.id);
+        expect(employee1.id.value).not.toBe(employee2.id.value);
       });
     });
 
     describe("reconstruct", () => {
       it("DBから従業員を再構築できる", () => {
-        const id = "clxyz123abc456def789";
+        const id = EmployeeId.generate();
         const createdAt = new Date("2025-01-01");
         const updatedAt = new Date("2025-01-02");
 
@@ -120,7 +121,7 @@ describe("Employee エンティティ", () => {
   describe("部署変更", () => {
     it("所属部署を変更できる", () => {
       const employee = Employee.create(employeeCd, email, name, departmentId);
-      const newDepartmentId = generateId();
+      const newDepartmentId = DepartmentId.generate();
 
       employee.changeDepartment(newDepartmentId);
 
@@ -130,7 +131,7 @@ describe("Employee エンティティ", () => {
     it("更新日時が更新される", () => {
       const employee = Employee.create(employeeCd, email, name, departmentId);
       const oldUpdatedAt = employee.updatedAt;
-      const newDepartmentId = generateId();
+      const newDepartmentId = DepartmentId.generate();
 
       setTimeout(() => {
         employee.changeDepartment(newDepartmentId);
@@ -141,7 +142,7 @@ describe("Employee エンティティ", () => {
 
   describe("ゲッター", () => {
     it("すべてのフィールドにアクセスできる", () => {
-      const id = "clxyz123abc456def789";
+      const id = EmployeeId.generate();
       const createdAt = new Date("2025-01-01");
       const updatedAt = new Date("2025-01-02");
 

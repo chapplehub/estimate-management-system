@@ -4,6 +4,7 @@ import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { Role } from "@subdomains/role/domain/entities/Role";
 import { RoleCd } from "@subdomains/role/domain/values/RoleCd";
 import { RoleName } from "@subdomains/role/domain/values/RoleName";
+import { PositionId } from "@subdomains/position/domain/values/PositionId";
 import { PrismaRoleRepository } from "@subdomains/role/infrastructure/prisma/PrismaRoleRepository";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DeleteRoleCommand } from "../DeleteRoleCommand";
@@ -48,11 +49,11 @@ describe("DeleteRoleCommand", () => {
     const role = Role.create(
       new RoleCd(TEST_ROLE_CDS[0]),
       new RoleName("削除テスト役割"),
-      kachouPositionId
+      new PositionId(kachouPositionId)
     );
     await roleRepository.save(role);
 
-    await command.execute({ id: role.id });
+    await command.execute({ id: role.id.value });
 
     const deleted = await roleRepository.findById(role.id);
     expect(deleted).toBeNull();
@@ -68,21 +69,23 @@ describe("DeleteRoleCommand", () => {
     const buchouRole = Role.create(
       new RoleCd(TEST_ROLE_CDS[0]),
       new RoleName("テスト部長"),
-      buchouPositionId
+      new PositionId(buchouPositionId)
     );
     await roleRepository.save(buchouRole);
 
     const kachouRole = Role.create(
       new RoleCd(TEST_ROLE_CDS[1]),
       new RoleName("テスト課長"),
-      kachouPositionId,
+      new PositionId(kachouPositionId),
       buchouRole.id
     );
     await roleRepository.save(kachouRole);
 
-    await expect(command.execute({ id: buchouRole.id })).rejects.toThrow(
+    await expect(command.execute({ id: buchouRole.id.value })).rejects.toThrow(
       BusinessRuleViolationError
     );
-    await expect(command.execute({ id: buchouRole.id })).rejects.toThrow("下位役割が存在するため");
+    await expect(command.execute({ id: buchouRole.id.value })).rejects.toThrow(
+      "下位役割が存在するため"
+    );
   });
 });

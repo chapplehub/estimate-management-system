@@ -2,6 +2,7 @@ import prisma from "@server/prisma";
 import { CompanyCode } from "@server/shared/domain/values/CompanyCode";
 import { CompanyName } from "@server/shared/domain/values/CompanyName";
 import { Customer } from "@subdomains/customer/domain/entities/Customer";
+import { CustomerId } from "@subdomains/customer/domain/values/CustomerId";
 import { PrismaCustomerRepository } from "@subdomains/customer/infrastructure/prisma/PrismaCustomerRepository";
 import { DeliveryLocation } from "@subdomains/delivery-location/domain/entities/DeliveryLocation";
 import { PrismaDeliveryLocationRepository } from "@subdomains/delivery-location/infrastructure/prisma/PrismaDeliveryLocationRepository";
@@ -12,7 +13,7 @@ describe("DeliveryLocationCodeDuplicationCheckDomainService", () => {
   let service: DeliveryLocationCodeDuplicationCheckDomainService;
   let dlRepository: PrismaDeliveryLocationRepository;
   let customerRepository: PrismaCustomerRepository;
-  let customerId: string;
+  let customerId: CustomerId;
 
   const DL_TEST_CODES = ["DL999801", "DL999802"];
   const CUSTOMER_TEST_CODE = "CUST999811";

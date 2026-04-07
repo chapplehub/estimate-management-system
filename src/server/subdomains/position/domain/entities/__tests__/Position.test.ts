@@ -1,23 +1,29 @@
 import { describe, it, expect } from "vitest";
 import { Position } from "../Position";
 import { PositionCd } from "../../values/PositionCd";
+import { PositionId } from "../../values/PositionId";
 import { PositionName } from "../../values/PositionName";
 
 describe("Position", () => {
+  const defaultId = PositionId.generate();
+  const defaultSuperiorId = PositionId.generate();
+
   const createTestPosition = (overrides?: {
-    id?: string;
+    id?: PositionId;
     positionCd?: PositionCd;
     name?: PositionName;
-    superiorPositionId?: string | null;
+    superiorPositionId?: PositionId | null;
     createdAt?: Date;
     updatedAt?: Date;
   }) => {
     const now = new Date();
     return Position.reconstruct(
-      overrides?.id ?? "test-id-001",
+      overrides?.id ?? defaultId,
       overrides?.positionCd ?? new PositionCd("POS001"),
       overrides?.name ?? new PositionName("課長"),
-      overrides?.superiorPositionId !== undefined ? overrides.superiorPositionId : "test-id-002",
+      overrides?.superiorPositionId !== undefined
+        ? overrides.superiorPositionId
+        : defaultSuperiorId,
       overrides?.createdAt ?? now,
       overrides?.updatedAt ?? now
     );
@@ -27,10 +33,10 @@ describe("Position", () => {
     it("役職を再構築できる", () => {
       const position = createTestPosition();
 
-      expect(position.id).toBe("test-id-001");
+      expect(position.id.value).toBe(defaultId.value);
       expect(position.positionCd.value).toBe("POS001");
       expect(position.name.value).toBe("課長");
-      expect(position.superiorPositionId).toBe("test-id-002");
+      expect(position.superiorPositionId?.value).toBe(defaultSuperiorId.value);
     });
 
     it("上位役職がnullの場合も再構築できる", () => {
@@ -57,7 +63,7 @@ describe("Position", () => {
     });
 
     it("上位役職がある場合はfalseを返す", () => {
-      const position = createTestPosition({ superiorPositionId: "superior-id" });
+      const position = createTestPosition({ superiorPositionId: PositionId.generate() });
 
       expect(position.isTopLevel()).toBe(false);
     });

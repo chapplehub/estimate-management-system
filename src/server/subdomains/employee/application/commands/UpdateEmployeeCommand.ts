@@ -3,9 +3,11 @@ import type { UserRole } from "@server/shared/auth/types";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
 import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { ValidationError } from "@server/shared/errors/DomainError";
+import { DepartmentId } from "@subdomains/department/domain/values/DepartmentId";
 import { Employee } from "@subdomains/employee/domain/entities/Employee";
 import { EmployeeRepository } from "@subdomains/employee/domain/repositories/EmployeeRepository";
 import { MailAddressDuplicationCheckDomainService } from "@subdomains/employee/domain/services/MailAddressDuplicationCheckDomainService";
+import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
 import { EmployeeName } from "@subdomains/employee/domain/values/EmployeeName";
 
 export type UpdateEmployeeInput = {
@@ -32,7 +34,8 @@ export class UpdateEmployeeCommand {
   ) {}
 
   async execute(input: UpdateEmployeeInput): Promise<void> {
-    const targetEmployee = await this.employeeRepository.findById(input.id);
+    const employeeId = new EmployeeId(input.id);
+    const targetEmployee = await this.employeeRepository.findById(employeeId);
     if (!targetEmployee) {
       throw new NotFoundEntityError(Employee, {
         employeeCd: input.employeeCd,
@@ -53,7 +56,7 @@ export class UpdateEmployeeCommand {
 
     targetEmployee.changeName(new EmployeeName(input.name));
     targetEmployee.changeEmail(newMailAddress);
-    targetEmployee.changeDepartment(input.departmentId);
+    targetEmployee.changeDepartment(new DepartmentId(input.departmentId));
 
     await this.employeeRepository.save(targetEmployee);
 

@@ -2,6 +2,7 @@ import prisma from "@server/prisma";
 import { Role } from "@subdomains/role/domain/entities/Role";
 import { RoleCd } from "@subdomains/role/domain/values/RoleCd";
 import { RoleName } from "@subdomains/role/domain/values/RoleName";
+import { PositionId } from "@subdomains/position/domain/values/PositionId";
 import { PrismaRoleRepository } from "@subdomains/role/infrastructure/prisma/PrismaRoleRepository";
 import { PrismaRoleQueryService } from "@subdomains/role/infrastructure/queries/PrismaRoleQueryService";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -41,14 +42,14 @@ describe("GetRoleByRoleCdQuery", () => {
     const role = Role.create(
       new RoleCd(TEST_ROLE_CDS[0]),
       new RoleName("コード取得テスト役割"),
-      kachouPositionId
+      new PositionId(kachouPositionId)
     );
     await roleRepository.save(role);
 
     const result = await query.execute({ roleCd: TEST_ROLE_CDS[0] });
 
     expect(result).not.toBeNull();
-    expect(result?.id).toBe(role.id);
+    expect(result?.id).toBe(role.id.value);
     expect(result?.roleCd).toBe(TEST_ROLE_CDS[0]);
     expect(result?.name).toBe("コード取得テスト役割");
     expect(result?.positionId).toBe(kachouPositionId);

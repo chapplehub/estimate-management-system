@@ -1,21 +1,26 @@
+import { PositionId } from "@subdomains/position/domain/values/PositionId";
 import { describe, it, expect } from "vitest";
 import { Role } from "../Role";
 import { RoleCd } from "../../values/RoleCd";
+import { RoleId } from "../../values/RoleId";
 import { RoleName } from "../../values/RoleName";
 import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
 
 describe("Role", () => {
+  const defaultPositionId = PositionId.generate();
+  const defaultSuperiorRoleId = RoleId.generate();
+
   const createTestRole = (overrides?: {
     roleCd?: RoleCd;
     name?: RoleName;
-    positionId?: string;
-    superiorRoleId?: string | null;
+    positionId?: PositionId;
+    superiorRoleId?: RoleId | null;
   }) => {
     return Role.create(
       overrides?.roleCd ?? new RoleCd("ROLE001"),
       overrides?.name ?? new RoleName("大阪市南課長"),
-      overrides?.positionId ?? "position-id-001",
-      overrides?.superiorRoleId !== undefined ? overrides.superiorRoleId : "superior-role-id"
+      overrides?.positionId ?? defaultPositionId,
+      overrides?.superiorRoleId !== undefined ? overrides.superiorRoleId : defaultSuperiorRoleId
     );
   };
 
@@ -26,8 +31,8 @@ describe("Role", () => {
       expect(role.id).toBeDefined();
       expect(role.roleCd.value).toBe("ROLE001");
       expect(role.name.value).toBe("大阪市南課長");
-      expect(role.positionId).toBe("position-id-001");
-      expect(role.superiorRoleId).toBe("superior-role-id");
+      expect(role.positionId).toBe(defaultPositionId);
+      expect(role.superiorRoleId).toBe(defaultSuperiorRoleId);
       expect(role.createdAt).toBeInstanceOf(Date);
       expect(role.updatedAt).toBeInstanceOf(Date);
     });
@@ -44,21 +49,25 @@ describe("Role", () => {
       const createdAt = new Date("2025-01-01");
       const updatedAt = new Date("2025-06-01");
 
+      const roleId = RoleId.generate();
+      const positionId = PositionId.generate();
+      const superiorRoleId = RoleId.generate();
+
       const role = Role.reconstruct(
-        "test-id",
+        roleId,
         new RoleCd("ROLE001"),
         new RoleName("営業部長"),
-        "position-id",
-        "superior-id",
+        positionId,
+        superiorRoleId,
         createdAt,
         updatedAt
       );
 
-      expect(role.id).toBe("test-id");
+      expect(role.id).toBe(roleId);
       expect(role.roleCd.value).toBe("ROLE001");
       expect(role.name.value).toBe("営業部長");
-      expect(role.positionId).toBe("position-id");
-      expect(role.superiorRoleId).toBe("superior-id");
+      expect(role.positionId).toBe(positionId);
+      expect(role.superiorRoleId).toBe(superiorRoleId);
       expect(role.createdAt).toEqual(createdAt);
       expect(role.updatedAt).toEqual(updatedAt);
     });
@@ -80,15 +89,16 @@ describe("Role", () => {
     it("上位役割を変更できる", () => {
       const role = createTestRole();
       const originalUpdatedAt = role.updatedAt;
+      const newSuperiorRoleId = RoleId.generate();
 
-      role.changeSuperiorRole("new-superior-id");
+      role.changeSuperiorRole(newSuperiorRoleId);
 
-      expect(role.superiorRoleId).toBe("new-superior-id");
+      expect(role.superiorRoleId).toBe(newSuperiorRoleId);
       expect(role.updatedAt.getTime()).toBeGreaterThanOrEqual(originalUpdatedAt.getTime());
     });
 
     it("上位役割をnullに変更できる", () => {
-      const role = createTestRole({ superiorRoleId: "some-id" });
+      const role = createTestRole({ superiorRoleId: RoleId.generate() });
 
       role.changeSuperiorRole(null);
 

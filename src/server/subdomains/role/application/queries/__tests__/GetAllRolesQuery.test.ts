@@ -2,6 +2,7 @@ import prisma from "@server/prisma";
 import { Role } from "@subdomains/role/domain/entities/Role";
 import { RoleCd } from "@subdomains/role/domain/values/RoleCd";
 import { RoleName } from "@subdomains/role/domain/values/RoleName";
+import { PositionId } from "@subdomains/position/domain/values/PositionId";
 import { PrismaRoleRepository } from "@subdomains/role/infrastructure/prisma/PrismaRoleRepository";
 import { PrismaRoleQueryService } from "@subdomains/role/infrastructure/queries/PrismaRoleQueryService";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -41,12 +42,12 @@ describe("GetAllRolesQuery", () => {
     const role1 = Role.create(
       new RoleCd(TEST_ROLE_CDS[0]),
       new RoleName("全取得テストA"),
-      kachouPositionId
+      new PositionId(kachouPositionId)
     );
     const role2 = Role.create(
       new RoleCd(TEST_ROLE_CDS[1]),
       new RoleName("全取得テストB"),
-      kachouPositionId
+      new PositionId(kachouPositionId)
     );
     await roleRepository.save(role1);
     await roleRepository.save(role2);
@@ -62,12 +63,12 @@ describe("GetAllRolesQuery", () => {
     const role1 = Role.create(
       new RoleCd(TEST_ROLE_CDS[0]),
       new RoleName("全取得ソートA"),
-      kachouPositionId
+      new PositionId(kachouPositionId)
     );
     const role2 = Role.create(
       new RoleCd(TEST_ROLE_CDS[1]),
       new RoleName("全取得ソートB"),
-      kachouPositionId
+      new PositionId(kachouPositionId)
     );
     await roleRepository.save(role1);
     await roleRepository.save(role2);

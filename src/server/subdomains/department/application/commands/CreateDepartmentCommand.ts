@@ -2,6 +2,7 @@ import { Department } from "@subdomains/department/domain/entities/Department";
 import { DepartmentRepository } from "@subdomains/department/domain/repositories/DepartmentRepository";
 import { DepartmentCdDuplicationCheckDomainService } from "@subdomains/department/domain/services/DepartmentCdDuplicationCheckDomainService";
 import { DepartmentCd } from "@subdomains/department/domain/values/DepartmentCd";
+import { DepartmentId } from "@subdomains/department/domain/values/DepartmentId";
 import { DepartmentName } from "@subdomains/department/domain/values/DepartmentName";
 import { Abbreviation } from "@subdomains/department/domain/values/Abbreviation";
 import { ValidationError } from "@server/shared/errors/DomainError";
@@ -33,8 +34,9 @@ export class CreateDepartmentCommand {
     }
 
     // 親部署が指定されている場合、存在確認
-    if (input.parentId) {
-      const parentDepartment = await this.departmentRepository.findById(input.parentId);
+    const parentId = input.parentId ? new DepartmentId(input.parentId) : null;
+    if (parentId) {
+      const parentDepartment = await this.departmentRepository.findById(parentId);
       if (!parentDepartment) {
         throw new ValidationError(`親部署が存在しません: ID=${input.parentId}`);
       }
@@ -48,12 +50,7 @@ export class CreateDepartmentCommand {
     const name = new DepartmentName(input.name);
     const abbreviation = new Abbreviation(input.abbreviation);
 
-    const newDepartment = Department.create(
-      departmentCd,
-      name,
-      abbreviation,
-      input.parentId ?? null
-    );
+    const newDepartment = Department.create(departmentCd, name, abbreviation, parentId);
 
     return await this.departmentRepository.save(newDepartment);
   }

@@ -7,6 +7,7 @@ import { Prefecture } from "@server/shared/domain/values/Prefecture";
 import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { Customer } from "@subdomains/customer/domain/entities/Customer";
 import { CustomerRepository } from "@subdomains/customer/domain/repositories/CustomerRepository";
+import { CustomerId } from "@subdomains/customer/domain/values/CustomerId";
 import { MarginRate } from "@subdomains/customer/domain/values/MarginRate";
 
 export type UpdateCustomerInput = {
@@ -31,7 +32,8 @@ export class UpdateCustomerCommand {
   constructor(private readonly customerRepository: CustomerRepository) {}
 
   async execute(input: UpdateCustomerInput): Promise<void> {
-    const customer = await this.customerRepository.findById(input.id);
+    const customerId = new CustomerId(input.id);
+    const customer = await this.customerRepository.findById(customerId);
     if (!customer) {
       throw new NotFoundEntityError(Customer, { id: input.id });
     }

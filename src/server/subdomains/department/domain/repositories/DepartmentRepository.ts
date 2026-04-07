@@ -1,5 +1,6 @@
 import { Department } from "../entities/Department";
 import { DepartmentCd } from "../values/DepartmentCd";
+import { DepartmentId } from "../values/DepartmentId";
 
 /**
  * 部署リポジトリインターフェース
@@ -16,13 +17,13 @@ export interface DepartmentRepository {
   /**
    * 部署を削除
    */
-  delete(id: string): Promise<void>;
+  delete(id: DepartmentId): Promise<void>;
 
   /**
    * IDで部署を取得（Entity の完全な再構築が必要な場合に使用）
    * 単なる表示目的の場合は DepartmentQueryService を使用すること
    */
-  findById(id: string): Promise<Department | null>;
+  findById(id: DepartmentId): Promise<Department | null>;
 
   /**
    * 部署コードで部署を取得（重複チェック等で Entity が必要な場合に使用）
@@ -33,7 +34,7 @@ export interface DepartmentRepository {
    * 子部署を取得
    * @param parentId 親部署ID
    */
-  findChildren(parentId: string): Promise<Department[]>;
+  findChildren(parentId: DepartmentId): Promise<Department[]>;
 
   /**
    * ルート部署（parentIdがnull）を全て取得

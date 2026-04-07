@@ -5,6 +5,7 @@ import { CompanyName } from "@server/shared/domain/values/CompanyName";
 import { Customer } from "@subdomains/customer/domain/entities/Customer";
 import { PrismaCustomerRepository } from "@subdomains/customer/infrastructure/prisma/PrismaCustomerRepository";
 import { DeliveryLocation } from "@subdomains/delivery-location/domain/entities/DeliveryLocation";
+import { DeliveryLocationId } from "@subdomains/delivery-location/domain/values/DeliveryLocationId";
 import { PrismaDeliveryLocationRepository } from "@subdomains/delivery-location/infrastructure/prisma/PrismaDeliveryLocationRepository";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DeleteDeliveryLocationCommand } from "../DeleteDeliveryLocationCommand";
@@ -13,7 +14,6 @@ describe("DeleteDeliveryLocationCommand", () => {
   let command: DeleteDeliveryLocationCommand;
   let dlRepository: PrismaDeliveryLocationRepository;
   let customerRepository: PrismaCustomerRepository;
-  let testCustomerId: string;
   let testDeliveryLocationId: string;
 
   const DL_TEST_CODES = ["DL999914"];
@@ -37,16 +37,14 @@ describe("DeleteDeliveryLocationCommand", () => {
       new CompanyName("削除テスト用得意先")
     );
     const savedCustomer = await customerRepository.save(customer);
-    testCustomerId = savedCustomer.id;
-
     // テスト用納品先を事前作成
     const dl = DeliveryLocation.create(
       new CompanyCode(DL_TEST_CODES[0]),
       new CompanyName("削除テスト納品先"),
-      testCustomerId
+      savedCustomer.id
     );
     const savedDl = await dlRepository.save(dl);
-    testDeliveryLocationId = savedDl.id;
+    testDeliveryLocationId = savedDl.id.value;
   });
 
   afterEach(async () => {
@@ -61,7 +59,7 @@ describe("DeleteDeliveryLocationCommand", () => {
   it("納品先を削除できる", async () => {
     await command.execute({ id: testDeliveryLocationId });
 
-    const deleted = await dlRepository.findById(testDeliveryLocationId);
+    const deleted = await dlRepository.findById(new DeliveryLocationId(testDeliveryLocationId));
     expect(deleted).toBeNull();
   });
 

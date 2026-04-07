@@ -133,7 +133,7 @@ describe("UpdateDepartmentCommand", () => {
       parentId: newParentId,
     });
 
-    expect(result.parentId).toBe(newParentId);
+    expect(result.parentId?.value).toBe(newParentId);
   });
 
   it("自分自身を親部署に設定するとエラー", async () => {

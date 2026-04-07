@@ -1,11 +1,13 @@
-import { generateId } from "@server/shared/generateId";
 import { Address } from "@server/shared/domain/values/Address";
 import { CompanyCode } from "@server/shared/domain/values/CompanyCode";
+import { CompanyId } from "@server/shared/domain/values/CompanyId";
 import { CompanyName } from "@server/shared/domain/values/CompanyName";
 import { FaxNumber } from "@server/shared/domain/values/FaxNumber";
 import { PhoneNumber } from "@server/shared/domain/values/PhoneNumber";
 import { PostalCode } from "@server/shared/domain/values/PostalCode";
 import { Prefecture } from "@server/shared/domain/values/Prefecture";
+import { CustomerId } from "@subdomains/customer/domain/values/CustomerId";
+import { DeliveryLocationId } from "@subdomains/delivery-location/domain/values/DeliveryLocationId";
 import { DeliveryNotes } from "@subdomains/delivery-location/domain/values/DeliveryNotes";
 
 export type DeliveryLocationCreateOptions = {
@@ -28,8 +30,8 @@ export class DeliveryLocation {
   static readonly ENTITY_NAME = "納品先";
 
   private constructor(
-    private readonly _id: string,
-    private readonly _companyId: string,
+    private readonly _id: DeliveryLocationId,
+    private readonly _companyId: CompanyId,
     private readonly _code: CompanyCode,
     private _name: CompanyName,
     private _postalCode: PostalCode | null,
@@ -39,7 +41,7 @@ export class DeliveryLocation {
     private _faxNumber: FaxNumber | null,
     private _contactPerson: string | null,
     private _isActive: boolean,
-    private readonly _customerId: string,
+    private readonly _customerId: CustomerId,
     private _deliveryNotes: DeliveryNotes | null,
     private readonly _createdAt: Date,
     private _updatedAt: Date
@@ -56,14 +58,14 @@ export class DeliveryLocation {
   static create(
     code: CompanyCode,
     name: CompanyName,
-    customerId: string,
+    customerId: CustomerId,
     options?: DeliveryLocationCreateOptions
   ): DeliveryLocation {
     const now = new Date();
 
     return new DeliveryLocation(
-      generateId(),
-      generateId(),
+      DeliveryLocationId.generate(),
+      CompanyId.generate(),
       code,
       name,
       options?.postalCode ?? null,
@@ -84,8 +86,8 @@ export class DeliveryLocation {
    * DBから納品先を再構築
    */
   static reconstruct(
-    id: string,
-    companyId: string,
+    id: DeliveryLocationId,
+    companyId: CompanyId,
     code: CompanyCode,
     name: CompanyName,
     postalCode: PostalCode | null,
@@ -95,7 +97,7 @@ export class DeliveryLocation {
     faxNumber: FaxNumber | null,
     contactPerson: string | null,
     isActive: boolean,
-    customerId: string,
+    customerId: CustomerId,
     deliveryNotes: DeliveryNotes | null,
     createdAt: Date,
     updatedAt: Date
@@ -169,11 +171,11 @@ export class DeliveryLocation {
   // ゲッター
   // ========================================
 
-  get id(): string {
+  get id(): DeliveryLocationId {
     return this._id;
   }
 
-  get companyId(): string {
+  get companyId(): CompanyId {
     return this._companyId;
   }
 
@@ -213,7 +215,7 @@ export class DeliveryLocation {
     return this._isActive;
   }
 
-  get customerId(): string {
+  get customerId(): CustomerId {
     return this._customerId;
   }
 

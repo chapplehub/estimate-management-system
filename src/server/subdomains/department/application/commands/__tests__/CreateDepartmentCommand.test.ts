@@ -70,7 +70,7 @@ describe("CreateDepartmentCommand", () => {
 
     const saved = await repository.findByDepartmentCd(new DepartmentCd(TEST_CODES[1]));
     expect(saved).not.toBeNull();
-    expect(saved?.parentId).toBe(parentId);
+    expect(saved?.parentId?.value).toBe(parentId);
   });
 
   it("既に存在する部署コードの場合はエラー", async () => {

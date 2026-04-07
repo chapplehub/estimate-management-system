@@ -2,6 +2,7 @@ import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
 import { describe, expect, it } from "vitest";
 import { Abbreviation } from "../../values/Abbreviation";
 import { DepartmentCd } from "../../values/DepartmentCd";
+import { DepartmentId } from "../../values/DepartmentId";
 import { DepartmentName } from "../../values/DepartmentName";
 import { Department } from "../Department";
 
@@ -11,7 +12,7 @@ describe("Department", () => {
     departmentCd?: DepartmentCd;
     name?: DepartmentName;
     abbreviation?: Abbreviation;
-    parentId?: string | null;
+    parentId?: DepartmentId | null;
   }) => {
     return Department.create(
       overrides?.departmentCd ?? new DepartmentCd("DEPT001"),
@@ -36,7 +37,7 @@ describe("Department", () => {
     });
 
     it("親部署を指定して作成できる", () => {
-      const parentId = "parent-dept-id";
+      const parentId = DepartmentId.generate();
       const dept = createTestDepartment({ parentId });
 
       expect(dept.parentId).toBe(parentId);
@@ -45,7 +46,8 @@ describe("Department", () => {
 
   describe("reconstruct", () => {
     it("DBから部署を再構築できる", () => {
-      const id = "test-id";
+      const id = DepartmentId.generate();
+      const parentId = DepartmentId.generate();
       const createdAt = new Date("2024-01-01");
       const updatedAt = new Date("2024-06-01");
 
@@ -55,7 +57,7 @@ describe("Department", () => {
         new DepartmentName("営業部"),
         new Abbreviation("営業"),
         false,
-        "parent-id",
+        parentId,
         createdAt,
         updatedAt
       );
@@ -65,7 +67,7 @@ describe("Department", () => {
       expect(dept.name.value).toBe("営業部");
       expect(dept.abbreviation.value).toBe("営業");
       expect(dept.isActive).toBe(false);
-      expect(dept.parentId).toBe("parent-id");
+      expect(dept.parentId).toBe(parentId);
       expect(dept.createdAt).toBe(createdAt);
       expect(dept.updatedAt).toBe(updatedAt);
     });
@@ -97,14 +99,15 @@ describe("Department", () => {
   describe("changeParent", () => {
     it("親部署を変更できる", () => {
       const dept = createTestDepartment();
+      const newParentId = DepartmentId.generate();
 
-      dept.changeParent("new-parent-id");
+      dept.changeParent(newParentId);
 
-      expect(dept.parentId).toBe("new-parent-id");
+      expect(dept.parentId).toBe(newParentId);
     });
 
     it("ルート部署に変更できる", () => {
-      const dept = createTestDepartment({ parentId: "some-parent" });
+      const dept = createTestDepartment({ parentId: DepartmentId.generate() });
 
       dept.changeParent(null);
 
@@ -131,7 +134,7 @@ describe("Department", () => {
 
     it("部署を有効化できる", () => {
       const dept = Department.reconstruct(
-        "test-id",
+        DepartmentId.generate(),
         new DepartmentCd("DEPT001"),
         new DepartmentName("営業部"),
         new Abbreviation("営業"),
@@ -156,7 +159,7 @@ describe("Department", () => {
     });
 
     it("parentIdがあればルート部署ではない", () => {
-      const dept = createTestDepartment({ parentId: "parent-id" });
+      const dept = createTestDepartment({ parentId: DepartmentId.generate() });
 
       expect(dept.isRoot()).toBe(false);
     });

@@ -7,6 +7,7 @@ import { Prefecture } from "@server/shared/domain/values/Prefecture";
 import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { DeliveryLocation } from "@subdomains/delivery-location/domain/entities/DeliveryLocation";
 import { DeliveryLocationRepository } from "@subdomains/delivery-location/domain/repositories/DeliveryLocationRepository";
+import { DeliveryLocationId } from "@subdomains/delivery-location/domain/values/DeliveryLocationId";
 import { DeliveryNotes } from "@subdomains/delivery-location/domain/values/DeliveryNotes";
 
 export type UpdateDeliveryLocationInput = {
@@ -31,7 +32,8 @@ export class UpdateDeliveryLocationCommand {
   constructor(private readonly deliveryLocationRepository: DeliveryLocationRepository) {}
 
   async execute(input: UpdateDeliveryLocationInput): Promise<void> {
-    const deliveryLocation = await this.deliveryLocationRepository.findById(input.id);
+    const deliveryLocationId = new DeliveryLocationId(input.id);
+    const deliveryLocation = await this.deliveryLocationRepository.findById(deliveryLocationId);
     if (!deliveryLocation) {
       throw new NotFoundEntityError(DeliveryLocation, { id: input.id });
     }

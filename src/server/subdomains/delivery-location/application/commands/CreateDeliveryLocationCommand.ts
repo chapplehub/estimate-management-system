@@ -9,6 +9,7 @@ import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { ValidationError } from "@server/shared/errors/DomainError";
 import { Customer } from "@subdomains/customer/domain/entities/Customer";
 import { CustomerRepository } from "@subdomains/customer/domain/repositories/CustomerRepository";
+import { CustomerId } from "@subdomains/customer/domain/values/CustomerId";
 import { DeliveryLocation } from "@subdomains/delivery-location/domain/entities/DeliveryLocation";
 import { DeliveryLocationRepository } from "@subdomains/delivery-location/domain/repositories/DeliveryLocationRepository";
 import { DeliveryLocationCodeDuplicationCheckDomainService } from "@subdomains/delivery-location/domain/services/DeliveryLocationCodeDuplicationCheckDomainService";
@@ -39,7 +40,8 @@ export class CreateDeliveryLocationCommand {
 
   async execute(input: CreateDeliveryLocationInput): Promise<void> {
     // 親得意先の存在チェック
-    const customer = await this.customerRepository.findById(input.customerId);
+    const customerId = new CustomerId(input.customerId);
+    const customer = await this.customerRepository.findById(customerId);
     if (!customer) {
       throw new NotFoundEntityError(Customer, { id: input.customerId });
     }
@@ -58,7 +60,7 @@ export class CreateDeliveryLocationCommand {
     const deliveryLocation = DeliveryLocation.create(
       code,
       new CompanyName(input.name),
-      input.customerId,
+      customerId,
       {
         postalCode: input.postalCode ? new PostalCode(input.postalCode) : undefined,
         prefecture: input.prefecture ? new Prefecture(input.prefecture) : undefined,

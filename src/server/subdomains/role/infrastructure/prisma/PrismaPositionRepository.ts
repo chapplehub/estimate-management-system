@@ -1,3 +1,4 @@
+import { PositionId } from "@subdomains/position/domain/values/PositionId";
 import { PositionRepository } from "@subdomains/role/domain/repositories/PositionRepository";
 import prisma from "@server/prisma";
 
@@ -8,19 +9,20 @@ import prisma from "@server/prisma";
  * 上位役割バリデーションに必要な最小限のメソッドのみ提供。
  */
 export class PrismaPositionRepository implements PositionRepository {
-  async findSuperiorPositionId(positionId: string): Promise<string | null> {
+  async findSuperiorPositionId(positionId: PositionId): Promise<PositionId | null> {
     const position = await prisma.position.findUnique({
-      where: { id: positionId },
+      where: { id: positionId.value },
       select: { superiorPositionId: true },
     });
 
     // 役職が見つからない場合は null を返す
-    return position?.superiorPositionId ?? null;
+    const superiorId = position?.superiorPositionId ?? null;
+    return superiorId ? new PositionId(superiorId) : null;
   }
 
-  async exists(positionId: string): Promise<boolean> {
+  async exists(positionId: PositionId): Promise<boolean> {
     const position = await prisma.position.findUnique({
-      where: { id: positionId },
+      where: { id: positionId.value },
       select: { id: true },
     });
 

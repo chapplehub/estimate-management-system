@@ -1,7 +1,8 @@
-import { generateId } from "@server/shared/generateId";
+import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
 import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
 import { EmployeeName } from "@subdomains/employee/domain/values/EmployeeName";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
+import { DepartmentId } from "@subdomains/department/domain/values/DepartmentId";
 
 /**
  * 従業員エンティティ
@@ -14,11 +15,11 @@ export class Employee {
   static readonly ENTITY_NAME = "従業員";
 
   private constructor(
-    private readonly _id: string,
+    private readonly _id: EmployeeId,
     private readonly _employeeCd: EmployeeCd,
     private _email: MailAddress,
     private _name: EmployeeName,
-    private _departmentId: string,
+    private _departmentId: DepartmentId,
     private readonly _createdAt: Date,
     private _updatedAt: Date
   ) {}
@@ -36,19 +37,11 @@ export class Employee {
     employeeCd: EmployeeCd,
     email: MailAddress,
     name: EmployeeName,
-    departmentId: string
+    departmentId: DepartmentId
   ): Employee {
     const now = new Date();
 
-    return new Employee(
-      generateId(), // UUIDv7を生成
-      employeeCd,
-      email,
-      name,
-      departmentId,
-      now,
-      now
-    );
+    return new Employee(EmployeeId.generate(), employeeCd, email, name, departmentId, now, now);
   }
 
   /**
@@ -64,11 +57,11 @@ export class Employee {
    * @returns 従業員エンティティ
    */
   static reconstruct(
-    id: string,
+    id: EmployeeId,
     employeeCd: EmployeeCd,
     email: MailAddress,
     name: EmployeeName,
-    departmentId: string,
+    departmentId: DepartmentId,
     createdAt: Date,
     updatedAt: Date
   ): Employee {
@@ -104,7 +97,7 @@ export class Employee {
    *
    * @param newDepartmentId 新しい部署ID
    */
-  changeDepartment(newDepartmentId: string): void {
+  changeDepartment(newDepartmentId: DepartmentId): void {
     this._departmentId = newDepartmentId;
     this._updatedAt = new Date();
   }
@@ -113,7 +106,7 @@ export class Employee {
   // ゲッター
   // ========================================
 
-  get id(): string {
+  get id(): EmployeeId {
     return this._id;
   }
 
@@ -129,7 +122,7 @@ export class Employee {
     return this._name;
   }
 
-  get departmentId(): string {
+  get departmentId(): DepartmentId {
     return this._departmentId;
   }
 

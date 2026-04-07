@@ -1,6 +1,7 @@
 import { Position } from "@subdomains/position/domain/entities/Position";
 import { PositionRepository } from "@subdomains/position/domain/repositories/PositionRepository";
 import { PositionCd } from "@subdomains/position/domain/values/PositionCd";
+import { PositionId } from "@subdomains/position/domain/values/PositionId";
 import { PositionMapper } from "@subdomains/position/infrastructure/mappers/PositionMapper";
 import prisma from "@server/prisma";
 
@@ -10,9 +11,9 @@ import prisma from "@server/prisma";
  * 読み取り専用（Positionは固定マスタデータ）
  */
 export class PrismaPositionRepository implements PositionRepository {
-  async findById(id: string): Promise<Position | null> {
+  async findById(id: PositionId): Promise<Position | null> {
     const prismaPosition = await prisma.position.findUnique({
-      where: { id },
+      where: { id: id.value },
     });
 
     return prismaPosition ? PositionMapper.toDomain(prismaPosition) : null;

@@ -1,7 +1,9 @@
 import { Employee } from "@subdomains/employee/domain/entities/Employee";
 import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
+import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
 import { EmployeeName } from "@subdomains/employee/domain/values/EmployeeName";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
+import { DepartmentId } from "@subdomains/department/domain/values/DepartmentId";
 import { Employee as PrismaEmployee } from "@generated/prisma/client";
 
 /**
@@ -23,11 +25,11 @@ export class EmployeeMapper {
     const name = new EmployeeName(prismaEmployee.name);
 
     return Employee.reconstruct(
-      prismaEmployee.id,
+      new EmployeeId(prismaEmployee.id),
       employeeCd,
       email,
       name,
-      prismaEmployee.departmentId,
+      new DepartmentId(prismaEmployee.departmentId),
       prismaEmployee.createdAt,
       prismaEmployee.updatedAt
     );
@@ -41,11 +43,11 @@ export class EmployeeMapper {
    */
   static toPrismaCreate(employee: Employee) {
     return {
-      id: employee.id,
+      id: employee.id.value,
       employeeCd: employee.employeeCd.value,
       email: employee.email.value,
       name: employee.name.value,
-      departmentId: employee.departmentId,
+      departmentId: employee.departmentId.value,
     };
   }
 
@@ -59,7 +61,7 @@ export class EmployeeMapper {
     return {
       email: employee.email.value,
       name: employee.name.value,
-      departmentId: employee.departmentId,
+      departmentId: employee.departmentId.value,
       updatedAt: employee.updatedAt,
     };
   }

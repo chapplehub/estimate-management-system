@@ -1,5 +1,6 @@
 import { Customer } from "@subdomains/customer/domain/entities/Customer";
 import { CompanyCode } from "@server/shared/domain/values/CompanyCode";
+import { CustomerId } from "@subdomains/customer/domain/values/CustomerId";
 
 /**
  * 得意先リポジトリインターフェース
@@ -15,12 +16,12 @@ export interface CustomerRepository {
   /**
    * 得意先を削除
    */
-  delete(id: string): Promise<void>;
+  delete(id: CustomerId): Promise<void>;
 
   /**
    * IDで得意先を取得
    */
-  findById(id: string): Promise<Customer | null>;
+  findById(id: CustomerId): Promise<Customer | null>;
 
   /**
    * 取引先コードで得意先を取得（重複チェック等で使用）

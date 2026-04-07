@@ -1,5 +1,6 @@
 import { Department } from "@subdomains/department/domain/entities/Department";
 import { DepartmentCd } from "@subdomains/department/domain/values/DepartmentCd";
+import { DepartmentId } from "@subdomains/department/domain/values/DepartmentId";
 import { DepartmentName } from "@subdomains/department/domain/values/DepartmentName";
 import { Abbreviation } from "@subdomains/department/domain/values/Abbreviation";
 import { Department as PrismaDepartment } from "@generated/prisma/client";
@@ -22,12 +23,12 @@ export class DepartmentMapper {
     const abbreviation = new Abbreviation(prismaDepartment.abbreviation);
 
     return Department.reconstruct(
-      prismaDepartment.id,
+      new DepartmentId(prismaDepartment.id),
       departmentCd,
       name,
       abbreviation,
       prismaDepartment.isActive,
-      prismaDepartment.parentId,
+      prismaDepartment.parentId ? new DepartmentId(prismaDepartment.parentId) : null,
       prismaDepartment.createdAt,
       prismaDepartment.updatedAt
     );
@@ -41,12 +42,12 @@ export class DepartmentMapper {
    */
   static toPrismaCreate(department: Department) {
     return {
-      id: department.id,
+      id: department.id.value,
       departmentCd: department.departmentCd.value,
       name: department.name.value,
       abbreviation: department.abbreviation.value,
       isActive: department.isActive,
-      parentId: department.parentId,
+      parentId: department.parentId?.value ?? null,
     };
   }
 
@@ -61,7 +62,7 @@ export class DepartmentMapper {
       name: department.name.value,
       abbreviation: department.abbreviation.value,
       isActive: department.isActive,
-      parentId: department.parentId,
+      parentId: department.parentId?.value ?? null,
       updatedAt: department.updatedAt,
     };
   }

@@ -1,5 +1,7 @@
+import { PositionId } from "@subdomains/position/domain/values/PositionId";
 import { Role } from "@subdomains/role/domain/entities/Role";
 import { RoleCd } from "@subdomains/role/domain/values/RoleCd";
+import { RoleId } from "@subdomains/role/domain/values/RoleId";
 import { RoleName } from "@subdomains/role/domain/values/RoleName";
 import { Role as PrismaRole } from "@generated/prisma/client";
 
@@ -17,11 +19,11 @@ export class RoleMapper {
     const name = new RoleName(prismaRole.name);
 
     return Role.reconstruct(
-      prismaRole.id,
+      new RoleId(prismaRole.id),
       roleCd,
       name,
-      prismaRole.positionId,
-      prismaRole.superiorRoleId,
+      new PositionId(prismaRole.positionId),
+      prismaRole.superiorRoleId ? new RoleId(prismaRole.superiorRoleId) : null,
       prismaRole.createdAt,
       prismaRole.updatedAt
     );
@@ -32,11 +34,11 @@ export class RoleMapper {
    */
   static toPrismaCreate(role: Role) {
     return {
-      id: role.id,
+      id: role.id.value,
       roleCd: role.roleCd.value,
       name: role.name.value,
-      positionId: role.positionId,
-      superiorRoleId: role.superiorRoleId,
+      positionId: role.positionId.value,
+      superiorRoleId: role.superiorRoleId?.value ?? null,
     };
   }
 
@@ -47,7 +49,7 @@ export class RoleMapper {
   static toPrismaUpdate(role: Role) {
     return {
       name: role.name.value,
-      superiorRoleId: role.superiorRoleId,
+      superiorRoleId: role.superiorRoleId?.value ?? null,
       updatedAt: role.updatedAt,
     };
   }

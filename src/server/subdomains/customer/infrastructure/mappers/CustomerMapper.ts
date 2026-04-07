@@ -1,11 +1,13 @@
 import { Address } from "@server/shared/domain/values/Address";
 import { CompanyCode } from "@server/shared/domain/values/CompanyCode";
+import { CompanyId } from "@server/shared/domain/values/CompanyId";
 import { CompanyName } from "@server/shared/domain/values/CompanyName";
 import { FaxNumber } from "@server/shared/domain/values/FaxNumber";
 import { PhoneNumber } from "@server/shared/domain/values/PhoneNumber";
 import { PostalCode } from "@server/shared/domain/values/PostalCode";
 import { Prefecture } from "@server/shared/domain/values/Prefecture";
 import { Customer } from "@subdomains/customer/domain/entities/Customer";
+import { CustomerId } from "@subdomains/customer/domain/values/CustomerId";
 import { MarginRate } from "@subdomains/customer/domain/values/MarginRate";
 import type { Company, Customer as PrismaCustomer } from "@generated/prisma/client";
 import { CompanyType, Prisma } from "@generated/prisma/client";
@@ -22,8 +24,8 @@ type PrismaCustomerWithCompany = PrismaCustomer & {
 export class CustomerMapper {
   static toDomain(data: PrismaCustomerWithCompany): Customer {
     return Customer.reconstruct(
-      data.id,
-      data.companyId,
+      new CustomerId(data.id),
+      new CompanyId(data.companyId),
       new CompanyCode(data.company.code),
       new CompanyName(data.company.name),
       data.company.postalCode ? new PostalCode(data.company.postalCode) : null,
@@ -41,12 +43,12 @@ export class CustomerMapper {
 
   static toPrismaCreate(customer: Customer) {
     return {
-      id: customer.id,
+      id: customer.id.value,
       marginRate:
         customer.marginRate !== null ? new Prisma.Decimal(customer.marginRate.value) : null,
       company: {
         create: {
-          id: customer.companyId,
+          id: customer.companyId.value,
           code: customer.code.value,
           name: customer.name.value,
           type: CompanyType.CUSTOMER,

@@ -1,11 +1,12 @@
-import { generateId } from "@server/shared/generateId";
 import { Address } from "@server/shared/domain/values/Address";
 import { CompanyCode } from "@server/shared/domain/values/CompanyCode";
+import { CompanyId } from "@server/shared/domain/values/CompanyId";
 import { CompanyName } from "@server/shared/domain/values/CompanyName";
 import { FaxNumber } from "@server/shared/domain/values/FaxNumber";
 import { PhoneNumber } from "@server/shared/domain/values/PhoneNumber";
 import { PostalCode } from "@server/shared/domain/values/PostalCode";
 import { Prefecture } from "@server/shared/domain/values/Prefecture";
+import { CustomerId } from "@subdomains/customer/domain/values/CustomerId";
 import { MarginRate } from "@subdomains/customer/domain/values/MarginRate";
 
 export type CustomerCreateOptions = {
@@ -28,8 +29,8 @@ export class Customer {
   static readonly ENTITY_NAME = "得意先";
 
   private constructor(
-    private readonly _id: string,
-    private readonly _companyId: string,
+    private readonly _id: CustomerId,
+    private readonly _companyId: CompanyId,
     private readonly _code: CompanyCode,
     private _name: CompanyName,
     private _postalCode: PostalCode | null,
@@ -51,8 +52,8 @@ export class Customer {
     const now = new Date();
 
     return new Customer(
-      generateId(),
-      generateId(),
+      CustomerId.generate(),
+      CompanyId.generate(),
       code,
       name,
       options?.postalCode ?? null,
@@ -72,8 +73,8 @@ export class Customer {
    * DBから得意先を再構築
    */
   static reconstruct(
-    id: string,
-    companyId: string,
+    id: CustomerId,
+    companyId: CompanyId,
     code: CompanyCode,
     name: CompanyName,
     postalCode: PostalCode | null,
@@ -155,11 +156,11 @@ export class Customer {
   // ゲッター
   // ========================================
 
-  get id(): string {
+  get id(): CustomerId {
     return this._id;
   }
 
-  get companyId(): string {
+  get companyId(): CompanyId {
     return this._companyId;
   }
 

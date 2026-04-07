@@ -3,6 +3,7 @@ import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { CompanyCode } from "@server/shared/domain/values/CompanyCode";
 import { CompanyName } from "@server/shared/domain/values/CompanyName";
 import { Customer } from "@subdomains/customer/domain/entities/Customer";
+import { CustomerId } from "@subdomains/customer/domain/values/CustomerId";
 import { PrismaCustomerRepository } from "@subdomains/customer/infrastructure/prisma/PrismaCustomerRepository";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { UpdateCustomerCommand } from "../UpdateCustomerCommand";
@@ -28,7 +29,7 @@ describe("UpdateCustomerCommand", () => {
       new CompanyName("更新前得意先")
     );
     const saved = await repository.save(customer);
-    testCustomerId = saved.id;
+    testCustomerId = saved.id.value;
   });
 
   afterEach(async () => {
@@ -43,7 +44,7 @@ describe("UpdateCustomerCommand", () => {
       name: "更新後得意先",
     });
 
-    const updated = await repository.findById(testCustomerId);
+    const updated = await repository.findById(new CustomerId(testCustomerId));
     expect(updated).not.toBeNull();
     expect(updated?.name.value).toBe("更新後得意先");
   });
@@ -61,7 +62,7 @@ describe("UpdateCustomerCommand", () => {
       marginRate: 20,
     });
 
-    const updated = await repository.findById(testCustomerId);
+    const updated = await repository.findById(new CustomerId(testCustomerId));
     expect(updated).not.toBeNull();
     expect(updated?.postalCode?.value).toBe("2000002");
     expect(updated?.prefecture?.value).toBe("大阪府");
@@ -80,7 +81,7 @@ describe("UpdateCustomerCommand", () => {
       isActive: false,
     });
 
-    let updated = await repository.findById(testCustomerId);
+    let updated = await repository.findById(new CustomerId(testCustomerId));
     expect(updated?.isActive).toBe(false);
 
     // activate
@@ -90,7 +91,7 @@ describe("UpdateCustomerCommand", () => {
       isActive: true,
     });
 
-    updated = await repository.findById(testCustomerId);
+    updated = await repository.findById(new CustomerId(testCustomerId));
     expect(updated?.isActive).toBe(true);
   });
 
@@ -121,7 +122,7 @@ describe("UpdateCustomerCommand", () => {
       marginRate: null,
     });
 
-    const updated = await repository.findById(testCustomerId);
+    const updated = await repository.findById(new CustomerId(testCustomerId));
     expect(updated).not.toBeNull();
     expect(updated?.postalCode).toBeNull();
     expect(updated?.prefecture).toBeNull();

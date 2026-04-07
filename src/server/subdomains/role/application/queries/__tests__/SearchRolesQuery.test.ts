@@ -2,6 +2,7 @@ import prisma from "@server/prisma";
 import { Role } from "@subdomains/role/domain/entities/Role";
 import { RoleCd } from "@subdomains/role/domain/values/RoleCd";
 import { RoleName } from "@subdomains/role/domain/values/RoleName";
+import { PositionId } from "@subdomains/position/domain/values/PositionId";
 import { PrismaRoleRepository } from "@subdomains/role/infrastructure/prisma/PrismaRoleRepository";
 import { PrismaRoleQueryService } from "@subdomains/role/infrastructure/queries/PrismaRoleQueryService";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -46,12 +47,12 @@ describe("SearchRolesQuery", () => {
     const role1 = Role.create(
       new RoleCd(TEST_ROLE_CDS[0]),
       new RoleName("検索大阪営業課長"),
-      kachouPositionId
+      new PositionId(kachouPositionId)
     );
     const role2 = Role.create(
       new RoleCd(TEST_ROLE_CDS[1]),
       new RoleName("検索東京開発課長"),
-      kachouPositionId
+      new PositionId(kachouPositionId)
     );
     await roleRepository.save(role1);
     await roleRepository.save(role2);
@@ -67,7 +68,7 @@ describe("SearchRolesQuery", () => {
     const role = Role.create(
       new RoleCd(TEST_ROLE_CDS[0]),
       new RoleName("検索コードテスト"),
-      kachouPositionId
+      new PositionId(kachouPositionId)
     );
     await roleRepository.save(role);
 
@@ -81,12 +82,12 @@ describe("SearchRolesQuery", () => {
     const role1 = Role.create(
       new RoleCd(TEST_ROLE_CDS[0]),
       new RoleName("検索役職課長"),
-      kachouPositionId
+      new PositionId(kachouPositionId)
     );
     const role2 = Role.create(
       new RoleCd(TEST_ROLE_CDS[1]),
       new RoleName("検索役職部長"),
-      buchouPositionId
+      new PositionId(buchouPositionId)
     );
     await roleRepository.save(role1);
     await roleRepository.save(role2);
@@ -102,19 +103,19 @@ describe("SearchRolesQuery", () => {
     const buchouRole = Role.create(
       new RoleCd(TEST_ROLE_CDS[0]),
       new RoleName("検索上位部長"),
-      buchouPositionId
+      new PositionId(buchouPositionId)
     );
     await roleRepository.save(buchouRole);
 
     const kachouRole = Role.create(
       new RoleCd(TEST_ROLE_CDS[1]),
       new RoleName("検索上位課長"),
-      kachouPositionId,
+      new PositionId(kachouPositionId),
       buchouRole.id
     );
     await roleRepository.save(kachouRole);
 
-    const result = await query.execute({ criteria: { superiorRoleId: buchouRole.id } });
+    const result = await query.execute({ criteria: { superiorRoleId: buchouRole.id.value } });
 
     const roleCds = result.map((r) => r.roleCd);
     expect(roleCds).toContain(TEST_ROLE_CDS[1]);
@@ -125,14 +126,14 @@ describe("SearchRolesQuery", () => {
     const buchouRole = Role.create(
       new RoleCd(TEST_ROLE_CDS[0]),
       new RoleName("検索ルート部長"),
-      buchouPositionId
+      new PositionId(buchouPositionId)
     );
     await roleRepository.save(buchouRole);
 
     const kachouRole = Role.create(
       new RoleCd(TEST_ROLE_CDS[1]),
       new RoleName("検索ルート課長"),
-      kachouPositionId,
+      new PositionId(kachouPositionId),
       buchouRole.id
     );
     await roleRepository.save(kachouRole);
@@ -148,14 +149,14 @@ describe("SearchRolesQuery", () => {
     const buchouRole = Role.create(
       new RoleCd(TEST_ROLE_CDS[0]),
       new RoleName("検索DTO部長"),
-      buchouPositionId
+      new PositionId(buchouPositionId)
     );
     await roleRepository.save(buchouRole);
 
     const kachouRole = Role.create(
       new RoleCd(TEST_ROLE_CDS[1]),
       new RoleName("検索DTO課長"),
-      kachouPositionId,
+      new PositionId(kachouPositionId),
       buchouRole.id
     );
     await roleRepository.save(kachouRole);
@@ -175,12 +176,12 @@ describe("SearchRolesQuery", () => {
     const role1 = Role.create(
       new RoleCd(TEST_ROLE_CDS[0]),
       new RoleName("検索オプA課長"),
-      kachouPositionId
+      new PositionId(kachouPositionId)
     );
     const role2 = Role.create(
       new RoleCd(TEST_ROLE_CDS[1]),
       new RoleName("検索オプB課長"),
-      kachouPositionId
+      new PositionId(kachouPositionId)
     );
     await roleRepository.save(role1);
     await roleRepository.save(role2);

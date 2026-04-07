@@ -3,6 +3,7 @@ import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { CompanyCode } from "@server/shared/domain/values/CompanyCode";
 import { CompanyName } from "@server/shared/domain/values/CompanyName";
 import { Customer } from "@subdomains/customer/domain/entities/Customer";
+import { CustomerId } from "@subdomains/customer/domain/values/CustomerId";
 import { PrismaCustomerRepository } from "@subdomains/customer/infrastructure/prisma/PrismaCustomerRepository";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DeleteCustomerCommand } from "../DeleteCustomerCommand";
@@ -28,7 +29,7 @@ describe("DeleteCustomerCommand", () => {
       new CompanyName("削除テスト得意先")
     );
     const saved = await repository.save(customer);
-    testCustomerId = saved.id;
+    testCustomerId = saved.id.value;
   });
 
   afterEach(async () => {
@@ -40,7 +41,7 @@ describe("DeleteCustomerCommand", () => {
   it("得意先を削除できる", async () => {
     await command.execute({ id: testCustomerId });
 
-    const deleted = await repository.findById(testCustomerId);
+    const deleted = await repository.findById(new CustomerId(testCustomerId));
     expect(deleted).toBeNull();
   });
 

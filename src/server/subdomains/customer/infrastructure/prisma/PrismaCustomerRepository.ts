@@ -3,6 +3,7 @@ import { CompanyType } from "@generated/prisma/client";
 import prisma from "@server/prisma";
 import { Customer } from "@subdomains/customer/domain/entities/Customer";
 import { CustomerRepository } from "@subdomains/customer/domain/repositories/CustomerRepository";
+import { CustomerId } from "@subdomains/customer/domain/values/CustomerId";
 import { CustomerMapper } from "@subdomains/customer/infrastructure/mappers/CustomerMapper";
 
 const INCLUDE_COMPANY = { company: true } as const;
@@ -10,14 +11,14 @@ const INCLUDE_COMPANY = { company: true } as const;
 export class PrismaCustomerRepository implements CustomerRepository {
   async save(customer: Customer): Promise<Customer> {
     const existing = await prisma.customer.findUnique({
-      where: { id: customer.id },
+      where: { id: customer.id.value },
     });
 
     let prismaCustomer;
 
     if (existing) {
       prismaCustomer = await prisma.customer.update({
-        where: { id: customer.id },
+        where: { id: customer.id.value },
         data: CustomerMapper.toPrismaUpdate(customer),
         include: INCLUDE_COMPANY,
       });
@@ -31,9 +32,9 @@ export class PrismaCustomerRepository implements CustomerRepository {
     return CustomerMapper.toDomain(prismaCustomer);
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(id: CustomerId): Promise<void> {
     const customer = await prisma.customer.findUnique({
-      where: { id },
+      where: { id: id.value },
       select: { companyId: true },
     });
 
@@ -45,9 +46,9 @@ export class PrismaCustomerRepository implements CustomerRepository {
     }
   }
 
-  async findById(id: string): Promise<Customer | null> {
+  async findById(id: CustomerId): Promise<Customer | null> {
     const prismaCustomer = await prisma.customer.findUnique({
-      where: { id },
+      where: { id: id.value },
       include: INCLUDE_COMPANY,
     });
 
