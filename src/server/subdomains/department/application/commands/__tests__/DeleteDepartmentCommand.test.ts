@@ -54,6 +54,9 @@ describe("DeleteDepartmentCommand", () => {
     await expect(command.execute({ id: "00000000-0000-7000-8000-000000000000" })).rejects.toThrow(
       NotFoundEntityError
     );
+    await expect(command.execute({ id: "00000000-0000-7000-8000-000000000000" })).rejects.toThrow(
+      "部署が見つかりません"
+    );
   });
 
   it("子部署がある場合は削除できない", async () => {
@@ -81,5 +84,8 @@ describe("DeleteDepartmentCommand", () => {
     });
 
     await expect(command.execute({ id: parentId })).rejects.toThrow(BusinessRuleViolationError);
+    await expect(command.execute({ id: parentId })).rejects.toThrow(
+      "子部署が存在するため、この部署を削除できません。先に子部署を削除してください。"
+    );
   });
 });
