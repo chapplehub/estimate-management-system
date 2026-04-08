@@ -3,7 +3,7 @@ import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
 import { NextRequest, NextResponse } from "next/server";
 
 const publicRoutes = ["/signin", "/"];
-const adminRoutes = ["/employees/new"];
+const adminRoutes = ["/employees/new", "/departments/new", "/roles/new"];
 
 export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
