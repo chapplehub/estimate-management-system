@@ -1,0 +1,263 @@
+import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
+import { CostPrice } from "../values/CostPrice";
+import { ProductCategory } from "../values/ProductCategory";
+import { ProductCode } from "../values/ProductCode";
+import { ProductDescription } from "../values/ProductDescription";
+import { ProductId } from "../values/ProductId";
+import { ProductName } from "../values/ProductName";
+import { ProductNote } from "../values/ProductNote";
+import { ProductRelation } from "../values/ProductRelation";
+import { ProductUnit } from "../values/ProductUnit";
+import { SetProductComponent } from "../values/SetProductComponent";
+
+/**
+ * 商品エンティティ（集約ルート）
+ *
+ * 商品区分に応じた制約を持つ:
+ * - INDIVIDUAL: 周辺商品を設定可能
+ * - CONSUMABLE: 周辺商品は持てない
+ * - SET: 構成商品を保持、原価は常に0
+ */
+export class Product {
+  static readonly ENTITY_NAME = "商品";
+
+  private constructor(
+    private readonly _id: ProductId,
+    private _code: ProductCode,
+    private _name: ProductName,
+    private readonly _category: ProductCategory,
+    private _unit: ProductUnit,
+    private _isActive: boolean,
+    private _description: ProductDescription | null,
+    private _note: ProductNote | null,
+    private _costPrice: CostPrice | null,
+    private _relatedProducts: ProductRelation[],
+    private _setComponents: SetProductComponent[],
+    private readonly _createdAt: Date,
+    private _updatedAt: Date
+  ) {}
+
+  static create(
+    code: ProductCode,
+    name: ProductName,
+    category: ProductCategory,
+    unit: ProductUnit,
+    description: ProductDescription | null = null,
+    note: ProductNote | null = null,
+    costPrice: CostPrice | null = null
+  ): Product {
+    const now = new Date();
+    // SET商品の原価は常に0
+    const resolvedCostPrice = category.canHaveComponents() ? new CostPrice(0) : costPrice;
+
+    return new Product(
+      ProductId.generate(),
+      code,
+      name,
+      category,
+      unit,
+      true,
+      description,
+      note,
+      resolvedCostPrice,
+      [],
+      [],
+      now,
+      now
+    );
+  }
+
+  static reconstruct(
+    id: ProductId,
+    code: ProductCode,
+    name: ProductName,
+    category: ProductCategory,
+    unit: ProductUnit,
+    isActive: boolean,
+    description: ProductDescription | null,
+    note: ProductNote | null,
+    costPrice: CostPrice | null,
+    relatedProducts: ProductRelation[],
+    setComponents: SetProductComponent[],
+    createdAt: Date,
+    updatedAt: Date
+  ): Product {
+    return new Product(
+      id,
+      code,
+      name,
+      category,
+      unit,
+      isActive,
+      description,
+      note,
+      costPrice,
+      relatedProducts,
+      setComponents,
+      createdAt,
+      updatedAt
+    );
+  }
+
+  // ========================================
+  // ビジネスロジック
+  // ========================================
+
+  changeName(newName: ProductName): void {
+    this._name = newName;
+    this._updatedAt = new Date();
+  }
+
+  changeCode(newCode: ProductCode): void {
+    this._code = newCode;
+    this._updatedAt = new Date();
+  }
+
+  changeUnit(newUnit: ProductUnit): void {
+    this._unit = newUnit;
+    this._updatedAt = new Date();
+  }
+
+  changeCostPrice(newCostPrice: CostPrice | null): void {
+    // SET商品は原価変更不可（常に0を維持）
+    if (this._category.canHaveComponents()) {
+      return;
+    }
+    this._costPrice = newCostPrice;
+    this._updatedAt = new Date();
+  }
+
+  changeDescription(newDescription: ProductDescription | null): void {
+    this._description = newDescription;
+    this._updatedAt = new Date();
+  }
+
+  changeNote(newNote: ProductNote | null): void {
+    this._note = newNote;
+    this._updatedAt = new Date();
+  }
+
+  activate(): void {
+    if (this._isActive) {
+      throw new BusinessRuleViolationError("すでに有効な商品です");
+    }
+    this._isActive = true;
+    this._updatedAt = new Date();
+  }
+
+  deactivate(): void {
+    if (!this._isActive) {
+      throw new BusinessRuleViolationError("すでに無効な商品です");
+    }
+    this._isActive = false;
+    this._updatedAt = new Date();
+  }
+
+  /**
+   * 周辺商品を設定（全置換）
+   *
+   * 制約:
+   * - 個別商品のみ設定可能（B003）
+   * - 自己参照不可（B005）
+   * - 重複不可
+   */
+  setRelatedProducts(relations: ProductRelation[]): void {
+    if (!this._category.canHaveRelatedProducts()) {
+      throw new BusinessRuleViolationError("個別商品のみ周辺商品を設定できます");
+    }
+
+    // 自己参照チェック
+    for (const relation of relations) {
+      if (relation.relatedProductId.equals(this._id)) {
+        throw new BusinessRuleViolationError("自分自身を周辺商品に設定することはできません");
+      }
+    }
+
+    // 重複チェック
+    const ids = relations.map((r) => r.relatedProductId.value);
+    if (new Set(ids).size !== ids.length) {
+      throw new BusinessRuleViolationError("周辺商品に重複があります");
+    }
+
+    this._relatedProducts = relations;
+    this._updatedAt = new Date();
+  }
+
+  /**
+   * 構成商品を設定（全置換）
+   *
+   * 制約:
+   * - セット商品のみ設定可能（B006）
+   * - 重複不可
+   */
+  setComponents(components: SetProductComponent[]): void {
+    if (!this._category.canHaveComponents()) {
+      throw new BusinessRuleViolationError("セット商品のみ構成商品を設定できます");
+    }
+
+    // 重複チェック
+    const ids = components.map((c) => c.componentProductId.value);
+    if (new Set(ids).size !== ids.length) {
+      throw new BusinessRuleViolationError("構成商品に重複があります");
+    }
+
+    this._setComponents = components;
+    this._updatedAt = new Date();
+  }
+
+  // ========================================
+  // ゲッター
+  // ========================================
+
+  get id(): ProductId {
+    return this._id;
+  }
+
+  get code(): ProductCode {
+    return this._code;
+  }
+
+  get name(): ProductName {
+    return this._name;
+  }
+
+  get category(): ProductCategory {
+    return this._category;
+  }
+
+  get unit(): ProductUnit {
+    return this._unit;
+  }
+
+  get isActive(): boolean {
+    return this._isActive;
+  }
+
+  get description(): ProductDescription | null {
+    return this._description;
+  }
+
+  get note(): ProductNote | null {
+    return this._note;
+  }
+
+  get costPrice(): CostPrice | null {
+    return this._costPrice;
+  }
+
+  get relatedProducts(): ProductRelation[] {
+    return [...this._relatedProducts];
+  }
+
+  get components(): SetProductComponent[] {
+    return [...this._setComponents];
+  }
+
+  get createdAt(): Date {
+    return this._createdAt;
+  }
+
+  get updatedAt(): Date {
+    return this._updatedAt;
+  }
+}
