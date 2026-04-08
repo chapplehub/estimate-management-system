@@ -48,6 +48,9 @@ describe("DeleteProductCommand", () => {
     expect(deleted).toBeNull();
   });
 
+  // TODO: Estimateモデル実装時にテストを有効化する
+  it.todo("B008: 見積・受注で使用中の商品は削除できない");
+
   it("存在しない商品を削除しようとするとエラー", async () => {
     await expect(command.execute({ id: "00000000-0000-7000-8000-000000000000" })).rejects.toThrow(
       NotFoundEntityError
