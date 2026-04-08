@@ -43,10 +43,16 @@ describe("PositionCd", () => {
 
     it("0を指定するとエラー", () => {
       expect(() => PositionCd.fromNumber(0)).toThrow(ValidationError);
+      expect(() => PositionCd.fromNumber(0)).toThrow(
+        "役職コードは 1 〜 999 の範囲である必要があります"
+      );
     });
 
     it("1000以上を指定するとエラー", () => {
       expect(() => PositionCd.fromNumber(1000)).toThrow(ValidationError);
+      expect(() => PositionCd.fromNumber(1000)).toThrow(
+        "役職コードは 1 〜 999 の範囲である必要があります"
+      );
     });
   });
 
@@ -58,22 +64,35 @@ describe("PositionCd", () => {
 
     it("POS000 はエラー（0は無効）", () => {
       expect(() => new PositionCd("POS000")).toThrow(ValidationError);
+      expect(() => new PositionCd("POS000")).toThrow("役職コードは 1 以上である必要があります");
     });
 
     it("プレフィックスが違うとエラー", () => {
       expect(() => new PositionCd("DEPT001")).toThrow(ValidationError);
+      expect(() => new PositionCd("DEPT001")).toThrow(
+        "役職コードは POS + 3桁の数字である必要があります"
+      );
     });
 
     it("数字が足りないとエラー", () => {
       expect(() => new PositionCd("POS01")).toThrow(ValidationError);
+      expect(() => new PositionCd("POS01")).toThrow(
+        "役職コードは POS + 3桁の数字である必要があります"
+      );
     });
 
     it("数字が多すぎるとエラー", () => {
       expect(() => new PositionCd("POS0001")).toThrow(ValidationError);
+      expect(() => new PositionCd("POS0001")).toThrow(
+        "役職コードは POS + 3桁の数字である必要があります"
+      );
     });
 
     it("数字以外が含まれるとエラー", () => {
       expect(() => new PositionCd("POSABC")).toThrow(ValidationError);
+      expect(() => new PositionCd("POSABC")).toThrow(
+        "役職コードは POS + 3桁の数字である必要があります"
+      );
     });
   });
 

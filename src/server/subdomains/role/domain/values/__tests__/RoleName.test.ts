@@ -29,6 +29,7 @@ describe("RoleName", () => {
 
     it("空白のみはエラー", () => {
       expect(() => new RoleName("   ")).toThrow(ValidationError);
+      expect(() => new RoleName("   ")).toThrow("役割名は必須です");
     });
 
     it("101文字以上はエラー", () => {

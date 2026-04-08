@@ -43,10 +43,16 @@ describe("RoleCd", () => {
 
     it("0を指定するとエラー", () => {
       expect(() => RoleCd.fromNumber(0)).toThrow(ValidationError);
+      expect(() => RoleCd.fromNumber(0)).toThrow(
+        "役割コードは 1 〜 999 の範囲である必要があります"
+      );
     });
 
     it("1000以上を指定するとエラー", () => {
       expect(() => RoleCd.fromNumber(1000)).toThrow(ValidationError);
+      expect(() => RoleCd.fromNumber(1000)).toThrow(
+        "役割コードは 1 〜 999 の範囲である必要があります"
+      );
     });
   });
 
@@ -58,22 +64,35 @@ describe("RoleCd", () => {
 
     it("ROLE000 はエラー（0は無効）", () => {
       expect(() => new RoleCd("ROLE000")).toThrow(ValidationError);
+      expect(() => new RoleCd("ROLE000")).toThrow("役割コードは 1 以上である必要があります");
     });
 
     it("プレフィックスが違うとエラー", () => {
       expect(() => new RoleCd("DEPT001")).toThrow(ValidationError);
+      expect(() => new RoleCd("DEPT001")).toThrow(
+        "役割コードは ROLE + 3桁の数字である必要があります"
+      );
     });
 
     it("数字が足りないとエラー", () => {
       expect(() => new RoleCd("ROLE01")).toThrow(ValidationError);
+      expect(() => new RoleCd("ROLE01")).toThrow(
+        "役割コードは ROLE + 3桁の数字である必要があります"
+      );
     });
 
     it("数字が多すぎるとエラー", () => {
       expect(() => new RoleCd("ROLE0001")).toThrow(ValidationError);
+      expect(() => new RoleCd("ROLE0001")).toThrow(
+        "役割コードは ROLE + 3桁の数字である必要があります"
+      );
     });
 
     it("数字以外が含まれるとエラー", () => {
       expect(() => new RoleCd("ROLEABC")).toThrow(ValidationError);
+      expect(() => new RoleCd("ROLEABC")).toThrow(
+        "役割コードは ROLE + 3桁の数字である必要があります"
+      );
     });
   });
 
