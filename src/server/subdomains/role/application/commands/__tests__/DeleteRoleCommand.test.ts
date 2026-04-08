@@ -62,6 +62,9 @@ describe("DeleteRoleCommand", () => {
     await expect(command.execute({ id: "00000000-0000-7000-8000-000000000000" })).rejects.toThrow(
       NotFoundEntityError
     );
+    await expect(command.execute({ id: "00000000-0000-7000-8000-000000000000" })).rejects.toThrow(
+      "役割が見つかりません"
+    );
   });
 
   it("下位役割がある場合は削除できない", async () => {

@@ -101,6 +101,13 @@ describe("CreateRoleCommand", () => {
         positionId: kachouPositionId,
       })
     ).rejects.toThrow(ValidationError);
+    await expect(
+      command.execute({
+        roleCd: TEST_ROLE_CDS[0],
+        name: "重複役割",
+        positionId: kachouPositionId,
+      })
+    ).rejects.toThrow("既に存在する役割コードです");
   });
 
   it("既に存在する役割名の場合はエラー", async () => {
@@ -117,6 +124,13 @@ describe("CreateRoleCommand", () => {
         positionId: kachouPositionId,
       })
     ).rejects.toThrow(ValidationError);
+    await expect(
+      command.execute({
+        roleCd: TEST_ROLE_CDS[1],
+        name: "重複テスト役割名",
+        positionId: kachouPositionId,
+      })
+    ).rejects.toThrow("既に存在する役割名です");
   });
 
   it("存在しない役職を指定するとエラー", async () => {
@@ -127,5 +141,12 @@ describe("CreateRoleCommand", () => {
         positionId: "00000000-0000-7000-8000-000000000000",
       })
     ).rejects.toThrow(ValidationError);
+    await expect(
+      command.execute({
+        roleCd: TEST_ROLE_CDS[0],
+        name: "登録テスト役割",
+        positionId: "00000000-0000-7000-8000-000000000000",
+      })
+    ).rejects.toThrow("役職が存在しません");
   });
 });

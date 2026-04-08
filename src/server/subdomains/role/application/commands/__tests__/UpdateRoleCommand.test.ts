@@ -98,6 +98,12 @@ describe("UpdateRoleCommand", () => {
         name: "テスト",
       })
     ).rejects.toThrow(NotFoundEntityError);
+    await expect(
+      command.execute({
+        id: "00000000-0000-7000-8000-000000000000",
+        name: "テスト",
+      })
+    ).rejects.toThrow("役割が見つかりません");
   });
 
   it("重複する役割名に更新しようとするとエラー", async () => {
@@ -121,6 +127,12 @@ describe("UpdateRoleCommand", () => {
         name: "既存の役割名",
       })
     ).rejects.toThrow(ValidationError);
+    await expect(
+      command.execute({
+        id: role2.id,
+        name: "既存の役割名",
+      })
+    ).rejects.toThrow("既に存在する役割名です");
   });
 
   it("自分自身の名前で更新しても重複エラーにならない", async () => {
