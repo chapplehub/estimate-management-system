@@ -4,49 +4,47 @@ import { expect, test } from "@playwright/test";
 const TEST_ROLE_CD = "ROLE901";
 
 test.describe("役割新規作成（管理者）", () => {
-  test.describe("データ作成テスト", () => {
-    // 暫定対応: テストで作成した役割をUIから削除する
-    test.afterEach(async ({ page }) => {
-      await page.goto(`/roles/${TEST_ROLE_CD}`);
-      const deleteButton = page.getByRole("button", { name: "削除" });
-      if (await deleteButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await deleteButton.click();
-        await expect(page).toHaveURL(/\/roles/, { timeout: 10000 });
-      }
-    });
-
-    test("管理者が新規役割を作成できる", async ({ page }) => {
-      // 一覧画面から新規登録画面に遷移
-      await page.goto("/roles");
-      await page.getByRole("link", { name: "新規登録" }).click();
-      await expect(page).toHaveURL("/roles/new", { timeout: 10000 });
-      await expect(page.getByRole("heading", { name: "新規役割登録" })).toBeVisible();
-
-      // フォーム入力
-      await page.getByLabel("役割コード").fill(TEST_ROLE_CD);
-      await page.getByLabel("役割名").fill("E2Eテスト役割");
-      await page.getByLabel("役職").selectOption({ label: "課長" });
-      // 上位役割ドロップダウンが表示されるのを待って選択
-      await expect(page.getByLabel("上位役割")).toBeVisible();
-      await page.getByLabel("上位役割").selectOption({ index: 1 }); // 最初の上位役割を選択
-
-      // 登録実行
-      await page.getByRole("button", { name: "登録" }).click();
-
-      // 一覧画面にリダイレクトされ、成功トーストが表示される
+  // 暫定対応: テストで作成した役割をUIから削除する
+  test.afterEach(async ({ page }) => {
+    await page.goto(`/roles/${TEST_ROLE_CD}`);
+    const deleteButton = page.getByRole("button", { name: "削除" });
+    if (await deleteButton.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await deleteButton.click();
       await expect(page).toHaveURL(/\/roles/, { timeout: 10000 });
-      await page.waitForLoadState("load");
-      await expect(page.getByText("役割を登録しました。")).toBeVisible({ timeout: 10000 });
+    }
+  });
 
-      // 作成した役割が検索で見つかる
-      await expect(page.locator("table tbody tr").first()).toBeVisible();
-      await page.getByLabel("役割コード").fill(TEST_ROLE_CD);
-      await page.getByRole("button", { name: "検索" }).click();
-      await expect(page).toHaveURL(new RegExp(`roleCd=${TEST_ROLE_CD}`), {
-        timeout: 10000,
-      });
-      await expect(page.getByRole("link", { name: TEST_ROLE_CD })).toBeVisible();
+  test("管理者が新規役割を作成できる", async ({ page }) => {
+    // 一覧画面から新規登録画面に遷移
+    await page.goto("/roles");
+    await page.getByRole("link", { name: "新規登録" }).click();
+    await expect(page).toHaveURL("/roles/new", { timeout: 10000 });
+    await expect(page.getByRole("heading", { name: "新規役割登録" })).toBeVisible();
+
+    // フォーム入力
+    await page.getByLabel("役割コード").fill(TEST_ROLE_CD);
+    await page.getByLabel("役割名").fill("E2Eテスト役割");
+    await page.getByLabel("役職").selectOption({ label: "課長" });
+    // 上位役割ドロップダウンが表示されるのを待って選択
+    await expect(page.getByLabel("上位役割")).toBeVisible();
+    await page.getByLabel("上位役割").selectOption({ index: 1 }); // 最初の上位役割を選択
+
+    // 登録実行
+    await page.getByRole("button", { name: "登録" }).click();
+
+    // 一覧画面にリダイレクトされ、成功トーストが表示される
+    await expect(page).toHaveURL(/\/roles/, { timeout: 10000 });
+    await page.waitForLoadState("load");
+    await expect(page.getByText("役割を登録しました。")).toBeVisible({ timeout: 10000 });
+
+    // 作成した役割が検索で見つかる
+    await expect(page.locator("table tbody tr").first()).toBeVisible();
+    await page.getByLabel("役割コード").fill(TEST_ROLE_CD);
+    await page.getByRole("button", { name: "検索" }).click();
+    await expect(page).toHaveURL(new RegExp(`roleCd=${TEST_ROLE_CD}`), {
+      timeout: 10000,
     });
+    await expect(page.getByRole("link", { name: TEST_ROLE_CD })).toBeVisible();
   });
 
   test("重複する役割コードでエラーが表示される", async ({ page }) => {
