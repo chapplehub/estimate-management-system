@@ -38,18 +38,31 @@ application/queries/__tests__/CountEmployeesQuery.test.ts
 - `it()` を使用する（`test()` は使わない）
 - `describe()` の第一引数はクラス名のみ（例: `describe("EmployeeCd", ...)`）
 - テスト記述はすべて日本語
-- エラーテストはエラー**型のみ**検証する（メッセージは検証しない）
+- エラーの発生源では**型 + ハードコード文字列**でメッセージもテストする
+- バブルアップするエラー（下位層で発生し上位層に伝播するだけのもの）はテスト不要
 - AAA パターン（Arrange-Act-Assert）を基本とする
 
 ```typescript
-// ✅ Good
+// ✅ Good - 発生源で型 + メッセージの両方を検証
 it("社員コードが重複している場合エラー", async () => {
-  await expect(command.execute(input)).rejects.toThrow(DuplicationError);
+  await expect(command.execute(input)).rejects.toThrow(ValidationError);
+  await expect(command.execute(input)).rejects.toThrow("既に存在する従業員CDです");
 });
 
-// ❌ Bad - メッセージを検証
+// ✅ Good - VOの発生源でメッセージを検証
+it("空文字列はエラー", () => {
+  expect(() => new EmployeeCd("")).toThrow(ValidationError);
+  expect(() => new EmployeeCd("")).toThrow("社員コードは必須です");
+});
+
+// ❌ Bad - 発生源なのにメッセージを検証していない
 it("社員コードが重複している場合エラー", async () => {
-  await expect(command.execute(input)).rejects.toThrow("社員コードが重複しています");
+  await expect(command.execute(input)).rejects.toThrow(ValidationError);
+});
+
+// ❌ Bad - 共有定数を使ってメッセージを検証（テストが実装に結合する）
+it("空文字列はエラー", () => {
+  expect(() => new EmployeeCd("")).toThrow(EmployeeCd.ERROR_MESSAGES.REQUIRED);
 });
 ```
 
@@ -96,10 +109,14 @@ describe("EmployeeCd", () => {
   describe("異常系", () => {
     it("空文字列の場合はエラー", () => {
       expect(() => new EmployeeCd("")).toThrow(ValidationError);
+      expect(() => new EmployeeCd("")).toThrow("社員コードは必須です");
     });
 
     it("形式が不正な場合はエラー", () => {
       expect(() => new EmployeeCd("INVALID")).toThrow(ValidationError);
+      expect(() => new EmployeeCd("INVALID")).toThrow(
+        "社員コードは EMP + 6桁の数字である必要があります"
+      );
     });
   });
 });
