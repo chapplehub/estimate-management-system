@@ -22,22 +22,15 @@ async function createTestRole(
 }
 
 test.describe("役割詳細・編集・削除（管理者）", () => {
-  test.describe("更新・削除テスト", () => {
-    test.beforeEach(async ({ page }) => {
+  // 更新→削除の順で実行（同一テストデータを使い回すため serial で順序保証）
+  test.describe.serial("更新・削除テスト", () => {
+    test.beforeAll(async ({ browser }) => {
+      const page = await browser.newPage();
       await createTestRole(page, {
         roleCd: TEST_ROLE_CD,
         name: "E2E詳細テスト役割",
       });
-    });
-
-    // テストで作成した役割をUIから削除（削除テスト後は既に消えているため catch で吸収）
-    test.afterEach(async ({ page }) => {
-      await page.goto(`/roles/${TEST_ROLE_CD}`);
-      const deleteButton = page.getByRole("button", { name: "削除" });
-      if (await deleteButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await deleteButton.click();
-        await expect(page).toHaveURL(/\/roles/, { timeout: 10000 });
-      }
+      await page.close();
     });
 
     test("管理者が役割情報を更新できる", async ({ page }) => {
@@ -65,7 +58,7 @@ test.describe("役割詳細・編集・削除（管理者）", () => {
     });
 
     test("管理者が未使用の役割を削除できる", async ({ page }) => {
-      // 作成した役割の詳細画面に遷移
+      // 更新テストで作成済みの役割の詳細画面に遷移
       await page.goto(`/roles/${TEST_ROLE_CD}`);
       await expect(page.getByText("役割変更")).toBeVisible();
 
