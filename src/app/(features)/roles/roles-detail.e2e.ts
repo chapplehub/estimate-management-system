@@ -25,12 +25,16 @@ test.describe("役割詳細・編集・削除（管理者）", () => {
   // 更新→削除の順で実行（同一テストデータを使い回すため serial で順序保証）
   test.describe.serial("更新・削除テスト", () => {
     test.beforeAll(async ({ browser }) => {
-      const page = await browser.newPage();
+      const context = await browser.newContext({
+        storageState: "playwright/.auth/admin.json",
+      });
+      const page = await context.newPage();
       await createTestRole(page, {
         roleCd: TEST_ROLE_CD,
         name: "E2E詳細テスト役割",
       });
       await page.close();
+      await context.close();
     });
 
     test("管理者が役割情報を更新できる", async ({ page }) => {
