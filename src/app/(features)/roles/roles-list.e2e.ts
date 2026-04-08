@@ -32,7 +32,13 @@ test.describe("役割一覧（管理者）", () => {
     await page.getByRole("button", { name: "検索" }).click();
 
     await expect(page).toHaveURL(/name=/, { timeout: 10000 });
-    await expect(page.getByText("営業本部長")).toBeVisible();
+    // 表示されている役割名列がすべて「営業」を含むこと
+    const nameCells = page.locator("table tbody tr td:nth-child(2)");
+    const count = await nameCells.count();
+    expect(count).toBeGreaterThan(0);
+    for (let i = 0; i < count; i++) {
+      await expect(nameCells.nth(i)).toContainText("営業");
+    }
   });
 
   test("役割コードで検索（完全一致）できる", async ({ page }) => {
