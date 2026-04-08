@@ -297,3 +297,95 @@ model DeliveryLocation {
   @@index([customerId])
   @@map("delivery_locations")
 }
+
+// ========================================
+// 商品関連
+// ========================================
+
+// 商品区分
+enum ProductCategory {
+  INDIVIDUAL // 個別商品
+  CONSUMABLE // 消耗品
+  SET        // セット商品
+}
+
+// 単位
+enum ProductUnit {
+  UNIT  // 台
+  PIECE // 個
+  ROLL  // 本
+  BOX   // 箱
+  SHEET // 枚
+  SET   // セット
+}
+
+model Product {
+  id          String          @id @db.Uuid // ドメイン層でUUIDv7生成
+  code        String          @unique      // 商品コード (英数字, 最大50桁)
+  name        String          @unique      // 商品名
+  category    ProductCategory              // 商品区分
+  description String?         @db.Text     // 商品説明
+  note        String?         @db.Text     // 備考
+  unit        ProductUnit                  // 単位
+  costPrice   Decimal?        @map("cost_price") @db.Decimal(12, 2) // 原価
+  isActive    Boolean         @default(true) @map("is_active") // 有効フラグ
+
+  // 周辺商品 (この商品が設定元)
+  relatedProducts   ProductRelation[] @relation("ProductRelationSource")
+  // 周辺商品 (この商品が設定先)
+  relatedByProducts ProductRelation[] @relation("ProductRelationTarget")
+
+  // セット商品構成 (この商品がセット商品)
+  setComponents  SetProductComponent[] @relation("SetProduct")
+  // セット商品構成 (この商品が構成商品)
+  componentOfSets SetProductComponent[] @relation("ComponentProduct")
+
+  // タイムスタンプ
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([code])
+  @@index([category])
+  @@index([isActive])
+  @@map("products")
+}
+
+model ProductRelation {
+  // 設定元 (個別商品のみ)
+  productId      String  @map("product_id") @db.Uuid
+  product        Product @relation("ProductRelationSource", fields: [productId], references: [id], onDelete: Cascade)
+
+  // 設定先 (個別商品 or 消耗品)
+  relatedProductId String  @map("related_product_id") @db.Uuid
+  relatedProduct   Product @relation("ProductRelationTarget", fields: [relatedProductId], references: [id], onDelete: Cascade)
+
+  // 数量
+  quantity Int // 正の整数
+
+  // タイムスタンプ
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@id([productId, relatedProductId])
+  @@map("product_relations")
+}
+
+model SetProductComponent {
+  // セット商品
+  setProductId     String  @map("set_product_id") @db.Uuid
+  setProduct       Product @relation("SetProduct", fields: [setProductId], references: [id], onDelete: Cascade)
+
+  // 構成商品 (個別商品 or 消耗品)
+  componentProductId String  @map("component_product_id") @db.Uuid
+  componentProduct   Product @relation("ComponentProduct", fields: [componentProductId], references: [id], onDelete: Cascade)
+
+  // 数量
+  quantity Int // 正の整数
+
+  // タイムスタンプ
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@id([setProductId, componentProductId])
+  @@map("set_product_components")
+}

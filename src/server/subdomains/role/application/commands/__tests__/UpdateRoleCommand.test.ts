@@ -130,7 +130,7 @@ describe("UpdateRoleCommand", () => {
     ).rejects.toThrow(ValidationError);
     await expect(
       command.execute({
-        id: role2.id,
+        id: role2.id.value,
         name: "既存の役割名",
       })
     ).rejects.toThrow("既に存在する役割名です");
