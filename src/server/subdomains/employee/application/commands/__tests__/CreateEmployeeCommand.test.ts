@@ -83,6 +83,16 @@ describe("CreateEmployeeCommand", () => {
         password: "Password1!",
       })
     ).rejects.toThrow(ValidationError);
+    await expect(
+      command.execute({
+        employeeCd: TEST_CODES[0],
+        email: "test-create-dup-cd-2@example.com",
+        name: "重複CD先",
+        departmentId: TEST_DEPT_ID,
+        role: USER_ROLES.USER,
+        password: "Password1!",
+      })
+    ).rejects.toThrow("既に存在する従業員CDです");
   });
 
   it("メールアドレスが重複している場合はエラー", async () => {
@@ -105,6 +115,16 @@ describe("CreateEmployeeCommand", () => {
         password: "Password1!",
       })
     ).rejects.toThrow(ValidationError);
+    await expect(
+      command.execute({
+        employeeCd: TEST_CODES[1],
+        email: "test-create-dup-email@example.com",
+        name: "重複Email先",
+        departmentId: TEST_DEPT_ID,
+        role: USER_ROLES.USER,
+        password: "Password1!",
+      })
+    ).rejects.toThrow("既に存在するメールアドレスです");
   });
 
   it("認証ユーザー作成失敗時、保存したEmployeeが削除される", async () => {
@@ -120,6 +140,16 @@ describe("CreateEmployeeCommand", () => {
         password: "Password1!",
       })
     ).rejects.toThrow(ValidationError);
+    await expect(
+      command.execute({
+        employeeCd: TEST_CODES[0],
+        email: "test-create-cmd@example.com",
+        name: "テスト太郎",
+        departmentId: TEST_DEPT_ID,
+        role: USER_ROLES.USER,
+        password: "Password1!",
+      })
+    ).rejects.toThrow("認証ユーザーの作成に失敗しました");
 
     const employee = await repository.findByEmployeeCd(new EmployeeCd(TEST_CODES[0]));
     expect(employee).toBeNull();

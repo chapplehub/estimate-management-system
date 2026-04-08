@@ -108,6 +108,7 @@ describe("DeleteEmployeeCommand", () => {
     const nonExistentId = "00000000-0000-7000-8000-000000000004";
 
     await expect(command.execute({ id: nonExistentId })).rejects.toThrow(NotFoundEntityError);
+    await expect(command.execute({ id: nonExistentId })).rejects.toThrow("従業員が見つかりません");
   });
 
   it("認証ユーザー削除失敗時はエラーがスローされる", async () => {
@@ -120,6 +121,9 @@ describe("DeleteEmployeeCommand", () => {
 
     // 実行・検証：エラーがスローされること
     await expect(command.execute({ id: TEST_EMPLOYEE_ID })).rejects.toThrow(Error);
+    await expect(command.execute({ id: TEST_EMPLOYEE_ID })).rejects.toThrow(
+      "認証ユーザーの削除に失敗しました"
+    );
 
     // 検証：従業員が削除されていないこと（エラーで処理が中断されたため）
     const employee = await prisma.employee.findUnique({
