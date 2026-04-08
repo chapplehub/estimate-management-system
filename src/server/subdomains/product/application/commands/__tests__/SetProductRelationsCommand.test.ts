@@ -33,7 +33,7 @@ describe("SetProductRelationsCommand", () => {
   it("個別商品に周辺商品を設定できる", async () => {
     const individual = Product.create(
       new ProductCode(TEST_CODES[0]),
-      new ProductName("個別商品"),
+      new ProductName("SR個別商品"),
       ProductCategory.INDIVIDUAL,
       ProductUnit.UNIT
     );
@@ -41,7 +41,7 @@ describe("SetProductRelationsCommand", () => {
 
     const consumable = Product.create(
       new ProductCode(TEST_CODES[1]),
-      new ProductName("消耗品"),
+      new ProductName("SR消耗品"),
       ProductCategory.CONSUMABLE,
       ProductUnit.PIECE
     );
@@ -61,7 +61,7 @@ describe("SetProductRelationsCommand", () => {
   it("空配列で周辺商品をクリアできる", async () => {
     const individual = Product.create(
       new ProductCode(TEST_CODES[0]),
-      new ProductName("クリアテスト商品"),
+      new ProductName("SRクリアテスト商品"),
       ProductCategory.INDIVIDUAL,
       ProductUnit.UNIT
     );
@@ -69,7 +69,7 @@ describe("SetProductRelationsCommand", () => {
 
     const consumable = Product.create(
       new ProductCode(TEST_CODES[1]),
-      new ProductName("クリア対象消耗品"),
+      new ProductName("SRクリア対象消耗品"),
       ProductCategory.CONSUMABLE,
       ProductUnit.PIECE
     );
@@ -94,7 +94,7 @@ describe("SetProductRelationsCommand", () => {
   it("存在しない商品IDにはエラー", async () => {
     const individual = Product.create(
       new ProductCode(TEST_CODES[0]),
-      new ProductName("存在しないテスト"),
+      new ProductName("SR存在しないテスト"),
       ProductCategory.INDIVIDUAL,
       ProductUnit.UNIT
     );
@@ -111,7 +111,7 @@ describe("SetProductRelationsCommand", () => {
   it("B003: 消耗品には周辺商品を設定できない", async () => {
     const consumable = Product.create(
       new ProductCode(TEST_CODES[0]),
-      new ProductName("消耗品テスト"),
+      new ProductName("SR消耗品テスト"),
       ProductCategory.CONSUMABLE,
       ProductUnit.PIECE
     );
@@ -119,7 +119,7 @@ describe("SetProductRelationsCommand", () => {
 
     const another = Product.create(
       new ProductCode(TEST_CODES[1]),
-      new ProductName("他の商品"),
+      new ProductName("SR他の商品"),
       ProductCategory.INDIVIDUAL,
       ProductUnit.UNIT
     );
@@ -142,7 +142,7 @@ describe("SetProductRelationsCommand", () => {
   it("B004: SET商品を周辺商品に設定するとエラー", async () => {
     const individual = Product.create(
       new ProductCode(TEST_CODES[0]),
-      new ProductName("個別商品B004"),
+      new ProductName("SR個別商品B004"),
       ProductCategory.INDIVIDUAL,
       ProductUnit.UNIT
     );
@@ -150,7 +150,7 @@ describe("SetProductRelationsCommand", () => {
 
     const setProduct = Product.create(
       new ProductCode(TEST_CODES[1]),
-      new ProductName("セット商品B004"),
+      new ProductName("SRセット商品B004"),
       ProductCategory.SET,
       ProductUnit.SET
     );
@@ -173,7 +173,7 @@ describe("SetProductRelationsCommand", () => {
   it("B005: 自分自身を周辺商品に設定するとエラー", async () => {
     const individual = Product.create(
       new ProductCode(TEST_CODES[0]),
-      new ProductName("自己参照テスト"),
+      new ProductName("SR自己参照テスト"),
       ProductCategory.INDIVIDUAL,
       ProductUnit.UNIT
     );

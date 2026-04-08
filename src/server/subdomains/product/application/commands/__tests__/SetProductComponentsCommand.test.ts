@@ -111,7 +111,7 @@ describe("SetProductComponentsCommand", () => {
   it("B006: 個別商品には構成商品を設定できない", async () => {
     const individual = Product.create(
       new ProductCode(TEST_CODES[0]),
-      new ProductName("個別商品テスト"),
+      new ProductName("SC個別商品テスト"),
       ProductCategory.INDIVIDUAL,
       ProductUnit.UNIT
     );
@@ -119,7 +119,7 @@ describe("SetProductComponentsCommand", () => {
 
     const another = Product.create(
       new ProductCode(TEST_CODES[1]),
-      new ProductName("他の商品"),
+      new ProductName("SC他の商品"),
       ProductCategory.CONSUMABLE,
       ProductUnit.PIECE
     );
