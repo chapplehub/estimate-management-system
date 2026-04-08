@@ -23,10 +23,14 @@ describe("CompanyName", () => {
   describe("異常系", () => {
     it("空文字を拒否する", () => {
       expect(() => new CompanyName("")).toThrow(ValidationError);
+      expect(() => new CompanyName("")).toThrow("会社名は必須です");
     });
 
     it("101文字以上を拒否する", () => {
       expect(() => new CompanyName("あ".repeat(101))).toThrow(ValidationError);
+      expect(() => new CompanyName("あ".repeat(101))).toThrow(
+        "会社名は100文字以内で入力してください"
+      );
     });
   });
 });

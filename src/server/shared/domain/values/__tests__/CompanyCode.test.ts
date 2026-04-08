@@ -43,22 +43,35 @@ describe("CompanyCode", () => {
   describe("異常系", () => {
     it("空文字を拒否する", () => {
       expect(() => new CompanyCode("")).toThrow(ValidationError);
+      expect(() => new CompanyCode("")).toThrow("取引先コードは必須です");
     });
 
     it("21文字以上を拒否する", () => {
       expect(() => new CompanyCode("A".repeat(21))).toThrow(ValidationError);
+      expect(() => new CompanyCode("A".repeat(21))).toThrow(
+        "取引先コードは20文字以内で入力してください"
+      );
     });
 
     it("日本語を拒否する", () => {
       expect(() => new CompanyCode("得意先001")).toThrow(ValidationError);
+      expect(() => new CompanyCode("得意先001")).toThrow(
+        "取引先コードは英数字・ハイフン・アンダースコアのみ使用できます"
+      );
     });
 
     it("スペースを含むコードを拒否する", () => {
       expect(() => new CompanyCode("CUST 001")).toThrow(ValidationError);
+      expect(() => new CompanyCode("CUST 001")).toThrow(
+        "取引先コードは英数字・ハイフン・アンダースコアのみ使用できます"
+      );
     });
 
     it("特殊文字を拒否する", () => {
       expect(() => new CompanyCode("CUST@001")).toThrow(ValidationError);
+      expect(() => new CompanyCode("CUST@001")).toThrow(
+        "取引先コードは英数字・ハイフン・アンダースコアのみ使用できます"
+      );
     });
   });
 
