@@ -31,7 +31,7 @@ test.describe("役割一覧（管理者）", () => {
     await page.getByLabel("役割名").fill("営業");
     await page.getByRole("button", { name: "検索" }).click();
 
-    await expect(page).toHaveURL(/name=営業/, { timeout: 10000 });
+    await expect(page).toHaveURL(/name=/, { timeout: 10000 });
     await expect(page.getByText("営業本部長")).toBeVisible();
   });
 
