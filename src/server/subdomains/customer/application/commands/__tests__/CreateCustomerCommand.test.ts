@@ -81,5 +81,11 @@ describe("CreateCustomerCommand", () => {
         name: "重複先",
       })
     ).rejects.toThrow(ValidationError);
+    await expect(
+      command.execute({
+        code: TEST_CODES[0],
+        name: "重複先",
+      })
+    ).rejects.toThrow("既に存在する取引先コードです");
   });
 });

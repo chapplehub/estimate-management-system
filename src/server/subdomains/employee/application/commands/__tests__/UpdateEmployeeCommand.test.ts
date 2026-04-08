@@ -152,6 +152,16 @@ describe("UpdateEmployeeCommand", () => {
         role: USER_ROLES.USER,
       })
     ).rejects.toThrow(NotFoundEntityError);
+    await expect(
+      command.execute({
+        id: "00000000-0000-7000-8000-000000000003",
+        employeeCd: "EMP999912",
+        email: "existing@example.com",
+        name: "更新テスト",
+        departmentId: TEST_DEPT_ID,
+        role: USER_ROLES.USER,
+      })
+    ).rejects.toThrow("従業員が見つかりません");
   });
 
   it("重複するメールアドレスの場合はエラー", async () => {
@@ -165,6 +175,16 @@ describe("UpdateEmployeeCommand", () => {
         role: USER_ROLES.USER,
       })
     ).rejects.toThrow(ValidationError);
+    await expect(
+      command.execute({
+        id: TEST_EMPLOYEE_ID,
+        employeeCd: "EMP999912",
+        email: "another@example.com",
+        name: "既存従業員",
+        departmentId: TEST_DEPT_ID,
+        role: USER_ROLES.USER,
+      })
+    ).rejects.toThrow("既に存在するメールアドレスです");
 
     // 更新されていないことを確認
     const employee = await prisma.employee.findUnique({

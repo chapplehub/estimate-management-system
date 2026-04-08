@@ -29,6 +29,7 @@ describe("PositionName", () => {
 
     it("空白のみはエラー", () => {
       expect(() => new PositionName("   ")).toThrow(ValidationError);
+      expect(() => new PositionName("   ")).toThrow("役職名は必須です");
     });
 
     it("51文字以上はエラー", () => {

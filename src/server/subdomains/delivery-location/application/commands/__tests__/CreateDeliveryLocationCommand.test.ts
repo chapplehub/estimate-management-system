@@ -116,6 +116,13 @@ describe("CreateDeliveryLocationCommand", () => {
         customerId: testCustomerId,
       })
     ).rejects.toThrow(ValidationError);
+    await expect(
+      command.execute({
+        code: DL_TEST_CODES[0],
+        name: "重複先納品先",
+        customerId: testCustomerId,
+      })
+    ).rejects.toThrow("既に存在する取引先コードです");
   });
 
   it("親得意先が存在しない場合は NotFoundEntityError", async () => {
@@ -126,6 +133,13 @@ describe("CreateDeliveryLocationCommand", () => {
         customerId: "00000000-0000-7000-8000-000000000002",
       })
     ).rejects.toThrow(NotFoundEntityError);
+    await expect(
+      command.execute({
+        code: DL_TEST_CODES[0],
+        name: "親なし納品先",
+        customerId: "00000000-0000-7000-8000-000000000002",
+      })
+    ).rejects.toThrow("得意先が見つかりません");
   });
 
   it("親得意先が無効化されている場合は ValidationError", async () => {
@@ -141,5 +155,12 @@ describe("CreateDeliveryLocationCommand", () => {
         customerId: testCustomerId,
       })
     ).rejects.toThrow(ValidationError);
+    await expect(
+      command.execute({
+        code: DL_TEST_CODES[0],
+        name: "無効得意先の納品先",
+        customerId: testCustomerId,
+      })
+    ).rejects.toThrow("無効化された得意先には納品先を追加できません");
   });
 });

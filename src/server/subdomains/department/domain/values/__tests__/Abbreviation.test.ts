@@ -34,6 +34,7 @@ describe("Abbreviation", () => {
 
     it("空白のみはエラー", () => {
       expect(() => new Abbreviation("   ")).toThrow(ValidationError);
+      expect(() => new Abbreviation("   ")).toThrow("部署略称は必須です");
     });
 
     it("21文字以上はエラー", () => {

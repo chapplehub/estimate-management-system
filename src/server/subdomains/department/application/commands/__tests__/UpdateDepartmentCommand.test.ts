@@ -69,6 +69,12 @@ describe("UpdateDepartmentCommand", () => {
         name: "新営業部",
       })
     ).rejects.toThrow(NotFoundEntityError);
+    await expect(
+      command.execute({
+        id: "00000000-0000-7000-8000-000000000000",
+        name: "新営業部",
+      })
+    ).rejects.toThrow("部署が見つかりません");
   });
 
   it("部署を有効化できる", async () => {
@@ -114,6 +120,12 @@ describe("UpdateDepartmentCommand", () => {
         isActive: false,
       })
     ).rejects.toThrow(BusinessRuleViolationError);
+    await expect(
+      command.execute({
+        id: baseDeptId,
+        isActive: false,
+      })
+    ).rejects.toThrow("有効な子部署が存在するため、この部署を無効化できません");
   });
 
   it("親部署を変更できる", async () => {
@@ -143,6 +155,12 @@ describe("UpdateDepartmentCommand", () => {
         parentId: baseDeptId,
       })
     ).rejects.toThrow(BusinessRuleViolationError);
+    await expect(
+      command.execute({
+        id: baseDeptId,
+        parentId: baseDeptId,
+      })
+    ).rejects.toThrow("自分自身を親部署にすることはできません");
   });
 
   it("存在しない部署を親部署に設定するとエラー", async () => {
@@ -152,6 +170,12 @@ describe("UpdateDepartmentCommand", () => {
         parentId: "00000000-0000-7000-8000-000000000001",
       })
     ).rejects.toThrow(BusinessRuleViolationError);
+    await expect(
+      command.execute({
+        id: baseDeptId,
+        parentId: "00000000-0000-7000-8000-000000000001",
+      })
+    ).rejects.toThrow("親部署が存在しません");
   });
 
   it("無効な部署を親部署に設定するとエラー", async () => {
@@ -172,6 +196,12 @@ describe("UpdateDepartmentCommand", () => {
         parentId: inactiveParentId,
       })
     ).rejects.toThrow(BusinessRuleViolationError);
+    await expect(
+      command.execute({
+        id: baseDeptId,
+        parentId: inactiveParentId,
+      })
+    ).rejects.toThrow("無効な部署を親部署に設定することはできません");
   });
 
   it("循環参照になる親部署を設定するとエラー", async () => {
@@ -206,5 +236,11 @@ describe("UpdateDepartmentCommand", () => {
         parentId: deptCId,
       })
     ).rejects.toThrow(BusinessRuleViolationError);
+    await expect(
+      command.execute({
+        id: baseDeptId,
+        parentId: deptCId,
+      })
+    ).rejects.toThrow("循環参照が発生するため、この親部署は設定できません");
   });
 });

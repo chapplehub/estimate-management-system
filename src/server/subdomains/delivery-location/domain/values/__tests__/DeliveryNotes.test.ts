@@ -23,10 +23,14 @@ describe("DeliveryNotes", () => {
   describe("異常系", () => {
     it("空文字を拒否する", () => {
       expect(() => new DeliveryNotes("")).toThrow(ValidationError);
+      expect(() => new DeliveryNotes("")).toThrow("配送備考は必須です");
     });
 
     it("501文字以上を拒否する", () => {
       expect(() => new DeliveryNotes("あ".repeat(501))).toThrow(ValidationError);
+      expect(() => new DeliveryNotes("あ".repeat(501))).toThrow(
+        "配送備考は500文字以内で入力してください"
+      );
     });
   });
 });

@@ -23,18 +23,24 @@ describe("PostalCode", () => {
   describe("異常系", () => {
     it("6桁を拒否する", () => {
       expect(() => new PostalCode("123456")).toThrow(ValidationError);
+      expect(() => new PostalCode("123456")).toThrow("郵便番号は7文字以上で入力してください");
     });
 
     it("8桁を拒否する", () => {
       expect(() => new PostalCode("12345678")).toThrow(ValidationError);
+      expect(() => new PostalCode("12345678")).toThrow("郵便番号は7文字以内で入力してください");
     });
 
     it("英字を含む場合を拒否する", () => {
       expect(() => new PostalCode("123456A")).toThrow(ValidationError);
+      expect(() => new PostalCode("123456A")).toThrow(
+        "郵便番号は7桁の数字で入力してください（例: 1234567）"
+      );
     });
 
     it("空文字を拒否する", () => {
       expect(() => new PostalCode("")).toThrow(ValidationError);
+      expect(() => new PostalCode("")).toThrow("郵便番号は7文字以上で入力してください");
     });
   });
 

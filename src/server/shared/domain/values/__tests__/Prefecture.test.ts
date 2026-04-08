@@ -28,14 +28,17 @@ describe("Prefecture", () => {
   describe("異常系", () => {
     it("存在しない都道府県を拒否する", () => {
       expect(() => new Prefecture("テスト県")).toThrow(ValidationError);
+      expect(() => new Prefecture("テスト県")).toThrow("有効な都道府県名を入力してください");
     });
 
     it("空文字を拒否する", () => {
       expect(() => new Prefecture("")).toThrow(ValidationError);
+      expect(() => new Prefecture("")).toThrow("都道府県は必須です");
     });
 
     it("都道府県の部分一致を拒否する", () => {
       expect(() => new Prefecture("東京")).toThrow(ValidationError);
+      expect(() => new Prefecture("東京")).toThrow("有効な都道府県名を入力してください");
     });
   });
 });

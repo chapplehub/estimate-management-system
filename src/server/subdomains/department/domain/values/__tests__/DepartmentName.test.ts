@@ -34,6 +34,7 @@ describe("DepartmentName", () => {
 
     it("空白のみはエラー", () => {
       expect(() => new DepartmentName("   ")).toThrow(ValidationError);
+      expect(() => new DepartmentName("   ")).toThrow("部署名は必須です");
     });
 
     it("101文字以上はエラー", () => {

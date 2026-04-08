@@ -23,18 +23,22 @@ describe("MarginRate", () => {
   describe("異常系", () => {
     it("負の値を拒否する", () => {
       expect(() => new MarginRate(-1)).toThrow(ValidationError);
+      expect(() => new MarginRate(-1)).toThrow("マージン率は0〜100%の範囲で指定してください");
     });
 
     it("100超の値を拒否する", () => {
       expect(() => new MarginRate(100.01)).toThrow(ValidationError);
+      expect(() => new MarginRate(100.01)).toThrow("マージン率は0〜100%の範囲で指定してください");
     });
 
     it("NaNを拒否する", () => {
       expect(() => new MarginRate(NaN)).toThrow(ValidationError);
+      expect(() => new MarginRate(NaN)).toThrow("マージン率は有効な数値で指定してください");
     });
 
     it("Infinityを拒否する", () => {
       expect(() => new MarginRate(Infinity)).toThrow(ValidationError);
+      expect(() => new MarginRate(Infinity)).toThrow("マージン率は有効な数値で指定してください");
     });
   });
 

@@ -67,5 +67,8 @@ describe("DeleteDeliveryLocationCommand", () => {
     await expect(command.execute({ id: "00000000-0000-7000-8000-000000000000" })).rejects.toThrow(
       NotFoundEntityError
     );
+    await expect(command.execute({ id: "00000000-0000-7000-8000-000000000000" })).rejects.toThrow(
+      "納品先が見つかりません"
+    );
   });
 });
