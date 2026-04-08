@@ -267,6 +267,7 @@ F は外部キー
 - 商品説明
 - 備考
 - 単位(R)：Enum（台 / 個 / 本 / 箱 / セット 等）
+- 原価：Decimal
 - 有効フラグ(R)：デフォルト有効
 - created_at(R)
 - updated_at(R)
