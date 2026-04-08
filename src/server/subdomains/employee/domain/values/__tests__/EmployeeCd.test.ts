@@ -69,6 +69,9 @@ describe("EmployeeCd 値オブジェクト", () => {
 
     it("数値部分が6桁でない場合はエラー（7桁）", () => {
       expect(() => new EmployeeCd("EMP0000001")).toThrow(ValidationError);
+      expect(() => new EmployeeCd("EMP0000001")).toThrow(
+        "社員コードは EMP + 6桁の数字である必要があります"
+      );
     });
 
     it("数値部分が数字でない場合はエラー", () => {
@@ -85,6 +88,9 @@ describe("EmployeeCd 値オブジェクト", () => {
 
     it("形式が完全に間違っている場合はエラー", () => {
       expect(() => new EmployeeCd("invalid")).toThrow(ValidationError);
+      expect(() => new EmployeeCd("invalid")).toThrow(
+        "社員コードは EMP + 6桁の数字である必要があります"
+      );
     });
   });
 });
