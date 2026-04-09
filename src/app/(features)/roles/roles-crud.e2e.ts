@@ -126,15 +126,15 @@ test.describe("役割CRUD（管理者）", () => {
   });
 
   test("使用中の役割は削除できない", async ({ page }) => {
-    // ROLE009（営業一課長）は従業員に割り当てられている
-    await page.goto("/roles/ROLE009");
+    // ROLE005（営業課長）は従業員に割り当てられている（下位役割なし）
+    await page.goto("/roles/ROLE005");
     await expect(page.getByText("役割変更")).toBeVisible();
 
     await page.getByRole("button", { name: "削除" }).click();
 
     // エラーメッセージが表示される（ページは遷移しない）
     await expect(page.getByRole("alert")).toBeVisible({ timeout: 10000 });
-    await expect(page).toHaveURL(/\/roles\/ROLE009/);
+    await expect(page).toHaveURL(/\/roles\/ROLE005/);
   });
 
   test("下位役割がある役割は削除できない", async ({ page }) => {
