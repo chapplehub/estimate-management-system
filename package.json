@@ -20,6 +20,8 @@
     "e2e:ui": "playwright test --ui",
     "e2e:headed": "playwright test --headed",
     "e2e:report": "playwright show-report",
+    "e2e:setup": "tsx scripts/e2e-setup.ts",
+    "e2e:seed": "tsx prisma/seed-e2e.ts",
     "coverage": "vitest run --coverage",
     "prepare": "node .husky/install.mjs",
     "cm": "cz"
