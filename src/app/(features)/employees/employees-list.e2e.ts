@@ -1,6 +1,15 @@
 import { expect, test } from "@playwright/test";
 
 /**
+ * 従業員一覧 E2Eテスト
+ *
+ * E2Eシードデータ依存（prisma/seed-e2e.ts）:
+ * - 従業員総数: 20名（EMP000001〜EMP000020）
+ * - admin権限: 1名（EMP000001 / employee1@example.com）
+ * - user権限: 19名（EMP000002〜EMP000020）
+ */
+
+/**
  * 一覧画面のハイドレーション完了を待つ。
  * SearchForm（"use client"）の onSubmit が機能するには React のハイドレーションが必要。
  * DataTable の行が表示された時点で、ページ全体がインタラクティブになっていると判断する。
@@ -57,10 +66,10 @@ test.describe("従業員一覧（管理者）", () => {
     await page.getByRole("button", { name: "検索" }).click();
 
     await expect(page).toHaveURL(/role=admin/, { timeout: 10000 });
-    // 表示されている権限バッジがすべて「管理者」であること
+    // E2Eシード: admin権限は EMP000001 の1名のみ
     const roleCells = page.locator("table tbody tr td:nth-child(4) span");
     const count = await roleCells.count();
-    expect(count).toBeGreaterThan(0);
+    expect(count).toBe(1);
     for (let i = 0; i < count; i++) {
       await expect(roleCells.nth(i)).toHaveText("管理者");
     }
