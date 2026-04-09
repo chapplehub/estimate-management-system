@@ -48,6 +48,12 @@ const ROLES = [
   { cd: "ROLE003", name: "営業部長", positionCd: "POS002", superiorCd: "ROLE002" as string | null },
   { cd: "ROLE004", name: "開発部長", positionCd: "POS002", superiorCd: "ROLE002" as string | null },
   { cd: "ROLE005", name: "営業課長", positionCd: "POS001", superiorCd: "ROLE003" as string | null },
+  {
+    cd: "ROLE006",
+    name: "管理本部長",
+    positionCd: "POS003",
+    superiorCd: "ROLE001" as string | null,
+  },
 ];
 
 // 役割を持つ従業員の設定（EMP000001〜EMP000007）
