@@ -29,34 +29,42 @@ if (!databaseUrl) {
   process.exit(1);
 }
 
-// DATABASE_URLからDB名を抽出
-function extractDbName(url: string): string {
-  const match = url.match(/\/([^/?]+)(\?.*)?$/);
-  if (!match) {
-    console.error("Error: DATABASE_URL からデータベース名を抽出できません。");
-    process.exit(1);
-  }
-  return match[1];
+// DATABASE_URLから接続情報を抽出
+function parseDatabaseUrl(url: string) {
+  const parsed = new URL(url);
+  return {
+    host: parsed.hostname || "localhost",
+    port: parsed.port || "5432",
+    user: parsed.username,
+    password: parsed.password,
+    dbName: decodeURIComponent(parsed.pathname.slice(1)), // 先頭の "/" を除去
+  };
 }
 
-const dbName = extractDbName(databaseUrl);
+const dbInfo = parseDatabaseUrl(databaseUrl);
 
 console.log("=".repeat(50));
 console.log("E2E Test Environment Setup");
 console.log("=".repeat(50));
-console.log(`Database: ${dbName}`);
+console.log(`Database: ${dbInfo.dbName}`);
+console.log(`Host:     ${dbInfo.host}:${dbInfo.port}`);
+console.log(`User:     ${dbInfo.user}`);
 console.log("");
 
 // Step 1: DB作成
 console.log("[1/3] Checking database...");
 try {
-  execFileSync("createdb", [dbName], { stdio: "pipe" });
-  console.log(`  Created database: ${dbName}`);
+  execFileSync(
+    "createdb",
+    ["-h", dbInfo.host, "-p", dbInfo.port, "-U", dbInfo.user, dbInfo.dbName],
+    { stdio: "pipe", env: { ...process.env, PGPASSWORD: dbInfo.password } },
+  );
+  console.log(`  Created database: ${dbInfo.dbName}`);
 } catch (e: unknown) {
   const error = e as { stderr?: Buffer };
   const stderr = error.stderr?.toString() ?? "";
   if (stderr.includes("already exists")) {
-    console.log(`  Database already exists: ${dbName}`);
+    console.log(`  Database already exists: ${dbInfo.dbName}`);
   } else {
     console.error(`  Failed to create database: ${stderr}`);
     process.exit(1);
