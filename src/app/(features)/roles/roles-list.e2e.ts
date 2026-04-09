@@ -18,10 +18,10 @@ test.describe("役割一覧（管理者）", () => {
     await expect(page.getByRole("heading", { name: "役割管理" })).toBeVisible();
     await expect(page.getByRole("link", { name: "新規登録" })).toBeVisible();
 
-    // DataTableに行が表示されていること
+    // DataTableにE2Eシードデータの5件が表示されていること
     await expect(page.getByRole("heading", { name: "役割一覧" })).toBeVisible();
     const rows = page.locator("table tbody tr");
-    await expect(rows.first()).toBeVisible();
+    await expect(rows).toHaveCount(5);
   });
 
   test("役割名で検索（部分一致）できる", async ({ page }) => {
@@ -34,9 +34,9 @@ test.describe("役割一覧（管理者）", () => {
     await expect(page).toHaveURL(/name=/, { timeout: 10000 });
     // 表示されている役割名列がすべて「営業」を含むこと
     const nameCells = page.locator("table tbody tr td:nth-child(2)");
-    const count = await nameCells.count();
-    expect(count).toBeGreaterThan(0);
-    for (let i = 0; i < count; i++) {
+    // E2Eシード: 営業本部長・営業部長・営業課長 の3件
+    await expect(nameCells).toHaveCount(3);
+    for (let i = 0; i < 3; i++) {
       await expect(nameCells.nth(i)).toContainText("営業");
     }
   });
@@ -65,11 +65,9 @@ test.describe("役割一覧（管理者）", () => {
     await expect(page).toHaveURL(/positionId=/, { timeout: 10000 });
     // 表示されている役職列がすべて「課長」であること
     const positionCells = page.locator("table tbody tr td:nth-child(3)");
-    const count = await positionCells.count();
-    expect(count).toBeGreaterThan(0);
-    for (let i = 0; i < count; i++) {
-      await expect(positionCells.nth(i)).toHaveText("課長");
-    }
+    // E2Eシード: 営業課長のみ1件
+    await expect(positionCells).toHaveCount(1);
+    await expect(positionCells.nth(0)).toHaveText("課長");
   });
 
   test("クリアボタンで検索条件がリセットされる", async ({ page }) => {
