@@ -37,6 +37,17 @@ When implementing with a plan (plan mode), follow these rules:
 3. Application layer uses repository **interfaces** from domain layer, NOT concrete implementations
 4. Infrastructure layer implements domain interfaces and handles Prisma <-> Domain mapping
 
+## E2E Tests
+
+```bash
+pnpm e2e          # E2Eテスト実行
+pnpm e2e:setup    # テストDB初期化
+pnpm e2e:seed     # テストデータ再シード
+```
+
+- CRUDテストは `test.describe.serial` で直列化（create→update→delete）
+- テスト内でPrismaクライアントを直接使わない（技術制約: ADR-0012参照）
+
 ## Reference
 
 - DDD implementation patterns: `/ddd-architecture` skill or `docs/dev-guidelines.md`
