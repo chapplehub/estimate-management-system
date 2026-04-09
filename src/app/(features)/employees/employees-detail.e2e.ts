@@ -1,49 +1,43 @@
 import { expect, test } from "@playwright/test";
+import { prisma } from "../../../../e2e-helpers/prisma";
+import { generateId } from "../../../../src/server/shared/generateId";
 
-/** テストで使用する固定の従業員データ（seed範囲 EMP000001〜EMP002000 外） */
-const TEST_EMPLOYEE_CD = "EMP099902";
-const TEST_EMAIL = "e2e-detail-test@example.com";
-
-/**
- * テスト用従業員を新規作成画面から作成し、一覧にリダイレクトされるまで待つ。
- */
-async function createTestEmployee(
-  page: import("@playwright/test").Page,
-  data: { employeeCd: string; email: string; name: string }
-) {
-  await page.goto("/employees/new");
-  await expect(page.getByRole("heading", { name: "新規従業員登録" })).toBeVisible();
-  await page.getByLabel("名前").fill(data.name);
-  await page.getByLabel("メールアドレス").fill(data.email);
-  await page.getByLabel("従業員コード").fill(data.employeeCd);
-  await page.getByLabel("所属部署").selectOption({ index: 1 });
-  await page.getByLabel("パスワード").fill("testpass123");
-  await page.getByRole("button", { name: "登録" }).click();
-  await expect(page).toHaveURL(/\/employees/, { timeout: 10000 });
-}
+/** 削除テストで使用する固定の従業員データ（seed範囲外） */
+const DELETE_TEST_EMPLOYEE_CD = "EMP099902";
+const DELETE_TEST_EMAIL = "e2e-detail-delete@example.com";
 
 test.describe("従業員詳細・編集・削除（管理者）", () => {
-  test("管理者が従業員情報を更新できる", async ({ page }) => {
-    await page.goto("/employees/EMP000050");
+  test.describe("更新テスト", () => {
+    test.afterEach(async () => {
+      // シードデータの名前を復元（EMP000010: 中村 直樹）
+      await prisma.employee.update({
+        where: { employeeCd: "EMP000010" },
+        data: { name: "中村 直樹" },
+      });
+    });
 
-    // 編集モードで表示されること
-    await expect(page.getByRole("heading", { name: "従業員管理" })).toBeVisible();
-    await expect(page.getByText("従業員変更")).toBeVisible();
+    test("管理者が従業員情報を更新できる", async ({ page }) => {
+      await page.goto("/employees/EMP000010");
 
-    // 従業員コードが読み取り専用であること
-    await expect(page.locator("#employeeCd-display")).toBeDisabled();
+      // 編集モードで表示されること
+      await expect(page.getByRole("heading", { name: "従業員管理" })).toBeVisible();
+      await expect(page.getByText("従業員変更")).toBeVisible();
 
-    // 名前を変更して更新
-    const nameField = page.getByLabel("名前");
-    await nameField.clear();
-    await nameField.fill("E2E更新テスト");
-    await page.getByRole("button", { name: "更新" }).click();
+      // 従業員コードが読み取り専用であること
+      await expect(page.locator("#employeeCd-display")).toBeDisabled();
 
-    // 成功トーストが表示される
-    await expect(page.getByText("従業員情報を更新しました。")).toBeVisible({ timeout: 10000 });
+      // 名前を変更して更新
+      const nameField = page.getByLabel("名前");
+      await nameField.clear();
+      await nameField.fill("E2E更新テスト");
+      await page.getByRole("button", { name: "更新" }).click();
 
-    // 変更が反映されていること
-    await expect(nameField).toHaveValue("E2E更新テスト");
+      // 成功トーストが表示される
+      await expect(page.getByText("従業員情報を更新しました。")).toBeVisible({ timeout: 10000 });
+
+      // 変更が反映されていること
+      await expect(nameField).toHaveValue("E2E更新テスト");
+    });
   });
 
   test("管理者には削除ボタンが表示される", async ({ page }) => {
@@ -53,18 +47,58 @@ test.describe("従業員詳細・編集・削除（管理者）", () => {
   });
 
   test.describe("削除テスト", () => {
-    // 暫定対応: テスト用従業員をUIから作成する（#157 で改善予定）
-    test.beforeEach(async ({ page }) => {
-      await createTestEmployee(page, {
-        employeeCd: TEST_EMPLOYEE_CD,
-        email: TEST_EMAIL,
-        name: "削除テスト従業員",
+    test.beforeEach(async () => {
+      // Prismaで削除テスト用従業員をDB直接作成（Employee + User + Account）
+      const employeeId = generateId();
+      const userId = generateId();
+      const accountId = generateId();
+      // シードデータの部署（DEPT001: 営業部）のIDを取得
+      const department = await prisma.department.findFirstOrThrow({
+        where: { departmentCd: "DEPT001" },
       });
+
+      await prisma.$transaction(async (tx) => {
+        await tx.employee.create({
+          data: {
+            id: employeeId,
+            employeeCd: DELETE_TEST_EMPLOYEE_CD,
+            email: DELETE_TEST_EMAIL,
+            name: "削除テスト従業員",
+            departmentId: department.id,
+          },
+        });
+        await tx.user.create({
+          data: {
+            id: userId,
+            name: "削除テスト従業員",
+            email: DELETE_TEST_EMAIL,
+            emailVerified: true,
+            employeeId: employeeId,
+            role: "user",
+          },
+        });
+        await tx.account.create({
+          data: {
+            id: accountId,
+            accountId: userId,
+            providerId: "credential",
+            userId: userId,
+            password: "dummy-not-used-for-login",
+          },
+        });
+      });
+    });
+
+    test.afterEach(async () => {
+      // FK制約順にクリーンアップ: Account → User → Employee
+      await prisma.account.deleteMany({ where: { user: { email: DELETE_TEST_EMAIL } } });
+      await prisma.user.deleteMany({ where: { email: DELETE_TEST_EMAIL } });
+      await prisma.employee.deleteMany({ where: { employeeCd: DELETE_TEST_EMPLOYEE_CD } });
     });
 
     test("管理者が従業員を削除できる", async ({ page }) => {
       // 作成した従業員の詳細画面に遷移
-      await page.goto(`/employees/${TEST_EMPLOYEE_CD}`);
+      await page.goto(`/employees/${DELETE_TEST_EMPLOYEE_CD}`);
       await expect(page.getByText("従業員変更")).toBeVisible();
 
       // 削除実行
@@ -76,12 +110,12 @@ test.describe("従業員詳細・編集・削除（管理者）", () => {
 
       // 削除した従業員が検索で見つからない
       await expect(page.locator("table tbody tr").first()).toBeVisible();
-      await page.getByLabel("従業員コード").fill(TEST_EMPLOYEE_CD);
+      await page.getByLabel("従業員コード").fill(DELETE_TEST_EMPLOYEE_CD);
       await page.getByRole("button", { name: "検索" }).click();
-      await expect(page).toHaveURL(new RegExp(`employeeCd=${TEST_EMPLOYEE_CD}`), {
+      await expect(page).toHaveURL(new RegExp(`employeeCd=${DELETE_TEST_EMPLOYEE_CD}`), {
         timeout: 10000,
       });
-      await expect(page.getByRole("link", { name: TEST_EMPLOYEE_CD })).not.toBeVisible();
+      await expect(page.getByRole("link", { name: DELETE_TEST_EMPLOYEE_CD })).not.toBeVisible();
     });
   });
 
