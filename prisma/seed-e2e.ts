@@ -203,6 +203,64 @@ const CUSTOMERS = [
   },
 ];
 
+// 商品データ（各区分 + 有効/無効を含む）
+const PRODUCTS = [
+  {
+    code: "PRD001",
+    name: "標準デスク",
+    category: "INDIVIDUAL" as const,
+    unit: "UNIT" as const,
+    costPrice: 15000,
+    isActive: true,
+    description: "標準サイズのオフィスデスク",
+  },
+  {
+    code: "PRD002",
+    name: "オフィスチェア",
+    category: "INDIVIDUAL" as const,
+    unit: "UNIT" as const,
+    costPrice: 25000,
+    isActive: true,
+    description: "エルゴノミクスチェア",
+  },
+  {
+    code: "PRD003",
+    name: "コピー用紙A4",
+    category: "CONSUMABLE" as const,
+    unit: "BOX" as const,
+    costPrice: 3000,
+    isActive: true,
+    description: null,
+  },
+  {
+    code: "PRD004",
+    name: "トナーカートリッジ",
+    category: "CONSUMABLE" as const,
+    unit: "PIECE" as const,
+    costPrice: 8000,
+    isActive: true,
+    description: null,
+  },
+  {
+    code: "PRD005",
+    name: "デスクセット一式",
+    category: "SET" as const,
+    unit: "SET" as const,
+    costPrice: null,
+    isActive: true,
+    description: "デスク＋チェアのセット",
+  },
+  {
+    code: "PRD006",
+    name: "旧型モニター",
+    category: "INDIVIDUAL" as const,
+    unit: "UNIT" as const,
+    costPrice: 20000,
+    isActive: false,
+    description: "販売終了品",
+  },
+];
+
 // --- ヘルパー関数 ---
 
 function generateEmployeeCd(index: number): string {
@@ -461,6 +519,23 @@ async function main() {
   const { customerCount, deliveryLocationCount } = await seedCustomersAndDeliveryLocations();
   console.log(`Created ${customerCount} customers, ${deliveryLocationCount} delivery locations`);
 
+  // 商品を作成
+  for (const product of PRODUCTS) {
+    await prisma.product.create({
+      data: {
+        id: generateId(),
+        code: product.code,
+        name: product.name,
+        category: product.category,
+        unit: product.unit,
+        costPrice: product.costPrice,
+        isActive: product.isActive,
+        description: product.description,
+      },
+    });
+  }
+  console.log(`Created ${PRODUCTS.length} products`);
+
   // パスワードハッシュ化
   const hashedPassword = await hashPassword(DEFAULT_PASSWORD);
 
@@ -489,6 +564,7 @@ async function main() {
   console.log(`  Positions: ${POSITIONS.length}`);
   console.log(`  Roles: ${ROLES.length}`);
   console.log(`  Employees: ${users.length}`);
+  console.log(`  Products: ${PRODUCTS.length}`);
   console.log(`  Customers: ${customerCount}`);
   console.log(`  Delivery locations: ${deliveryLocationCount}`);
   console.log(`  Password: ${DEFAULT_PASSWORD}`);
