@@ -13,6 +13,8 @@ export type EmployeeDTO = {
   name: string;
   /** 所属部署ID */
   departmentId: string;
+  /** 所属部署名（Department.nameから取得） */
+  departmentName: string;
   /** ユーザーロール（User.roleから取得、Userが存在しない場合はnull） */
   role: UserRole | null;
   createdAt: Date;

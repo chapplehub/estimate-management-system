@@ -58,7 +58,10 @@ test.describe("従業員一覧（管理者）", () => {
 
     await expect(page).toHaveURL(/role=admin/, { timeout: 10000 });
     // 表示されている権限バッジがすべて「管理者」であること
-    const roleCells = page.locator("table tbody tr td:nth-child(4) span");
+    // ヘッダー名からカラム位置を動的に特定（カラム追加・並び替えに耐性を持たせる）
+    const headers = await page.locator("table thead th").allTextContents();
+    const roleColIndex = headers.indexOf("権限") + 1;
+    const roleCells = page.locator(`table tbody tr td:nth-child(${roleColIndex}) span`);
     const count = await roleCells.count();
     expect(count).toBeGreaterThan(0);
     for (let i = 0; i < count; i++) {

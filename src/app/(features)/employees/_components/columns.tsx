@@ -23,6 +23,10 @@ export const columns: ColumnDef<EmployeeDTO, unknown>[] = [
     header: "名前",
   },
   {
+    accessorKey: "departmentName",
+    header: "部署",
+  },
+  {
     accessorKey: "email",
     header: "メールアドレス",
   },
