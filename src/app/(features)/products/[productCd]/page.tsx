@@ -1,10 +1,14 @@
 import { verifySession } from "@/app/_lib/verifyAuthentication";
 import { Badge } from "@/app/_components/shadcnui/badge";
 import { isAdmin } from "@server/shared/auth";
-import { getProductByCodeQueryFactory } from "@subdomains/product/application/factories/productQueryFactory";
+import {
+  getProductByCodeQueryFactory,
+  getProductReferencesQueryFactory,
+} from "@subdomains/product/application/factories/productQueryFactory";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { CATEGORY_LABELS, UNIT_LABELS } from "../_shared/labels";
+import { DeactivateWithReplacementDialog } from "./DeactivateWithReplacementDialog";
 import { ProductDeleteForm } from "./ProductDeleteForm";
 import { ProductStatusForms } from "./ProductStatusForms";
 
@@ -23,6 +27,18 @@ export default async function ProductDetailPage({
   }
 
   const canEdit = isAdmin(session);
+
+  // 有効な商品の場合、参照元を取得（無効化時の入替ダイアログ用）
+  let referencingProducts: { code: string; name: string; category: string }[] = [];
+  if (canEdit && product.isActive) {
+    const referencesQuery = getProductReferencesQueryFactory();
+    const refs = await referencesQuery.execute({ id: product.id });
+    referencingProducts = refs.map((r) => ({
+      code: r.code,
+      name: r.name,
+      category: r.category,
+    }));
+  }
 
   return (
     <div className="container mx-auto p-8">
@@ -203,11 +219,19 @@ export default async function ProductDetailPage({
       {/* アクションボタン（管理者のみ） */}
       {canEdit && (
         <div className="flex gap-4 items-start">
-          <ProductStatusForms
-            productId={product.id}
-            productCd={product.code}
-            isActive={product.isActive}
-          />
+          {product.isActive && referencingProducts.length > 0 ? (
+            <DeactivateWithReplacementDialog
+              productId={product.id}
+              productCd={product.code}
+              referencingProducts={referencingProducts}
+            />
+          ) : (
+            <ProductStatusForms
+              productId={product.id}
+              productCd={product.code}
+              isActive={product.isActive}
+            />
+          )}
           <ProductDeleteForm productId={product.id} />
         </div>
       )}

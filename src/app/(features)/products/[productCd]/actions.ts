@@ -5,6 +5,7 @@ import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
 import type { ActionResult } from "@shared/types/ActionResult";
 import { activateProductCommandFactory } from "@subdomains/product/application/factories/activateProductCommandFactory";
 import { deactivateProductCommandFactory } from "@subdomains/product/application/factories/deactivateProductCommandFactory";
+import { deactivateProductWithReplacementCommandFactory } from "@subdomains/product/application/factories/deactivateProductWithReplacementCommandFactory";
 import { deleteProductCommandFactory } from "@subdomains/product/application/factories/deleteProductCommandFactory";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -73,6 +74,32 @@ export async function deactivateProduct(
   try {
     const command = deactivateProductCommandFactory();
     await command.execute({ id });
+
+    revalidatePath("/products");
+    revalidatePath(`/products/${productCd}`);
+  } catch (error) {
+    return handleCommandError(error);
+  }
+
+  redirect(`/products/${productCd}?reason=${REDIRECT_REASON.PRODUCT_DEACTIVATED}`);
+}
+
+// ========================================
+// 商品無効化（入れ替え付き）
+// ========================================
+export async function deactivateWithReplacement(
+  productCd: string,
+  _prevState: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  await verifyAdmin();
+
+  const id = formData.get("id") as string;
+  const replacementCode = formData.get("replacementCode") as string;
+
+  try {
+    const command = deactivateProductWithReplacementCommandFactory();
+    await command.execute({ id, replacementCode });
 
     revalidatePath("/products");
     revalidatePath(`/products/${productCd}`);
