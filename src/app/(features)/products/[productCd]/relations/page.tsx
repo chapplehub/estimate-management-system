@@ -38,7 +38,7 @@ export default async function ProductRelationsPage({
         </Link>
       </div>
 
-      <h1 className="text-3xl font-bold mb-4">周辺商品設定</h1>
+      <h1 className="text-3xl font-bold mb-4">商品管理</h1>
       <p className="mb-8 text-gray-600">
         {product.code}: {product.name}
       </p>

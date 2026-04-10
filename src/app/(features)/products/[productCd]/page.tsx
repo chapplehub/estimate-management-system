@@ -49,7 +49,7 @@ export default async function ProductDetailPage({
       </div>
 
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">商品詳細</h1>
+        <h1 className="text-3xl font-bold">商品管理</h1>
         {canEdit && (
           <Link
             href={`/products/${product.code}/edit`}
@@ -62,7 +62,7 @@ export default async function ProductDetailPage({
 
       {/* 基本情報 */}
       <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-8">
-        <h2 className="text-xl font-semibold mb-4 text-gray-500">基本情報</h2>
+        <h2 className="text-xl font-semibold mb-4 text-gray-500">商品詳細</h2>
         <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <dt className="text-sm font-bold text-gray-700">商品コード</dt>

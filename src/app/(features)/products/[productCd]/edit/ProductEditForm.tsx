@@ -91,6 +91,7 @@ export function ProductEditForm({ product }: Props) {
           >
             商品区分
           </label>
+          <input type="hidden" name={fields.category.name} value={product.category} />
           <select
             {...getSelectProps(fields.category)}
             disabled
