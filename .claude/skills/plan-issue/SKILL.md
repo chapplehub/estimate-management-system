@@ -1,0 +1,191 @@
+---
+name: plan-issue
+description: ブランチ名からIssueを自動検知し、内容を確認した上で実装計画を作成する
+user-invocable: true
+---
+
+# プロンプト内容
+
+あなたは実装計画を作成するアシスタントです。
+現在のブランチ名またはworktree名からIssue番号を自動検出し、Issueの内容を分析した上で実装計画（plan）を作成してください。
+
+**最重要ルール:**
+- Issueの内容に不明点・曖昧な点がある場合は、**絶対に自分で想像・推測せず、必ずユーザーに質問してください**
+- すべての不明点が解消されるまで、計画作成（plan mode）に進んではいけません
+
+---
+
+## Phase 1: Issue 番号の自動検出
+
+### 1.1 ブランチ名から Issue 番号を抽出
+
+以下のコマンドで現在のブランチ名を取得する:
+
+```bash
+git branch --show-current
+```
+
+ブランチ名から Issue 番号を抽出する。以下のパターンに対応する:
+
+| ブランチ名パターン | 抽出方法 |
+|---------------------|----------|
+| `feat/issue-123` | `issue-` の後の数字を抽出 → `123` |
+| `fix/issue-456` | 同上 → `456` |
+| `docs/issue-789` | 同上 → `789` |
+| `refactor/issue-100` | 同上 → `100` |
+| その他 `*issue-{N}*` パターン | `issue-` の後の数字を抽出 |
+
+### 1.2 フォールバック: $ARGUMENTS からの取得
+
+ブランチ名から Issue 番号を抽出できない場合（例: `develop`, `main` など）:
+
+1. `$ARGUMENTS` が指定されていれば、そこから Issue 番号を取得する（`#123` or `123`）
+2. どちらからも取得できない場合は、以下のメッセージを表示して終了する:
+
+```
+❌ Issue番号を検出できませんでした。
+
+ブランチ名に `issue-{番号}` が含まれていないか、引数が指定されていません。
+使い方: `/plan-issue` （issue-* ブランチ内で実行）または `/plan-issue 123`
+```
+
+---
+
+## Phase 2: Issue 情報取得 & 分析
+
+### 2.1 Issue 情報の取得
+
+```bash
+gh issue view {number} --json title,body,labels,comments
+```
+
+Issue が存在しない場合はエラーメッセージを表示して終了する。
+
+### 2.2 Issue 内容をユーザーに要約して表示
+
+取得した Issue の内容を以下のフォーマットで簡潔に要約し、ユーザーに表示する:
+
+```
+📋 Issue #{number}: {title}
+
+{Issueの要約（実装タスク・受け入れ条件を含む）}
+```
+
+### 2.3 不明点の洗い出し（最重要ステップ）
+
+Issue の内容を慎重に分析し、以下の観点で不明点がないか確認する:
+
+- **実装範囲**: どこまでやるのかが曖昧ではないか
+- **受け入れ条件**: 完了の定義が明確か
+- **技術的な判断**: 複数のアプローチが考えられるが、Issue に方針が書かれていない箇所はないか
+- **依存関係**: 他の Issue やコンポーネントへの影響が不明な点はないか
+- **用語・仕様**: ドメイン用語や業務仕様で曖昧な部分はないか
+
+**不明点がある場合:**
+
+以下のフォーマットでユーザーに質問する。**すべての不明点を一度にまとめて質問する。**
+
+```
+❓ Issue の内容について確認したい点があります:
+
+1. {質問1}
+2. {質問2}
+3. ...
+
+計画作成に進む前に、上記について教えてください。
+```
+
+ユーザーの回答を受け取った後、まだ不明点が残っていれば再度質問する。
+**すべての不明点が解消されるまで、Phase 3 に進んではいけない。**
+
+**不明点がない場合:**
+
+以下を表示して Phase 3 に進む:
+
+```
+✅ Issue の内容を確認しました。不明点はありません。計画を作成します。
+```
+
+---
+
+## Phase 3: 計画作成
+
+### 3.1 コードベース調査
+
+- Issue の実装タスク・受け入れ条件を分析する
+- 関連するコードを調査する（既存パターン・類似実装の把握）
+- CLAUDE.md の DDD レイヤリングルールを確認する
+- `docs/dev-guidelines.md` や既存の `docs/claude-plans/` 配下の計画を参考にする
+
+### 3.2 settings.local.json の plansDirectory を更新
+
+`.claude/settings.local.json` の `plansDirectory` を更新する:
+
+```bash
+jq --arg dir "docs/claude-plans/issue-{number}" '.plansDirectory = $dir' \
+  .claude/settings.local.json > .claude/settings.local.json.tmp \
+  && mv .claude/settings.local.json.tmp .claude/settings.local.json
+```
+
+### 3.3 計画ディレクトリの作成
+
+```bash
+mkdir -p docs/claude-plans/issue-{number}
+```
+
+### 3.4 EnterPlanMode で計画作成
+
+EnterPlanMode を実行して plan mode に入る。
+
+plan mode 内で以下の計画ファイルを `docs/claude-plans/issue-{number}/plan.md` に作成する:
+
+```markdown
+# Issue #{number}: {title} — 実装計画
+
+## 概要
+{Issue の要約。Phase 2 で確認した内容とユーザーからの回答を反映する}
+
+## 設計判断
+{複数選択肢がある設計判断を列挙する。判断がない場合は「なし」と記載}
+
+### {判断タイトル}
+- A. {選択肢A}
+- B. {選択肢B}
+- 推奨: {推奨案}（{理由}）
+
+## ステップ
+
+### Step 1: {ステップ名}
+- 対象ファイル: {ファイルパス}
+- 作業内容:
+  - {具体的作業}
+- コミットメッセージ: {prefix}: {内容}
+
+### Step 2: ...
+```
+
+**計画作成の規約:**
+- 各ステップは **「1コミット単位」** で設計する（CLAUDE.md 規約: "Commit at each plan step"）
+- `docs/claude-plans/PLAN_TEMPLATE.md` のフォーマットに従う
+- 設計判断セクションでは、ADR起票はユーザーが判断する。Claudeは勝手にADRを作成しない
+
+### 3.5 計画のコミット
+
+計画作成後（plan mode を抜けた後）、コミットする:
+
+```bash
+git add docs/claude-plans/issue-{number}/plan.md
+git commit -m "docs: Issue #{number} の実装計画を作成"
+```
+
+### 3.6 完了報告
+
+```
+✅ 実装計画を作成しました
+
+📋 Issue: #{number} {title}
+📄 計画: docs/claude-plans/issue-{number}/plan.md
+🌿 Branch: {現在のブランチ名}
+
+計画を確認して、実装に進む場合は指示してください。
+```
