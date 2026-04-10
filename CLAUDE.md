@@ -27,6 +27,15 @@ When implementing with a plan (plan mode), follow these rules:
 
 - **Plan file format**: Planファイルは `docs/claude-plans/PLAN_TEMPLATE.md` のフォーマットに従って作成すること。
 - **Commit at each plan step**: Create a commit when each step of the plan is completed. Do not implement everything at once and squash into a single commit.
+- **Record deviations from plan**: 実装中に計画と異なる対応をした場合、作業完了時に `docs/claude-plans/issue-{number}/deviations.md` に記録すること。フォーマットは以下の通り:
+  ```markdown
+  # 計画からの逸脱記録
+
+  ## 逸脱 1: {タイトル}
+  - **計画**: {元の計画内容}
+  - **実際**: {実際の実装内容}
+  - **理由**: {逸脱の理由}
+  ```
 
 ## Critical: DDD Layering Rules
 
