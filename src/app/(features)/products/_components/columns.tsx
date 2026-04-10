@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { type ColumnDef } from "@/app/_components/shared/DataTable";
 import { Badge } from "@/app/_components/shadcnui/badge";
+import { CATEGORY_LABELS } from "../_shared/labels";
 
 export type ProductRow = {
   id: string;
@@ -11,12 +12,6 @@ export type ProductRow = {
   category: string;
   unit: string;
   isActive: boolean;
-};
-
-const CATEGORY_LABELS: Record<string, string> = {
-  INDIVIDUAL: "個別商品",
-  CONSUMABLE: "消耗品",
-  SET: "セット商品",
 };
 
 export const columns: ColumnDef<ProductRow, unknown>[] = [
