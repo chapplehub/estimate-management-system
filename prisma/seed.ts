@@ -763,6 +763,175 @@ const CUSTOMERS = [
   },
 ];
 
+// 商品データ（開発用: 各区分・単位・有効/無効をカバー）
+const PRODUCTS = [
+  // 個別商品（INDIVIDUAL）
+  {
+    code: "PRD001",
+    name: "標準デスク",
+    category: "INDIVIDUAL" as const,
+    unit: "UNIT" as const,
+    costPrice: 15000,
+    isActive: true,
+    description: "W1200×D700×H720 標準サイズのオフィスデスク",
+  },
+  {
+    code: "PRD002",
+    name: "オフィスチェア",
+    category: "INDIVIDUAL" as const,
+    unit: "UNIT" as const,
+    costPrice: 25000,
+    isActive: true,
+    description: "エルゴノミクスチェア メッシュバック",
+  },
+  {
+    code: "PRD003",
+    name: "モニターアーム",
+    category: "INDIVIDUAL" as const,
+    unit: "UNIT" as const,
+    costPrice: 8000,
+    isActive: true,
+    description: "シングルモニター用 VESA対応",
+  },
+  {
+    code: "PRD004",
+    name: "キーボードトレイ",
+    category: "INDIVIDUAL" as const,
+    unit: "UNIT" as const,
+    costPrice: 5000,
+    isActive: true,
+    description: "スライド式 後付けタイプ",
+  },
+  {
+    code: "PRD005",
+    name: "旧型モニター",
+    category: "INDIVIDUAL" as const,
+    unit: "UNIT" as const,
+    costPrice: 20000,
+    isActive: false,
+    description: "販売終了品 24インチ液晶",
+  },
+  {
+    code: "PRD006",
+    name: "旧型プリンター",
+    category: "INDIVIDUAL" as const,
+    unit: "UNIT" as const,
+    costPrice: 35000,
+    isActive: false,
+    description: "販売終了品 A3対応レーザー",
+  },
+  {
+    code: "PRD007",
+    name: "パーティション",
+    category: "INDIVIDUAL" as const,
+    unit: "SHEET" as const,
+    costPrice: 12000,
+    isActive: true,
+    description: "H1800 自立式パーティション",
+  },
+  {
+    code: "PRD008",
+    name: "ケーブルダクト",
+    category: "INDIVIDUAL" as const,
+    unit: "ROLL" as const,
+    costPrice: 3500,
+    isActive: true,
+    description: "床用ケーブルカバー 1m単位",
+  },
+  // 消耗品（CONSUMABLE）
+  {
+    code: "PRD009",
+    name: "コピー用紙A4",
+    category: "CONSUMABLE" as const,
+    unit: "BOX" as const,
+    costPrice: 3000,
+    isActive: true,
+    description: "A4 500枚×5冊入り",
+  },
+  {
+    code: "PRD010",
+    name: "コピー用紙A3",
+    category: "CONSUMABLE" as const,
+    unit: "BOX" as const,
+    costPrice: 4500,
+    isActive: true,
+    description: "A3 500枚×3冊入り",
+  },
+  {
+    code: "PRD011",
+    name: "トナーカートリッジ黒",
+    category: "CONSUMABLE" as const,
+    unit: "PIECE" as const,
+    costPrice: 8000,
+    isActive: true,
+    description: null,
+  },
+  {
+    code: "PRD012",
+    name: "トナーカートリッジカラー",
+    category: "CONSUMABLE" as const,
+    unit: "PIECE" as const,
+    costPrice: 12000,
+    isActive: true,
+    description: "C/M/Y 3色セット",
+  },
+  {
+    code: "PRD013",
+    name: "クリーニングキット",
+    category: "CONSUMABLE" as const,
+    unit: "PIECE" as const,
+    costPrice: 2500,
+    isActive: true,
+    description: "OA機器クリーニング用",
+  },
+  {
+    code: "PRD014",
+    name: "旧型トナー",
+    category: "CONSUMABLE" as const,
+    unit: "PIECE" as const,
+    costPrice: 6000,
+    isActive: false,
+    description: "旧型プリンター用 在庫限り",
+  },
+  // セット商品（SET）
+  {
+    code: "PRD015",
+    name: "デスクセット一式",
+    category: "SET" as const,
+    unit: "SET" as const,
+    costPrice: null,
+    isActive: true,
+    description: "デスク＋チェアのセット",
+  },
+  {
+    code: "PRD016",
+    name: "モニター環境セット",
+    category: "SET" as const,
+    unit: "SET" as const,
+    costPrice: null,
+    isActive: true,
+    description: "モニターアーム＋ケーブルダクトのセット",
+  },
+  {
+    code: "PRD017",
+    name: "印刷消耗品セット",
+    category: "SET" as const,
+    unit: "SET" as const,
+    costPrice: null,
+    isActive: true,
+    description: "トナー＋用紙のまとめ買いセット",
+  },
+  {
+    code: "PRD018",
+    name: "旧型デスクセット",
+    category: "SET" as const,
+    unit: "SET" as const,
+    costPrice: null,
+    isActive: false,
+    description: "販売終了セット商品",
+  },
+];
+
 // ランダムな要素を取得
 function randomChoice<T>(array: T[]): T {
   return array[Math.floor(Math.random() * array.length)];
@@ -998,6 +1167,9 @@ async function main() {
   console.log("");
 
   // 既存データを削除（外部キー制約を考慮した順序）
+  await prisma.setProductComponent.deleteMany();
+  await prisma.productRelation.deleteMany();
+  await prisma.product.deleteMany();
   await prisma.deliveryLocation.deleteMany();
   await prisma.customer.deleteMany();
   await prisma.company.deleteMany();
@@ -1069,6 +1241,25 @@ async function main() {
   console.log(`Created ${ROLES.length} roles`);
   console.log("");
 
+  // 商品を作成
+  console.log("Creating products...");
+  for (const product of PRODUCTS) {
+    await prisma.product.create({
+      data: {
+        id: generateId(),
+        code: product.code,
+        name: product.name,
+        category: product.category,
+        unit: product.unit,
+        costPrice: product.costPrice,
+        isActive: product.isActive,
+        description: product.description,
+      },
+    });
+  }
+  console.log(`Created ${PRODUCTS.length} products`);
+  console.log("");
+
   // 得意先・納品先を作成
   const { customerCount, deliveryLocationCount } = await seedCustomersAndDeliveryLocations();
 
@@ -1133,6 +1324,7 @@ async function main() {
   console.log(`Created ${POSITIONS.length} positions`);
   console.log(`Created ${ROLES.length} roles`);
   console.log(`Created ${employeeRoleData.length} employee role assignments`);
+  console.log(`Created ${PRODUCTS.length} products`);
   console.log(`Created ${customerCount} customers`);
   console.log(`Created ${deliveryLocationCount} delivery locations`);
   console.log(`Default password for all users: ${DEFAULT_PASSWORD}`);
