@@ -17,6 +17,11 @@ const navigationItems = [
     title: "役割管理",
     description: "役割の一覧表示、登録、編集、削除を行います。",
   },
+  {
+    href: "/products",
+    title: "商品管理",
+    description: "商品の一覧表示、登録、編集、削除を行います。",
+  },
 ] as const;
 
 export default async function DashboardPage() {
