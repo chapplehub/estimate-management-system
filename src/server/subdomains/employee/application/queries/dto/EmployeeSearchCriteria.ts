@@ -15,6 +15,9 @@ export type EmployeeSearchCriteria = {
   /** 従業員CDでの完全一致検索 */
   employeeCd?: string;
 
+  /** 部署IDでのフィルタ */
+  departmentId?: string;
+
   /** ロールでのフィルタ（User.roleで検索） */
   role?: UserRole;
 

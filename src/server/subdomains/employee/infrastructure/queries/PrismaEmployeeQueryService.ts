@@ -66,6 +66,10 @@ export class PrismaEmployeeQueryService implements EmployeeQueryService {
       where.employeeCd = criteria.employeeCd;
     }
 
+    if (criteria.departmentId) {
+      where.departmentId = criteria.departmentId;
+    }
+
     // roleでのフィルタはUser.roleを使用
     if (criteria.role !== undefined) {
       where.user = { role: criteria.role };
@@ -113,6 +117,12 @@ export class PrismaEmployeeQueryService implements EmployeeQueryService {
       departmentId: true,
       createdAt: true,
       updatedAt: true,
+      // Department.nameを取得
+      department: {
+        select: {
+          name: true,
+        },
+      },
       // User.roleを取得
       user: {
         select: {
@@ -131,6 +141,7 @@ export class PrismaEmployeeQueryService implements EmployeeQueryService {
     email: string;
     name: string;
     departmentId: string;
+    department: { name: string };
     createdAt: Date;
     updatedAt: Date;
     user: { role: string | null } | null;
@@ -141,6 +152,7 @@ export class PrismaEmployeeQueryService implements EmployeeQueryService {
       email: employee.email,
       name: employee.name,
       departmentId: employee.departmentId,
+      departmentName: employee.department.name,
       // User.roleを使用（"admin" | "user" | null）
       role: (employee.user?.role as UserRole) ?? null,
       createdAt: employee.createdAt,
