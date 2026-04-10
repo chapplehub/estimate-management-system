@@ -57,6 +57,26 @@ const FLASH_MESSAGES: Record<RedirectReason, FlashMessage> = {
     type: FLASH_MESSAGE_TYPE.SUCCESS,
     message: "役割を削除しました。",
   },
+  [REDIRECT_REASON.PRODUCT_CREATED]: {
+    type: FLASH_MESSAGE_TYPE.SUCCESS,
+    message: "商品を登録しました。",
+  },
+  [REDIRECT_REASON.PRODUCT_UPDATED]: {
+    type: FLASH_MESSAGE_TYPE.SUCCESS,
+    message: "商品情報を更新しました。",
+  },
+  [REDIRECT_REASON.PRODUCT_DELETED]: {
+    type: FLASH_MESSAGE_TYPE.SUCCESS,
+    message: "商品を削除しました。",
+  },
+  [REDIRECT_REASON.PRODUCT_ACTIVATED]: {
+    type: FLASH_MESSAGE_TYPE.SUCCESS,
+    message: "商品を有効化しました。",
+  },
+  [REDIRECT_REASON.PRODUCT_DEACTIVATED]: {
+    type: FLASH_MESSAGE_TYPE.SUCCESS,
+    message: "商品を無効化しました。",
+  },
 };
 
 function RedirectReasonToastInner() {

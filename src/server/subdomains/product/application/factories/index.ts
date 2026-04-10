@@ -6,4 +6,9 @@ export { deactivateProductCommandFactory } from "./deactivateProductCommandFacto
 export { deactivateProductWithReplacementCommandFactory } from "./deactivateProductWithReplacementCommandFactory";
 export { setProductRelationsCommandFactory } from "./setProductRelationsCommandFactory";
 export { setProductComponentsCommandFactory } from "./setProductComponentsCommandFactory";
-export { getProductByIdQueryFactory, searchProductsQueryFactory } from "./productQueryFactory";
+export {
+  getProductByIdQueryFactory,
+  getProductByCodeQueryFactory,
+  getProductReferencesQueryFactory,
+  searchProductsQueryFactory,
+} from "./productQueryFactory";
