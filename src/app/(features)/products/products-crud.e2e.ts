@@ -31,13 +31,16 @@ test.describe("商品CRUD（管理者）", () => {
       await page.goto(`/products/${TEST_INDIVIDUAL_CODE}`);
       await expect(page.getByRole("heading", { name: "商品詳細" })).toBeVisible();
 
-      await expect(page.getByText(TEST_INDIVIDUAL_CODE)).toBeVisible();
-      await expect(page.getByText("E2Eテスト個別商品")).toBeVisible();
-      await expect(page.getByText("個別商品")).toBeVisible();
-      await expect(page.getByText("台")).toBeVisible();
-      await expect(page.getByText("有効")).toBeVisible();
-      await expect(page.getByText("10,000円")).toBeVisible();
-      await expect(page.getByText("E2Eテスト用の個別商品です")).toBeVisible();
+      // ラベル→値のペアで検証（dt + dd 構造を活用）
+      const field = (label: string) => page.locator("dt", { hasText: label }).locator("+ dd");
+
+      await expect(field("商品コード")).toContainText(TEST_INDIVIDUAL_CODE);
+      await expect(field("商品名")).toContainText("E2Eテスト個別商品");
+      await expect(field("商品区分")).toContainText("個別商品");
+      await expect(field("単位")).toContainText("台");
+      await expect(field("状態")).toContainText("有効");
+      await expect(field("原価")).toContainText("10,000円");
+      await expect(field("商品説明")).toContainText("E2Eテスト用の個別商品です");
 
       // 個別商品なので周辺商品セクションが表示される
       await expect(page.getByRole("heading", { name: "周辺商品" })).toBeVisible();
@@ -122,7 +125,8 @@ test.describe("商品CRUD（管理者）", () => {
         timeout: 10000,
       });
       await expect(page.getByText("商品を無効化しました。")).toBeVisible({ timeout: 10000 });
-      await expect(page.getByText("無効")).toBeVisible();
+      const statusField = page.locator("dt", { hasText: "状態" }).locator("+ dd");
+      await expect(statusField).toContainText("無効");
     });
 
     test("管理者が商品を有効化できる", async ({ page }) => {
