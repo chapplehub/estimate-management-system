@@ -51,7 +51,8 @@
       "SlashCommand(/learn*)",
       "WebSearch",
       "mcp__context7",
-      "mcp__serena"
+      "mcp__serena",
+      "mcp__playwright"
     ],
     "deny": [
       "Bash(git rebase*)",
