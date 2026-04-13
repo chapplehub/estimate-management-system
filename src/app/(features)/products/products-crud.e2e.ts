@@ -76,11 +76,20 @@ test.describe("商品CRUD（管理者）", () => {
       await page.goto(`/products/${TEST_INDIVIDUAL_CODE}/relations`);
       await expect(page.getByRole("heading", { name: "周辺商品設定" })).toBeVisible();
 
-      // PRD002を周辺商品として追加
-      await page.getByPlaceholder("例: PRD001").fill("PRD002");
-      await page.getByRole("button", { name: "追加" }).click();
+      // モーダルを開いてPRD002を周辺商品として追加
+      await page.getByRole("button", { name: "商品を追加" }).click();
+      await expect(page.getByRole("heading", { name: "商品を選択" })).toBeVisible();
 
-      // テーブルにPRD002が追加されたことを確認
+      await page.locator("#modal-search-code").fill("PRD002");
+      await page.getByRole("button", { name: "検索" }).click();
+
+      const row = page.locator("tr", { hasText: "PRD002" });
+      await expect(row).toBeVisible();
+      await row.locator("input[type='checkbox']").click();
+      await page.getByRole("button", { name: "1件を追加" }).click();
+
+      // モーダルが閉じてテーブルにPRD002が追加されたことを確認
+      await expect(page.getByRole("heading", { name: "商品を選択" })).not.toBeVisible();
       await expect(page.getByText("PRD002")).toBeVisible();
 
       await page.getByRole("button", { name: "保存" }).click();

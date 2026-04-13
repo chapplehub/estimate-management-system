@@ -7,6 +7,7 @@ import {
   getPaginationRowModel,
   useReactTable,
   type ColumnDef,
+  type RowSelectionState,
 } from "@tanstack/react-table";
 
 type DataTableProps<TData> = {
@@ -14,6 +15,10 @@ type DataTableProps<TData> = {
   data: TData[];
   emptyMessage: string;
   pageSize?: number;
+  enableRowSelection?: boolean;
+  rowSelection?: RowSelectionState;
+  onRowSelectionChange?: (updated: RowSelectionState) => void;
+  getRowId?: (row: TData) => string;
 };
 
 export function DataTable<TData>({
@@ -21,19 +26,61 @@ export function DataTable<TData>({
   data,
   emptyMessage,
   pageSize = LIST_PAGE_SIZE,
+  enableRowSelection,
+  rowSelection,
+  onRowSelectionChange,
+  getRowId,
 }: DataTableProps<TData>) {
   "use no memo";
+
+  const selectColumn: ColumnDef<TData, unknown> = {
+    id: "select",
+    size: 40,
+    header: ({ table: t }) => (
+      <input
+        type="checkbox"
+        checked={t.getIsAllPageRowsSelected()}
+        onChange={t.getToggleAllPageRowsSelectedHandler()}
+      />
+    ),
+    cell: ({ row }) => (
+      <input
+        type="checkbox"
+        checked={row.getIsSelected()}
+        onChange={row.getToggleSelectedHandler()}
+      />
+    ),
+  };
+
+  const allColumns = enableRowSelection ? [selectColumn, ...columns] : columns;
+
   // eslint-disable-next-line react-hooks/incompatible-library -- "use no memo" で対処済み
   const table = useReactTable({
     data,
-    columns,
+    columns: allColumns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    enableRowSelection: enableRowSelection ?? false,
+    ...(getRowId ? { getRowId } : {}),
     initialState: {
       pagination: {
         pageSize,
       },
     },
+    ...(enableRowSelection
+      ? {
+          state: {
+            rowSelection: rowSelection ?? {},
+          },
+          onRowSelectionChange: (updaterOrValue) => {
+            const newValue =
+              typeof updaterOrValue === "function"
+                ? updaterOrValue(rowSelection ?? {})
+                : updaterOrValue;
+            onRowSelectionChange?.(newValue);
+          },
+        }
+      : {}),
   });
 
   const { pageIndex } = table.getState().pagination;
@@ -79,7 +126,10 @@ export function DataTable<TData>({
             <tbody>
               {table.getRowModel().rows.length === 0 ? (
                 <tr>
-                  <td colSpan={columns.length} className="px-4 py-4 text-center text-gray-500">
+                  <td
+                    colSpan={columns.length + (enableRowSelection ? 1 : 0)}
+                    className="px-4 py-4 text-center text-gray-500"
+                  >
                     {emptyMessage}
                   </td>
                 </tr>

@@ -3,8 +3,13 @@
 import { startTransition, useActionState, useState } from "react";
 import { CATEGORY_LABELS } from "../../_shared/labels";
 import { type SetRelationsState, setProductRelations } from "./actions";
+import { SelectionModal } from "@/app/_components/shared/SelectionModal";
+import { searchProductsForSelection } from "../../_shared/actions";
+import { selectionColumns, type ProductRow } from "../../_shared/selectionColumns";
+import type { SearchFieldDef } from "@/app/_components/shared/SearchForm";
 
 type Relation = {
+  id: string;
   code: string;
   name: string;
   category: string;
@@ -13,6 +18,7 @@ type Relation = {
 
 type Props = {
   productCode: string;
+  productId: string;
   initialRelations: {
     relatedProductId: string;
     relatedProductCode: string;
@@ -22,12 +28,28 @@ type Props = {
   }[];
 };
 
-export function ProductRelationsForm({ productCode, initialRelations }: Props) {
+const productSearchFields: SearchFieldDef[] = [
+  { type: "text", key: "code", label: "商品コード", placeholder: "部分一致" },
+  { type: "text", key: "name", label: "商品名", placeholder: "部分一致" },
+  {
+    type: "select",
+    key: "category",
+    label: "商品区分",
+    options: [
+      { value: "INDIVIDUAL", label: "個別商品" },
+      { value: "CONSUMABLE", label: "消耗品" },
+      { value: "SET", label: "セット商品" },
+    ],
+  },
+];
+
+export function ProductRelationsForm({ productCode, productId, initialRelations }: Props) {
   const action = setProductRelations.bind(null, productCode);
   const [state, formAction, isPending] = useActionState<SetRelationsState, FormData>(action, null);
 
   const [relations, setRelations] = useState<Relation[]>(
     initialRelations.map((r) => ({
+      id: r.relatedProductId,
       code: r.relatedProductCode,
       name: r.relatedProductName,
       category: r.relatedProductCategory,
@@ -35,38 +57,20 @@ export function ProductRelationsForm({ productCode, initialRelations }: Props) {
     }))
   );
 
-  const [newCode, setNewCode] = useState("");
-  const [newQuantity, setNewQuantity] = useState("1");
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [clientError, setClientError] = useState<string | null>(null);
 
-  const handleAdd = () => {
-    setClientError(null);
-    const code = newCode.trim().toUpperCase();
+  const excludeIds = [productId, ...relations.map((r) => r.id)];
 
-    if (!code) {
-      setClientError("商品コードを入力してください");
-      return;
-    }
-
-    if (code === productCode) {
-      setClientError("自分自身を周辺商品に設定できません");
-      return;
-    }
-
-    if (relations.some((r) => r.code === code)) {
-      setClientError("この商品は既に追加されています");
-      return;
-    }
-
-    const qty = Number.parseInt(newQuantity, 10);
-    if (Number.isNaN(qty) || qty < 1) {
-      setClientError("数量は1以上の整数を入力してください");
-      return;
-    }
-
-    setRelations([...relations, { code, name: "", category: "", quantity: qty }]);
-    setNewCode("");
-    setNewQuantity("1");
+  const handleConfirmSelection = (selectedProducts: ProductRow[]) => {
+    const newRelations: Relation[] = selectedProducts.map((p) => ({
+      id: p.id,
+      code: p.code,
+      name: p.name,
+      category: p.category,
+      quantity: 1,
+    }));
+    setRelations((prev) => [...prev, ...newRelations]);
   };
 
   const handleRemove = (code: string) => {
@@ -154,38 +158,13 @@ export function ProductRelationsForm({ productCode, initialRelations }: Props) {
       )}
 
       <div className="flex gap-2 items-end mb-6 border-t pt-4">
-        <div>
-          <label className="block text-gray-700 text-sm font-bold mb-1">商品コード</label>
-          <input
-            type="text"
-            value={newCode}
-            onChange={(e) => {
-              setNewCode(e.target.value);
-              setClientError(null);
-            }}
-            disabled={isPending}
-            placeholder="例: PRD001"
-            className="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
-          />
-        </div>
-        <div>
-          <label className="block text-gray-700 text-sm font-bold mb-1">数量</label>
-          <input
-            type="number"
-            min="1"
-            value={newQuantity}
-            onChange={(e) => setNewQuantity(e.target.value)}
-            disabled={isPending}
-            className="shadow appearance-none border rounded w-20 py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
-          />
-        </div>
         <button
           type="button"
-          onClick={handleAdd}
+          onClick={() => setIsModalOpen(true)}
           disabled={isPending}
           className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:bg-gray-400"
         >
-          追加
+          商品を追加
         </button>
       </div>
 
@@ -199,6 +178,19 @@ export function ProductRelationsForm({ productCode, initialRelations }: Props) {
           {isPending ? "保存中..." : "保存"}
         </button>
       </div>
+
+      <SelectionModal<ProductRow>
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="商品を選択"
+        searchFields={productSearchFields}
+        searchAction={searchProductsForSelection}
+        columns={selectionColumns}
+        onConfirm={handleConfirmSelection}
+        getRowId={(row) => row.id}
+        emptyMessage="該当する商品が見つかりません"
+        excludeIds={excludeIds}
+      />
     </div>
   );
 }

@@ -43,7 +43,11 @@ export default async function ProductRelationsPage({
         {product.code}: {product.name}
       </p>
 
-      <ProductRelationsForm productCode={product.code} initialRelations={product.relatedProducts} />
+      <ProductRelationsForm
+        productCode={product.code}
+        productId={product.id}
+        initialRelations={product.relatedProducts}
+      />
 
       <div className="mt-4">
         <Link
