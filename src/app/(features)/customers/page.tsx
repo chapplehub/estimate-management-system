@@ -16,17 +16,47 @@ function parseIsActive(value: string | undefined): boolean | undefined {
 const prefectureOptions = PREFECTURES.map((p) => ({ value: p, label: p }));
 
 const searchFields: SearchFieldDef[] = [
-  { type: "text", key: "name", label: "名前", placeholder: "部分一致" },
-  { type: "text", key: "code", label: "コード", placeholder: "完全一致" },
-  { type: "text", key: "postalCode", label: "郵便番号", placeholder: "完全一致" },
+  {
+    type: "text",
+    key: "name",
+    label: "名前",
+    placeholder: "部分一致",
+    className: "flex-[2] min-w-[200px]",
+  },
+  {
+    type: "text",
+    key: "code",
+    label: "コード",
+    placeholder: "完全一致",
+    className: "flex-none w-[100px]",
+  },
+  {
+    type: "text",
+    key: "postalCode",
+    label: "郵便番号",
+    placeholder: "完全一致",
+    className: "flex-1 min-w-[100px]",
+  },
   {
     type: "select",
     key: "prefecture",
     label: "都道府県",
     options: prefectureOptions,
   },
-  { type: "text", key: "address", label: "住所", placeholder: "部分一致" },
-  { type: "text", key: "phoneNumber", label: "電話番号", placeholder: "完全一致" },
+  {
+    type: "text",
+    key: "address",
+    label: "住所",
+    placeholder: "部分一致",
+    className: "flex-[999] min-w-[100px]",
+  },
+  {
+    type: "text",
+    key: "phoneNumber",
+    label: "電話番号",
+    placeholder: "完全一致",
+    rowBreakBefore: true,
+  },
   { type: "text", key: "faxNumber", label: "FAX番号", placeholder: "完全一致" },
   { type: "text", key: "contactPerson", label: "担当者", placeholder: "部分一致" },
   {
