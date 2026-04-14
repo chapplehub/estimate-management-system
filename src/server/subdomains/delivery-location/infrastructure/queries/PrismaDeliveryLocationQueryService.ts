@@ -108,6 +108,16 @@ export class PrismaDeliveryLocationQueryService implements DeliveryLocationQuery
           isActive: true,
         },
       },
+      customer: {
+        select: {
+          company: {
+            select: {
+              name: true,
+              code: true,
+            },
+          },
+        },
+      },
     } as const;
   }
 
@@ -128,6 +138,12 @@ export class PrismaDeliveryLocationQueryService implements DeliveryLocationQuery
       contactPerson: string | null;
       isActive: boolean;
     };
+    customer: {
+      company: {
+        name: string;
+        code: string;
+      };
+    };
   }): DeliveryLocationDTO {
     return {
       id: dl.id,
@@ -141,6 +157,8 @@ export class PrismaDeliveryLocationQueryService implements DeliveryLocationQuery
       contactPerson: dl.company.contactPerson,
       isActive: dl.company.isActive,
       customerId: dl.customerId,
+      customerName: dl.customer.company.name,
+      customerCode: dl.customer.company.code,
       deliveryNotes: dl.deliveryNotes,
       createdAt: dl.createdAt,
       updatedAt: dl.updatedAt,

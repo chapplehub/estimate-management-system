@@ -13,6 +13,8 @@ export type DeliveryLocationDTO = {
   contactPerson: string | null;
   isActive: boolean;
   customerId: string;
+  customerName: string;
+  customerCode: string;
   deliveryNotes: string | null;
   createdAt: Date;
   updatedAt: Date;
