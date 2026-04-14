@@ -5,6 +5,7 @@ import { getCustomerByCodeQueryFactory } from "@subdomains/customer/application/
 import { searchDeliveryLocationsQueryFactory } from "@subdomains/delivery-location/application/factories";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { CustomerDeleteForm } from "./CustomerDeleteForm";
 import { CustomerUpdateForm } from "./CustomerUpdateForm";
 
 export default async function CustomerDetailPage({
@@ -16,6 +17,7 @@ export default async function CustomerDetailPage({
   const session = await verifySession();
 
   const canUpdate = isAdmin(session);
+  const canDelete = isAdmin(session);
 
   const query = getCustomerByCodeQueryFactory();
   const customer = await query.execute({ code });
@@ -92,6 +94,14 @@ export default async function CustomerDetailPage({
 
       {/* 編集フォーム（管理者のみ） */}
       {canUpdate && <CustomerUpdateForm customer={customer} />}
+
+      {/* 削除フォーム（管理者のみ） */}
+      {canDelete && (
+        <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-8">
+          <h2 className="text-xl font-semibold mb-4 text-gray-500">得意先削除</h2>
+          <CustomerDeleteForm customerId={customer.id} />
+        </div>
+      )}
 
       {/* ブロック2: 得意先固有情報 */}
       <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-8">

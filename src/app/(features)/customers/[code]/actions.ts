@@ -3,7 +3,9 @@
 import { verifyAdmin } from "@/app/_lib/verifyAuthentication";
 import { parseWithZod } from "@conform-to/zod/v4";
 import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
+import type { ActionResult } from "@shared/types/ActionResult";
 import {
+  deleteCustomerCommandFactory,
   getCustomerByCodeQueryFactory,
   updateCustomerCommandFactory,
 } from "@subdomains/customer/application/factories";
@@ -71,4 +73,27 @@ export async function updateCustomer(code: string, prevState: unknown, formData:
   }
 
   redirect(`/customers/${code}?reason=${REDIRECT_REASON.CUSTOMER_UPDATED}`);
+}
+
+// ========================================
+// 得意先削除
+// ========================================
+export async function deleteCustomer(
+  _prevState: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  await verifyAdmin();
+
+  const id = formData.get("id") as string;
+
+  try {
+    const command = deleteCustomerCommandFactory();
+    await command.execute({ id });
+
+    revalidatePath("/customers");
+  } catch (error) {
+    return handleCommandError(error);
+  }
+
+  redirect(`/customers?reason=${REDIRECT_REASON.CUSTOMER_DELETED}`);
 }
