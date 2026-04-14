@@ -5,6 +5,8 @@ import { parseWithZod } from "@conform-to/zod/v4";
 import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
 import type { ActionResult } from "@shared/types/ActionResult";
 import {
+  activateCustomerCommandFactory,
+  deactivateCustomerCommandFactory,
   deleteCustomerCommandFactory,
   getCustomerByCodeQueryFactory,
   updateCustomerCommandFactory,
@@ -96,4 +98,54 @@ export async function deleteCustomer(
   }
 
   redirect(`/customers?reason=${REDIRECT_REASON.CUSTOMER_DELETED}`);
+}
+
+// ========================================
+// 得意先有効化
+// ========================================
+export async function activateCustomer(
+  _prevState: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  await verifyAdmin();
+
+  const id = formData.get("id") as string;
+  const code = formData.get("code") as string;
+
+  try {
+    const command = activateCustomerCommandFactory();
+    await command.execute({ id });
+
+    revalidatePath("/customers");
+    revalidatePath(`/customers/${code}`);
+  } catch (error) {
+    return handleCommandError(error);
+  }
+
+  redirect(`/customers/${code}?reason=${REDIRECT_REASON.CUSTOMER_ACTIVATED}`);
+}
+
+// ========================================
+// 得意先無効化
+// ========================================
+export async function deactivateCustomer(
+  _prevState: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  await verifyAdmin();
+
+  const id = formData.get("id") as string;
+  const code = formData.get("code") as string;
+
+  try {
+    const command = deactivateCustomerCommandFactory();
+    await command.execute({ id });
+
+    revalidatePath("/customers");
+    revalidatePath(`/customers/${code}`);
+  } catch (error) {
+    return handleCommandError(error);
+  }
+
+  redirect(`/customers/${code}?reason=${REDIRECT_REASON.CUSTOMER_DEACTIVATED}`);
 }

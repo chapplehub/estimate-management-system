@@ -6,6 +6,7 @@ import { searchDeliveryLocationsQueryFactory } from "@subdomains/delivery-locati
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { CustomerDeleteForm } from "./CustomerDeleteForm";
+import { CustomerStatusForms } from "./CustomerStatusForms";
 import { CustomerUpdateForm } from "./CustomerUpdateForm";
 
 export default async function CustomerDetailPage({
@@ -100,6 +101,18 @@ export default async function CustomerDetailPage({
         <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-8">
           <h2 className="text-xl font-semibold mb-4 text-gray-500">得意先削除</h2>
           <CustomerDeleteForm customerId={customer.id} />
+        </div>
+      )}
+
+      {/* 有効/無効切り替え（管理者のみ） */}
+      {canUpdate && (
+        <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-8">
+          <h2 className="text-xl font-semibold mb-4 text-gray-500">有効/無効切り替え</h2>
+          <CustomerStatusForms
+            customerId={customer.id}
+            customerCode={customer.code}
+            isActive={customer.isActive}
+          />
         </div>
       )}
 
