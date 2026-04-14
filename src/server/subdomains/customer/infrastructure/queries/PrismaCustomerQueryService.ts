@@ -58,6 +58,30 @@ export class PrismaCustomerQueryService implements CustomerQueryService {
       companyWhere.code = criteria.code;
     }
 
+    if (criteria.postalCode) {
+      companyWhere.postalCode = criteria.postalCode.replace(/-/g, "");
+    }
+
+    if (criteria.prefecture) {
+      companyWhere.prefecture = criteria.prefecture;
+    }
+
+    if (criteria.address) {
+      companyWhere.address = { contains: criteria.address, mode: "insensitive" };
+    }
+
+    if (criteria.phoneNumber) {
+      companyWhere.phoneNumber = criteria.phoneNumber;
+    }
+
+    if (criteria.faxNumber) {
+      companyWhere.faxNumber = criteria.faxNumber;
+    }
+
+    if (criteria.contactPerson) {
+      companyWhere.contactPerson = { contains: criteria.contactPerson, mode: "insensitive" };
+    }
+
     if (criteria.isActive !== undefined) {
       companyWhere.isActive = criteria.isActive;
     }
