@@ -127,6 +127,7 @@ const CUSTOMERS = [
     faxNumber: "0312345679",
     contactPerson: "山田 太郎",
     marginRate: 10,
+    isActive: true,
     deliveryLocations: [
       {
         code: "D001",
@@ -158,6 +159,7 @@ const CUSTOMERS = [
     faxNumber: "0333456780",
     contactPerson: "鈴木 一郎",
     marginRate: 15,
+    isActive: true,
     deliveryLocations: [
       {
         code: "D003",
@@ -180,6 +182,7 @@ const CUSTOMERS = [
     faxNumber: "0661234568",
     contactPerson: "田中 健太",
     marginRate: 12,
+    isActive: true,
     deliveryLocations: [
       {
         code: "D004",
@@ -198,6 +201,42 @@ const CUSTOMERS = [
         address: "堺市堺区北丸保園1-1",
         phoneNumber: "0722001234",
         deliveryNotes: "平日8:30-16:30受付",
+      },
+    ],
+  },
+  {
+    code: "C004",
+    name: "名古屋精密機器株式会社",
+    postalCode: "4600008",
+    prefecture: "愛知県",
+    address: "名古屋市中区栄3-5-1",
+    phoneNumber: "0521234567",
+    faxNumber: "0521234568",
+    contactPerson: "佐藤 花子",
+    marginRate: 8,
+    isActive: false,
+    deliveryLocations: [],
+  },
+  {
+    code: "C005",
+    name: "福岡商事株式会社",
+    postalCode: "8100001",
+    prefecture: "福岡県",
+    address: "福岡市中央区天神1-1-1",
+    phoneNumber: "0921234567",
+    faxNumber: null,
+    contactPerson: null,
+    marginRate: null,
+    isActive: true,
+    deliveryLocations: [
+      {
+        code: "D006",
+        name: "福岡商事 天神本社",
+        postalCode: "8100001",
+        prefecture: "福岡県",
+        address: "福岡市中央区天神1-1-1 3F",
+        phoneNumber: "0921234568",
+        deliveryNotes: "ビル正面入口よりお入りください",
       },
     ],
   },
@@ -388,7 +427,7 @@ async function seedCustomersAndDeliveryLocations() {
           phoneNumber: customerData.phoneNumber,
           faxNumber: customerData.faxNumber,
           contactPerson: customerData.contactPerson,
-          isActive: true,
+          isActive: customerData.isActive ?? true,
         },
       });
 
