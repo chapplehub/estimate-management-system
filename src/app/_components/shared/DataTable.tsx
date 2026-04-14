@@ -106,9 +106,9 @@ export function DataTable<TData>({
 
   return (
     <>
-      {/* テーブルコンテナ - 縦スクロール可能 */}
+      {/* テーブルコンテナ - 縦横スクロール可能 */}
       <div className="flex-1 overflow-hidden px-8">
-        <div className="h-full overflow-y-auto">
+        <div className="h-full overflow-auto">
           <table className="min-w-full table-auto">
             <thead className="bg-gray-200 sticky top-0 z-10">
               {table.getHeaderGroups().map((headerGroup) => (
