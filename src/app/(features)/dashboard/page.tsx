@@ -22,6 +22,11 @@ const navigationItems = [
     title: "商品管理",
     description: "商品の一覧表示、登録、編集、削除を行います。",
   },
+  {
+    href: "/customers",
+    title: "得意先管理",
+    description: "得意先の一覧表示を行います。",
+  },
 ] as const;
 
 export default async function DashboardPage() {
