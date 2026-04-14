@@ -10,6 +10,12 @@ async function waitForListReady(page: import("@playwright/test").Page) {
   await expect(page.locator("table tbody tr").first()).toBeVisible();
 }
 
+/** ヘッダー名からカラム位置（1始まり）を取得する */
+async function getColumnIndex(page: import("@playwright/test").Page, headerName: string) {
+  const headers = await page.locator("table thead th").allTextContents();
+  return headers.indexOf(headerName) + 1;
+}
+
 test.describe("得意先一覧（管理者）", () => {
   test("一覧が表示される", async ({ page }) => {
     await page.goto("/customers");
@@ -78,7 +84,8 @@ test.describe("得意先一覧（管理者）", () => {
     await expect(page).toHaveURL(/prefecture=/, { timeout: 10000 });
 
     // 表示されている都道府県がすべて「東京都」であること
-    const prefectureCells = page.locator("table tbody tr td:nth-child(4)");
+    const prefectureCol = await getColumnIndex(page, "都道府県");
+    const prefectureCells = page.locator(`table tbody tr td:nth-child(${prefectureCol})`);
     const count = await prefectureCells.count();
     expect(count).toBe(2);
     for (let i = 0; i < count; i++) {
@@ -152,7 +159,8 @@ test.describe("得意先一覧（管理者）", () => {
     await expect(page).toHaveURL(/isActive=true/, { timeout: 10000 });
 
     // 表示されている状態バッジがすべて「有効」であること
-    const statusBadges = page.locator("table tbody tr td:nth-child(10) span");
+    const statusCol = await getColumnIndex(page, "状態");
+    const statusBadges = page.locator(`table tbody tr td:nth-child(${statusCol}) span`);
     const count = await statusBadges.count();
     expect(count).toBe(4);
     for (let i = 0; i < count; i++) {
@@ -174,7 +182,8 @@ test.describe("得意先一覧（管理者）", () => {
     await expect(page.getByRole("link", { name: "C004" })).toBeVisible();
 
     // 状態バッジが「無効」であること
-    const statusBadge = page.locator("table tbody tr td:nth-child(10) span");
+    const statusCol = await getColumnIndex(page, "状態");
+    const statusBadge = page.locator(`table tbody tr td:nth-child(${statusCol}) span`);
     await expect(statusBadge).toHaveText("無効");
   });
 
