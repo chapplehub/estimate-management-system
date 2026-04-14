@@ -39,6 +39,7 @@
 | # | タイトル | ステータス | 起票日 |
 |---|---------|-----------|--------|
 | [0011](0011-domain-service-design-pattern-by-responsibility.md) | Domain Serviceの設計パターンを責務の性質で使い分ける | 採用 | 2026-04-08 |
+| [0018](0018-separate-activate-deactivate-commands.md) | エンティティの有効/無効切り替えを専用コマンドで実装する | 採用 | 2026-04-14 |
 
 ## アプリケーション（クエリ・DTO）
 
