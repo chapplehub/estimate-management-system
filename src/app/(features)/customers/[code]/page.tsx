@@ -1,9 +1,11 @@
 import { verifySession } from "@/app/_lib/verifyAuthentication";
 import { Badge } from "@/app/_components/shadcnui/badge";
+import { isAdmin } from "@server/shared/auth";
 import { getCustomerByCodeQueryFactory } from "@subdomains/customer/application/factories";
 import { searchDeliveryLocationsQueryFactory } from "@subdomains/delivery-location/application/factories";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { CustomerUpdateForm } from "./CustomerUpdateForm";
 
 export default async function CustomerDetailPage({
   params,
@@ -11,7 +13,9 @@ export default async function CustomerDetailPage({
   params: Promise<{ code: string }>;
 }) {
   const { code } = await params;
-  await verifySession();
+  const session = await verifySession();
+
+  const canUpdate = isAdmin(session);
 
   const query = getCustomerByCodeQueryFactory();
   const customer = await query.execute({ code });
@@ -85,6 +89,9 @@ export default async function CustomerDetailPage({
           </div>
         </dl>
       </div>
+
+      {/* 編集フォーム（管理者のみ） */}
+      {canUpdate && <CustomerUpdateForm customer={customer} />}
 
       {/* ブロック2: 得意先固有情報 */}
       <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-8">
