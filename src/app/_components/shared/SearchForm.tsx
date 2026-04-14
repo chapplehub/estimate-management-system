@@ -1,13 +1,15 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 
 type TextFieldDef = {
   type: "text";
   key: string;
   label: string;
   placeholder?: string;
+  className?: string;
+  rowBreakBefore?: boolean;
 };
 
 type SelectOption = {
@@ -20,6 +22,8 @@ type SelectFieldDef = {
   key: string;
   label: string;
   options: SelectOption[];
+  className?: string;
+  rowBreakBefore?: boolean;
 };
 
 export type SearchFieldDef = TextFieldDef | SelectFieldDef;
@@ -73,49 +77,57 @@ export function SearchForm({ fields, defaultValues }: Props) {
       <form onSubmit={handleSearch}>
         <div className="flex flex-wrap items-end gap-4">
           {fields.map((field) => {
+            const rowBreak = field.rowBreakBefore ? <div className="basis-full h-0" /> : null;
+
             if (field.type === "text") {
               return (
-                <div key={field.key} className="flex-1 min-w-[150px]">
+                <Fragment key={field.key}>
+                  {rowBreak}
+                  <div className={field.className ?? "flex-1 min-w-[150px]"}>
+                    <label
+                      htmlFor={`search-${field.key}`}
+                      className="block text-gray-700 text-sm font-bold mb-2"
+                    >
+                      {field.label}
+                    </label>
+                    <input
+                      id={`search-${field.key}`}
+                      type="text"
+                      value={values[field.key] ?? ""}
+                      onChange={(e) => handleChange(field.key, e.target.value)}
+                      placeholder={field.placeholder}
+                      className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                    />
+                  </div>
+                </Fragment>
+              );
+            }
+
+            return (
+              <Fragment key={field.key}>
+                {rowBreak}
+                <div className={field.className ?? "w-[140px]"}>
                   <label
                     htmlFor={`search-${field.key}`}
                     className="block text-gray-700 text-sm font-bold mb-2"
                   >
                     {field.label}
                   </label>
-                  <input
+                  <select
                     id={`search-${field.key}`}
-                    type="text"
                     value={values[field.key] ?? ""}
                     onChange={(e) => handleChange(field.key, e.target.value)}
-                    placeholder={field.placeholder}
                     className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                  />
+                  >
+                    <option value="">すべて</option>
+                    {field.options.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              );
-            }
-
-            return (
-              <div key={field.key} className="w-[140px]">
-                <label
-                  htmlFor={`search-${field.key}`}
-                  className="block text-gray-700 text-sm font-bold mb-2"
-                >
-                  {field.label}
-                </label>
-                <select
-                  id={`search-${field.key}`}
-                  value={values[field.key] ?? ""}
-                  onChange={(e) => handleChange(field.key, e.target.value)}
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                >
-                  <option value="">すべて</option>
-                  {field.options.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              </Fragment>
             );
           })}
           <div className="flex gap-2">
