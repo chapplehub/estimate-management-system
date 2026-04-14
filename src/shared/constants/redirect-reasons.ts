@@ -19,6 +19,11 @@ export const REDIRECT_REASON = {
   PRODUCT_DELETED: "product_deleted",
   PRODUCT_ACTIVATED: "product_activated",
   PRODUCT_DEACTIVATED: "product_deactivated",
+  CUSTOMER_CREATED: "customer_created",
+  CUSTOMER_UPDATED: "customer_updated",
+  CUSTOMER_DELETED: "customer_deleted",
+  CUSTOMER_ACTIVATED: "customer_activated",
+  CUSTOMER_DEACTIVATED: "customer_deactivated",
 } as const;
 
 export type RedirectReason = (typeof REDIRECT_REASON)[keyof typeof REDIRECT_REASON];
