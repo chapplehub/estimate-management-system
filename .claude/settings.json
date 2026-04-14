@@ -42,6 +42,7 @@
       "Bash(ls *)",
       "Bash(find *)",
       "Bash(grep *)",
+      "Bash(mkdir *)",
       "Write(/src/**)",
       "Edit(/src/**)",
       "Write(/docs/**)",
