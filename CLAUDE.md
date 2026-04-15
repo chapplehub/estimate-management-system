@@ -33,16 +33,9 @@ PRを作成する際は必ず `/create-pr` スキルを使用すること。`gh 
 
 計画ファイルを使って実装する場合（plan mode）のルール:
 
+- **Plan file naming**: Planファイル名は計画内容を表す命名にすること（例: `implement-customer-list.md`, `add-column-constraints.md`）。Claudeが自動生成するランダム名（例: `glowing-prancing-ullman.md`）は使用しない。フォーマット: `docs/claude-plans/issue-{number}/{kebab-case-description}.md`
 - **Plan file format**: Planファイルは `docs/claude-plans/PLAN_TEMPLATE.md` のフォーマットに従って作成すること。
-- **Record deviations from plan**: 実装中に計画と異なる対応をした場合、作業完了時に `docs/claude-plans/issue-{number}/deviations.md` に記録すること。フォーマットは以下の通り:
-  ```markdown
-  # 計画からの逸脱記録
-
-  ## 逸脱 1: {タイトル}
-  - **計画**: {元の計画内容}
-  - **実際**: {実際の実装内容}
-  - **理由**: {逸脱の理由}
-  ```
+- **Record deviations from plan**: 実装中に計画と異なる対応をした場合、作業完了時に `docs/claude-plans/issue-{number}/deviations.md` に{元の計画内容}、{実際の実装内容}、{逸脱の理由}を記録すること。
 
 ## Critical: DDD Layering Rules
 
@@ -56,15 +49,10 @@ PRを作成する際は必ず `/create-pr` スキルを使用すること。`gh 
 ## E2E Tests
 
 ```bash
-pnpm e2e          # E2Eテスト実行
+pnpm e2e          # テストデータ再シード + E2Eテスト実行
 pnpm e2e:setup    # テストDB初期化
 pnpm e2e:seed     # テストデータ再シード
 ```
 
 - CRUDテストは `test.describe.serial` で直列化（create→update→delete）
 - テスト内でPrismaクライアントを直接使わない（技術制約: ADR-0012参照）
-
-## Reference
-
-- DDD implementation patterns: `/ddd-architecture` skill or `docs/dev-guidelines.md`
-- System design: `docs/system-design-doc.md`
