@@ -5,6 +5,8 @@ import { parseWithZod } from "@conform-to/zod/v4";
 import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
 import type { ActionResult } from "@shared/types/ActionResult";
 import {
+  activateDeliveryLocationCommandFactory,
+  deactivateDeliveryLocationCommandFactory,
   deleteDeliveryLocationCommandFactory,
   getDeliveryLocationByCodeQueryFactory,
   updateDeliveryLocationCommandFactory,
@@ -96,4 +98,54 @@ export async function deleteDeliveryLocation(
   }
 
   redirect(`/delivery-locations?reason=${REDIRECT_REASON.DELIVERY_LOCATION_DELETED}`);
+}
+
+// ========================================
+// 納品先有効化
+// ========================================
+export async function activateDeliveryLocation(
+  _prevState: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  await verifySession();
+
+  const id = formData.get("id") as string;
+  const code = formData.get("code") as string;
+
+  try {
+    const command = activateDeliveryLocationCommandFactory();
+    await command.execute({ id });
+
+    revalidatePath("/delivery-locations");
+    revalidatePath(`/delivery-locations/${code}`);
+  } catch (error) {
+    return handleCommandError(error);
+  }
+
+  redirect(`/delivery-locations/${code}?reason=${REDIRECT_REASON.DELIVERY_LOCATION_ACTIVATED}`);
+}
+
+// ========================================
+// 納品先無効化
+// ========================================
+export async function deactivateDeliveryLocation(
+  _prevState: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  await verifySession();
+
+  const id = formData.get("id") as string;
+  const code = formData.get("code") as string;
+
+  try {
+    const command = deactivateDeliveryLocationCommandFactory();
+    await command.execute({ id });
+
+    revalidatePath("/delivery-locations");
+    revalidatePath(`/delivery-locations/${code}`);
+  } catch (error) {
+    return handleCommandError(error);
+  }
+
+  redirect(`/delivery-locations/${code}?reason=${REDIRECT_REASON.DELIVERY_LOCATION_DEACTIVATED}`);
 }

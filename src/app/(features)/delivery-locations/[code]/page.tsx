@@ -4,6 +4,7 @@ import { getDeliveryLocationByCodeQueryFactory } from "@subdomains/delivery-loca
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { DeliveryLocationDeleteForm } from "./DeliveryLocationDeleteForm";
+import { DeliveryLocationStatusForms } from "./DeliveryLocationStatusForms";
 import { DeliveryLocationUpdateForm } from "./DeliveryLocationUpdateForm";
 
 export default async function DeliveryLocationDetailPage({
@@ -43,7 +44,14 @@ export default async function DeliveryLocationDetailPage({
         <DeliveryLocationUpdateForm deliveryLocation={dl} />
       </div>
 
-      <DeliveryLocationDeleteForm deliveryLocationId={dl.id} />
+      <div className="flex gap-4 items-start">
+        <DeliveryLocationStatusForms
+          deliveryLocationId={dl.id}
+          deliveryLocationCode={dl.code}
+          isActive={dl.isActive}
+        />
+        <DeliveryLocationDeleteForm deliveryLocationId={dl.id} />
+      </div>
     </div>
   );
 }
