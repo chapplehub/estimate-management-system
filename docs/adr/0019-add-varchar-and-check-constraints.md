@@ -1,4 +1,4 @@
-# ADR-0018: Stringカラムに@db.VarChar(N)、数値カラムにCHECK制約を追加する
+# ADR-0019: Stringカラムに@db.VarChar(N)、数値カラムにCHECK制約を追加する
 
 | 項目 | 値 |
 |---|---|
