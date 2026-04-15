@@ -44,7 +44,7 @@ export default async function CustomerDetailPage({
       </div>
 
       <div className="flex items-center gap-3 mb-8">
-        <h1 className="text-3xl font-bold">得意先管理</h1>
+        <h1 className="text-3xl font-bold">{canEdit ? "得意先編集" : "得意先参照"}</h1>
         <Badge variant={customer.isActive ? "default" : "secondary"}>
           {customer.isActive ? "有効" : "無効"}
         </Badge>

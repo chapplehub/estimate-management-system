@@ -121,7 +121,7 @@ export default async function CustomerPage({
   return (
     <div className="flex flex-col h-full">
       <div className="flex justify-between items-center mb-2 px-4 pt-4">
-        <h1 className="text-3xl font-bold">得意先管理</h1>
+        <h1 className="text-3xl font-bold">得意先一覧</h1>
         {isAdmin(session) && (
           <Link
             href="/customers/new"
