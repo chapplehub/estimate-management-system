@@ -6,6 +6,7 @@ import { searchDeliveryLocationsQueryFactory } from "@subdomains/delivery-locati
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { CustomerDeleteForm } from "./CustomerDeleteForm";
+import { CustomerDetailView } from "./CustomerDetailView";
 import { CustomerStatusForms } from "./CustomerStatusForms";
 import { CustomerUpdateForm } from "./CustomerUpdateForm";
 
@@ -31,10 +32,6 @@ export default async function CustomerDetailPage({
     { orderBy: { field: "code", direction: "asc" } }
   );
 
-  const formattedPostalCode = customer.postalCode
-    ? `${customer.postalCode.slice(0, 3)}-${customer.postalCode.slice(3)}`
-    : "-";
-
   return (
     <div className="container mx-auto p-8">
       <div className="mb-8">
@@ -50,54 +47,15 @@ export default async function CustomerDetailPage({
         </Badge>
       </div>
 
-      {/* 管理者: 編集フォーム / 一般: 読み取り専用 */}
-      {canEdit ? (
-        <CustomerUpdateForm customer={customer} />
-      ) : (
-        <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-8">
-          <h2 className="text-xl font-semibold mb-4 text-gray-500">取引先情報</h2>
-          <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <dt className="text-sm font-bold text-gray-700">コード</dt>
-              <dd className="mt-1 text-gray-900">{customer.code}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-bold text-gray-700">名前</dt>
-              <dd className="mt-1 text-gray-900">{customer.name}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-bold text-gray-700">郵便番号</dt>
-              <dd className="mt-1 text-gray-900">{formattedPostalCode}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-bold text-gray-700">都道府県</dt>
-              <dd className="mt-1 text-gray-900">{customer.prefecture ?? "-"}</dd>
-            </div>
-            <div className="md:col-span-2">
-              <dt className="text-sm font-bold text-gray-700">住所</dt>
-              <dd className="mt-1 text-gray-900">{customer.address ?? "-"}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-bold text-gray-700">電話番号</dt>
-              <dd className="mt-1 text-gray-900">{customer.phoneNumber ?? "-"}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-bold text-gray-700">FAX番号</dt>
-              <dd className="mt-1 text-gray-900">{customer.faxNumber ?? "-"}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-bold text-gray-700">担当者</dt>
-              <dd className="mt-1 text-gray-900">{customer.contactPerson ?? "-"}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-bold text-gray-700">マージン率</dt>
-              <dd className="mt-1 text-gray-900">
-                {customer.marginRate !== null ? `${customer.marginRate.toFixed(2)}%` : "未設定"}
-              </dd>
-            </div>
-          </dl>
-        </div>
-      )}
+      {/* 取引先情報: 管理者は編集フォーム / 一般は読み取り専用 */}
+      <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-8">
+        <h2 className="text-xl font-semibold mb-4 text-gray-500">取引先情報</h2>
+        {canEdit ? (
+          <CustomerUpdateForm customer={customer} />
+        ) : (
+          <CustomerDetailView customer={customer} />
+        )}
+      </div>
 
       {/* 配下の納品先 */}
       <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-8">

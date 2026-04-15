@@ -41,9 +41,7 @@ export function CustomerUpdateForm({ customer }: Props) {
   });
 
   return (
-    <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-8">
-      <h2 className="text-xl font-semibold mb-4 text-gray-500">得意先変更</h2>
-
+    <>
       {form.errors && (
         <div
           className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4"
@@ -250,6 +248,6 @@ export function CustomerUpdateForm({ customer }: Props) {
           </button>
         </div>
       </form>
-    </div>
+    </>
   );
 }
