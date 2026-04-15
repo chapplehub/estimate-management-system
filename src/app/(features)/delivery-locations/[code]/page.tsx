@@ -3,6 +3,7 @@ import { Badge } from "@/app/_components/shadcnui/badge";
 import { getDeliveryLocationByCodeQueryFactory } from "@subdomains/delivery-location/application/factories";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { DeliveryLocationDeleteForm } from "./DeliveryLocationDeleteForm";
 import { DeliveryLocationUpdateForm } from "./DeliveryLocationUpdateForm";
 
 export default async function DeliveryLocationDetailPage({
@@ -41,6 +42,8 @@ export default async function DeliveryLocationDetailPage({
         <h2 className="text-xl font-semibold mb-4 text-gray-500">納品先情報</h2>
         <DeliveryLocationUpdateForm deliveryLocation={dl} />
       </div>
+
+      <DeliveryLocationDeleteForm deliveryLocationId={dl.id} />
     </div>
   );
 }

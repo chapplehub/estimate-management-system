@@ -3,7 +3,9 @@
 import { verifySession } from "@/app/_lib/verifyAuthentication";
 import { parseWithZod } from "@conform-to/zod/v4";
 import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
+import type { ActionResult } from "@shared/types/ActionResult";
 import {
+  deleteDeliveryLocationCommandFactory,
   getDeliveryLocationByCodeQueryFactory,
   updateDeliveryLocationCommandFactory,
 } from "@subdomains/delivery-location/application/factories";
@@ -71,4 +73,27 @@ export async function updateDeliveryLocation(code: string, prevState: unknown, f
   }
 
   redirect(`/delivery-locations/${code}?reason=${REDIRECT_REASON.DELIVERY_LOCATION_UPDATED}`);
+}
+
+// ========================================
+// 納品先削除
+// ========================================
+export async function deleteDeliveryLocation(
+  _prevState: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  await verifySession();
+
+  const id = formData.get("id") as string;
+
+  try {
+    const command = deleteDeliveryLocationCommandFactory();
+    await command.execute({ id });
+
+    revalidatePath("/delivery-locations");
+  } catch (error) {
+    return handleCommandError(error);
+  }
+
+  redirect(`/delivery-locations?reason=${REDIRECT_REASON.DELIVERY_LOCATION_DELETED}`);
 }
