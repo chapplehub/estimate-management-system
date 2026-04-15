@@ -150,7 +150,7 @@ test.describe("納品先一覧（管理者）", () => {
     await page.getByRole("link", { name: "D001" }).click();
 
     await expect(page).toHaveURL(/\/delivery-locations\/D001/, { timeout: 10000 });
-    await expect(page.getByRole("heading", { name: "納品先管理" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "納品先編集" })).toBeVisible();
   });
 
   test("得意先リンクのhrefが正しい", async ({ page }) => {
