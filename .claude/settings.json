@@ -117,6 +117,15 @@
     ],
     "PreToolUse": [
       {
+        "matcher": "EnterPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/pre-enter-plan-mode-reminder.sh"
+          }
+        ]
+      },
+      {
         "matcher": "AskUserQuestion",
         "hooks": [
           {
@@ -190,6 +199,15 @@
           {
             "type": "command",
             "command": "bash .claude/hooks/post-worktree-setup.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/post-exit-plan-mode-reminder.sh"
           }
         ]
       }

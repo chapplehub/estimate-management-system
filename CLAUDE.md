@@ -22,20 +22,13 @@ pnpm db:migrate / db:generate / db:studio
 - **Record design decisions in commit body**: コミット対象に設計判断（実装方式の選択、レイヤー配置、データ構造の決定など）が含まれる場合、その判断理由をコミットボディに記載する。
   - 例: 「バリデーションをドメイン層ではなくアプリケーション層に配置。理由: 外部API依存のチェックを含むため」
   - 例: 「Mapではなく配列で管理。理由: 要素数が常に少なく、順序保証が必要なため」
+- **Record deviations from plan**: 実装中に計画と異なる対応をした場合、作業完了時に `docs/claude-plans/issue-{number}/deviations.md` に{元の計画内容}、{実際の実装内容}、{逸脱の理由}を記録すること。
 - Commit types: `.claude/references/commit-types.md` を参照
 
 ## Issue, PR Creation
 
 Issueを作成する際は必ず `/create-issue` スキルを使用すること。`gh issue create` を直接実行しない。
 PRを作成する際は必ず `/create-pr` スキルを使用すること。`gh pr create` を直接実行しない。
-
-## Plan Mode Workflow
-
-計画ファイルを使って実装する場合（plan mode）のルール:
-
-- **Plan file naming**: Planファイル名は計画内容を表す命名にすること（例: `implement-customer-list.md`, `add-column-constraints.md`）。Claudeが自動生成するランダム名（例: `glowing-prancing-ullman.md`）は使用しない。フォーマット: `docs/claude-plans/issue-{number}/{kebab-case-description}.md`
-- **Plan file format**: Planファイルは `docs/claude-plans/PLAN_TEMPLATE.md` のフォーマットに従って作成すること。
-- **Record deviations from plan**: 実装中に計画と異なる対応をした場合、作業完了時に `docs/claude-plans/issue-{number}/deviations.md` に{元の計画内容}、{実際の実装内容}、{逸脱の理由}を記録すること。
 
 ## Critical: DDD Layering Rules
 
