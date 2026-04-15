@@ -10,6 +10,12 @@ async function waitForListReady(page: import("@playwright/test").Page) {
   await expect(page.locator("table tbody tr").first()).toBeVisible();
 }
 
+/** ヘッダー名からカラム位置（1始まり）を取得する */
+async function getColumnIndex(page: import("@playwright/test").Page, headerName: string) {
+  const headers = await page.locator("table thead th").allTextContents();
+  return headers.indexOf(headerName) + 1;
+}
+
 test.describe("役割一覧（管理者）", () => {
   test("一覧が表示され、管理者には「新規登録」ボタンが見える", async ({ page }) => {
     await page.goto("/roles");
@@ -33,7 +39,8 @@ test.describe("役割一覧（管理者）", () => {
 
     await expect(page).toHaveURL(/name=/, { timeout: 10000 });
     // 表示されている役割名列がすべて「営業」を含むこと
-    const nameCells = page.locator("table tbody tr td:nth-child(2)");
+    const nameCol = await getColumnIndex(page, "役割名");
+    const nameCells = page.locator(`table tbody tr td:nth-child(${nameCol})`);
     const count = await nameCells.count();
     expect(count).toBeGreaterThan(0);
     for (let i = 0; i < count; i++) {
@@ -64,7 +71,8 @@ test.describe("役割一覧（管理者）", () => {
 
     await expect(page).toHaveURL(/positionId=/, { timeout: 10000 });
     // 表示されている役職列がすべて「課長」であること
-    const positionCells = page.locator("table tbody tr td:nth-child(3)");
+    const positionCol = await getColumnIndex(page, "役職");
+    const positionCells = page.locator(`table tbody tr td:nth-child(${positionCol})`);
     const count = await positionCells.count();
     expect(count).toBeGreaterThan(0);
     for (let i = 0; i < count; i++) {
