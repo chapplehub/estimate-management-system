@@ -5,6 +5,7 @@ import { verifySession } from "@/app/_lib/verifyAuthentication";
 import { searchCustomersQueryFactory } from "@subdomains/customer/application/factories";
 import { searchDeliveryLocationsQueryFactory } from "@subdomains/delivery-location/application/factories";
 import type { DeliveryLocationSearchCriteria } from "@subdomains/delivery-location/application/queries/dto/DeliveryLocationSearchCriteria";
+import Link from "next/link";
 import { columns } from "./_components/columns";
 
 function parseIsActive(value: string | undefined): boolean | undefined {
@@ -91,18 +92,20 @@ export default async function DeliveryLocationPage({
   return (
     <div className="flex flex-col h-full">
       <div className="flex justify-between items-center mb-2 px-4 pt-4">
-        <h1 className="text-3xl font-bold">納品先管理</h1>
+        <h1 className="text-3xl font-bold">納品先一覧</h1>
+        <Link
+          href="/delivery-locations/new"
+          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+        >
+          新規登録
+        </Link>
       </div>
 
       <div className="px-4">
         <SearchForm fields={searchFields} defaultValues={defaultSearchValues} />
       </div>
 
-      <div className="flex-1 flex flex-col min-h-0 bg-white shadow-md rounded mx-4 mb-4 text-gray-500">
-        <div className="px-8 pt-6 pb-2">
-          <h2 className="text-xl font-semibold">納品先一覧</h2>
-        </div>
-
+      <div className="flex-1 flex flex-col min-h-0 bg-white shadow-md rounded mx-4 mb-4 pt-4 text-gray-500">
         <DataTable
           columns={columns}
           data={deliveryLocations}
