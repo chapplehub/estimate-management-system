@@ -6,7 +6,7 @@ import { expect, test } from "@playwright/test";
  * DataTable の行が表示された時点で、ページ全体がインタラクティブになっていると判断する。
  */
 async function waitForListReady(page: import("@playwright/test").Page) {
-  await expect(page.getByRole("heading", { name: "納品先管理" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "納品先一覧" })).toBeVisible();
   await expect(page.locator("table tbody tr").first()).toBeVisible();
 }
 
@@ -21,15 +21,14 @@ test.describe("納品先一覧（管理者）", () => {
     await page.goto("/delivery-locations");
     await waitForListReady(page);
 
-    await expect(page.getByRole("heading", { name: "納品先管理" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "納品先一覧" })).toBeVisible();
 
     // DataTableに行が表示されていること
     const rows = page.locator("table tbody tr");
     await expect(rows.first()).toBeVisible();
 
-    // 納品先管理画面には「新規登録」ボタンは存在しない
-    await expect(page.getByRole("link", { name: "新規登録" })).not.toBeVisible();
+    // 「新規登録」ボタンが表示されていること
+    await expect(page.getByRole("link", { name: "新規登録" })).toBeVisible();
   });
 
   test("名前で検索（部分一致）できる", async ({ page }) => {
@@ -171,7 +170,7 @@ test.describe("納品先一覧（一般ユーザー）", () => {
   test("一般ユーザーでも納品先一覧を閲覧できる", async ({ page }) => {
     await page.goto("/delivery-locations");
 
-    await expect(page.getByRole("heading", { name: "納品先管理" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "納品先一覧" })).toBeVisible();
     const rows = page.locator("table tbody tr");
     await expect(rows.first()).toBeVisible();
   });
