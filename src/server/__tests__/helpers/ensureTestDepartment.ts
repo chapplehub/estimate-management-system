@@ -10,11 +10,11 @@ import { generateId } from "@server/shared/generateId";
 export async function ensureTestDepartment(): Promise<string> {
   try {
     const dept = await prisma.department.upsert({
-      where: { departmentCd: "TEST_DEPT" },
+      where: { departmentCd: "DEPT999" },
       update: { name: "テスト部署" },
       create: {
         id: generateId(),
-        departmentCd: "TEST_DEPT",
+        departmentCd: "DEPT999",
         name: "テスト部署",
         abbreviation: "テスト",
         isActive: true,
@@ -23,7 +23,7 @@ export async function ensureTestDepartment(): Promise<string> {
     return dept.id;
   } catch {
     const dept = await prisma.department.findUniqueOrThrow({
-      where: { departmentCd: "TEST_DEPT" },
+      where: { departmentCd: "DEPT999" },
     });
     return dept.id;
   }

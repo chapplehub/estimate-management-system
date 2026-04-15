@@ -20,8 +20,8 @@ datasource db {
 
 model Position {
   id         String @id @db.Uuid // ドメイン層でUUIDv7生成
-  positionCd String @unique @map("position_cd") // POS001 形式
-  name       String @unique // 役職名（課長・部長・本部長・社長）
+  positionCd String @unique @map("position_cd") @db.VarChar(6) // POS001 形式
+  name       String @unique @db.VarChar(50) // 役職名（課長・部長・本部長・社長）
 
   // 上位役職（自己参照）：社長は NULL
   superiorPositionId String?    @map("superior_position_id") @db.Uuid
@@ -40,8 +40,8 @@ model Position {
 
 model Role {
   id     String @id @db.Uuid // ドメイン層でUUIDv7生成
-  roleCd String @unique @map("role_cd") // ROLE001 形式
-  name   String // 役割名（大阪市南課長・大阪市部長など）
+  roleCd String @unique @map("role_cd") @db.VarChar(7) // ROLE001 形式
+  name   String @db.VarChar(100) // 役割名（大阪市南課長・大阪市部長など）
 
   // 上位役割（自己参照）
   superiorRoleId String? @map("superior_role_id") @db.Uuid
@@ -85,9 +85,9 @@ model EmployeeRole {
 
 model Employee {
   id         String @id @db.Uuid // ドメイン層でUUIDv7生成
-  employeeCd String @unique @map("employee_cd") // EMP000001 形式
-  email      String @unique
-  name       String
+  employeeCd String @unique @map("employee_cd") @db.VarChar(9) // EMP000001 形式
+  email      String @unique @db.VarChar(254)
+  name       String @db.VarChar(100)
   // role は User.role に移動（better-auth Admin Plugin用）
 
   // 所属部署
@@ -119,9 +119,9 @@ model Employee {
 
 model Department {
   id           String  @id @db.Uuid // ドメイン層でUUIDv7生成
-  departmentCd String  @unique @map("department_cd") // DEPT001 形式
-  name         String
-  abbreviation String  // 略称
+  departmentCd String  @unique @map("department_cd") @db.VarChar(7) // DEPT001 形式
+  name         String  @db.VarChar(100)
+  abbreviation String  @db.VarChar(20) // 略称
   isActive     Boolean @default(true) @map("is_active")
 
   // 階層構造（自己参照）
@@ -229,19 +229,19 @@ enum CompanyType {
 
 model Company {
   id   String      @id @db.Uuid // ドメイン層でUUIDv7生成
-  code String      @unique // 手入力（例: C001, D001）
-  name String
+  code String      @unique @db.VarChar(20) // 手入力（例: C001, D001）
+  name String      @db.VarChar(100)
   type CompanyType
 
   // 住所情報
-  postalCode String? @map("postal_code") // 郵便番号
-  prefecture String? // 都道府県
-  address    String? // 住所（市区町村以降）
+  postalCode String? @map("postal_code") @db.VarChar(7) // 郵便番号
+  prefecture String? @db.VarChar(4) // 都道府県
+  address    String? @db.VarChar(200) // 住所（市区町村以降）
 
   // 連絡先
-  phoneNumber   String? @map("phone_number")
-  faxNumber     String? @map("fax_number")
-  contactPerson String? @map("contact_person") // 担当者名
+  phoneNumber   String? @map("phone_number") @db.VarChar(11)
+  faxNumber     String? @map("fax_number") @db.VarChar(11)
+  contactPerson String? @map("contact_person") @db.VarChar(100) // 担当者名
 
   // 有効フラグ
   isActive Boolean @default(true) @map("is_active")
@@ -288,7 +288,7 @@ model DeliveryLocation {
   customer   Customer @relation(fields: [customerId], references: [id])
 
   // 納品先固有の属性
-  deliveryNotes String? @map("delivery_notes") @db.Text // 配送時の注意事項
+  deliveryNotes String? @map("delivery_notes") @db.VarChar(500) // 配送時の注意事項
 
   // タイムスタンプ
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
@@ -321,11 +321,11 @@ enum ProductUnit {
 
 model Product {
   id          String          @id @db.Uuid // ドメイン層でUUIDv7生成
-  code        String          @unique      // 商品コード (英数字, 最大50桁)
-  name        String          @unique      // 商品名
+  code        String          @unique @db.VarChar(50) // 商品コード (英数字, 最大50桁)
+  name        String          @unique @db.VarChar(100) // 商品名
   category    ProductCategory              // 商品区分
-  description String?         @db.Text     // 商品説明
-  note        String?         @db.Text     // 備考
+  description String?         @db.VarChar(1000) // 商品説明
+  note        String?         @db.VarChar(1000) // 備考
   unit        ProductUnit                  // 単位
   costPrice   Decimal?        @map("cost_price") @db.Decimal(12, 2) // 原価
   isActive    Boolean         @default(true) @map("is_active") // 有効フラグ

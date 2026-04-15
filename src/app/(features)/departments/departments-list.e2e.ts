@@ -10,6 +10,12 @@ async function waitForListReady(page: import("@playwright/test").Page) {
   await expect(page.locator("table tbody tr").first()).toBeVisible();
 }
 
+/** ヘッダー名からカラム位置（1始まり）を取得する */
+async function getColumnIndex(page: import("@playwright/test").Page, headerName: string) {
+  const headers = await page.locator("table thead th").allTextContents();
+  return headers.indexOf(headerName) + 1;
+}
+
 test.describe("部署一覧（管理者）", () => {
   test("一覧が表示され、管理者には「新規登録」ボタンが見える", async ({ page }) => {
     await page.goto("/departments");
@@ -69,7 +75,8 @@ test.describe("部署一覧（管理者）", () => {
 
     await expect(page).toHaveURL(/isActive=true/, { timeout: 10000 });
     // 表示されている状態バッジがすべて「有効」であること
-    const statusCells = page.locator("table tbody tr td:nth-child(5) span");
+    const statusCol = await getColumnIndex(page, "状態");
+    const statusCells = page.locator(`table tbody tr td:nth-child(${statusCol}) span`);
     const count = await statusCells.count();
     expect(count).toBeGreaterThan(0);
     for (let i = 0; i < count; i++) {
