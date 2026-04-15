@@ -133,58 +133,41 @@ jq --arg dir "docs/claude-plans/issue-{number}" '.plansDirectory = $dir' \
 mkdir -p docs/claude-plans/issue-{number}
 ```
 
-### 3.4 EnterPlanMode で計画作成
+### 3.4 計画ファイル名の決定
+
+Issue タイトルから計画ファイル名を決定する。CLAUDE.md の Plan file naming ルールに従うこと:
+
+- フォーマット: `docs/claude-plans/issue-{number}/{kebab-case-description}.md`
+- Issue タイトルの内容を英語の kebab-case で要約する（例: `implement-customer-list.md`, `add-column-constraints.md`）
+- `plan.md` のような汎用名は使わない
+
+### 3.5 EnterPlanMode で計画作成
 
 EnterPlanMode を実行して plan mode に入る。
 
-plan mode 内で以下の計画ファイルを `docs/claude-plans/issue-{number}/plan.md` に作成する:
-
-```markdown
-# Issue #{number}: {title} — 実装計画
-
-## 概要
-{Issue の要約。Phase 2 で確認した内容とユーザーからの回答を反映する}
-
-## 設計判断
-{複数選択肢がある設計判断を列挙する。判断がない場合は「なし」と記載}
-
-### {判断タイトル}
-- A. {選択肢A}
-- B. {選択肢B}
-- 推奨: {推奨案}（{理由}）
-
-## ステップ
-
-### Step 1: {ステップ名}
-- 対象ファイル: {ファイルパス}
-- 作業内容:
-  - {具体的作業}
-- コミットメッセージ: {prefix}: {内容}
-
-### Step 2: ...
-```
+plan mode 内で計画ファイルを作成する。
 
 **計画作成の規約:**
-- 各ステップは **「1コミット単位」** で設計する（CLAUDE.md 規約: "Commit at each plan step"）
-- `docs/claude-plans/PLAN_TEMPLATE.md` のフォーマットに従う
+- `docs/claude-plans/PLAN_TEMPLATE.md` のフォーマットに従うこと（概要・設計判断・ステップの各セクションを含む）
+- 各ステップは **「1コミット単位」** で設計する（CLAUDE.md 規約: "Commit at each meaningful change"）
 - 設計判断セクションでは、ADR起票はユーザーが判断する。Claudeは勝手にADRを作成しない
 
-### 3.5 計画のコミット
+### 3.6 計画のコミット
 
 計画作成後（plan mode を抜けた後）、コミットする:
 
 ```bash
-git add docs/claude-plans/issue-{number}/plan.md
+git add docs/claude-plans/issue-{number}/{plan-file-name}.md
 git commit -m "docs: Issue #{number} の実装計画を作成"
 ```
 
-### 3.6 完了報告
+### 3.7 完了報告
 
 ```
 ✅ 実装計画を作成しました
 
 📋 Issue: #{number} {title}
-📄 計画: docs/claude-plans/issue-{number}/plan.md
+📄 計画: docs/claude-plans/issue-{number}/{plan-file-name}.md
 🌿 Branch: {現在のブランチ名}
 
 計画を確認して、実装に進む場合は指示してください。

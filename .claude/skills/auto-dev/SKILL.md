@@ -124,35 +124,26 @@ mkdir -p docs/claude-plans/issue-{number}
 - 関連するコードを調査する（既存パターン・類似実装の把握）
 - CLAUDE.md の DDD レイヤリングルールを確認する
 
-### 2.2 実装計画の作成 & 保存
+### 2.2 計画ファイル名の決定
 
-- 計画ファイルを `docs/claude-plans/issue-{number}/plan.md` に保存する
-- 各ステップは **「1コミット単位」** で設計する（CLAUDE.md 規約: "Commit at each plan step"）
+Issue タイトルから計画ファイル名を決定する。CLAUDE.md の Plan file naming ルールに従うこと:
+
+- フォーマット: `docs/claude-plans/issue-{number}/{kebab-case-description}.md`
+- Issue タイトルの内容を英語の kebab-case で要約する（例: `implement-customer-list.md`, `add-column-constraints.md`）
+- `plan.md` のような汎用名は使わない
+
+### 2.3 実装計画の作成 & 保存
+
+- 計画ファイルを `docs/claude-plans/issue-{number}/{plan-file-name}.md` に保存する
+- `docs/claude-plans/PLAN_TEMPLATE.md` のフォーマットに従うこと（概要・設計判断・ステップの各セクションを含む）
+- 各ステップは **「1コミット単位」** で設計する（CLAUDE.md 規約: "Commit at each meaningful change"）
 - 計画をユーザーに表示する（確認は求めない — 自動承認）
 
 計画ファイルを作成したら、実装開始前にコミットする:
 
 ```bash
-git add docs/claude-plans/issue-{number}/plan.md
+git add docs/claude-plans/issue-{number}/{plan-file-name}.md
 git commit -m "docs: Issue #{number} の実装計画を作成"
-```
-
-計画ファイルのフォーマット:
-
-```markdown
-# Issue #{number}: {title} — 実装計画
-
-## 概要
-{Issue の要約}
-
-## ステップ
-
-### Step 1: {ステップタイトル}
-- 対象ファイル: {ファイルパス}
-- 作業内容: {具体的な作業}
-- コミットメッセージ: {prefix}: {内容}
-
-### Step 2: ...
 ```
 
 ---
