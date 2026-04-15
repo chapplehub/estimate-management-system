@@ -1,6 +1,6 @@
 "use server";
 
-import { verifyAdmin } from "@/app/_lib/verifyAuthentication";
+import { verifySession } from "@/app/_lib/verifyAuthentication";
 import { parseWithZod } from "@conform-to/zod/v4";
 import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
 import { createCustomerCommandFactory } from "@subdomains/customer/application/factories";
@@ -10,7 +10,7 @@ import { handleCommandError } from "../../_shared/error-handler";
 import { createCustomerSchema } from "./schema";
 
 export async function createCustomer(prevState: unknown, formData: FormData) {
-  await verifyAdmin();
+  await verifySession();
 
   const submission = parseWithZod(formData, {
     schema: createCustomerSchema,

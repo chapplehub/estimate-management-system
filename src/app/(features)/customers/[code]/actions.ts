@@ -1,6 +1,6 @@
 "use server";
 
-import { verifyAdmin } from "@/app/_lib/verifyAuthentication";
+import { verifySession } from "@/app/_lib/verifyAuthentication";
 import { parseWithZod } from "@conform-to/zod/v4";
 import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
 import type { ActionResult } from "@shared/types/ActionResult";
@@ -20,7 +20,7 @@ import { updateCustomerSchema } from "./schema";
 // 得意先更新
 // ========================================
 export async function updateCustomer(code: string, prevState: unknown, formData: FormData) {
-  await verifyAdmin();
+  await verifySession();
 
   const submission = parseWithZod(formData, {
     schema: updateCustomerSchema,
@@ -84,7 +84,7 @@ export async function deleteCustomer(
   _prevState: ActionResult,
   formData: FormData
 ): Promise<ActionResult> {
-  await verifyAdmin();
+  await verifySession();
 
   const id = formData.get("id") as string;
 
@@ -107,7 +107,7 @@ export async function activateCustomer(
   _prevState: ActionResult,
   formData: FormData
 ): Promise<ActionResult> {
-  await verifyAdmin();
+  await verifySession();
 
   const id = formData.get("id") as string;
   const code = formData.get("code") as string;
@@ -132,7 +132,7 @@ export async function deactivateCustomer(
   _prevState: ActionResult,
   formData: FormData
 ): Promise<ActionResult> {
-  await verifyAdmin();
+  await verifySession();
 
   const id = formData.get("id") as string;
   const code = formData.get("code") as string;
