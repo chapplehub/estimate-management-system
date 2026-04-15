@@ -1,12 +1,10 @@
 import { verifySession } from "@/app/_lib/verifyAuthentication";
 import { Badge } from "@/app/_components/shadcnui/badge";
-import { isAdmin } from "@server/shared/auth";
 import { getCustomerByCodeQueryFactory } from "@subdomains/customer/application/factories";
 import { searchDeliveryLocationsQueryFactory } from "@subdomains/delivery-location/application/factories";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { CustomerDeleteForm } from "./CustomerDeleteForm";
-import { CustomerDetailView } from "./CustomerDetailView";
 import { CustomerStatusForms } from "./CustomerStatusForms";
 import { CustomerUpdateForm } from "./CustomerUpdateForm";
 
@@ -16,9 +14,7 @@ export default async function CustomerDetailPage({
   params: Promise<{ code: string }>;
 }) {
   const { code } = await params;
-  const session = await verifySession();
-
-  const canEdit = isAdmin(session);
+  await verifySession();
 
   const query = getCustomerByCodeQueryFactory();
   const customer = await query.execute({ code });
@@ -41,20 +37,15 @@ export default async function CustomerDetailPage({
       </div>
 
       <div className="flex items-center gap-3 mb-8">
-        <h1 className="text-3xl font-bold">{canEdit ? "得意先編集" : "得意先参照"}</h1>
+        <h1 className="text-3xl font-bold">得意先編集</h1>
         <Badge variant={customer.isActive ? "default" : "secondary"}>
           {customer.isActive ? "有効" : "無効"}
         </Badge>
       </div>
 
-      {/* 取引先情報: 管理者は編集フォーム / 一般は読み取り専用 */}
       <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-8">
         <h2 className="text-xl font-semibold mb-4 text-gray-500">取引先情報</h2>
-        {canEdit ? (
-          <CustomerUpdateForm customer={customer} />
-        ) : (
-          <CustomerDetailView customer={customer} />
-        )}
+        <CustomerUpdateForm customer={customer} />
       </div>
 
       {/* 配下の納品先 */}
@@ -95,17 +86,14 @@ export default async function CustomerDetailPage({
         )}
       </div>
 
-      {/* アクションボタン（管理者のみ） */}
-      {canEdit && (
-        <div className="flex gap-4 items-start">
-          <CustomerStatusForms
-            customerId={customer.id}
-            customerCode={customer.code}
-            isActive={customer.isActive}
-          />
-          <CustomerDeleteForm customerId={customer.id} />
-        </div>
-      )}
+      <div className="flex gap-4 items-start">
+        <CustomerStatusForms
+          customerId={customer.id}
+          customerCode={customer.code}
+          isActive={customer.isActive}
+        />
+        <CustomerDeleteForm customerId={customer.id} />
+      </div>
     </div>
   );
 }
