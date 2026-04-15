@@ -202,6 +202,16 @@ const CUSTOMERS = [
         phoneNumber: "0722001234",
         deliveryNotes: "平日8:30-16:30受付",
       },
+      {
+        code: "D007",
+        name: "大阪機械 東大阪倉庫",
+        postalCode: "5770066",
+        prefecture: "大阪府",
+        address: "東大阪市高井田本通1-3-5",
+        phoneNumber: null,
+        deliveryNotes: null,
+        isActive: false,
+      },
     ],
   },
   {
@@ -459,7 +469,7 @@ async function seedCustomersAndDeliveryLocations() {
             phoneNumber: dlData.phoneNumber,
             faxNumber: null,
             contactPerson: null,
-            isActive: true,
+            isActive: (dlData as { isActive?: boolean }).isActive ?? true,
           },
         });
 

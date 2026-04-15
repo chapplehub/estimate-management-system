@@ -27,6 +27,11 @@ const navigationItems = [
     title: "得意先管理",
     description: "得意先の一覧表示を行います。",
   },
+  {
+    href: "/delivery-locations",
+    title: "納品先管理",
+    description: "納品先の一覧表示を行います。",
+  },
 ] as const;
 
 export default async function DashboardPage() {
