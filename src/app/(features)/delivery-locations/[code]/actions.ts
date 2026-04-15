@@ -1,0 +1,74 @@
+"use server";
+
+import { verifySession } from "@/app/_lib/verifyAuthentication";
+import { parseWithZod } from "@conform-to/zod/v4";
+import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
+import {
+  getDeliveryLocationByCodeQueryFactory,
+  updateDeliveryLocationCommandFactory,
+} from "@subdomains/delivery-location/application/factories";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { handleCommandError } from "../../_shared/error-handler";
+import { updateDeliveryLocationSchema } from "./schema";
+
+// ========================================
+// 納品先更新
+// ========================================
+export async function updateDeliveryLocation(code: string, prevState: unknown, formData: FormData) {
+  await verifySession();
+
+  const submission = parseWithZod(formData, {
+    schema: updateDeliveryLocationSchema,
+  });
+
+  if (submission.status !== "success") {
+    return submission.reply();
+  }
+
+  const {
+    name,
+    postalCode,
+    prefecture,
+    address,
+    phoneNumber,
+    faxNumber,
+    contactPerson,
+    deliveryNotes,
+  } = submission.value;
+
+  // codeからidを取得
+  const query = getDeliveryLocationByCodeQueryFactory();
+  const deliveryLocation = await query.execute({ code });
+  if (!deliveryLocation) {
+    return submission.reply({
+      formErrors: ["納品先が見つかりません"],
+    });
+  }
+
+  try {
+    const command = updateDeliveryLocationCommandFactory();
+    await command.execute({
+      id: deliveryLocation.id,
+      name,
+      postalCode: postalCode || null,
+      prefecture: prefecture || null,
+      address: address || null,
+      phoneNumber: phoneNumber || null,
+      faxNumber: faxNumber || null,
+      contactPerson: contactPerson || null,
+      deliveryNotes: deliveryNotes || null,
+    });
+
+    revalidatePath("/delivery-locations");
+    revalidatePath(`/delivery-locations/${code}`);
+  } catch (error) {
+    const errorResult = handleCommandError(error);
+    const errorMessage = !errorResult.success && errorResult.error ? errorResult.error : undefined;
+    return submission.reply({
+      formErrors: errorMessage ? [errorMessage] : [],
+    });
+  }
+
+  redirect(`/delivery-locations/${code}?reason=${REDIRECT_REASON.DELIVERY_LOCATION_UPDATED}`);
+}
