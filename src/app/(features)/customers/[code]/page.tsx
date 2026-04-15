@@ -17,8 +17,7 @@ export default async function CustomerDetailPage({
   const { code } = await params;
   const session = await verifySession();
 
-  const canUpdate = isAdmin(session);
-  const canDelete = isAdmin(session);
+  const canEdit = isAdmin(session);
 
   const query = getCustomerByCodeQueryFactory();
   const customer = await query.execute({ code });
@@ -44,90 +43,65 @@ export default async function CustomerDetailPage({
         </Link>
       </div>
 
-      <h1 className="text-3xl font-bold mb-8">得意先管理</h1>
-
-      {/* ブロック1: 取引先基本情報 */}
-      <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-8">
-        <h2 className="text-xl font-semibold mb-4 text-gray-500">取引先基本情報</h2>
-        <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <dt className="text-sm font-bold text-gray-700">コード</dt>
-            <dd className="mt-1 text-gray-900">{customer.code}</dd>
-          </div>
-          <div>
-            <dt className="text-sm font-bold text-gray-700">名前</dt>
-            <dd className="mt-1 text-gray-900">{customer.name}</dd>
-          </div>
-          <div>
-            <dt className="text-sm font-bold text-gray-700">郵便番号</dt>
-            <dd className="mt-1 text-gray-900">{formattedPostalCode}</dd>
-          </div>
-          <div>
-            <dt className="text-sm font-bold text-gray-700">都道府県</dt>
-            <dd className="mt-1 text-gray-900">{customer.prefecture ?? "-"}</dd>
-          </div>
-          <div className="md:col-span-2">
-            <dt className="text-sm font-bold text-gray-700">住所</dt>
-            <dd className="mt-1 text-gray-900">{customer.address ?? "-"}</dd>
-          </div>
-          <div>
-            <dt className="text-sm font-bold text-gray-700">電話番号</dt>
-            <dd className="mt-1 text-gray-900">{customer.phoneNumber ?? "-"}</dd>
-          </div>
-          <div>
-            <dt className="text-sm font-bold text-gray-700">FAX番号</dt>
-            <dd className="mt-1 text-gray-900">{customer.faxNumber ?? "-"}</dd>
-          </div>
-          <div>
-            <dt className="text-sm font-bold text-gray-700">担当者</dt>
-            <dd className="mt-1 text-gray-900">{customer.contactPerson ?? "-"}</dd>
-          </div>
-          <div>
-            <dt className="text-sm font-bold text-gray-700">状態</dt>
-            <dd className="mt-1">
-              <Badge variant={customer.isActive ? "default" : "secondary"}>
-                {customer.isActive ? "有効" : "無効"}
-              </Badge>
-            </dd>
-          </div>
-        </dl>
+      <div className="flex items-center gap-3 mb-8">
+        <h1 className="text-3xl font-bold">得意先管理</h1>
+        <Badge variant={customer.isActive ? "default" : "secondary"}>
+          {customer.isActive ? "有効" : "無効"}
+        </Badge>
       </div>
 
-      {/* 編集フォーム（管理者のみ） */}
-      {canUpdate && <CustomerUpdateForm customer={customer} />}
-
-      {/* 削除フォーム（管理者のみ） */}
-      {canDelete && (
+      {/* 管理者: 編集フォーム / 一般: 読み取り専用 */}
+      {canEdit ? (
+        <CustomerUpdateForm customer={customer} />
+      ) : (
         <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-8">
-          <h2 className="text-xl font-semibold mb-4 text-gray-500">得意先削除</h2>
-          <CustomerDeleteForm customerId={customer.id} />
+          <h2 className="text-xl font-semibold mb-4 text-gray-500">取引先情報</h2>
+          <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <dt className="text-sm font-bold text-gray-700">コード</dt>
+              <dd className="mt-1 text-gray-900">{customer.code}</dd>
+            </div>
+            <div>
+              <dt className="text-sm font-bold text-gray-700">名前</dt>
+              <dd className="mt-1 text-gray-900">{customer.name}</dd>
+            </div>
+            <div>
+              <dt className="text-sm font-bold text-gray-700">郵便番号</dt>
+              <dd className="mt-1 text-gray-900">{formattedPostalCode}</dd>
+            </div>
+            <div>
+              <dt className="text-sm font-bold text-gray-700">都道府県</dt>
+              <dd className="mt-1 text-gray-900">{customer.prefecture ?? "-"}</dd>
+            </div>
+            <div className="md:col-span-2">
+              <dt className="text-sm font-bold text-gray-700">住所</dt>
+              <dd className="mt-1 text-gray-900">{customer.address ?? "-"}</dd>
+            </div>
+            <div>
+              <dt className="text-sm font-bold text-gray-700">電話番号</dt>
+              <dd className="mt-1 text-gray-900">{customer.phoneNumber ?? "-"}</dd>
+            </div>
+            <div>
+              <dt className="text-sm font-bold text-gray-700">FAX番号</dt>
+              <dd className="mt-1 text-gray-900">{customer.faxNumber ?? "-"}</dd>
+            </div>
+            <div>
+              <dt className="text-sm font-bold text-gray-700">担当者</dt>
+              <dd className="mt-1 text-gray-900">{customer.contactPerson ?? "-"}</dd>
+            </div>
+            <div>
+              <dt className="text-sm font-bold text-gray-700">マージン率</dt>
+              <dd className="mt-1 text-gray-900">
+                {customer.marginRate !== null ? `${customer.marginRate.toFixed(2)}%` : "未設定"}
+              </dd>
+            </div>
+          </dl>
         </div>
       )}
 
-      {/* 有効/無効切り替え（管理者のみ） */}
-      {canUpdate && (
-        <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-8">
-          <h2 className="text-xl font-semibold mb-4 text-gray-500">有効/無効切り替え</h2>
-          <CustomerStatusForms
-            customerId={customer.id}
-            customerCode={customer.code}
-            isActive={customer.isActive}
-          />
-        </div>
-      )}
-
-      {/* ブロック2: 得意先固有情報 */}
+      {/* 配下の納品先 */}
       <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-8">
-        <h2 className="text-xl font-semibold mb-4 text-gray-500">得意先固有情報</h2>
-
-        <div className="mb-6">
-          <dt className="text-sm font-bold text-gray-700">マージン率</dt>
-          <dd className="mt-1 text-gray-900">
-            {customer.marginRate !== null ? `${customer.marginRate.toFixed(2)}%` : "未設定"}
-          </dd>
-        </div>
-
-        <h3 className="text-lg font-semibold mb-3 text-gray-600">配下の納品先</h3>
+        <h2 className="text-xl font-semibold mb-4 text-gray-500">配下の納品先</h2>
         {deliveryLocations.length > 0 ? (
           <table className="w-full text-left">
             <thead>
@@ -162,6 +136,18 @@ export default async function CustomerDetailPage({
           <p className="text-gray-500">納品先が登録されていません</p>
         )}
       </div>
+
+      {/* アクションボタン（管理者のみ） */}
+      {canEdit && (
+        <div className="flex gap-4 items-start">
+          <CustomerStatusForms
+            customerId={customer.id}
+            customerCode={customer.code}
+            isActive={customer.isActive}
+          />
+          <CustomerDeleteForm customerId={customer.id} />
+        </div>
+      )}
     </div>
   );
 }
