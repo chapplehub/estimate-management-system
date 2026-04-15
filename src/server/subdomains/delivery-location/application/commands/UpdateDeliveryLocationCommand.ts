@@ -20,7 +20,6 @@ export type UpdateDeliveryLocationInput = {
   faxNumber?: string | null;
   contactPerson?: string | null;
   deliveryNotes?: string | null;
-  isActive?: boolean;
 };
 
 /**
@@ -55,14 +54,6 @@ export class UpdateDeliveryLocationCommand {
     deliveryLocation.changeDeliveryNotes(
       input.deliveryNotes ? new DeliveryNotes(input.deliveryNotes) : null
     );
-
-    if (input.isActive !== undefined) {
-      if (input.isActive) {
-        deliveryLocation.activate();
-      } else {
-        deliveryLocation.deactivate();
-      }
-    }
 
     await this.deliveryLocationRepository.save(deliveryLocation);
   }

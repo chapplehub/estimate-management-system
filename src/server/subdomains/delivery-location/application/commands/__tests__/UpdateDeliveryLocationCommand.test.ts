@@ -91,28 +91,6 @@ describe("UpdateDeliveryLocationCommand", () => {
     expect(updated?.deliveryNotes?.value).toBe("午前中のみ受付可能");
   });
 
-  it("isActive を変更できる", async () => {
-    // deactivate
-    await command.execute({
-      id: testDeliveryLocationId,
-      name: "更新前納品先",
-      isActive: false,
-    });
-
-    let updated = await dlRepository.findById(new DeliveryLocationId(testDeliveryLocationId));
-    expect(updated?.isActive).toBe(false);
-
-    // activate
-    await command.execute({
-      id: testDeliveryLocationId,
-      name: "更新前納品先",
-      isActive: true,
-    });
-
-    updated = await dlRepository.findById(new DeliveryLocationId(testDeliveryLocationId));
-    expect(updated?.isActive).toBe(true);
-  });
-
   it("nullを渡すとオプション項目をクリアできる", async () => {
     // まず値を設定
     await command.execute({

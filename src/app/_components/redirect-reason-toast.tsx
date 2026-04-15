@@ -97,6 +97,26 @@ const FLASH_MESSAGES: Record<RedirectReason, FlashMessage> = {
     type: FLASH_MESSAGE_TYPE.SUCCESS,
     message: "得意先を無効化しました。",
   },
+  [REDIRECT_REASON.DELIVERY_LOCATION_CREATED]: {
+    type: FLASH_MESSAGE_TYPE.SUCCESS,
+    message: "納品先を登録しました。",
+  },
+  [REDIRECT_REASON.DELIVERY_LOCATION_UPDATED]: {
+    type: FLASH_MESSAGE_TYPE.SUCCESS,
+    message: "納品先情報を更新しました。",
+  },
+  [REDIRECT_REASON.DELIVERY_LOCATION_DELETED]: {
+    type: FLASH_MESSAGE_TYPE.SUCCESS,
+    message: "納品先を削除しました。",
+  },
+  [REDIRECT_REASON.DELIVERY_LOCATION_ACTIVATED]: {
+    type: FLASH_MESSAGE_TYPE.SUCCESS,
+    message: "納品先を有効化しました。",
+  },
+  [REDIRECT_REASON.DELIVERY_LOCATION_DEACTIVATED]: {
+    type: FLASH_MESSAGE_TYPE.SUCCESS,
+    message: "納品先を無効化しました。",
+  },
 };
 
 function RedirectReasonToastInner() {

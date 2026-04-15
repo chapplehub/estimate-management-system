@@ -73,28 +73,6 @@ describe("UpdateCustomerCommand", () => {
     expect(updated?.marginRate?.value).toBe(20);
   });
 
-  it("isActive を変更できる", async () => {
-    // deactivate
-    await command.execute({
-      id: testCustomerId,
-      name: "更新前得意先",
-      isActive: false,
-    });
-
-    let updated = await repository.findById(new CustomerId(testCustomerId));
-    expect(updated?.isActive).toBe(false);
-
-    // activate
-    await command.execute({
-      id: testCustomerId,
-      name: "更新前得意先",
-      isActive: true,
-    });
-
-    updated = await repository.findById(new CustomerId(testCustomerId));
-    expect(updated?.isActive).toBe(true);
-  });
-
   it("nullを渡すとオプション項目をクリアできる", async () => {
     // まず値を設定
     await command.execute({

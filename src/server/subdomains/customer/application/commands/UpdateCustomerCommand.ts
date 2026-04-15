@@ -20,7 +20,6 @@ export type UpdateCustomerInput = {
   faxNumber?: string | null;
   contactPerson?: string | null;
   marginRate?: number | null;
-  isActive?: boolean;
 };
 
 /**
@@ -57,14 +56,6 @@ export class UpdateCustomerCommand {
         ? new MarginRate(input.marginRate)
         : null
     );
-
-    if (input.isActive !== undefined) {
-      if (input.isActive) {
-        customer.activate();
-      } else {
-        customer.deactivate();
-      }
-    }
 
     await this.customerRepository.save(customer);
   }
