@@ -2,7 +2,6 @@ import { DataTable } from "@/app/_components/shared/DataTable";
 import { SearchForm, type SearchFieldDef } from "@/app/_components/shared/SearchForm";
 import { LIST_FETCH_LIMIT, getStringParam, type SearchParams } from "@/app/_lib/searchParams";
 import { verifySession } from "@/app/_lib/verifyAuthentication";
-import { isAdmin } from "@server/shared/auth";
 import { PREFECTURES } from "@server/shared/domain/values/Prefecture";
 import { searchCustomersQueryFactory } from "@subdomains/customer/application/factories";
 import type { CustomerSearchCriteria } from "@subdomains/customer/application/queries/dto/CustomerSearchCriteria";
@@ -92,7 +91,7 @@ export default async function CustomerPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const session = await verifySession();
+  await verifySession();
   const params = await searchParams;
 
   const criteria: CustomerSearchCriteria = {
@@ -122,14 +121,12 @@ export default async function CustomerPage({
     <div className="flex flex-col h-full">
       <div className="flex justify-between items-center mb-2 px-4 pt-4">
         <h1 className="text-3xl font-bold">得意先一覧</h1>
-        {isAdmin(session) && (
-          <Link
-            href="/customers/new"
-            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-          >
-            新規登録
-          </Link>
-        )}
+        <Link
+          href="/customers/new"
+          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+        >
+          新規登録
+        </Link>
       </div>
 
       <div className="px-4">
