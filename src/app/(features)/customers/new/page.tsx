@@ -10,17 +10,11 @@ export default function CustomerNewPage() {
         </Link>
       </div>
 
-      <h1 className="text-3xl font-bold mb-8">新規得意先登録</h1>
+      <h1 className="text-3xl font-bold mb-8">得意先登録</h1>
 
-      <CustomerCreateForm />
-
-      <div className="mt-4">
-        <Link
-          href="/customers"
-          className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline inline-block"
-        >
-          キャンセル
-        </Link>
+      <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-8">
+        <h2 className="text-xl font-semibold mb-4 text-gray-500">取引先情報</h2>
+        <CustomerCreateForm />
       </div>
     </div>
   );
