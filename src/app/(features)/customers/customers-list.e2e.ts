@@ -6,7 +6,7 @@ import { expect, test } from "@playwright/test";
  * DataTable の行が表示された時点で、ページ全体がインタラクティブになっていると判断する。
  */
 async function waitForListReady(page: import("@playwright/test").Page) {
-  await expect(page.getByRole("heading", { name: "得意先一覧" }).first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "得意先一覧" })).toBeVisible();
   await expect(page.locator("table tbody tr").first()).toBeVisible();
 }
 
@@ -21,7 +21,7 @@ test.describe("得意先一覧（管理者）", () => {
     await page.goto("/customers");
     await waitForListReady(page);
 
-    await expect(page.getByRole("heading", { name: "得意先一覧" }).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "得意先一覧" })).toBeVisible();
 
     // DataTableに行が表示されていること
     const rows = page.locator("table tbody tr");
@@ -232,7 +232,7 @@ test.describe("得意先一覧（一般ユーザー）", () => {
   test("一般ユーザーでも得意先一覧を閲覧できる", async ({ page }) => {
     await page.goto("/customers");
 
-    await expect(page.getByRole("heading", { name: "得意先一覧" }).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "得意先一覧" })).toBeVisible();
     const rows = page.locator("table tbody tr");
     await expect(rows.first()).toBeVisible();
 

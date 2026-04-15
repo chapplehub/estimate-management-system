@@ -133,11 +133,7 @@ export default async function CustomerPage({
         <SearchForm fields={searchFields} defaultValues={defaultSearchValues} />
       </div>
 
-      <div className="flex-1 flex flex-col min-h-0 bg-white shadow-md rounded mx-4 mb-4 text-gray-500">
-        <div className="px-8 pt-6 pb-2">
-          <h2 className="text-xl font-semibold">得意先一覧</h2>
-        </div>
-
+      <div className="flex-1 flex flex-col min-h-0 bg-white shadow-md rounded mx-4 mb-4 pt-4 text-gray-500">
         <DataTable columns={columns} data={customers} emptyMessage="得意先が登録されていません" />
       </div>
     </div>
