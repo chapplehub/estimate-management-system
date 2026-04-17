@@ -1,7 +1,13 @@
 import { expect, test } from "@playwright/test";
 
-/** テストで使用する固定の役割データ（seed範囲 ROLE001〜ROLE015 外） */
-const TEST_ROLE_CD = "ROLE901";
+/** 成功系CRUD用: テスト内で作成・削除する役割データ（ROLE901-903 はシード予約済み） */
+const TEST_ROLE_CD = "ROLE904";
+
+/** seed-e2e.ts: E2E専用_下位役割あり削除テスト親役割（ROLE902 が下位） */
+const ROLE_HAS_CHILDREN = "ROLE901";
+
+/** seed-e2e.ts: E2E専用_使用中削除テスト役割（EMP999001 に割り当て済み） */
+const ROLE_IN_USE = "ROLE903";
 
 test.describe("役割CRUD（管理者）", () => {
   // 作成→更新→削除の順で実行（同一テストデータを使い回すため serial で順序保証）
@@ -126,27 +132,27 @@ test.describe("役割CRUD（管理者）", () => {
   });
 
   test("使用中の役割は削除できない", async ({ page }) => {
-    // ROLE005（営業課長）は従業員に割り当てられている（下位役割なし）
-    await page.goto("/roles/ROLE005");
+    // ROLE_IN_USE は E2E 専用従業員 EMP999001 に割り当て済み（seed-e2e.ts）
+    await page.goto(`/roles/${ROLE_IN_USE}`);
     await expect(page.getByText("役割変更")).toBeVisible();
 
     await page.getByRole("button", { name: "削除" }).click();
 
     // エラーメッセージが表示される（ページは遷移しない）
     await expect(page.getByRole("alert")).toBeVisible({ timeout: 10000 });
-    await expect(page).toHaveURL(/\/roles\/ROLE005/);
+    await expect(page).toHaveURL(new RegExp(`/roles/${ROLE_IN_USE}`));
   });
 
   test("下位役割がある役割は削除できない", async ({ page }) => {
-    // ROLE001（社長）は下位役割（ROLE002, ROLE003）を持つ
-    await page.goto("/roles/ROLE001");
+    // ROLE_HAS_CHILDREN は ROLE902 を下位役割として持つ（seed-e2e.ts）
+    await page.goto(`/roles/${ROLE_HAS_CHILDREN}`);
     await expect(page.getByText("役割変更")).toBeVisible();
 
     await page.getByRole("button", { name: "削除" }).click();
 
     // エラーメッセージが表示される（ページは遷移しない）
     await expect(page.getByRole("alert")).toBeVisible({ timeout: 10000 });
-    await expect(page).toHaveURL(/\/roles\/ROLE001/);
+    await expect(page).toHaveURL(new RegExp(`/roles/${ROLE_HAS_CHILDREN}`));
   });
 
   test("存在しない役割コードで404が表示される", async ({ page }) => {

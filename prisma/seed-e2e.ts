@@ -56,6 +56,42 @@ const ROLES = [
   },
 ];
 
+// E2E専用シード（ROLE9NN 帯）: ドメインエラーテスト用。DB 不変が前提。
+// ROLE901/902: 下位役割あり削除テスト用（ROLE901 が親、ROLE902 が子）
+// ROLE903: 使用中削除テスト用（E2E 専用従業員 EMP999001 に割り当て）
+const E2E_ONLY_ROLES = [
+  {
+    cd: "ROLE901",
+    name: "E2E専用_下位役割あり削除テスト親役割",
+    positionCd: "POS004",
+    superiorCd: null as string | null,
+  },
+  {
+    cd: "ROLE902",
+    name: "E2E専用_下位役割あり削除テスト子役割",
+    positionCd: "POS003",
+    superiorCd: "ROLE901" as string | null,
+  },
+  {
+    cd: "ROLE903",
+    name: "E2E専用_使用中削除テスト役割",
+    positionCd: "POS001",
+    superiorCd: "ROLE003" as string | null,
+  },
+];
+
+// E2E専用従業員: ROLE903 を「使用中」にするための従業員。DB 不変が前提。
+const E2E_ONLY_EMPLOYEES = [
+  {
+    employeeCd: "EMP999001",
+    email: "e2e-only-001@example.com",
+    name: "E2E専用_使用中テスト従業員",
+    departmentCd: "DEPT001",
+    superiorRoleCd: "ROLE003",
+    assignedRoleCd: "ROLE903",
+  },
+];
+
 // 役割を持つ従業員の設定（EMP000001〜EMP000007）
 // 最初の2名は固定ユーザー（認証用）
 const ROLE_EMPLOYEE_CONFIGS = [
@@ -564,6 +600,22 @@ async function main() {
   }
   console.log(`Created ${ROLES.length} roles`);
 
+  // E2E専用役割を作成（ROLE9NN 帯）
+  for (const role of E2E_ONLY_ROLES) {
+    const id = generateId();
+    roleIdMap.set(role.cd, id);
+    await prisma.role.create({
+      data: {
+        id,
+        roleCd: role.cd,
+        name: role.name,
+        positionId: positionIdMap.get(role.positionCd)!,
+        superiorRoleId: role.superiorCd ? (roleIdMap.get(role.superiorCd) ?? null) : null,
+      },
+    });
+  }
+  console.log(`Created ${E2E_ONLY_ROLES.length} E2E-only roles`);
+
   // 得意先・納品先を作成
   const { customerCount, deliveryLocationCount } = await seedCustomersAndDeliveryLocations();
   console.log(`Created ${customerCount} customers, ${deliveryLocationCount} delivery locations`);
@@ -606,13 +658,36 @@ async function main() {
   }
   console.log(`Created ${employeeRoleData.length} employee role assignments`);
 
+  // E2E専用従業員を作成（ROLE9NN 帯の役割を「使用中」にするため）
+  for (const e2eEmp of E2E_ONLY_EMPLOYEES) {
+    const { employee } = await createUserWithEmployee(
+      {
+        employeeCd: e2eEmp.employeeCd,
+        email: e2eEmp.email,
+        name: e2eEmp.name,
+        role: USER_ROLES.USER,
+        departmentId: departmentIdMap.get(e2eEmp.departmentCd)!,
+        superiorRoleId: roleIdMap.get(e2eEmp.superiorRoleCd)!,
+      },
+      hashedPassword
+    );
+    await prisma.employeeRole.create({
+      data: { employeeId: employee.id, roleId: roleIdMap.get(e2eEmp.assignedRoleCd)! },
+    });
+  }
+  console.log(`Created ${E2E_ONLY_EMPLOYEES.length} E2E-only employees`);
+
   console.log("");
   console.log("=".repeat(50));
   console.log("E2E seed finished.");
   console.log(`  Departments: ${DEPARTMENTS.length}`);
   console.log(`  Positions: ${POSITIONS.length}`);
-  console.log(`  Roles: ${ROLES.length}`);
-  console.log(`  Employees: ${users.length}`);
+  console.log(
+    `  Roles: ${ROLES.length + E2E_ONLY_ROLES.length} (incl. ${E2E_ONLY_ROLES.length} E2E-only)`
+  );
+  console.log(
+    `  Employees: ${users.length + E2E_ONLY_EMPLOYEES.length} (incl. ${E2E_ONLY_EMPLOYEES.length} E2E-only)`
+  );
   console.log(`  Products: ${PRODUCTS.length}`);
   console.log(`  Customers: ${customerCount}`);
   console.log(`  Delivery locations: ${deliveryLocationCount}`);
