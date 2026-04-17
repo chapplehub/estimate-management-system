@@ -30,6 +30,23 @@ const DEPARTMENTS = [
   { departmentCd: "DEPT003", name: "総務部", abbreviation: "総務" },
 ];
 
+// E2E専用シード（DEPT9NN 帯）: ドメインエラーテスト用。DB 不変が前提。
+// DEPT901/902: 子部署あり削除テスト用（DEPT901 が親、DEPT902 が子）
+const E2E_ONLY_DEPARTMENTS = [
+  {
+    departmentCd: "DEPT901",
+    name: "E2E専用_子部署あり削除テスト親部署",
+    abbreviation: "E2E親",
+    parentDepartmentCd: null as string | null,
+  },
+  {
+    departmentCd: "DEPT902",
+    name: "E2E専用_子部署あり削除テスト子部署",
+    abbreviation: "E2E子",
+    parentDepartmentCd: "DEPT901" as string | null,
+  },
+];
+
 const POSITIONS = [
   { cd: "POS001", name: "課長", superiorCd: "POS002" as string | null },
   { cd: "POS002", name: "部長", superiorCd: "POS003" as string | null },
@@ -566,6 +583,25 @@ async function main() {
   }
   console.log(`Created ${DEPARTMENTS.length} departments`);
 
+  // E2E専用部署を作成（DEPT9NN 帯）
+  for (const dept of E2E_ONLY_DEPARTMENTS) {
+    const id = generateId();
+    departmentIdMap.set(dept.departmentCd, id);
+    await prisma.department.create({
+      data: {
+        id,
+        departmentCd: dept.departmentCd,
+        name: dept.name,
+        abbreviation: dept.abbreviation,
+        isActive: true,
+        parentId: dept.parentDepartmentCd
+          ? (departmentIdMap.get(dept.parentDepartmentCd) ?? null)
+          : null,
+      },
+    });
+  }
+  console.log(`Created ${E2E_ONLY_DEPARTMENTS.length} E2E-only departments`);
+
   // 役職を作成（上位から作成でFK制約を満たす）
   const positionIdMap = new Map<string, string>();
   const positionsOrdered = [...POSITIONS].reverse();
@@ -680,7 +716,9 @@ async function main() {
   console.log("");
   console.log("=".repeat(50));
   console.log("E2E seed finished.");
-  console.log(`  Departments: ${DEPARTMENTS.length}`);
+  console.log(
+    `  Departments: ${DEPARTMENTS.length + E2E_ONLY_DEPARTMENTS.length} (incl. ${E2E_ONLY_DEPARTMENTS.length} E2E-only)`
+  );
   console.log(`  Positions: ${POSITIONS.length}`);
   console.log(
     `  Roles: ${ROLES.length + E2E_ONLY_ROLES.length} (incl. ${E2E_ONLY_ROLES.length} E2E-only)`
