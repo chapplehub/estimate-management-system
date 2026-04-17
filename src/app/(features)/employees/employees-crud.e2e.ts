@@ -1,7 +1,10 @@
 import { expect, test } from "@playwright/test";
 
-/** テストで使用する固定の従業員データ（seed範囲 EMP000001〜EMP002000 外） */
-const TEST_EMPLOYEE_CD = "EMP099901";
+/**
+ * 成功系CRUD用: テスト内で作成・削除する従業員データ
+ * seed-e2e.ts の E2E 専用名前空間 EMP999xxx に属する（EMP999001 は既存 E2E 専用従業員）
+ */
+const TEST_EMPLOYEE_CD = "EMP999901";
 const TEST_EMAIL = "e2e-create-test@example.com";
 
 test.describe("従業員CRUD（管理者）", () => {
@@ -132,6 +135,9 @@ test.describe("従業員CRUD（管理者）", () => {
   });
 });
 
+// SKILL §11: /employees/new は admin 専用（src/proxy.ts の adminRoutes）のため
+// 権限差異あり機能に該当し、一般ユーザー簡易 chain（作成→削除）は省略する。
+// 本ブロックは権限エラーテスト（必須）と owner 編集 / 他人閲覧の挙動検証に絞る。
 test.describe("従業員（一般ユーザー）", () => {
   test.use({ storageState: "playwright/.auth/user.json" });
 
