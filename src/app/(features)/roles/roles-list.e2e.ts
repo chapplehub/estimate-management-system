@@ -1,17 +1,17 @@
-import { expect, test } from "@playwright/test";
+import { type Page, expect, test } from "@playwright/test";
 
 /**
  * 一覧画面のハイドレーション完了を待つ。
  * SearchForm（"use client"）の onSubmit が機能するには React のハイドレーションが必要。
  * DataTable の行が表示された時点で、ページ全体がインタラクティブになっていると判断する。
  */
-async function waitForListReady(page: import("@playwright/test").Page) {
+async function waitForListReady(page: Page) {
   await expect(page.getByRole("heading", { name: "役割管理" })).toBeVisible();
   await expect(page.locator("table tbody tr").first()).toBeVisible();
 }
 
 /** ヘッダー名からカラム位置（1始まり）を取得する */
-async function getColumnIndex(page: import("@playwright/test").Page, headerName: string) {
+async function getColumnIndex(page: Page, headerName: string) {
   const headers = await page.locator("table thead th").allTextContents();
   return headers.indexOf(headerName) + 1;
 }
