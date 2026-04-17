@@ -1,16 +1,18 @@
 import { expect, test } from "@playwright/test";
 
-/** テストで使用する固定の部署データ（seed範囲 DEPT001〜DEPT003 外） */
-const TEST_DEPT_CD = "DEPT901";
+/** 成功系CRUD用: ライフサイクル chain（作成→更新→削除） */
+const TEST_DEPT_CD = "DEPT903";
 const TEST_DEPT_NAME = "E2Eテスト部署";
 const TEST_DEPT_ABBR = "E2Eテスト";
 
-/** 子部署削除制約テスト用 */
-const PARENT_DEPT_CD = "DEPT902";
-const CHILD_DEPT_CD = "DEPT903";
+/** 成功系CRUD用: ステータス管理 chain（作成→無効化→有効化→削除） */
+const STATUS_TEST_DEPT_CD = "DEPT904";
+
+/** seed-e2e.ts: E2E専用_子部署あり削除テスト親部署（DEPT902 が子部署） */
+const PARENT_WITH_CHILD = "DEPT901";
 
 test.describe("部署CRUD（管理者）", () => {
-  // 作成→更新→isActive変更→削除の順で実行（同一テストデータを使い回すため serial で順序保証）
+  // 作成→更新→削除の順で実行（同一テストデータを使い回すため serial で順序保証）
   test.describe.serial("作成・更新・削除テスト", () => {
     test("管理者が新規部署を作成できる", async ({ page }) => {
       // 一覧画面から新規登録画面に遷移
@@ -65,25 +67,6 @@ test.describe("部署CRUD（管理者）", () => {
       await expect(nameField).toHaveValue("E2E更新テスト");
     });
 
-    test("管理者がisActiveを変更できる", async ({ page }) => {
-      await page.goto(`/departments/${TEST_DEPT_CD}`);
-      await expect(page.getByText("部署変更")).toBeVisible();
-
-      // デフォルトで「有効」チェックボックスがONであること
-      const isActiveCheckbox = page.getByLabel("有効");
-      await expect(isActiveCheckbox).toBeChecked();
-
-      // チェックをOFFにして更新
-      await isActiveCheckbox.uncheck();
-      await page.getByRole("button", { name: "更新" }).click();
-
-      // 成功トーストが表示される
-      await expect(page.getByText("部署情報を更新しました。")).toBeVisible({ timeout: 10000 });
-
-      // チェックボックスがOFFになっていること
-      await expect(isActiveCheckbox).not.toBeChecked();
-    });
-
     test("管理者が部署を削除できる", async ({ page }) => {
       await page.goto(`/departments/${TEST_DEPT_CD}`);
       await expect(page.getByText("部署変更")).toBeVisible();
@@ -106,51 +89,55 @@ test.describe("部署CRUD（管理者）", () => {
     });
   });
 
-  // 親部署→子部署の作成・制約テスト・削除を直列実行
-  test.describe.serial("子部署削除制約テスト", () => {
-    test("親部署を作成できる", async ({ page }) => {
+  // 作成→無効化→有効化→削除を直列実行（別データ区分のため独立 chain）
+  test.describe.serial("ステータス管理テスト", () => {
+    test("管理者がステータス管理用の部署を作成できる", async ({ page }) => {
       await page.goto("/departments/new");
       await expect(page.getByRole("heading", { name: "新規部署登録" })).toBeVisible();
 
-      await page.getByLabel("部署コード").fill(PARENT_DEPT_CD);
-      await page.getByLabel("部署名").fill("親部署テスト");
-      await page.getByLabel("略称").fill("親テスト");
+      await page.getByLabel("部署コード").fill(STATUS_TEST_DEPT_CD);
+      await page.getByLabel("部署名").fill("E2Eステータス管理");
+      await page.getByLabel("略称").fill("E2E状態");
+
       await page.getByRole("button", { name: "登録" }).click();
 
       await expect(page).toHaveURL(/\/departments/, { timeout: 10000 });
       await expect(page.getByText("部署を登録しました。")).toBeVisible({ timeout: 10000 });
     });
 
-    test("子部署を作成できる", async ({ page }) => {
-      await page.goto("/departments/new");
-      await expect(page.getByRole("heading", { name: "新規部署登録" })).toBeVisible();
-
-      await page.getByLabel("部署コード").fill(CHILD_DEPT_CD);
-      await page.getByLabel("部署名").fill("子部署テスト");
-      await page.getByLabel("略称").fill("子テスト");
-      await page.getByLabel("親部署").selectOption({ label: "親部署テスト" });
-      await page.getByRole("button", { name: "登録" }).click();
-
-      await expect(page).toHaveURL(/\/departments/, { timeout: 10000 });
-      await expect(page.getByText("部署を登録しました。")).toBeVisible({ timeout: 10000 });
-    });
-
-    test("子部署がある場合は削除できない", async ({ page }) => {
-      // 親部署の詳細画面に遷移
-      await page.goto(`/departments/${PARENT_DEPT_CD}`);
+    test("管理者が部署を無効化できる", async ({ page }) => {
+      await page.goto(`/departments/${STATUS_TEST_DEPT_CD}`);
       await expect(page.getByText("部署変更")).toBeVisible();
 
-      // 削除実行
-      await page.getByRole("button", { name: "削除" }).click();
+      // デフォルトで「有効」チェックボックスがONであること
+      const isActiveCheckbox = page.getByLabel("有効");
+      await expect(isActiveCheckbox).toBeChecked();
 
-      // エラーメッセージが表示される（ページは遷移しない）
-      await expect(page.getByRole("alert")).toBeVisible({ timeout: 10000 });
-      // 詳細画面に留まっていること
-      await expect(page.getByText("部署変更")).toBeVisible();
+      // チェックをOFFにして更新
+      await isActiveCheckbox.uncheck();
+      await page.getByRole("button", { name: "更新" }).click();
+
+      await expect(page.getByText("部署情報を更新しました。")).toBeVisible({ timeout: 10000 });
+      await expect(isActiveCheckbox).not.toBeChecked();
     });
 
-    test("子部署を削除できる", async ({ page }) => {
-      await page.goto(`/departments/${CHILD_DEPT_CD}`);
+    test("管理者が部署を有効化できる", async ({ page }) => {
+      await page.goto(`/departments/${STATUS_TEST_DEPT_CD}`);
+      await expect(page.getByText("部署変更")).toBeVisible();
+
+      // 現在「無効」のはずなので ON にする
+      const isActiveCheckbox = page.getByLabel("有効");
+      await expect(isActiveCheckbox).not.toBeChecked();
+
+      await isActiveCheckbox.check();
+      await page.getByRole("button", { name: "更新" }).click();
+
+      await expect(page.getByText("部署情報を更新しました。")).toBeVisible({ timeout: 10000 });
+      await expect(isActiveCheckbox).toBeChecked();
+    });
+
+    test("管理者がステータス管理用の部署を削除できる", async ({ page }) => {
+      await page.goto(`/departments/${STATUS_TEST_DEPT_CD}`);
       await expect(page.getByText("部署変更")).toBeVisible();
 
       await page.getByRole("button", { name: "削除" }).click();
@@ -158,16 +145,18 @@ test.describe("部署CRUD（管理者）", () => {
       await expect(page).toHaveURL(/\/departments/, { timeout: 10000 });
       await expect(page.getByText("部署を削除しました。")).toBeVisible({ timeout: 10000 });
     });
+  });
 
-    test("親部署を削除できる", async ({ page }) => {
-      await page.goto(`/departments/${PARENT_DEPT_CD}`);
-      await expect(page.getByText("部署変更")).toBeVisible();
+  test("子部署がある部署は削除できない", async ({ page }) => {
+    // PARENT_WITH_CHILD は DEPT902 を子部署として持つ（seed-e2e.ts）
+    await page.goto(`/departments/${PARENT_WITH_CHILD}`);
+    await expect(page.getByText("部署変更")).toBeVisible();
 
-      await page.getByRole("button", { name: "削除" }).click();
+    await page.getByRole("button", { name: "削除" }).click();
 
-      await expect(page).toHaveURL(/\/departments/, { timeout: 10000 });
-      await expect(page.getByText("部署を削除しました。")).toBeVisible({ timeout: 10000 });
-    });
+    // エラーメッセージが表示される（ページは遷移しない）
+    await expect(page.getByRole("alert")).toBeVisible({ timeout: 10000 });
+    await expect(page).toHaveURL(new RegExp(`/departments/${PARENT_WITH_CHILD}`));
   });
 
   test("重複する部署コードでエラーが表示される", async ({ page }) => {
