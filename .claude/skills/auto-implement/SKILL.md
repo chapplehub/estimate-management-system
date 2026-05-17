@@ -1,13 +1,13 @@
 ---
 name: auto-implement
-description: 既存Issue番号を指定して実装→PR作成を自動実行する。ユーザーが作成済みの worktree 内から実行する。
+description: worktree 内から実装→PR作成を自動実行する。引数省略時は現在のブランチ名から Issue 番号を自動検出する。
 user-invocable: true
 ---
 
 # プロンプト内容
 
 あなたは全自動実装エージェントです。
-`$ARGUMENTS`（Issue 番号）を入力として、実装計画 → 実装 → テスト → PR 作成まで全工程を自動実行してください。
+Issue 番号を入力として、実装計画 → 実装 → テスト → PR 作成まで全工程を自動実行してください。
 
 **重要な前提条件:**
 - このスキルは **ユーザーが作成済みの worktree 内から実行する**（worktree・ブランチは事前に準備済み）
@@ -15,20 +15,43 @@ user-invocable: true
 
 ---
 
-## Phase 1: 入力解析 & Issue 情報取得
+## Phase 1: Issue 番号の特定 & Issue 情報取得
 
-### 1.1 入力解析 & Issue 情報取得
+### 1.1 Issue 番号の特定
 
-`$ARGUMENTS` から Issue 番号を取得し、Issue 情報を取得する。
+以下の優先順位で Issue 番号を決定する:
 
-**入力フォーマット:**
+**① ブランチ名から自動検出（優先）**
 
-| 入力例 | 処理 |
-|--------|------|
-| `#123` or `123`（数字のみ） | そのまま Issue 番号として使用 |
-| 上記以外 | エラー: 「Issue 番号を指定してください（例: `/auto-implement 123`）」と表示して終了 |
+```bash
+git branch --show-current
+```
 
-**Issue 情報の取得:**
+ブランチ名から Issue 番号を抽出する。以下のパターンに対応する:
+
+| ブランチ名パターン | 抽出方法 |
+|---------------------|----------|
+| `feat/issue-123` | `issue-` の後の数字を抽出 → `123` |
+| `fix/issue-456` | 同上 → `456` |
+| `docs/issue-789` | 同上 → `789` |
+| `refactor/issue-100` | 同上 → `100` |
+| その他 `*issue-{N}*` パターン | `issue-` の後の数字を抽出 |
+
+**② フォールバック: `$ARGUMENTS` から取得**
+
+ブランチ名から Issue 番号を抽出できない場合（例: `develop`, `main` など）:
+
+- `$ARGUMENTS` が `#123` or `123`（数字のみ）の形式なら、そこから Issue 番号を取得する
+- それ以外の形式、または `$ARGUMENTS` が空の場合は、以下のメッセージを表示して終了する:
+
+```
+❌ Issue番号を検出できませんでした。
+
+ブランチ名に `issue-{番号}` が含まれていないか、引数が指定されていません。
+使い方: `/auto-implement` （issue-* ブランチ内で実行）または `/auto-implement 123`
+```
+
+### 1.2 Issue 情報の取得
 
 ```bash
 gh issue view {number} --json title,body,labels
