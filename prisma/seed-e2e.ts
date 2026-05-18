@@ -303,6 +303,30 @@ const CUSTOMERS = [
       },
     ],
   },
+  // C901/D901: E2E専用_納品先あり削除テスト用（skill §13 / Issue #261・failure-only・DB 不変）
+  {
+    code: "C901",
+    name: "E2E専用_納品先あり削除テスト用得意先",
+    postalCode: "1000005",
+    prefecture: "東京都",
+    address: "千代田区丸の内1-9-1",
+    phoneNumber: "0399990901",
+    faxNumber: null,
+    contactPerson: null,
+    marginRate: 10,
+    isActive: true,
+    deliveryLocations: [
+      {
+        code: "D901",
+        name: "E2E専用_納品先あり削除テスト用納品先",
+        postalCode: "1000005",
+        prefecture: "東京都",
+        address: "千代田区丸の内1-9-1 1F",
+        phoneNumber: "0399990902",
+        deliveryNotes: "E2E専用_削除不可検証用",
+      },
+    ],
+  },
 ];
 
 // 商品データ（各区分 + 有効/無効を含む）
