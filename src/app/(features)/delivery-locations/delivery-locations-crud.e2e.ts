@@ -1,17 +1,21 @@
 import { expect, test } from "@playwright/test";
 
-/** テストで使用する固定の納品先データ（seed範囲 D001〜D007 外） */
+/** §9 chain1（ライフサイクル）用: 作成→詳細→更新→削除（テスト内作成・seed範囲 D001〜D007 外） */
 const TEST_DL_CD = "DL901";
 const TEST_DL_NAME = "E2Eテスト納品先";
 const TEST_CUSTOMER_NAME = "株式会社山田製作所";
+
+/** §9 chain2（ステータス管理）用: ライフサイクルとは別データコード */
+const TEST_STATUS_DL_CD = "DL903";
+const TEST_STATUS_DL_NAME = "E2Eステータス管理納品先";
 
 /** 一般ユーザー作成・削除テスト用 */
 const TEST_USER_DL_CD = "DL902";
 const TEST_USER_DL_NAME = "E2E一般テスト納品先";
 
 test.describe("納品先CRUD（管理者）", () => {
-  // 作成→詳細確認→更新→無効化→有効化→削除の順で実行（同一テストデータを使い回すため serial で順序保証）
-  test.describe.serial("作成・更新・ステータス変更・削除テスト", () => {
+  // §9 chain1: 作成 → 詳細確認 → 更新 → 削除（1 ライフサイクル × 1 関心事・§4 ステップ数 4）
+  test.describe.serial("ライフサイクル", () => {
     test("新規納品先を作成できる", async ({ page }) => {
       // 一覧画面から新規登録画面に遷移
       await page.goto("/delivery-locations");
@@ -110,40 +114,6 @@ test.describe("納品先CRUD（管理者）", () => {
       await expect(contactField).toHaveValue("更新担当");
     });
 
-    test("納品先を無効化できる", async ({ page }) => {
-      await page.goto(`/delivery-locations/${TEST_DL_CD}`);
-      await expect(page.getByRole("heading", { name: "納品先編集" })).toBeVisible();
-
-      // 「無効化」ボタンが表示されること（有効状態）
-      await expect(page.getByRole("button", { name: "無効化" })).toBeVisible();
-
-      // 無効化実行
-      await page.getByRole("button", { name: "無効化" }).click();
-
-      // 成功トーストが表示される
-      await expect(page.getByText("納品先を無効化しました。")).toBeVisible({ timeout: 10000 });
-
-      // 「有効化」ボタンに切り替わること（無効状態）
-      await expect(page.getByRole("button", { name: "有効化" })).toBeVisible();
-    });
-
-    test("納品先を有効化できる", async ({ page }) => {
-      await page.goto(`/delivery-locations/${TEST_DL_CD}`);
-      await expect(page.getByRole("heading", { name: "納品先編集" })).toBeVisible();
-
-      // 「有効化」ボタンが表示されること（無効状態）
-      await expect(page.getByRole("button", { name: "有効化" })).toBeVisible();
-
-      // 有効化実行
-      await page.getByRole("button", { name: "有効化" }).click();
-
-      // 成功トーストが表示される
-      await expect(page.getByText("納品先を有効化しました。")).toBeVisible({ timeout: 10000 });
-
-      // 「無効化」ボタンに切り替わること（有効状態）
-      await expect(page.getByRole("button", { name: "無効化" })).toBeVisible();
-    });
-
     test("納品先を削除できる", async ({ page }) => {
       await page.goto(`/delivery-locations/${TEST_DL_CD}`);
       await expect(page.getByRole("heading", { name: "納品先編集" })).toBeVisible();
@@ -166,10 +136,84 @@ test.describe("納品先CRUD（管理者）", () => {
     });
   });
 
+  // §9 chain2: 作成 → 無効化 → 有効化 → 削除（ステータス管理は独立 chain・§4・別データコード DL903）
+  test.describe.serial("ステータス管理", () => {
+    test("ステータス管理用の納品先を作成できる", async ({ page }) => {
+      // 最小フォーム入力で作成（フィールド網羅はライフサイクル chain の関心事）
+      await page.goto("/delivery-locations/new");
+      await expect(page.getByRole("heading", { name: "納品先登録" })).toBeVisible();
+
+      await page.getByLabel("取引先コード").fill(TEST_STATUS_DL_CD);
+      await page.getByLabel("名前").fill(TEST_STATUS_DL_NAME);
+      await page.getByLabel("得意先").selectOption({ label: TEST_CUSTOMER_NAME });
+
+      await page.getByRole("button", { name: "登録" }).click();
+
+      await expect(page).toHaveURL(/\/delivery-locations/, { timeout: 10000 });
+      await page.waitForLoadState("load");
+      await expect(page.getByText("納品先を登録しました。")).toBeVisible({ timeout: 10000 });
+    });
+
+    test("納品先を無効化できる", async ({ page }) => {
+      await page.goto(`/delivery-locations/${TEST_STATUS_DL_CD}`);
+      await expect(page.getByRole("heading", { name: "納品先編集" })).toBeVisible();
+
+      // 「無効化」ボタンが表示されること（有効状態）
+      await expect(page.getByRole("button", { name: "無効化" })).toBeVisible();
+
+      // 無効化実行
+      await page.getByRole("button", { name: "無効化" }).click();
+
+      // 成功トーストが表示される
+      await expect(page.getByText("納品先を無効化しました。")).toBeVisible({ timeout: 10000 });
+
+      // 「有効化」ボタンに切り替わること（無効状態）
+      await expect(page.getByRole("button", { name: "有効化" })).toBeVisible();
+    });
+
+    test("納品先を有効化できる", async ({ page }) => {
+      await page.goto(`/delivery-locations/${TEST_STATUS_DL_CD}`);
+      await expect(page.getByRole("heading", { name: "納品先編集" })).toBeVisible();
+
+      // 「有効化」ボタンが表示されること（無効状態）
+      await expect(page.getByRole("button", { name: "有効化" })).toBeVisible();
+
+      // 有効化実行
+      await page.getByRole("button", { name: "有効化" }).click();
+
+      // 成功トーストが表示される
+      await expect(page.getByText("納品先を有効化しました。")).toBeVisible({ timeout: 10000 });
+
+      // 「無効化」ボタンに切り替わること（有効状態）
+      await expect(page.getByRole("button", { name: "無効化" })).toBeVisible();
+    });
+
+    test("納品先を削除できる", async ({ page }) => {
+      await page.goto(`/delivery-locations/${TEST_STATUS_DL_CD}`);
+      await expect(page.getByRole("heading", { name: "納品先編集" })).toBeVisible();
+
+      // 削除実行
+      await page.getByRole("button", { name: "削除" }).click();
+
+      // 一覧画面にリダイレクトされ、成功トーストが表示される
+      await expect(page).toHaveURL(/\/delivery-locations/, { timeout: 10000 });
+      await expect(page.getByText("納品先を削除しました。")).toBeVisible({ timeout: 10000 });
+
+      // 削除した納品先が検索で見つからない
+      await expect(page.locator("table tbody tr").first()).toBeVisible();
+      await page.getByLabel("コード").fill(TEST_STATUS_DL_CD);
+      await page.getByRole("button", { name: "検索" }).click();
+      await expect(page).toHaveURL(new RegExp(`code=${TEST_STATUS_DL_CD}`), {
+        timeout: 10000,
+      });
+      await expect(page.getByRole("link", { name: TEST_STATUS_DL_CD })).not.toBeVisible();
+    });
+  });
+
   test("重複する取引先コードでエラーが表示される", async ({ page }) => {
     await page.goto("/delivery-locations/new");
 
-    await page.getByLabel("取引先コード").fill("D001"); // 既存の納品先コード
+    await page.getByLabel("取引先コード").fill("D001"); // 既存の納品先コード（共通シード・簡易エラー §3）
     await page.getByLabel("名前").fill("重複テスト納品先");
     await page.getByLabel("得意先").selectOption({ label: TEST_CUSTOMER_NAME });
 
