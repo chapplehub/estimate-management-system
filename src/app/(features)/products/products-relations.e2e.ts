@@ -4,6 +4,10 @@ const TEST_PARENT_CODE = "PRD800";
 const TEST_RELATION_A_CODE = "PRD801";
 const TEST_RELATION_B_CODE = "PRD802";
 
+// 「参照されている商品の無効化ダイアログ」chain 用（周辺商品 chain とは独立データ区分）
+const TEST_REF_PARENT_CODE = "PRD803";
+const TEST_REF_CHILD_CODE = "PRD804";
+
 async function createProduct(
   page: Page,
   code: string,
@@ -188,6 +192,78 @@ test.describe("周辺商品モーダルテスト（管理者）", () => {
         timeout: 10000,
       });
       await expect(page.getByText("商品情報を更新しました。")).toBeVisible({ timeout: 10000 });
+    });
+  });
+});
+
+// 参照されている商品の無効化時に置換ダイアログが表示される挙動の検証。
+// 周辺商品で参照される商品を無効化しようとすると DeactivateWithReplacementDialog が開く。
+// 1 chain = 1 関心事（§4）。周辺商品 chain は最後に関連を全削除するため、本シナリオは
+// 親子を作成→紐付け→検証→後始末する独立 chain とする。
+test.describe("参照されている商品の無効化ダイアログ（管理者）", () => {
+  test.describe.serial("参照商品の無効化ダイアログ表示", () => {
+    test("テスト用の親商品を作成する (PRD803)", async ({ page }) => {
+      await createProduct(page, TEST_REF_PARENT_CODE, "E2E参照テスト親商品", "INDIVIDUAL", "UNIT");
+    });
+
+    test("テスト用の参照先商品を作成する (PRD804)", async ({ page }) => {
+      await createProduct(page, TEST_REF_CHILD_CODE, "E2E参照テスト子商品", "INDIVIDUAL", "UNIT");
+    });
+
+    test("親商品(PRD803)の周辺商品に子商品(PRD804)を紐付ける", async ({ page }) => {
+      await page.goto(`/products/${TEST_REF_PARENT_CODE}/relations`);
+      await expect(page.getByRole("heading", { name: "周辺商品設定" })).toBeVisible();
+
+      await page.getByRole("button", { name: "商品を追加" }).click();
+      await expect(page.getByRole("heading", { name: "商品を選択" })).toBeVisible();
+
+      await page.locator("#modal-search-code").fill(TEST_REF_CHILD_CODE);
+      await page.getByRole("button", { name: "検索" }).click();
+
+      const row = page.locator("tr", { hasText: TEST_REF_CHILD_CODE });
+      await expect(row).toBeVisible();
+      await row.locator("input[type='checkbox']").click();
+      await page.getByRole("button", { name: "1件を追加" }).click();
+
+      await expect(page.getByRole("heading", { name: "商品を選択" })).not.toBeVisible();
+      await page.getByRole("button", { name: "保存" }).click();
+
+      await expect(page).toHaveURL(new RegExp(`/products/${TEST_REF_PARENT_CODE}`), {
+        timeout: 10000,
+      });
+      await expect(page.getByText("商品情報を更新しました。")).toBeVisible({ timeout: 10000 });
+    });
+
+    test("参照されている子商品(PRD804)の無効化で置換ダイアログが表示される", async ({ page }) => {
+      // PRD804 は PRD803 から参照されているので、無効化時にダイアログが開く
+      await page.goto(`/products/${TEST_REF_CHILD_CODE}`);
+      await expect(page.getByRole("heading", { name: "商品詳細" })).toBeVisible();
+
+      await page.getByRole("button", { name: "無効化" }).click();
+
+      // ダイアログが表示され、参照元として親商品(PRD803)が示される
+      await expect(page.getByText("商品の無効化")).toBeVisible();
+      await expect(page.getByText("この商品は他の商品から参照されています")).toBeVisible();
+      await expect(page.getByText(TEST_REF_PARENT_CODE)).toBeVisible();
+
+      // ダイアログを閉じる（無効化は実行しない）
+      await page.getByRole("button", { name: "Close" }).click();
+      await expect(page.getByText("商品の無効化")).not.toBeVisible();
+    });
+
+    test("テストデータを削除する", async ({ page }) => {
+      // 親(PRD803)を先に削除して参照を解消してから子(PRD804)を削除する
+      await page.goto(`/products/${TEST_REF_PARENT_CODE}`);
+      await expect(page.getByRole("heading", { name: "商品詳細" })).toBeVisible();
+      await page.getByRole("button", { name: "削除" }).click();
+      await expect(page).toHaveURL(/\/products/, { timeout: 10000 });
+      await expect(page.getByText("商品を削除しました。")).toBeVisible({ timeout: 10000 });
+
+      await page.goto(`/products/${TEST_REF_CHILD_CODE}`);
+      await expect(page.getByRole("heading", { name: "商品詳細" })).toBeVisible();
+      await page.getByRole("button", { name: "削除" }).click();
+      await expect(page).toHaveURL(/\/products/, { timeout: 10000 });
+      await expect(page.getByText("商品を削除しました。")).toBeVisible({ timeout: 10000 });
     });
   });
 });
