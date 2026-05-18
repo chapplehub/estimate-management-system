@@ -271,7 +271,12 @@ test.describe("商品（一般ユーザー）", () => {
 
     await page.getByRole("button", { name: "登録" }).click();
 
-    // サーバ側認可で FORBIDDEN リダイレクト（フロントのナビ制御だけでなくサーバ認可の回帰検知）
-    await expect(page).toHaveURL(/\/signin\?reason=forbidden/, { timeout: 10000 });
+    // サーバ側認可で FORBIDDEN リダイレクト → サインインへ排除される
+    // （?reason=forbidden は redirect-reason-toast が即座に URL から除去するため、
+    //   消えない回帰シグナルである権限エラートーストで検証する）
+    await expect(page).toHaveURL(/\/signin/, { timeout: 10000 });
+    await expect(page.getByText("この操作を行う権限がありません。")).toBeVisible({
+      timeout: 10000,
+    });
   });
 });
