@@ -46,6 +46,7 @@ next-env.d.ts
 
 # Worktrees
 /worktrees/
+.claude/worktrees/
 
 # Playwright
 node_modules/
