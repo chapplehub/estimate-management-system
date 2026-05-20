@@ -389,3 +389,24 @@ model SetProductComponent {
   @@id([setProductId, componentProductId])
   @@map("set_product_components")
 }
+
+// ========================================
+// 消費税率関連
+// ========================================
+
+// 消費税率マスタ
+// タイムラインの単調性（制度上ギャップなし）を利用し、effectiveFrom 1 カラムのみで表現する。
+// 前期間の終わり = 次の行の effectiveFrom（暗黙）。「行の存在＝そこから新税率が有効」パターン。
+model TaxRate {
+  id   String  @id @db.Uuid // ドメイン層でUUIDv7生成
+  rate Decimal @db.Decimal(4, 3) // 例: 0.080 (8%), 0.100 (10%)
+
+  // この日時から有効な税率。@unique で同時刻重複を禁止し B-tree 索引も提供
+  effectiveFrom DateTime @unique @map("effective_from") @db.Timestamptz(3)
+
+  // タイムスタンプ
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("tax_rates")
+}
