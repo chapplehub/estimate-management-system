@@ -101,6 +101,9 @@ model Employee {
   // 従業員役割（逆参照）
   employeeRoles EmployeeRole[]
 
+  // 見積作成者としての逆参照
+  createdEstimates Estimate[] @relation("EstimateCreator")
+
   // タイムスタンプ
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -131,6 +134,9 @@ model Department {
 
   // 所属従業員（逆参照）
   employees Employee[]
+
+  // 部署紐付け見積（逆参照）
+  estimates Estimate[] @relation("EstimateDepartment")
 
   // タイムスタンプ
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
@@ -271,6 +277,9 @@ model Customer {
   // 配下の納品先
   deliveryLocations DeliveryLocation[]
 
+  // 得意先紐付け見積（逆参照）
+  estimates Estimate[] @relation("CustomerEstimates")
+
   // タイムスタンプ
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -289,6 +298,9 @@ model DeliveryLocation {
 
   // 納品先固有の属性
   deliveryNotes String? @map("delivery_notes") @db.VarChar(500) // 配送時の注意事項
+
+  // 納品先紐付け見積（逆参照）
+  estimates Estimate[] @relation("DeliveryLocationEstimates")
 
   // タイムスタンプ
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
@@ -340,6 +352,10 @@ model Product {
   // セット商品構成 (この商品が構成商品)
   componentOfSets SetProductComponent[] @relation("ComponentProduct")
 
+  // 修理対象機器としての逆参照
+  repairTargetDetails      RepairEstimateDetail[]      @relation("RepairTargetProduct")
+  afterRepairTargetDetails AfterRepairEstimateDetail[] @relation("AfterRepairTargetProduct")
+
   // タイムスタンプ
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -388,6 +404,143 @@ model SetProductComponent {
 
   @@id([setProductId, componentProductId])
   @@map("set_product_components")
+}
+
+// ========================================
+// 見積関連
+// ========================================
+
+// 見積区分
+enum EstimateType {
+  NEW          // 新規
+  REPAIR       // 修理（事前）
+  AFTER_REPAIR // 事後修理
+}
+
+// 提出区分
+enum SubmissionType {
+  CUSTOMER          // 得意先向け
+  DELIVERY_LOCATION // 納品先向け
+}
+
+// 消費税の端数処理
+enum TaxRoundingType {
+  ROUND_DOWN // 切捨
+  ROUND_UP   // 切上
+  ROUND      // 四捨五入
+}
+
+model Estimate {
+  id             String @id @db.Uuid // ドメイン層でUUIDv7生成
+  estimateNumber String @unique @map("estimate_number") @db.VarChar(8) // 例: N2500001（接頭辞1文字＋年度2桁＋連番5桁）
+
+  // 見積区分（NEW / REPAIR / AFTER_REPAIR）
+  estimateType EstimateType @map("estimate_type")
+
+  fiscalYear Int @map("fiscal_year") // 西暦4桁（採番用）
+  sequence   Int                       // 区分内連番（最大99999）
+
+  estimateDate DateTime @map("estimate_date") @db.Timestamptz(3) // 見積年月日
+  deadline     DateTime @db.Timestamptz(3)                       // 締切年月日
+
+  // 提出区分
+  submissionType SubmissionType @map("submission_type")
+
+  // 得意先・納品先（常に両方設定）
+  customerId         String           @map("customer_id") @db.Uuid
+  customer           Customer         @relation("CustomerEstimates", fields: [customerId], references: [id])
+  deliveryLocationId String           @map("delivery_location_id") @db.Uuid
+  deliveryLocation   DeliveryLocation @relation("DeliveryLocationEstimates", fields: [deliveryLocationId], references: [id])
+
+  // 修理関連は本モデルに持たない（NULL を排除するためサブタイプテーブルに分割）
+  //   estimateType = NEW          : どちらの詳細も持たない
+  //   estimateType = REPAIR       : RepairEstimateDetail (1:1) を持つ
+  //   estimateType = AFTER_REPAIR : AfterRepairEstimateDetail (1:1) を持つ
+  // estimateType と詳細テーブルの整合（排他的サブタイプ）はドメイン層で担保
+  repairDetail      RepairEstimateDetail?
+  afterRepairDetail AfterRepairEstimateDetail?
+
+  // 消費税（見積時点でスナップショット）
+  taxRate         Decimal         @map("tax_rate") @db.Decimal(4, 3)
+  taxRoundingType TaxRoundingType @map("tax_rounding_type")
+
+  // 作成者（Employee を参照。User は better-auth 用なので業務エンティティから直接参照しない）
+  createdBy    String     @map("created_by") @db.Uuid
+  creator      Employee   @relation("EstimateCreator", fields: [createdBy], references: [id])
+  departmentId String     @map("department_id") @db.Uuid
+  department   Department @relation("EstimateDepartment", fields: [departmentId], references: [id])
+
+  // 複製元・改訂元・申請関連は本モデルに持たない（複製/改訂は別 issue の系譜テーブルへ）
+  // Order との逆リレーション（orders Order[]）も別 issue で追加する
+
+  // バリエーション（別 issue の Phase 3 で追加されるまで参照されない）
+
+  // タイムスタンプ
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([estimateNumber])
+  @@index([fiscalYear, estimateType, sequence])
+  @@index([createdBy])
+  @@index([departmentId])
+  @@index([customerId])
+  @@index([deliveryLocationId])
+  @@index([submissionType])
+  @@map("estimates")
+}
+
+// REPAIR（事前修理）専用。estimateType = REPAIR のときのみ 1:1 で存在
+model RepairEstimateDetail {
+  id         String   @id @db.Uuid // ドメイン層でUUIDv7生成
+  estimateId String   @unique @map("estimate_id") @db.Uuid
+  estimate   Estimate @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+
+  // 修理対象機器（必須）
+  targetProductId String  @map("target_product_id") @db.Uuid
+  targetProduct   Product @relation("RepairTargetProduct", fields: [targetProductId], references: [id])
+
+  // 故障内容（必須）
+  faultDescription String @map("fault_description") @db.VarChar(2000)
+
+  // 修理予定日（必須）
+  scheduledRepairDate DateTime @map("scheduled_repair_date") @db.Timestamptz(3)
+
+  // タイムスタンプ
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([targetProductId])
+  @@map("repair_estimate_details")
+}
+
+// AFTER_REPAIR（事後修理）専用。estimateType = AFTER_REPAIR のときのみ 1:1 で存在
+model AfterRepairEstimateDetail {
+  id         String   @id @db.Uuid // ドメイン層でUUIDv7生成
+  estimateId String   @unique @map("estimate_id") @db.Uuid
+  estimate   Estimate @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+
+  // 修理対象機器（必須）
+  targetProductId String  @map("target_product_id") @db.Uuid
+  targetProduct   Product @relation("AfterRepairTargetProduct", fields: [targetProductId], references: [id])
+
+  // 故障内容（必須）
+  faultDescription String @map("fault_description") @db.VarChar(2000)
+
+  // 修理実施日（過去日付・必須）
+  actualRepairDate DateTime @map("actual_repair_date") @db.Timestamptz(3)
+
+  // 緊急対応理由（必須）
+  emergencyReason String @map("emergency_reason") @db.VarChar(2000)
+
+  // 10万円超警告の確認済フラグ
+  afterServiceWarningAcknowledged Boolean @default(false) @map("after_service_warning_acknowledged")
+
+  // タイムスタンプ
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([targetProductId])
+  @@map("after_repair_estimate_details")
 }
 
 // ========================================
