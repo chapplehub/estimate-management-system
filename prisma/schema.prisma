@@ -585,6 +585,14 @@ model EstimateVariation {
   // 受注（1:1。Order.variationId が @unique のため Optional 単数）
   order Order? @relation("VariationOrder")
 
+  // 複製系譜: copyTarget=この V が複製で生まれた出自（高々1）/ copySource=この V を元に複製された先（複数可）
+  copyTarget EstimateVariationCopy?  @relation("VariationCopyTarget")
+  copySource EstimateVariationCopy[] @relation("VariationCopySource")
+
+  // 改訂系譜: revisionTarget=この V が改訂で生まれた出自（高々1）/ revisionSource=この V を元に改訂された先（複数可）
+  revisionTarget EstimateVariationRevision?  @relation("VariationRevisionTarget")
+  revisionSource EstimateVariationRevision[] @relation("VariationRevisionSource")
+
   items EstimateItem[]
 
   // タイムスタンプ
@@ -747,4 +755,51 @@ model OrderCancellation {
 
   @@index([cancelledBy])
   @@map("order_cancellations")
+}
+
+// ========================================
+// バリエーション系譜（複製・得意先改訂）
+// ========================================
+//
+// 複製（§5）と得意先改訂（§7）は形は似るが業務操作・ルール・将来増える属性が異なる別概念。
+// kind 判別子で 1 表統合すると改訂固有属性が増えた時に複製側が NULL になるため、別々の交差テーブルに分離する（§11.2.1）。
+// いずれも target 側を @unique とし、1 派生先は高々 1 出自を持つ。どちらの表にも行が無い＝オリジナル。
+// 「同じバリエーションが複製かつ改訂」になる二重派生の禁止はドメイン層で担保する（ADR-0019）。
+
+// 見積複製による派生（§5）
+model EstimateVariationCopy {
+  id String @id @db.Uuid // ドメイン層でUUIDv7生成
+
+  // 複製で生まれたバリエーション（1 件のみ → @unique）
+  copiedVariationId String            @unique @map("copied_variation_id") @db.Uuid
+  copiedVariation   EstimateVariation @relation("VariationCopyTarget", fields: [copiedVariationId], references: [id], onDelete: Cascade)
+
+  // 複製元バリエーション
+  sourceVariationId String            @map("source_variation_id") @db.Uuid
+  sourceVariation   EstimateVariation @relation("VariationCopySource", fields: [sourceVariationId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([sourceVariationId])
+  @@map("estimate_variation_copies")
+}
+
+// 得意先改訂による派生（§7）
+model EstimateVariationRevision {
+  id String @id @db.Uuid // ドメイン層でUUIDv7生成
+
+  // 改訂で生まれた得意先バリエーション（1 件のみ → @unique）
+  revisedVariationId String            @unique @map("revised_variation_id") @db.Uuid
+  revisedVariation   EstimateVariation @relation("VariationRevisionTarget", fields: [revisedVariationId], references: [id], onDelete: Cascade)
+
+  // 改訂元の納品先バリエーション
+  sourceVariationId String            @map("source_variation_id") @db.Uuid
+  sourceVariation   EstimateVariation @relation("VariationRevisionSource", fields: [sourceVariationId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([sourceVariationId])
+  @@map("estimate_variation_revisions")
 }
