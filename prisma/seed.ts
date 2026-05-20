@@ -932,6 +932,12 @@ const PRODUCTS = [
   },
 ];
 
+// 消費税率データ（昇順）
+const TAX_RATES = [
+  { rate: "0.080", effectiveFrom: new Date("2014-04-01T00:00:00+09:00") },
+  { rate: "0.100", effectiveFrom: new Date("2019-10-01T00:00:00+09:00") },
+];
+
 // ランダムな要素を取得
 function randomChoice<T>(array: T[]): T {
   return array[Math.floor(Math.random() * array.length)];
@@ -1167,6 +1173,7 @@ async function main() {
   console.log("");
 
   // 既存データを削除（外部キー制約を考慮した順序）
+  await prisma.taxRate.deleteMany();
   await prisma.setProductComponent.deleteMany();
   await prisma.productRelation.deleteMany();
   await prisma.product.deleteMany();
@@ -1260,6 +1267,16 @@ async function main() {
   console.log(`Created ${PRODUCTS.length} products`);
   console.log("");
 
+  // 消費税率を作成（昇順で投入。前期間の終わり = 次の行の effectiveFrom の暗黙）
+  console.log("Creating tax rates...");
+  for (const tr of TAX_RATES) {
+    await prisma.taxRate.create({
+      data: { id: generateId(), rate: tr.rate, effectiveFrom: tr.effectiveFrom },
+    });
+  }
+  console.log(`Created ${TAX_RATES.length} tax rates`);
+  console.log("");
+
   // 得意先・納品先を作成
   const { customerCount, deliveryLocationCount } = await seedCustomersAndDeliveryLocations();
 
@@ -1325,6 +1342,7 @@ async function main() {
   console.log(`Created ${ROLES.length} roles`);
   console.log(`Created ${employeeRoleData.length} employee role assignments`);
   console.log(`Created ${PRODUCTS.length} products`);
+  console.log(`Created ${TAX_RATES.length} tax rates`);
   console.log(`Created ${customerCount} customers`);
   console.log(`Created ${deliveryLocationCount} delivery locations`);
   console.log(`Default password for all users: ${DEFAULT_PASSWORD}`);
