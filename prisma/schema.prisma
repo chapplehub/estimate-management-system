@@ -5,9 +5,9 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
-  engineType      = "client"
+  provider   = "prisma-client"
+  output     = "../generated/prisma"
+  engineType = "client"
 }
 
 datasource db {
@@ -103,6 +103,11 @@ model Employee {
 
   // 見積作成者としての逆参照
   createdEstimates Estimate[] @relation("EstimateCreator")
+
+  // 受注関連の逆参照（作成者/確定者/取消者を Employee 参照に統一したため必要）
+  createdOrders   Order[]             @relation("OrderCreator")
+  confirmedOrders OrderConfirmation[] @relation("OrderConfirmer")
+  cancelledOrders OrderCancellation[] @relation("OrderCanceller")
 
   // タイムスタンプ
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
@@ -318,27 +323,27 @@ model DeliveryLocation {
 enum ProductCategory {
   INDIVIDUAL // 個別商品
   CONSUMABLE // 消耗品
-  SET        // セット商品
+  SET // セット商品
 }
 
 // 単位
 enum ProductUnit {
-  UNIT  // 台
+  UNIT // 台
   PIECE // 個
-  ROLL  // 本
-  BOX   // 箱
+  ROLL // 本
+  BOX // 箱
   SHEET // 枚
-  SET   // セット
+  SET // セット
 }
 
 model Product {
   id          String          @id @db.Uuid // ドメイン層でUUIDv7生成
   code        String          @unique @db.VarChar(50) // 商品コード (英数字, 最大50桁)
   name        String          @unique @db.VarChar(100) // 商品名
-  category    ProductCategory              // 商品区分
+  category    ProductCategory // 商品区分
   description String?         @db.VarChar(1000) // 商品説明
   note        String?         @db.VarChar(1000) // 備考
-  unit        ProductUnit                  // 単位
+  unit        ProductUnit // 単位
   costPrice   Decimal?        @map("cost_price") @db.Decimal(12, 2) // 原価
   isActive    Boolean         @default(true) @map("is_active") // 有効フラグ
 
@@ -348,7 +353,7 @@ model Product {
   relatedByProducts ProductRelation[] @relation("ProductRelationTarget")
 
   // セット商品構成 (この商品がセット商品)
-  setComponents  SetProductComponent[] @relation("SetProduct")
+  setComponents   SetProductComponent[] @relation("SetProduct")
   // セット商品構成 (この商品が構成商品)
   componentOfSets SetProductComponent[] @relation("ComponentProduct")
 
@@ -371,8 +376,8 @@ model Product {
 
 model ProductRelation {
   // 設定元 (個別商品のみ)
-  productId      String  @map("product_id") @db.Uuid
-  product        Product @relation("ProductRelationSource", fields: [productId], references: [id], onDelete: Cascade)
+  productId String  @map("product_id") @db.Uuid
+  product   Product @relation("ProductRelationSource", fields: [productId], references: [id], onDelete: Cascade)
 
   // 設定先 (個別商品 or 消耗品)
   relatedProductId String  @map("related_product_id") @db.Uuid
@@ -391,8 +396,8 @@ model ProductRelation {
 
 model SetProductComponent {
   // セット商品
-  setProductId     String  @map("set_product_id") @db.Uuid
-  setProduct       Product @relation("SetProduct", fields: [setProductId], references: [id], onDelete: Cascade)
+  setProductId String  @map("set_product_id") @db.Uuid
+  setProduct   Product @relation("SetProduct", fields: [setProductId], references: [id], onDelete: Cascade)
 
   // 構成商品 (個別商品 or 消耗品)
   componentProductId String  @map("component_product_id") @db.Uuid
@@ -415,22 +420,22 @@ model SetProductComponent {
 
 // 見積区分
 enum EstimateType {
-  NEW          // 新規
-  REPAIR       // 修理（事前）
+  NEW // 新規
+  REPAIR // 修理（事前）
   AFTER_REPAIR // 事後修理
 }
 
 // 提出区分
 enum SubmissionType {
-  CUSTOMER          // 得意先向け
+  CUSTOMER // 得意先向け
   DELIVERY_LOCATION // 納品先向け
 }
 
 // 消費税の端数処理
 enum TaxRoundingType {
   ROUND_DOWN // 切捨
-  ROUND_UP   // 切上
-  ROUND      // 四捨五入
+  ROUND_UP // 切上
+  ROUND // 四捨五入
 }
 
 model Estimate {
@@ -441,10 +446,10 @@ model Estimate {
   estimateType EstimateType @map("estimate_type")
 
   fiscalYear Int @map("fiscal_year") // 西暦4桁（採番用）
-  sequence   Int                       // 区分内連番（最大99999）
+  sequence   Int // 区分内連番（最大99999）
 
   estimateDate DateTime @map("estimate_date") @db.Timestamptz(3) // 見積年月日
-  deadline     DateTime @db.Timestamptz(3)                       // 締切年月日
+  deadline     DateTime @db.Timestamptz(3) // 締切年月日
 
   // 提出区分
   submissionType SubmissionType @map("submission_type")
@@ -549,7 +554,7 @@ model AfterRepairEstimateDetail {
 
 // バリエーション状態
 enum VariationStatus {
-  ACTIVE   // 有効
+  ACTIVE // 有効
   INACTIVE // 無効
 }
 
@@ -569,14 +574,24 @@ model EstimateVariation {
   overallDiscount Decimal @default(0) @map("overall_discount") @db.Decimal(12, 2)
 
   // 集計金額（計算結果を保存）
-  subtotal         Decimal @db.Decimal(12, 2)                              // 明細金額小計
-  discountSubtotal Decimal @map("discount_subtotal") @db.Decimal(12, 2)    // 明細値引金額小計
-  finalSubtotal    Decimal @map("final_subtotal") @db.Decimal(12, 2)       // 最終明細金額小計
-  taxAmount        Decimal @map("tax_amount") @db.Decimal(12, 2)           // 消費税額
-  finalTotal       Decimal @map("final_total") @db.Decimal(12, 2)          // 最終合計金額
+  subtotal         Decimal @db.Decimal(12, 2) // 明細金額小計
+  discountSubtotal Decimal @map("discount_subtotal") @db.Decimal(12, 2) // 明細値引金額小計
+  finalSubtotal    Decimal @map("final_subtotal") @db.Decimal(12, 2) // 最終明細金額小計
+  taxAmount        Decimal @map("tax_amount") @db.Decimal(12, 2) // 消費税額
+  finalTotal       Decimal @map("final_total") @db.Decimal(12, 2) // 最終合計金額
 
   // 申請・承認情報は本モデルに持たない（共通申請テーブル ADR-0001 が別 issue で参照）
-  // 複製元・改訂元・Order との逆リレーションは別 issue で追加する
+
+  // 受注（1:1。Order.variationId が @unique のため Optional 単数）
+  order Order? @relation("VariationOrder")
+
+  // 複製系譜: copyTarget=この V が複製で生まれた出自（高々1）/ copySource=この V を元に複製された先（複数可）
+  copyTarget EstimateVariationCopy?  @relation("VariationCopyTarget")
+  copySource EstimateVariationCopy[] @relation("VariationCopySource")
+
+  // 改訂系譜: revisionTarget=この V が改訂で生まれた出自（高々1）/ revisionSource=この V を元に改訂された先（複数可）
+  revisionTarget EstimateVariationRevision?  @relation("VariationRevisionTarget")
+  revisionSource EstimateVariationRevision[] @relation("VariationRevisionSource")
 
   items EstimateItem[]
 
@@ -614,12 +629,12 @@ model EstimateItem {
 
   // 値引き
   discountRate Decimal @default(1.0) @map("discount_rate") @db.Decimal(5, 4) // 掛率（1.0 = 値引なし）
-  itemDiscount Decimal @default(0) @map("item_discount") @db.Decimal(12, 2)  // 明細値引金額
+  itemDiscount Decimal @default(0) @map("item_discount") @db.Decimal(12, 2) // 明細値引金額
 
   // 計算結果（保存）
-  baseAmount       Decimal @map("base_amount") @db.Decimal(12, 2)       // 基本金額（数量×単価）
+  baseAmount       Decimal @map("base_amount") @db.Decimal(12, 2) // 基本金額（数量×単価）
   discountedAmount Decimal @map("discounted_amount") @db.Decimal(12, 2) // 掛率適用後金額
-  finalAmount      Decimal @map("final_amount") @db.Decimal(12, 2)      // 最終明細金額
+  finalAmount      Decimal @map("final_amount") @db.Decimal(12, 2) // 最終明細金額
 
   // 得意先改訂で生まれた明細だけが持つ固有属性は別サブタイプ表に分離（§11.3.1）
   revisedDetail RevisedEstimateItemDetail?
@@ -668,4 +683,123 @@ model TaxRate {
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   @@map("tax_rates")
+}
+
+// ========================================
+// 受注関連
+// ========================================
+//
+// 受注のライフサイクル状態は status カラムで持たず、確定/取消イベント行の存在から導出する（§1.3 / §11.4）:
+//   OrderConfirmation あり → 受注確定済 / OrderCancellation あり → 受注取消済 / どちらもなし → 受注作成済
+// 受注明細は持たない。明細は variation → items（EstimateItem）を辿る（受注明細 = 見積明細が常に一致するため。§4.2）
+
+model Order {
+  id String @id @db.Uuid // ドメイン層でUUIDv7生成
+
+  // 見積バリエーションを受注番号として使用（1 バリエーション : 1 受注）
+  variationId String            @unique @map("variation_id") @db.Uuid
+  variation   EstimateVariation @relation("VariationOrder", fields: [variationId], references: [id])
+
+  // 任意メモ（真に任意の値属性 → NULL 許容。ADR-0019: メモ系は VarChar(2000)）
+  orderNote String? @map("order_note") @db.VarChar(2000)
+
+  // 作成者（Employee を参照。#272 の Estimate.createdBy と整合。§9 部署権限で departmentId を辿る）
+  createdBy String   @map("created_by") @db.Uuid
+  creator   Employee @relation("OrderCreator", fields: [createdBy], references: [id])
+
+  // 確定/取消イベント（それぞれ高々 1 件。行の存在＝その状態）
+  confirmation OrderConfirmation?
+  cancellation OrderCancellation?
+
+  // 受注日時は createdAt に集約（業務日時 orderDate は冗長なため持たない）
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([variationId])
+  @@index([createdBy])
+  @@map("orders")
+}
+
+// 受注確定イベント。確定したときのみ 1:1 で存在する（行の存在＝確定済み）
+model OrderConfirmation {
+  id      String @id @db.Uuid // ドメイン層でUUIDv7生成
+  orderId String @unique @map("order_id") @db.Uuid
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  // 納期（確定時必須 → NOT NULL）。挿入時刻とは無関係な未来日のため独立カラムで保持
+  deliveryDate DateTime @map("delivery_date") @db.Timestamptz(3)
+
+  // 確定者（Employee 参照）。確定時刻は createdAt に集約（confirmedAt は持たない）
+  confirmedBy String   @map("confirmed_by") @db.Uuid
+  confirmer   Employee @relation("OrderConfirmer", fields: [confirmedBy], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([confirmedBy])
+  @@map("order_confirmations")
+}
+
+// 受注取消イベント。取消したときのみ 1:1 で存在する（行の存在＝取消済み）
+model OrderCancellation {
+  id      String @id @db.Uuid // ドメイン層でUUIDv7生成
+  orderId String @unique @map("order_id") @db.Uuid
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  // 取消者（Employee 参照）。取消時刻は createdAt に集約（cancelledAt は持たない）
+  cancelledBy String   @map("cancelled_by") @db.Uuid
+  canceller   Employee @relation("OrderCanceller", fields: [cancelledBy], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([cancelledBy])
+  @@map("order_cancellations")
+}
+
+// ========================================
+// バリエーション系譜（複製・得意先改訂）
+// ========================================
+//
+// 複製（§5）と得意先改訂（§7）は形は似るが業務操作・ルール・将来増える属性が異なる別概念。
+// kind 判別子で 1 表統合すると改訂固有属性が増えた時に複製側が NULL になるため、別々の交差テーブルに分離する（§11.2.1）。
+// いずれも target 側を @unique とし、1 派生先は高々 1 出自を持つ。どちらの表にも行が無い＝オリジナル。
+// 「同じバリエーションが複製かつ改訂」になる二重派生の禁止はドメイン層で担保する（ADR-0019）。
+
+// 見積複製による派生（§5）
+model EstimateVariationCopy {
+  id String @id @db.Uuid // ドメイン層でUUIDv7生成
+
+  // 複製で生まれたバリエーション（1 件のみ → @unique）
+  copiedVariationId String            @unique @map("copied_variation_id") @db.Uuid
+  copiedVariation   EstimateVariation @relation("VariationCopyTarget", fields: [copiedVariationId], references: [id], onDelete: Cascade)
+
+  // 複製元バリエーション
+  sourceVariationId String            @map("source_variation_id") @db.Uuid
+  sourceVariation   EstimateVariation @relation("VariationCopySource", fields: [sourceVariationId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([sourceVariationId])
+  @@map("estimate_variation_copies")
+}
+
+// 得意先改訂による派生（§7）
+model EstimateVariationRevision {
+  id String @id @db.Uuid // ドメイン層でUUIDv7生成
+
+  // 改訂で生まれた得意先バリエーション（1 件のみ → @unique）
+  revisedVariationId String            @unique @map("revised_variation_id") @db.Uuid
+  revisedVariation   EstimateVariation @relation("VariationRevisionTarget", fields: [revisedVariationId], references: [id], onDelete: Cascade)
+
+  // 改訂元の納品先バリエーション
+  sourceVariationId String            @map("source_variation_id") @db.Uuid
+  sourceVariation   EstimateVariation @relation("VariationRevisionSource", fields: [sourceVariationId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([sourceVariationId])
+  @@map("estimate_variation_revisions")
 }
