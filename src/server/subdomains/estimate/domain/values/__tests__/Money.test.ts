@@ -72,6 +72,16 @@ describe("Money", () => {
       const result = Money.fromMajorUnits(301).truncateToMajorUnit();
       expect(result.majorUnits).toBe(301);
     });
+
+    it("円未満を切り上げる", () => {
+      expect(Money.fromMajorUnits(100.4).ceilToMajorUnit().majorUnits).toBe(101);
+      expect(Money.fromMajorUnits(101).ceilToMajorUnit().majorUnits).toBe(101);
+    });
+
+    it("円未満を四捨五入する", () => {
+      expect(Money.fromMajorUnits(100.4).roundToMajorUnit().majorUnits).toBe(100);
+      expect(Money.fromMajorUnits(100.5).roundToMajorUnit().majorUnits).toBe(101);
+    });
   });
 
   describe("異常系", () => {

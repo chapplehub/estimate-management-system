@@ -118,8 +118,23 @@ export class Money {
    */
   truncateToMajorUnit(): Money {
     const per = this._currency.minorUnitsPerMajorUnit;
-    const truncated = Math.trunc(this._minorUnits / per) * per;
-    return new Money(truncated, this._currency);
+    return new Money(Math.trunc(this._minorUnits / per) * per, this._currency);
+  }
+
+  /**
+   * 主単位（円）未満を切り上げる（正方向）。消費税の端数処理 ROUND_UP 用。
+   */
+  ceilToMajorUnit(): Money {
+    const per = this._currency.minorUnitsPerMajorUnit;
+    return new Money(Math.ceil(this._minorUnits / per) * per, this._currency);
+  }
+
+  /**
+   * 主単位（円）未満を四捨五入する。消費税の端数処理 ROUND 用。
+   */
+  roundToMajorUnit(): Money {
+    const per = this._currency.minorUnitsPerMajorUnit;
+    return new Money(Math.round(this._minorUnits / per) * per, this._currency);
   }
 
   equals(other: Money): boolean {
