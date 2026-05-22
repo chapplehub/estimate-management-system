@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>見積フロー図 | 見積管理システム</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-2: #1e2530;
+    --line: #2c3340;
+    --text: #e6e9ef;
+    --muted: #9aa4b2;
+    --accent: #5b9dff;
+
+    /* ノード種別の色（凡例と対応） */
+    --c-start:    #2f6f4f;  /* 起点・トリガ */
+    --c-process:  #2d4a7a;  /* 作成・編集など通常処理 */
+    --c-approval: #8a6d1f;  /* 申請・承認（共通申請テーブル） */
+    --c-event:    #5b3a8a;  /* 受注イベント（行の存在＝状態：§1.3） */
+    --c-warning:  #8a2f3a;  /* 警告・確認ダイアログ */
+    --c-terminal: #3a4250;  /* 終端（帳票出力など） */
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", system-ui, sans-serif;
+    line-height: 1.6;
+  }
+
+  header {
+    padding: 28px 24px 16px;
+    max-width: 980px;
+    margin: 0 auto;
+  }
+  header h1 { margin: 0 0 6px; font-size: 22px; }
+  header p { margin: 0; color: var(--muted); font-size: 14px; }
+  header .src { font-size: 12px; margin-top: 8px; }
+  header .src code { background: var(--panel-2); padding: 2px 6px; border-radius: 4px; }
+
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 24px 60px; }
+
+  /* ---- タブ ---- */
+  .tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin: 18px 0 8px;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 12px;
+  }
+  .tab {
+    background: var(--panel);
+    color: var(--muted);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 9px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: .15s;
+  }
+  .tab:hover { color: var(--text); border-color: #3a4456; }
+  .tab.active {
+    background: var(--panel-2);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  .tab .prefix {
+    display: inline-block;
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+    background: rgba(91,157,255,.18);
+    color: var(--accent);
+    border-radius: 4px;
+    padding: 0 6px;
+    margin-right: 6px;
+  }
+
+  /* ---- フロー見出し ---- */
+  .flow-head {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin: 16px 0 26px;
+  }
+  .flow-head h2 { margin: 0 0 4px; font-size: 18px; }
+  .flow-head .meta { color: var(--muted); font-size: 13px; }
+  .flow-head .meta code { background: var(--panel-2); padding: 1px 6px; border-radius: 4px; }
+  .flow-head p { margin: 10px 0 0; font-size: 14px; color: #cdd4df; }
+
+  /* ---- フロー本体（縦並び） ---- */
+  .flow { display: flex; flex-direction: column; align-items: stretch; }
+
+  .step {
+    display: grid;
+    grid-template-columns: 1fr minmax(240px, 360px) 1fr;
+    align-items: center;
+    column-gap: 14px;
+  }
+
+  .node {
+    grid-column: 2;
+    border-radius: 10px;
+    padding: 12px 16px;
+    color: #fff;
+    border: 1px solid rgba(255,255,255,.12);
+    box-shadow: 0 1px 0 rgba(255,255,255,.05) inset, 0 6px 16px rgba(0,0,0,.25);
+  }
+  .node .label { font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+  .node .sub { font-size: 12.5px; color: rgba(255,255,255,.82); margin-top: 4px; }
+  .node .ref {
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+    opacity: .7;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  .node.start    { background: var(--c-start); }
+  .node.process  { background: var(--c-process); }
+  .node.approval { background: var(--c-approval); }
+  .node.event    { background: var(--c-event); }
+  .node.warning  { background: var(--c-warning); border-style: dashed; }
+  .node.terminal { background: var(--c-terminal); }
+
+  /* スキップされる工程（事後見積の承認など） */
+  .node.skipped {
+    background: transparent;
+    border: 1px dashed #4a5466;
+    color: var(--muted);
+    box-shadow: none;
+  }
+  .node.skipped .label { text-decoration: line-through; opacity: .8; }
+
+  /* 右側の補足注記 */
+  .note {
+    grid-column: 3;
+    font-size: 12px;
+    color: var(--muted);
+    border-left: 2px solid var(--line);
+    padding: 4px 0 4px 12px;
+  }
+  .note strong { color: #cdd4df; font-weight: 600; }
+
+  /* 矢印 */
+  .arrow {
+    grid-column: 2;
+    justify-self: center;
+    width: 2px;
+    height: 30px;
+    background: #495365;
+    position: relative;
+    margin: 4px 0;
+  }
+  .arrow::after {
+    content: "";
+    position: absolute;
+    bottom: -1px; left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: #495365;
+    border-bottom: 0;
+  }
+  .arrow .arrow-label {
+    position: absolute;
+    left: 12px; top: 50%;
+    transform: translateY(-50%);
+    white-space: nowrap;
+    font-size: 11.5px;
+    color: var(--muted);
+    background: var(--bg);
+    padding: 0 4px;
+  }
+
+  /* ---- 凡例 ---- */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    margin: 26px 0 0;
+    padding: 14px 16px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+  .legend .item { display: flex; align-items: center; gap: 7px; }
+  .legend .swatch { width: 14px; height: 14px; border-radius: 4px; border: 1px solid rgba(255,255,255,.15); }
+
+  /* ---- 寄稿待ちプレースホルダ ---- */
+  .placeholder {
+    border: 2px dashed #4a5466;
+    border-radius: 12px;
+    padding: 28px;
+    text-align: center;
+    color: var(--muted);
+    background: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,.02) 10px, rgba(255,255,255,.02) 20px);
+  }
+  .placeholder h3 { color: var(--text); margin: 0 0 10px; }
+  .placeholder code { background: var(--panel-2); padding: 2px 6px; border-radius: 4px; color: #cdd4df; }
+  .placeholder ul { text-align: left; max-width: 580px; margin: 14px auto 0; font-size: 13.5px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>見積フロー図</h1>
+  <p>見積種別ごとの基本フローと複製フロー。タブで切り替えてください。</p>
+  <p class="src">出典: <code>docs/business/estimate/システム設計書(見積).md</code> §1.1 / §5 / §6.5 — 各ノードに対応する節を <code>§</code> で併記</p>
+</header>
+
+<div class="wrap">
+  <div class="tabs" id="tabs"></div>
+  <div class="flow-head" id="flow-head"></div>
+  <div class="flow" id="flow-canvas"></div>
+
+  <div class="legend">
+    <div class="item"><span class="swatch" style="background:var(--c-start)"></span>起点・トリガ</div>
+    <div class="item"><span class="swatch" style="background:var(--c-process)"></span>通常処理（作成・編集）</div>
+    <div class="item"><span class="swatch" style="background:var(--c-approval)"></span>申請・承認（共通申請テーブル）</div>
+    <div class="item"><span class="swatch" style="background:var(--c-event)"></span>受注イベント（行の存在＝状態 §1.3）</div>
+    <div class="item"><span class="swatch" style="background:var(--c-warning)"></span>警告・確認</div>
+    <div class="item"><span class="swatch" style="background:var(--c-terminal)"></span>終端（帳票出力）</div>
+    <div class="item"><span class="swatch" style="background:transparent;border-style:dashed"></span>スキップされる工程</div>
+  </div>
+</div>
+
+<script>
+  /* =========================================================================
+     フロー定義（データ）
+     - 各ステップは { kind, label, sub, ref, note, arrowLabel, skipped } 。
+     - kind がノードの色（凡例と対応）。配列の順序がそのまま縦のフローになる。
+     - note 内の **…** は <strong> に変換される（後述の appendRichText）。
+     - 設計書が更新されたら、ここの配列を直すだけで図が追従する。
+     ========================================================================= */
+  const FLOWS = {
+    new: {
+      label: "新規見積",
+      prefix: "N",
+      title: "新規設置見積書",
+      refs: "§1.1 / §6.2",
+      desc: "新規の機械を設置する標準フロー。申請→承認を経て受注に進む。承認が必須な唯一の系統。",
+      steps: [
+        { kind: "process",  label: "見積作成",       sub: "得意先・納品先・消費税率・見積明細を入力", ref: "§6.2",
+          note: "作成時点の税率を自動設定。番号は**保存時に採番**（N + 年度 + 連番）" },
+        { kind: "process",  label: "バリエーション作成", sub: "客先折衝用に複数案（選択肢）を用意", ref: "§3.1",
+          note: "1見積に複数。ただし**申請できるのは1つ**のみ（§3.4）" },
+        { kind: "process",  label: "客先と折衝",     sub: "客先メモに折衝履歴を記録", ref: "§1.1" },
+        { kind: "approval", label: "見積申請",       sub: "上長へ申請（共通申請テーブルにレコード生成）", ref: "§3.4",
+          arrowLabel: "差戻なら再申請",
+          note: "状態は見積側に持たず**共通申請テーブル**が真実の源（ADR-0001）" },
+        { kind: "approval", label: "見積承認",       sub: "承認済レコードで「承認済」を導出", ref: "§1.3" },
+        { kind: "event",    label: "受注作成",       sub: "Order レコードを生成（DRAFT 相当）", ref: "§4.3",
+          note: "**列ではなく行の存在**で「受注作成済」を導出。以後バリエーション編集不可（§4.8）" },
+        { kind: "event",    label: "受注確定",       sub: "OrderConfirmation を生成。納期が必須", ref: "§4.5",
+          note: "納期は DRAFT 中は持たず**確定操作で初めて入力**（§4.4）" },
+        { kind: "terminal", label: "受注票出力",     sub: "正式版を出力（DRAFT は SAMPLE 印字）", ref: "§4.6" },
+      ],
+    },
+
+    repair: {
+      label: "修理見積（事前）",
+      prefix: "R",
+      title: "修理見積書",
+      refs: "§6.5 / §6.2",
+      desc: "設置済み機械の修理を、作業前に見積もる系統。新規と同じく承認が必要。修理実施は受注作成の後・確定の前に入る。",
+      steps: [
+        { kind: "start",    label: "故障連絡",       sub: "客先から修理依頼", ref: "§6.5" },
+        { kind: "process",  label: "見積作成",       sub: "修理対象機器・故障内容・修理予定日が必須", ref: "§6.2",
+          note: "修理系の必須項目は **RepairEstimateDetail**（1:1サブタイプ）に保持（§11.1.1）" },
+        { kind: "approval", label: "見積申請",       sub: "上長へ申請", ref: "§3.4", arrowLabel: "差戻なら再申請" },
+        { kind: "approval", label: "見積承認",       sub: "", ref: "§1.3" },
+        { kind: "event",    label: "受注作成",       sub: "Order レコードを生成", ref: "§4.3" },
+        { kind: "start",    label: "修理実施 ★",     sub: "受注確定の前に作業を実施", ref: "§6.5",
+          note: "新規にはないステップ。**作業 → 確定**の順" },
+        { kind: "event",    label: "受注確定",       sub: "OrderConfirmation を生成。納期が必須", ref: "§4.5" },
+        { kind: "terminal", label: "受注票出力",     sub: "", ref: "§4.6" },
+      ],
+    },
+
+    /* =====================================================================
+       事後見積（AFTER_REPAIR）— ★ここはあなたが書きます★
+
+       他の3フローは完成済みです。事後見積だけ steps を空にしてあります。
+       事後見積は「他の種別と何が違うか」を最も色濃く表すフローなので、
+       ドメインを理解しているあなたに steps 配列を書いてほしいからです。
+
+       下のプレースホルダ画面に、設計書の参照節と各ステップの意図を
+       表示してあります。FLOWS.after.steps に配列を入れてください。
+       ===================================================================== */
+    after: {
+      label: "事後見積",
+      prefix: "A",
+      title: "事後修理見積書",
+      refs: "§6.3 / §6.5",
+      desc: "緊急対応で先に修理してから見積を作る系統。承認をスキップし、受注作成が必須になる。",
+      steps: [],  // ← TODO: あなたが埋める
+    },
+
+    copy: {
+      label: "複製フロー",
+      prefix: "—",
+      title: "（種別は複製時に引き継ぎ／変更可）",
+      refs: "§5",
+      desc: "既存見積から新しい見積を作る操作フロー。全ステータスから・誰でも・無制限に複製可能。新規採番されるので別の見積になる。",
+      steps: [
+        { kind: "start",    label: "複製ボタン",     sub: "見積詳細から起動。どのステータスからでも可", ref: "§5.1",
+          note: "他人の見積も可・回数無制限（§5.1）" },
+        { kind: "process",  label: "バリエーション選択ダイアログ", sub: "複製するバリエーションを選ぶ", ref: "§5.2",
+          note: "複数選択可・**無効も選べる**・選択なし(見積のみ)も可。順序保持し 01,02… に振り直し" },
+        { kind: "process",  label: "見積新規作成画面（プレビュー）", sub: "複製データを表示。区分は変更可・単価はクリア", ref: "§5.5",
+          note: "**単価は要再入力**。申請/承認情報・受注は引き継がない（§5.3）" },
+        { kind: "process",  label: "ユーザー編集",   sub: "内容を調整", ref: "§5.5" },
+        { kind: "event",    label: "保存 → 採番 & DB保存", sub: "新しい見積番号を採番。ステータスは「作成中」", ref: "§5.5",
+          note: "出自は **EstimateVariationCopy**（派生先→派生元）に記録。本体に複製元列は持たない（§5.4）" },
+      ],
+    },
+  };
+
+  const ORDER = ["new", "repair", "after", "copy"];
+
+  /* ---- DOM 構築ヘルパ（innerHTML を使わない） ---- */
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text != null) node.textContent = text;
+    return node;
+  }
+
+  // "foo **bar** baz" → テキストノード + <strong>bar</strong>。innerHTML を使わず安全に強調を表現
+  function appendRichText(parent, str) {
+    str.split(/(\*\*[^*]+\*\*)/).forEach((seg) => {
+      if (!seg) return;
+      const m = seg.match(/^\*\*([^*]+)\*\*$/);
+      parent.appendChild(m ? el("strong", null, m[1]) : document.createTextNode(seg));
+    });
+  }
+
+  const tabsEl = document.getElementById("tabs");
+  const headEl = document.getElementById("flow-head");
+  const canvasEl = document.getElementById("flow-canvas");
+
+  function renderTabs(active) {
+    tabsEl.replaceChildren();
+    ORDER.forEach((key) => {
+      const f = FLOWS[key];
+      const btn = el("button", "tab" + (key === active ? " active" : ""));
+      btn.appendChild(el("span", "prefix", f.prefix));
+      btn.appendChild(document.createTextNode(f.label));
+      btn.onclick = () => render(key);
+      tabsEl.appendChild(btn);
+    });
+  }
+
+  function renderHead(f) {
+    headEl.replaceChildren();
+    headEl.appendChild(el("h2", null, f.label));
+
+    const meta = el("div", "meta");
+    meta.appendChild(document.createTextNode("見積書タイトル: "));
+    meta.appendChild(el("code", null, f.title));
+    meta.appendChild(document.createTextNode(` ／ 参照: ${f.refs}`));
+    headEl.appendChild(meta);
+
+    headEl.appendChild(el("p", null, f.desc));
+  }
+
+  function buildNode(step) {
+    const node = el("div", "node " + step.kind + (step.skipped ? " skipped" : ""));
+    const label = el("div", "label");
+    label.appendChild(document.createTextNode(step.label));
+    if (step.ref) label.appendChild(el("span", "ref", step.ref));
+    node.appendChild(label);
+    if (step.sub) node.appendChild(el("div", "sub", step.sub));
+    return node;
+  }
+
+  function buildPlaceholder() {
+    const box = el("div", "placeholder");
+    box.appendChild(el("h3", null, "事後見積フローはあなたが描きます ✍️"));
+
+    const lead = el("p");
+    lead.appendChild(el("code", null, "FLOWS.after.steps"));
+    lead.appendChild(document.createTextNode(" に配列を入れてください。設計書の該当節:"));
+    box.appendChild(lead);
+
+    const ul = el("ul");
+    [
+      "§6.5 事後見積: 故障連絡(緊急) → 修理実施 ★先に → 見積作成(承認スキップ) → 受注作成(必須) → 受注確定",
+      "§6.3: 承認不要 / 金額10万円超は警告(kind:\"warning\") / 緊急対応理由は必須",
+      "承認工程を残して skipped:true で「スキップされる」と見せる手もあります",
+    ].forEach((t) => ul.appendChild(el("li", null, t)));
+    box.appendChild(ul);
+    return box;
+  }
+
+  function render(key) {
+    const f = FLOWS[key];
+    renderTabs(key);
+    renderHead(f);
+    canvasEl.replaceChildren();
+
+    if (!f.steps.length) {
+      canvasEl.appendChild(buildPlaceholder());
+      return;
+    }
+
+    f.steps.forEach((step, i) => {
+      const stepRow = el("div", "step");
+      stepRow.appendChild(buildNode(step));
+      if (step.note) {
+        const note = el("div", "note");
+        appendRichText(note, step.note);
+        stepRow.appendChild(note);
+      }
+      canvasEl.appendChild(stepRow);
+
+      if (i < f.steps.length - 1) {
+        const arrowRow = el("div", "step");
+        const arrow = el("div", "arrow");
+        if (step.arrowLabel) arrow.appendChild(el("span", "arrow-label", step.arrowLabel));
+        arrowRow.appendChild(arrow);
+        canvasEl.appendChild(arrowRow);
+      }
+    });
+  }
+
+  render("new");
+</script>
+</body>
+</html>
