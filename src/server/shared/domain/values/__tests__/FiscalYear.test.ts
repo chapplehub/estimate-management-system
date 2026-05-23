@@ -71,9 +71,9 @@ describe("FiscalYear", () => {
       expect(FiscalYear.from(date).value).toBe(2025);
     });
 
-    it("UTC 表示で 4月の Date でも JST に直すと 3月なら旧年度", () => {
-      // UTC 2025-04-01 14:59:59 < JST 2025-04-01 00:00 ではない (UTC04-01-14:59 = JST04-01-23:59)
-      // 正しくは: UTC 2025-03-31 14:59:59 = JST 2025-03-31 23:59:59 → 2024 年度
+    it("JST 4月1日 00:00 の1秒前（UTC 3月31日 14:59:59Z）は旧年度", () => {
+      // 前のテスト（UTC 15:00:00Z = JST 4/1 00:00:00 = 新年度）と対をなす境界。
+      // JST 3/31 23:59:59 はまだ 3 月なので 2024 年度。
       const date = new Date("2025-03-31T14:59:59Z");
       expect(FiscalYear.from(date).value).toBe(2024);
     });
