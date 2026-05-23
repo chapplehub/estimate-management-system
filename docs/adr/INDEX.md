@@ -44,6 +44,9 @@
 | [0018](0018-separate-activate-deactivate-commands.md) | エンティティの有効/無効切り替えを専用コマンドで実装する | 採用 | 2026-04-14 |
 | [0022](0022-money-pattern-for-domain-amounts.md) | ドメインの金額表現に Money パターン（整数最小単位 + Currency）を採用する | 採用 | 2026-05-23 |
 | [0023](0023-domain-policies-directory-for-calculation-rules.md) | ドメイン計算規約は domain/policies/ の Policy クラスとして配置する | 採用 | 2026-05-23 |
+| [0024](0024-fiscal-year-as-shared-value-object.md) | 年度 (FiscalYear) を独立 VO として shared/domain/values/ に配置する | 採用 | 2026-05-23 |
+| [0025](0025-jst-fixed-pure-function-in-domain-layer.md) | ドメイン層での日時境界判定は JST 固定の純関数で行う | 採用 | 2026-05-23 |
+| [0026](0026-numbering-value-object-exposes-parse-only.md) | 採番系の値オブジェクトは parse のみを公開し、払い出しはリポジトリ層に分離する | 採用 | 2026-05-23 |
 
 ## アプリケーション（クエリ・DTO）
 
