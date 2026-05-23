@@ -42,6 +42,7 @@
 |---|---------|-----------|--------|
 | [0011](0011-domain-service-design-pattern-by-responsibility.md) | Domain Serviceの設計パターンを責務の性質で使い分ける | 採用 | 2026-04-08 |
 | [0018](0018-separate-activate-deactivate-commands.md) | エンティティの有効/無効切り替えを専用コマンドで実装する | 採用 | 2026-04-14 |
+| [0022](0022-money-pattern-for-domain-amounts.md) | ドメインの金額表現に Money パターン（整数最小単位 + Currency）を採用する | 採用 | 2026-05-23 |
 
 ## アプリケーション（クエリ・DTO）
 
