@@ -51,6 +51,28 @@ const eslintConfig = defineConfig([
         "error",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
       ],
+      // 集約境界規約: Estimate 集約の子エンティティへの集約外からの直接 import を禁止する。
+      // バレル (@subdomains/estimate/domain/entities) 経由で集約ルート Estimate のみ
+      // 公開する。同 entities ディレクトリ内の相対 import（隣接テスト等）は別オーバーライド
+      // で許可する。
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "@subdomains/estimate/domain/entities/EstimateVariation",
+                "@subdomains/estimate/domain/entities/EstimateItem",
+                "@subdomains/estimate/domain/entities/RepairEstimateDetail",
+                "@subdomains/estimate/domain/entities/AfterRepairEstimateDetail",
+                "@subdomains/estimate/domain/entities/RevisedEstimateItemDetail",
+              ],
+              message:
+                "Estimate 集約の子エンティティは集約外から直接 import できません。集約ルート Estimate（@subdomains/estimate/domain/entities）経由で操作してください。",
+            },
+          ],
+        },
+      ],
       // Naming convention rules (based on typescript-eslint recommendations)
       "@typescript-eslint/naming-convention": [
         "error",
@@ -118,6 +140,15 @@ const eslintConfig = defineConfig([
     files: ["**/*.test.ts", "**/*.test.tsx", "src/app/_components/form/**"],
     rules: {
       "@typescript-eslint/naming-convention": "off",
+    },
+  },
+  // 集約内（entities ディレクトリ内）の隣接ファイル・テストは相対 import を許可する。
+  // バレル経由必須化は「集約外コード」に対する規約なので、集約内自身（Estimate.ts や
+  // EstimateVariation.ts、その __tests__）は子エンティティを参照できる必要がある。
+  {
+    files: ["src/server/subdomains/estimate/domain/entities/**"],
+    rules: {
+      "no-restricted-imports": "off",
     },
   },
 ]);
