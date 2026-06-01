@@ -34,8 +34,9 @@ jobs:
         ports:
           - 5432:5432
         # ヘルスチェック（PostgreSQL起動完了まで待機）
+        # -U postgres を明示し、ロール未指定時の "role root does not exist" ログノイズを抑止
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U postgres"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -53,7 +54,10 @@ jobs:
 
       - uses: actions/setup-node@v5
         with:
-          node-version: lts/*
+          # Node 24.16.0 で Playwright(1.58) の "extracting archive" がハングするため、
+          # 先週まで lts/* が解決していた既知良好版に固定する（浮動による非決定性を排除）。
+          # 参照: docs/claude-plans/issue-284/deviations.md / CI 調査ログ
+          node-version: 24.15.0
           cache: pnpm
 
       - name: Install dependencies
@@ -68,7 +72,9 @@ jobs:
       - name: Seed database for E2E tests
         run: pnpm e2e:seed
 
+      # CDN ストール等で固まった際、ジョブ全体(60分)を待たず早期失敗させる安全網
       - name: Install Playwright Browsers
+        timeout-minutes: 10
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Run Playwright tests
