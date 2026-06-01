@@ -47,6 +47,10 @@
 | [0024](0024-fiscal-year-as-shared-value-object.md) | 年度 (FiscalYear) を独立 VO として shared/domain/values/ に配置する | 採用 | 2026-05-23 |
 | [0025](0025-jst-fixed-pure-function-in-domain-layer.md) | ドメイン層での日時境界判定は JST 固定の純関数で行う | 採用 | 2026-05-23 |
 | [0026](0026-numbering-value-object-exposes-parse-only.md) | 採番系の値オブジェクトは parse のみを公開し、払い出しはリポジトリ層に分離する | 採用 | 2026-05-23 |
+| [0027](0027-aggregate-boundary-enforcement-by-barrel-and-eslint.md) | 集約境界をバレル + ESLint で構造的に強制する | 採用 | 2026-06-01 |
+| [0028](0028-auto-recalculation-on-mutators-for-aggregated-totals.md) | 集計値を持つ集約は全 mutator で自動再計算を強制する | 採用 | 2026-06-01 |
+| [0029](0029-domain-structural-invariants-vs-usecase-event-constraints.md) | ドメイン層は構造的不変条件のみ、業務イベント制約はユースケース層に置く | 採用 | 2026-06-01 |
+| [0030](0030-pass-cross-cutting-context-via-method-arguments.md) | 集約内で横断的に必要なコンテキストは子に保持させず引数で渡す | 採用 | 2026-06-01 |
 
 ## アプリケーション（クエリ・DTO）
 
