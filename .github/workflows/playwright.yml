@@ -54,7 +54,10 @@ jobs:
 
       - uses: actions/setup-node@v5
         with:
-          node-version: lts/*
+          # Node 24.16.0 で Playwright(1.58) の "extracting archive" がハングするため、
+          # 先週まで lts/* が解決していた既知良好版に固定する（浮動による非決定性を排除）。
+          # 参照: docs/claude-plans/issue-284/deviations.md / CI 調査ログ
+          node-version: 24.15.0
           cache: pnpm
 
       - name: Install dependencies
