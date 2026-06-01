@@ -66,3 +66,18 @@
 - **元の計画**: `docs/claude-plans/snappy-finding-russell.md` から `docs/claude-plans/issue-284/plan.md` に移動。
 - **実際の実装**: 移動先を `docs/claude-plans/issue-284/estimate-aggregate-and-module-boundary.md` とした。
 - **理由**: PostToolUse フックリマインダで「`plan.md` やランダム名は不可、kebab-case にする」と指示があったため、内容を表す kebab-case 名を採用。
+
+## 11. CI (playwright.yml) の Node バージョン固定 — 計画外対応
+
+- **元の計画**: なし。Issue #284 は Estimate 集約のドメイン実装が対象で、CI 設定の変更は計画に含まれていなかった。
+- **実際の実装**: `.github/workflows/playwright.yml` に以下を追加。
+  - `node-version: lts/*` → `node-version: 24.15.0` に固定（本対応）。
+  - `Install Playwright Browsers` に `timeout-minutes: 10`（ハング時の安全網）。
+  - PostgreSQL service の `--health-cmd` を `pg_isready -U postgres` に変更（`role "root" does not exist` ログノイズ抑止、挙動は不変）。
+- **理由 / 経緯**:
+  - PR 時の `Install Playwright Browsers` が `extracting archive`（zip 展開）で無限ハングし、ジョブが 44 分後に手動キルされる事象が発生。
+  - 切り分け結果: ダウンロードは正常（175MB / 約1.2秒, HTTP 200）、ディスクも 18GB 空きでシロ。`DEBUG=pw:install` のログで **展開フェーズのみがハング**することを特定。
+  - 差分は **Node のみ**。先週の成功 run は Node 24.15.0、ハング時は 24.16.0（`lts/*` が浮動でパッチ更新）。
+  - これは Node 本家の確定リグレッション。`nodejs/node#63487`（extract-zip 展開ハング）/ `#63495`（teardown ハング）で報告済み。原因は v24.16.0 の「destruction propagation in duplexPair」変更。推奨ワークアラウンドが「Node 24.15.0 固定」で、本対応と一致。
+  - ブランチのコード・CDN・ディスクはいずれも無関係（外部環境＝Node 浮動が原因）。
+- **固定解除の条件**: `nodejs/node#63487` / `#63495` が修正され、fix 入り Node（24.16.1 もしくは 24.17.0 以降）がリリースされたら、その版へ更新して固定解除を検討する。それまでは `24.15.0` 固定を維持（`lts/*` に戻すと再発する）。
