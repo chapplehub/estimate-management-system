@@ -69,7 +69,9 @@ jobs:
       - name: Seed database for E2E tests
         run: pnpm e2e:seed
 
+      # CDN ストール等で固まった際、ジョブ全体(60分)を待たず早期失敗させる安全網
       - name: Install Playwright Browsers
+        timeout-minutes: 10
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Run Playwright tests
