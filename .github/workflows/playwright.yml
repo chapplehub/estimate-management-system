@@ -60,19 +60,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # Playwright バージョンをキャッシュキーに使うため取得（信頼できる自前出力のみ）
-      - name: Get Playwright version
-        id: pw
-        run: echo "version=$(pnpm exec playwright --version | cut -d' ' -f2)" >> "$GITHUB_OUTPUT"
-
-      # ブラウザ本体をキャッシュし、CDN への再ダウンロード依存を減らす
-      - name: Cache Playwright browsers
-        id: pw-cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: pw-${{ runner.os }}-${{ steps.pw.outputs.version }}
-
       - name: Generate Prisma Client
         run: pnpm db:generate
 
@@ -82,16 +69,8 @@ jobs:
       - name: Seed database for E2E tests
         run: pnpm e2e:seed
 
-      # キャッシュヒット時はブラウザ本体DLを省略しOS依存パッケージのみ入れる。
-      # CDN ストール時に44分待たず早期失敗させるため timeout-minutes を設定。
       - name: Install Playwright Browsers
-        timeout-minutes: 10
-        run: |
-          if [ "${{ steps.pw-cache.outputs.cache-hit }}" = "true" ]; then
-            pnpm exec playwright install-deps chromium
-          else
-            pnpm exec playwright install --with-deps chromium
-          fi
+        run: pnpm exec playwright install --with-deps chromium
 
       - name: Run Playwright tests
         run: pnpm exec playwright test
