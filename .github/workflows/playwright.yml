@@ -69,9 +69,16 @@ jobs:
       - name: Seed database for E2E tests
         run: pnpm e2e:seed
 
-      # CDN ストール等で固まった際、ジョブ全体(60分)を待たず早期失敗させる安全網
+      # 【一時的な診断】install ハングの切り分け用。原因確定後に削除する
+      - name: Disk space before install
+        run: df -h /
+
+      # CDN ストール等で固まった際、ジョブ全体(60分)を待たず早期失敗させる安全網。
+      # DEBUG=pw:install は download/extract のどの段で固まるか可視化する一時診断。
       - name: Install Playwright Browsers
         timeout-minutes: 10
+        env:
+          DEBUG: pw:install
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Run Playwright tests
