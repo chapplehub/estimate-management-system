@@ -18,7 +18,12 @@
 
 - **元の計画 (Step 2)**: `activate()` / `deactivate()` 等の判定/遷移ヘルパを VariationStatus VO に持たせる。
 - **実際の実装**: `isActive()` / `isInactive()` の判定のみ。遷移は親エンティティ (`EstimateVariation.activate()` / `deactivate()`) 側で `this._status = VariationStatus.INACTIVE` の形で行う。
-- **理由**: VO の責務は「状態の表現」であり、状態遷移そのものはエンティティの責務。既存 `EstimateType` 実装にも遷移メソッドは無く、一貫性を優先。
+- **理由**: 当プロジェクトでは状態遷移ロジックをエンティティ層に集約するスタイルを採用。判断軸は以下:
+  1. **VO 内で完結する遷移ルールがない**: VariationStatus は 2 値で自由に往復可能。`status.activate()` を生やしても返すのは `VariationStatus.ACTIVE` シングルトン定数の固定値であり、`this._status = VariationStatus.ACTIVE` と比べて得る情報がない。
+  2. **複合制約はルート責務**: §3.4「申請バリエーションは 1 つ」のような制約は集約ルートが全 Variation を見て判断する話で、Status VO 単体では表現できない。VO に遷移メソッドを置いても、肝心のビジネスルールはそこに収まらない。
+  3. **業務動詞というより技術動詞**: `activate/deactivate` はフラグ反転に近い操作で、`approve/submit/cancel` のような業務イベント名ではない。VO に動詞メソッドを置く価値は、業務動詞を型に表出させる時に出る。
+  4. **既存 `EstimateType` 実装と一貫**: プロジェクト規約として、enum 系 VO は判定メソッドのみを持つ。
+- **補足**: VO が `withFoo(...)` 等の「変更後 VO を返すメソッド」を持つこと自体は DDD の原則として許容される（むしろ Money の `add` / `multiply` のように推奨される）。本ケースでは上記 4 軸で得るものが少ないため省略しただけで、「VO は遷移を持つべきでない」という原則を採用したわけではない。
 
 ## 4. EstimateItem.create() でオブジェクト引数を採用
 
