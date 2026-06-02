@@ -10,13 +10,6 @@ import {
 import { Prisma } from "@generated/prisma/client";
 
 /**
- * 更新時、バリエーション番号の入れ替えで `@@unique([estimateId, variationNumber])`
- * に即時衝突しないよう、既存行を一時退避する際のオフセット。
- * ドメイン上の variationNumber は 1–99 なので、この帯（1000+）とは決して衝突しない。
- */
-const VARIATION_NUMBER_PARK_OFFSET = 1000;
-
-/**
  * PrismaEstimateRepository
  *
  * 見積集約（Estimate → EstimateVariation → EstimateItem ＋ 修理系子エンティティ）の
@@ -70,14 +63,11 @@ export class PrismaEstimateRepository implements EstimateRepository {
           where: { estimateId, id: { notIn: variationIds } },
         });
 
-        // 3. 2 フェーズ採番: 残存バリエーションを 1–99 帯の外へ一括退避し、
-        //    番号入れ替え時の即時ユニーク制約衝突を回避する。
-        await tx.estimateVariation.updateMany({
-          where: { estimateId },
-          data: { variationNumber: { increment: VARIATION_NUMBER_PARK_OFFSET } },
-        });
-
-        // 4. 各バリエーションを最終番号で upsert し、配下の明細を差分反映
+        // 3. 各バリエーションを id キーで upsert し、配下の明細を差分反映。
+        //    既存 variation の variationNumber は集約ルートの公開 API では変更されない
+        //    （changeVariationNumber が存在しない）ため、survivor の番号は不変。
+        //    よって `@@unique([estimateId, variationNumber])` への即時衝突は発生しない。
+        //    （番号入れ替えを可能にする API を将来追加する場合は deviations.md 参照）
         for (const variation of estimate.variations) {
           const variationId = variation.id.value;
           const variationScalar = EstimateMapper.toVariationScalarData(variation);
@@ -121,7 +111,7 @@ export class PrismaEstimateRepository implements EstimateRepository {
           }
         }
 
-        // 5. 修理系サブタイプ（排他・1:1）の同期。存在する片方を upsert、他方を削除。
+        // 4. 修理系サブタイプ（排他・1:1）の同期。存在する片方を upsert、他方を削除。
         if (estimate.repairDetail) {
           const repairScalar = EstimateMapper.toRepairDetailScalarData(estimate.repairDetail);
           await tx.repairEstimateDetail.upsert({
