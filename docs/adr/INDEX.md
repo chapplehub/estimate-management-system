@@ -24,6 +24,8 @@
 | [0010](0010-migrate-datetime-to-timestamptz.md) | 全テーブルのDateTimeカラムをtimestamptzに移行する | 採用 | 2026-04-04 |
 | [0019](0019-add-varchar-and-check-constraints.md) | Stringカラムに@db.VarChar(N)、数値カラムにCHECK制約を追加する | 採用 | 2026-04-15 |
 | [0021](0021-use-check-constraints-not-create-domain.md) | 数値・文字列の制約にCREATE DOMAINを使わずCHECK制約を継続する | 採用 | 2026-05-20 |
+| [0031](0031-aggregate-reconstitution-exception-via-single-file-eslint-override.md) | 集約再構築の例外経路をMapper限定のESLintオーバーライドで開ける | 採用 | 2026-06-02 |
+| [0032](0032-identity-preserving-diff-upsert-for-multilevel-aggregate-update.md) | 多階層集約の更新はidentity保持の差分upsertを命令的トランザクションで行う | 採用 | 2026-06-02 |
 
 ## アプリケーション（フロントエンド・認可）
 
@@ -51,6 +53,7 @@
 | [0028](0028-auto-recalculation-on-mutators-for-aggregated-totals.md) | 集計値を持つ集約は全 mutator で自動再計算を強制する | 採用 | 2026-06-01 |
 | [0029](0029-domain-structural-invariants-vs-usecase-event-constraints.md) | ドメイン層は構造的不変条件のみ、業務イベント制約はユースケース層に置く | 採用 | 2026-06-01 |
 | [0030](0030-pass-cross-cutting-context-via-method-arguments.md) | 集約内で横断的に必要なコンテキストは子に保持させず引数で渡す | 採用 | 2026-06-01 |
+| [0033](0033-persist-aggregated-totals-and-skip-recalculation-on-reconstitution.md) | 集計値を永続化し、再構築時には再計算せず保存値から復元する | 採用 | 2026-06-02 |
 
 ## アプリケーション（クエリ・DTO）
 
