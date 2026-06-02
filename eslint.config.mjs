@@ -151,6 +151,16 @@ const eslintConfig = defineConfig([
       "no-restricted-imports": "off",
     },
   },
+  // EstimateMapper は永続化からの集約再構築（reconstitution）という infrastructure の
+  // 正当な責務を担うため、子エンティティの static reconstruct() を直接呼ぶ必要がある。
+  // 集約境界規約の「正当な例外」としてこの単一ファイルに限り直接 import を許可する。
+  // （例外をディレクトリ全体に広げず1ファイルに閉じ込め、穴の増殖を防ぐ）
+  {
+    files: ["src/server/subdomains/estimate/infrastructure/mappers/EstimateMapper.ts"],
+    rules: {
+      "no-restricted-imports": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;
