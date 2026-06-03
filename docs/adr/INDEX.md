@@ -54,6 +54,7 @@
 | [0029](0029-domain-structural-invariants-vs-usecase-event-constraints.md) | ドメイン層は構造的不変条件のみ、業務イベント制約はユースケース層に置く | 採用 | 2026-06-01 |
 | [0030](0030-pass-cross-cutting-context-via-method-arguments.md) | 集約内で横断的に必要なコンテキストは子に保持させず引数で渡す | 採用 | 2026-06-01 |
 | [0033](0033-persist-aggregated-totals-and-skip-recalculation-on-reconstitution.md) | 集計値を永続化し、再構築時には再計算せず保存値から復元する | 採用 | 2026-06-02 |
+| [0034](0034-memo-null-elimination-empty-value-null-object.md) | メモ任意項目を null ではなく空値 Null Object で表現する | 採用 | 2026-06-03 |
 
 ## アプリケーション（クエリ・DTO）
 
