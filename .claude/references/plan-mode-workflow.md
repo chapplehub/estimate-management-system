@@ -5,7 +5,7 @@
 
 ## 計画作成時（EnterPlanMode）
 
-- **Setup plansDirectory**: 計画作成前に `.claude/settings.local.json` の `plansDirectory` を `docs/claude-plans/issue-{number}` に更新すること。
+- **計画ファイルの配置**: 計画ファイルは `docs/claude-plans/issue-{number}/{kebab-case-description}.md` に Write で直接作成すること。`.claude/settings.local.json` の `plansDirectory` は編集しない（self-modification でブロックされ、かつ不要）。issue 番号は現在のブランチ名から導出される。
 - **Plan file format**: Planファイルは `docs/claude-plans/PLAN_TEMPLATE.md` のフォーマットに従って作成すること。
 - **One step = one commit**: 計画の各ステップは「1コミット単位」で設計すること。
 

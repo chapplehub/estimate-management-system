@@ -42,12 +42,13 @@ git diff develop..HEAD --stat
 
 ### 実装計画・逸脱記録
 
-`.claude/settings.local.json` を読み、`plansDirectory` の値を取得する。
+現在のブランチ名から issue 番号を導出する: `git branch --show-current | grep -oE 'issue-[0-9]+'`。
+計画ディレクトリは `docs/claude-plans/{issue-N}/`（例: `docs/claude-plans/issue-293/`）とする。
 
-1. `plansDirectory` が設定されていて、ディレクトリ内に `.md` ファイルがある場合:
+1. そのディレクトリが存在し `.md` ファイルがある場合:
    - `deviations.md` 以外の `.md` ファイルを全て **planファイル** として読み取る
    - `deviations.md` があれば **逸脱記録** として読み取る
-2. 未設定 or ディレクトリが空 → 計画なしとして扱う
+2. ディレクトリが無い or 空 → 計画なしとして扱う
 
 ## ステップ 2.5: 設計判断の ADR 起票チェック
 
@@ -90,7 +91,7 @@ Closes #{issue_number}
 <details>
 <summary>plan mode で作成した実装計画（クリックで展開）</summary>
 
-（plansDirectory 内の plan ファイルの内容）
+（計画ディレクトリ内の plan ファイルの内容）
 （複数ファイルがある場合はファイル名を見出しにして掲載）
 
 </details>
@@ -99,7 +100,7 @@ Closes #{issue_number}
 
 ## 計画からの逸脱
 
-（plansDirectory/deviations.md の内容を整理して記述）
+（計画ディレクトリ内の deviations.md の内容を整理して記述）
 
 ※逸脱記録がなく計画がある場合:
 「計画通りに実装が完了しました。特筆すべき逸脱はありません。」

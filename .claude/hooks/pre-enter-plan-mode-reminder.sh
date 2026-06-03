@@ -5,7 +5,7 @@
 INPUT=$(cat)
 
 CONTEXT="📋 Plan Mode 開始リマインド:
-- Setup plansDirectory: .claude/settings.local.json の plansDirectory を docs/claude-plans/issue-{number} に更新
+- 計画ファイルは docs/claude-plans/issue-{number}/{kebab-case-description}.md に Write で直接作成する（settings.local.json は編集しない。self-modification でブロックされ、かつ不要）
 - Plan file format: docs/claude-plans/PLAN_TEMPLATE.md のフォーマットに従う
 - One step = one commit: 各ステップは1コミット単位で設計"
 
