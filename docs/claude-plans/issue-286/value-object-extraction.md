@@ -111,3 +111,153 @@ Issue #284 で Estimate 集約を実装した際、`EstimateItem` の `itemName`
 - 受け入れ確認:
   - `EstimateItem` に `assertItemName / assertUnit / assertMemo` が存在しない（grep で 0 件）
   - `EstimateMapper` ラウンドトリップ（`toDomain` → scalarData → 再 `toDomain`）が `PrismaEstimateRepository.test.ts` で破綻しない
+
+---
+
+# 追補（2026-06-03）: Memo の null 排除リファクタ（A案採用）— 別セッション向けハンドオフ
+
+> このセクションは **本計画の「論点2: `Memo` の null 許容モデル」（`Memo | null` 採用）を上書きする後続決定** のハンドオフ。実装は別セッションで行う。ここに「採用案の定義」「なぜAか（ADR用のWHY）」「実装ステップ」を自己完結でまとめる。
+
+## きっかけ（Problem）
+
+VO 化リファクタ完了後のレビューで、`Memo` を任意項目として `Memo | null` で扱った結果、**`EstimateMapper` に null 分岐が漏れ込んでいる**ことが問題視された:
+
+```ts
+// 読み（toDomain）
+customerMemo: v.customerMemo ? new Memo(v.customerMemo) : null,
+// 書き（scalarData）
+customerMemo: v.customerMemo?.value ?? null,
+```
+
+この分岐は本質的に「DB の `string | null`」と「ドメインの `Memo | null`」という **2つの null 表現のインピーダンスミスマッチ**であり、`Memo | null` を使う限り境界で必ず発生する。加えて `Memo | null` がエンティティ全体（フィールド / ゲッター / `change*` / `create` / `reconstruct`）に伝播し、利用側に null 判断が漏れ続ける。プロジェクトの **NULL 徹底排除方針**（kawasima デシジョンツリー準拠、ユーザーメモリ参照）とも噛み合わない。
+
+## 採用案: A — 静的ファクトリ `Memo.create` ＋ 空値による Null Object（サブクラス無し）
+
+「メモ未入力」を **null ではなく空 Memo（`value === ""`）** で表現し、null をドメインから完全に排除する。null→空の正規化は **`Memo.create` の1点に集約**する。
+
+### `Memo`（差し替え後の最終形）
+
+```ts
+import { StringValueObject } from "@server/shared/StringValueObject";
+
+/**
+ * メモ値オブジェクト（任意項目）
+ *
+ * 「未入力」は null ではなく空 Memo（value === ""）で表現する。
+ * null / undefined / 空白のみ の吸収は create に一極集中させ、
+ * ドメイン内には Memo（非null）だけを流す。
+ */
+export class Memo extends StringValueObject<"Memo"> {
+  protected static readonly LABEL = "メモ";
+  protected static readonly MAX_LENGTH = 2000;
+
+  // 生成は必ず create 経由に強制する（family の "string から作る" 形を守るため引数は string のまま）
+  private constructor(value: string) {
+    super(value.trim());
+  }
+
+  /** 任意入力の唯一の入口。null / undefined / 空白 はすべて空 Memo に正規化する */
+  static create(value: string | null | undefined): Memo {
+    return new Memo(value ?? "");
+  }
+
+  /** 「メモなし」を明示的に作る読みやすさ用ヘルパ（= create(null)）。clear 操作やテストで使う */
+  static empty(): Memo {
+    return Memo.create(null);
+  }
+
+  isEmpty(): boolean {
+    return this.value.length === 0;
+  }
+}
+```
+
+- 最大長超過の検証は `new Memo(...)` → 基底 `validate` で従来通り効く（`ValidationError` を投げる）。
+- 空白のみ `"   "` は `trim()` で空 Memo になる（= 未入力と同一視）。
+
+### 利用側（すべて「素通し」になる）
+
+```ts
+// EstimateItem.create / EstimateVariation.create — フォーム値を素通し
+customerMemo: Memo.create(input.customerMemo),
+
+// EstimateMapper.toDomain — 移行後は v.customerMemo: string だが create は string|null|undefined を許容
+customerMemo: Memo.create(v.customerMemo),
+
+// EstimateMapper.scalarData（書き戻し）— 常に non-null
+customerMemo: i.customerMemo.value,   // 空メモは "" として保存
+
+// change 系 — クリアは Memo.empty() を渡す
+changeCustomerMemo(newMemo: Memo): void { this._customerMemo = newMemo; }
+```
+
+## なぜAなのか（ADR用 — Decision & Rationale）
+
+### なぜ「空値 Null Object」か（`Memo | null` を捨てた理由）
+
+1. **NULL 排除方針との整合**: ドメインからも（移行後は）DB からも null を消せる。
+2. **意味論的に正直**: 自由文 memo では「空メモ」と「メモなし」に**業務的な差が無い**。両者が等価なときに限り Null Object は嘘にならない（対比: NULL に「未発注」等の意味がある日付列では Null Object は不正）。
+3. **複雑性の消滅**: Mapper の分岐が消え、エンティティから `Memo | null` が消える。フィールド型を `Memo`（非null）にした瞬間、**型システムが下流の非null を保証**する（`create` の `?? ""` という1点に null 吸収が集約され、以降は分岐不要）。
+
+### なぜ「多態サブクラス `NullMemo`」を採らないか（Null Object の別実装の棄却）
+
+C# 的な `class NullMemo extends Memo`（`forDisplay()` 等を override する正統な多態 Null Object）も検討したが棄却。**多態サブクラスが空値版に勝てるのは「不在」と「空値」で分岐させたい派生メソッドがあるときだけ**（C# の `名前様付` のように、空文字を通常経路に流すと壊れる派生表示があるケース）。現状の `Memo` は `.value` を返すだけの素の文字列 VO で派生の振る舞いが無く、`NullMemo` と `new Memo("")` は**振る舞いが完全一致**する。型を1つ増やす対価が無い（参照: `learning/value-object-vs-result-object-for-staged-amounts.md` の「型を作らない勇気」）。
+→ 将来 `Memo` に「不在のとき空文字処理とは違う見せ方をする派生メソッド」（例: 帳票で接頭辞付与、空なら行ごと削除）が生えたら、その時点で多態版へ部分昇格する。
+
+### なぜ null 吸収を「ファクトリ(A)」に置くか（B/C の棄却）
+
+null 吸収の**置き場所**として3案を比較した:
+
+| 案 | 生成 | null 吸収の場所 | トレードオフ |
+|---|---|---|---|
+| **A. `Memo.create(nullable)`** ← 採用 | ファクトリ | create 内 | `StringValueObject` family の "string から作る" 形を保てる／null 漏れ無し。対価: 他VO（`new`）と生成形が割れる |
+| B. nullable コンストラクタ | `new` | ctor 内 | `new` 流儀で最も一貫・呼び出し最簡。対価: ctor 引数が `string\|null\|undefined` になり family の形から逸脱 |
+| C. 厳格 ctor + 呼び出し側 `?? ""` | `new` | 各呼び出し側 | ctor 純粋。対価: `?? ""` が 4 箇所に漏れる（当初の不満点が再発） |
+
+- **C 棄却**: null 判断が呼び出し側に漏れる（そもそもの問題の再来）。
+- **B 棄却**: `new` の一貫性は最良だが、ctor 引数を nullable に広げると `StringValueObject` ファミリの「string から作る」一様な形から外れる。なお **これは LSP 違反ではない**（コンストラクタは継承されず多態呼び出しもされないため LSP の射程外。引数を広げるのは変性的にも安全側。基底不変条件も super 前正規化で保存される）。あくまで「ファミリの形の純度」という設計趣味の問題。
+- **A 採用**: ctor 引数を `string` のまま（family の形を維持）し、nullable の関心を `create` という名前付き入口に隔離。**コードベースは既に `new`（ItemName / Quantity / TaxRate）と ファクトリ（`Money.fromMajorUnits` / `EstimateNumber.parse` / `SubmissionType.from`）を「生成時に変換が要るか」で使い分けており**、`Memo.create` は「null→空 正規化」という実変換を伴うので、この既存の軸に整合する（＝ `create` は不揃いではなく正当）。
+
+### 決定の要点（一文）
+
+> 任意項目の memo を `Memo | null` ではなく **常に non-null な Memo（空が未入力）** とし、`null → 空` の吸収を **`Memo.create` の1点**に集約する。多態サブクラスは派生の振る舞いが無いため使わず、ファクトリは「変換を伴う生成」という既存コードベースの方針に沿うため `new` 直書きより優先する。
+
+## 実装ステップ（別セッション）
+
+> ブランチ運用・コミット粒度は本計画の流儀（意味のあるまとまりごとにコミット）に従う。
+
+### Step A-1: `Memo` を A 案形に差し替え＋テスト更新
+- `src/server/subdomains/estimate/domain/values/Memo.ts`: 上記「最終形」に置換（private ctor / `create` / `empty` / `isEmpty`）。
+- `src/server/subdomains/estimate/domain/values/__tests__/Memo.test.ts`: `Memo.create(null)` / `create(undefined)` / `create("")` / `create("   ")` がすべて `isEmpty() === true` になること、通常値の保持・トリム・境界 max・max+1 で `ValidationError`、を網羅。`new Memo(...)` 直書きのテストは `create` 経由に変更。
+- commit: `refactor(estimate): Memo を null 排除（空値 Null Object）に変更する`
+  - body に「論点2（`Memo | null`）を上書き。null 吸収を create に集約し、ドメインから Memo | null を排除。多態サブクラスは派生の振る舞いが無いため不採用」を記載。
+
+### Step A-2: エンティティから `Memo | null` を除去
+- `EstimateItem.ts` / `EstimateVariation.ts`:
+  - `_customerMemo` / `_internalMemo` フィールド、ゲッター、`create` input、`reconstruct` input、`change*` 引数の `Memo | null` を **すべて `Memo`** に変更。
+  - `create` の未入力デフォルトを `?? null` → `Memo.create(input.customerMemo)` 等に変更（input が `Memo | null` か生 string かは現行シグネチャ確認の上、生値素通しなら `Memo.create(...)`、既に `Memo` を受けているなら `?? Memo.empty()`）。
+  - clear 操作は `change*(Memo.empty())`。
+- commit: `refactor(estimate): EstimateItem / EstimateVariation の memo を非null Memo に統一する`
+
+### Step A-3: `EstimateMapper` の分岐除去
+- `variationToDomain` / `itemToDomain`: `... ? new Memo(...) : null` → `Memo.create(v.customerMemo)` / `Memo.create(i.customerMemo)`。
+- `toVariationScalarData` / `toItemScalarData`: `?.value ?? null` → `i.customerMemo.value`（4 箇所）。
+- commit: `refactor(estimate): EstimateMapper の memo null 分岐を除去する`
+
+### Step A-4: Prisma スキーマを NOT NULL + default に移行
+- `prisma/schema.prisma` の memo 4 列（EstimateItem 側 `customer_memo`/`internal_memo` ＝ 現 L570-571、EstimateVariation 側 ＝ 現 L627-628）:
+  - `String? @db.VarChar(2000)` → `String @default("") @db.VarChar(2000)`。
+- `pnpm db:migrate` で生成されるマイグレーション SQL を**手で確認・補正**: NOT NULL 化の前に既存 NULL を空文字へバックフィルする `UPDATE ... SET <col> = '' WHERE <col> IS NULL;` を必ず先頭に入れる（Prisma が自動生成しない場合があるため）。
+- commit: `refactor(estimate): memo 列を NOT NULL default '' に移行する`
+
+### Step A-5: テストフィクスチャ・検証・記録
+- `estimateAggregateBuilder.ts` / `EstimateItem.test.ts` / `EstimateVariation.test.ts` / `Estimate.test.ts` / `PrismaEstimateRepository.test.ts` の memo 構築を `Memo.create(...)` / `Memo.empty()` に更新。`Memo | null` を期待する assertion を `Memo`（空判定 `isEmpty()`）に修正。
+- `pnpm test` / `pnpm build` / `pnpm lint` 通過確認。ラウンドトリップ（toDomain→scalarData→再toDomain）で空メモが `""` のまま保たれること。
+- **ADR 追加**: 本追補の「なぜAなのか」を元に ADR を起票（Considered Options = `Memo|null` / 多態NullMemo / A / B / C、Decision = A、Consequences = null排除・family形との折り合い・将来の多態昇格シグナル）。`docs/adr/` の採番規約に従う。
+- **deviations.md 記録**: 本計画「論点2」を上書きした旨（{元の計画: `Memo | null`}/{実際: 非null Memo + create}/{理由: Mapper の null 分岐除去と NULL 排除方針整合}）を `docs/claude-plans/issue-286/deviations.md` に追記。
+
+## 受け入れ確認（追加分）
+- `grep -rn "Memo | null" src/server/subdomains/estimate` が 0 件。
+- `EstimateMapper` に `? new Memo` および `?.value ?? null`（memo 関連）が 0 件。
+- Prisma スキーマの memo 4 列に `?`（nullable）が無く `@default("")` が付く。
+- 空メモのラウンドトリップが `""` で安定（null に戻らない）。
