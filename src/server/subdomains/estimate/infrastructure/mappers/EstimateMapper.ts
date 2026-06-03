@@ -21,6 +21,8 @@ import { EstimateItemId } from "@subdomains/estimate/domain/values/EstimateItemI
 import { EstimateNumber } from "@subdomains/estimate/domain/values/EstimateNumber";
 import { EstimateVariationId } from "@subdomains/estimate/domain/values/EstimateVariationId";
 import { FaultDescription } from "@subdomains/estimate/domain/values/FaultDescription";
+import { ItemName } from "@subdomains/estimate/domain/values/ItemName";
+import { Memo } from "@subdomains/estimate/domain/values/Memo";
 import { Money } from "@subdomains/estimate/domain/values/Money";
 import { Quantity } from "@subdomains/estimate/domain/values/Quantity";
 import { RepairEstimateDetailId } from "@subdomains/estimate/domain/values/RepairEstimateDetailId";
@@ -28,6 +30,7 @@ import { RevisedEstimateItemDetailId } from "@subdomains/estimate/domain/values/
 import { SubmissionType } from "@subdomains/estimate/domain/values/SubmissionType";
 import { TaxRate } from "@subdomains/estimate/domain/values/TaxRate";
 import { TaxRoundingType } from "@subdomains/estimate/domain/values/TaxRoundingType";
+import { Unit } from "@subdomains/estimate/domain/values/Unit";
 import { VariationStatus } from "@subdomains/estimate/domain/values/VariationStatus";
 
 import { Prisma } from "@generated/prisma/client";
@@ -152,14 +155,14 @@ export class EstimateMapper {
       id: new EstimateItemId(i.id),
       productId: new ProductId(i.productId),
       sortOrder: i.sortOrder,
-      itemName: i.itemName,
+      itemName: new ItemName(i.itemName),
       quantity: new Quantity(i.quantity),
-      unit: i.unit,
+      unit: new Unit(i.unit),
       unitPrice: decimalToMoney(i.unitPrice),
       discountRate: new DiscountRate(Number(i.discountRate)),
       itemDiscount: decimalToMoney(i.itemDiscount),
-      customerMemo: i.customerMemo,
-      internalMemo: i.internalMemo,
+      customerMemo: i.customerMemo ? new Memo(i.customerMemo) : null,
+      internalMemo: i.internalMemo ? new Memo(i.internalMemo) : null,
       revisedDetail: i.revisedDetail
         ? RevisedEstimateItemDetail.reconstruct(
             new RevisedEstimateItemDetailId(i.revisedDetail.id),
@@ -218,12 +221,12 @@ export class EstimateMapper {
     return {
       sortOrder: i.sortOrder,
       productId: i.productId.value,
-      itemName: i.itemName,
+      itemName: i.itemName.value,
       quantity: i.quantity.value,
-      unit: i.unit,
+      unit: i.unit.value,
       unitPrice: moneyToDecimal(i.unitPrice),
-      customerMemo: i.customerMemo,
-      internalMemo: i.internalMemo,
+      customerMemo: i.customerMemo?.value ?? null,
+      internalMemo: i.internalMemo?.value ?? null,
       discountRate: new Prisma.Decimal(i.discountRate.value),
       itemDiscount: moneyToDecimal(i.itemDiscount),
       baseAmount: moneyToDecimal(i.baseAmount),

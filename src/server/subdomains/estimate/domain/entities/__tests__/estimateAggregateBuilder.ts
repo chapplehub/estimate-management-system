@@ -7,8 +7,10 @@ import { ProductId } from "@subdomains/product/domain/values/ProductId";
 import { EmergencyReason } from "../../values/EmergencyReason";
 import { EstimateNumber } from "../../values/EstimateNumber";
 import { FaultDescription } from "../../values/FaultDescription";
+import { ItemName } from "../../values/ItemName";
 import { Money } from "../../values/Money";
 import { Quantity } from "../../values/Quantity";
+import { Unit } from "../../values/Unit";
 import { RevisedEstimateItemDetail } from "../RevisedEstimateItemDetail";
 import { SubmissionType } from "../../values/SubmissionType";
 import { TaxRate } from "../../values/TaxRate";
@@ -54,9 +56,9 @@ export function makeItem(
   return EstimateItem.create({
     productId: new ProductId(productId),
     sortOrder: opts.sortOrder ?? 1,
-    itemName: opts.itemName ?? "テスト商品",
+    itemName: new ItemName(opts.itemName ?? "テスト商品"),
     quantity: new Quantity(opts.quantity ?? 1),
-    unit: "個",
+    unit: new Unit("個"),
     unitPrice: Money.fromMajorUnits(opts.unitPrice ?? 1000),
     revisedDetail: opts.withRevisedDetail
       ? RevisedEstimateItemDetail.create(Money.fromMajorUnits(800))

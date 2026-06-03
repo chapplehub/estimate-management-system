@@ -1,32 +1,29 @@
-import { ValidationError } from "@server/shared/errors/DomainError";
 import { ProductId } from "@subdomains/product/domain/values/ProductId";
 import { LineItemAmountPolicy } from "../policies/LineItemAmountPolicy";
 import { DiscountRate } from "../values/DiscountRate";
 import { EstimateItemId } from "../values/EstimateItemId";
+import { ItemName } from "../values/ItemName";
+import { Memo } from "../values/Memo";
 import { Money } from "../values/Money";
 import { Quantity } from "../values/Quantity";
+import { Unit } from "../values/Unit";
 import { RevisedEstimateItemDetail } from "./RevisedEstimateItemDetail";
-
-/** Prisma スキーマの VarChar 上限と整合（簡易バリデーション）。 */
-const ITEM_NAME_MAX = 100;
-const UNIT_MAX = 20;
-const MEMO_MAX = 2000;
 
 export type EstimateItemCreateInput = {
   productId: ProductId;
   sortOrder: number;
   /** 商品名スナップショット（マスタからの複写、§8 金額保存形式と整合）。 */
-  itemName: string;
+  itemName: ItemName;
   quantity: Quantity;
   /** 単位スナップショット（Product.unit enum 文字列）。 */
-  unit: string;
+  unit: Unit;
   unitPrice: Money;
   /** 掛率。省略時は 1.0（値引なし）。 */
   discountRate?: DiscountRate;
   /** 明細値引金額。省略時はゼロ。 */
   itemDiscount?: Money;
-  customerMemo?: string | null;
-  internalMemo?: string | null;
+  customerMemo?: Memo | null;
+  internalMemo?: Memo | null;
   /** 得意先改訂で生まれた明細のみ持つ固有属性。省略時は null。 */
   revisedDetail?: RevisedEstimateItemDetail | null;
 };
@@ -51,14 +48,14 @@ export class EstimateItem {
     private readonly _id: EstimateItemId,
     private readonly _productId: ProductId,
     private _sortOrder: number,
-    private _itemName: string,
+    private _itemName: ItemName,
     private _quantity: Quantity,
-    private _unit: string,
+    private _unit: Unit,
     private _unitPrice: Money,
     private _discountRate: DiscountRate,
     private _itemDiscount: Money,
-    private _customerMemo: string | null,
-    private _internalMemo: string | null,
+    private _customerMemo: Memo | null,
+    private _internalMemo: Memo | null,
     private _revisedDetail: RevisedEstimateItemDetail | null,
     private _baseAmount: Money,
     private _discountedAmount: Money,
@@ -71,11 +68,6 @@ export class EstimateItem {
    * 新規明細を作成する。金額 3 種は LineItemAmountPolicy で自動算出する。
    */
   static create(input: EstimateItemCreateInput): EstimateItem {
-    EstimateItem.assertItemName(input.itemName);
-    EstimateItem.assertUnit(input.unit);
-    EstimateItem.assertMemo(input.customerMemo ?? null, "顧客メモ");
-    EstimateItem.assertMemo(input.internalMemo ?? null, "社内メモ");
-
     const discountRate = input.discountRate ?? new DiscountRate(1.0);
     const itemDiscount = input.itemDiscount ?? Money.zero();
     const amounts = LineItemAmountPolicy.calculate(
@@ -116,14 +108,14 @@ export class EstimateItem {
     id: EstimateItemId;
     productId: ProductId;
     sortOrder: number;
-    itemName: string;
+    itemName: ItemName;
     quantity: Quantity;
-    unit: string;
+    unit: Unit;
     unitPrice: Money;
     discountRate: DiscountRate;
     itemDiscount: Money;
-    customerMemo: string | null;
-    internalMemo: string | null;
+    customerMemo: Memo | null;
+    internalMemo: Memo | null;
     revisedDetail: RevisedEstimateItemDetail | null;
     baseAmount: Money;
     discountedAmount: Money;
@@ -181,26 +173,22 @@ export class EstimateItem {
     this.touch();
   }
 
-  changeItemName(newName: string): void {
-    EstimateItem.assertItemName(newName);
+  changeItemName(newName: ItemName): void {
     this._itemName = newName;
     this.touch();
   }
 
-  changeUnit(newUnit: string): void {
-    EstimateItem.assertUnit(newUnit);
+  changeUnit(newUnit: Unit): void {
     this._unit = newUnit;
     this.touch();
   }
 
-  changeCustomerMemo(newMemo: string | null): void {
-    EstimateItem.assertMemo(newMemo, "顧客メモ");
+  changeCustomerMemo(newMemo: Memo | null): void {
     this._customerMemo = newMemo;
     this.touch();
   }
 
-  changeInternalMemo(newMemo: string | null): void {
-    EstimateItem.assertMemo(newMemo, "社内メモ");
+  changeInternalMemo(newMemo: Memo | null): void {
     this._internalMemo = newMemo;
     this.touch();
   }
@@ -236,31 +224,6 @@ export class EstimateItem {
     this._updatedAt = new Date();
   }
 
-  private static assertItemName(value: string): void {
-    if (value.length === 0) {
-      throw new ValidationError("商品名は必須です");
-    }
-    if (value.length > ITEM_NAME_MAX) {
-      throw new ValidationError(`商品名は${ITEM_NAME_MAX}文字以内で入力してください`);
-    }
-  }
-
-  private static assertUnit(value: string): void {
-    if (value.length === 0) {
-      throw new ValidationError("単位は必須です");
-    }
-    if (value.length > UNIT_MAX) {
-      throw new ValidationError(`単位は${UNIT_MAX}文字以内で入力してください`);
-    }
-  }
-
-  private static assertMemo(value: string | null, label: string): void {
-    if (value === null) return;
-    if (value.length > MEMO_MAX) {
-      throw new ValidationError(`${label}は${MEMO_MAX}文字以内で入力してください`);
-    }
-  }
-
   // ========================================
   // ゲッター
   // ========================================
@@ -277,7 +240,7 @@ export class EstimateItem {
     return this._sortOrder;
   }
 
-  get itemName(): string {
+  get itemName(): ItemName {
     return this._itemName;
   }
 
@@ -285,7 +248,7 @@ export class EstimateItem {
     return this._quantity;
   }
 
-  get unit(): string {
+  get unit(): Unit {
     return this._unit;
   }
 
@@ -301,11 +264,11 @@ export class EstimateItem {
     return this._itemDiscount;
   }
 
-  get customerMemo(): string | null {
+  get customerMemo(): Memo | null {
     return this._customerMemo;
   }
 
-  get internalMemo(): string | null {
+  get internalMemo(): Memo | null {
     return this._internalMemo;
   }
 

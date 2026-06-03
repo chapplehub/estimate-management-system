@@ -8,9 +8,11 @@ import { describe, expect, it } from "vitest";
 import { EmergencyReason } from "../../values/EmergencyReason";
 import { EstimateNumber } from "../../values/EstimateNumber";
 import { FaultDescription } from "../../values/FaultDescription";
+import { ItemName } from "../../values/ItemName";
 import { Money } from "../../values/Money";
 import { Quantity } from "../../values/Quantity";
 import { SubmissionType } from "../../values/SubmissionType";
+import { Unit } from "../../values/Unit";
 import { TaxRate } from "../../values/TaxRate";
 import { TaxRoundingType } from "../../values/TaxRoundingType";
 import { AfterRepairEstimateDetail } from "../AfterRepairEstimateDetail";
@@ -28,9 +30,9 @@ function makeItem(unitPrice = 1000, quantity = 1): EstimateItem {
   return EstimateItem.create({
     productId: ProductId.generate(),
     sortOrder: 1,
-    itemName: "テスト商品",
+    itemName: new ItemName("テスト商品"),
     quantity: new Quantity(quantity),
-    unit: "個",
+    unit: new Unit("個"),
     unitPrice: Money.fromMajorUnits(unitPrice),
   });
 }

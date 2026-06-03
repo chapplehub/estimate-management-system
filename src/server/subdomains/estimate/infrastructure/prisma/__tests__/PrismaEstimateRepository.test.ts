@@ -145,7 +145,7 @@ describe("PrismaEstimateRepository", () => {
       // 削除した明細は存在しない
       expect(items.some((i) => i.id.value === removeItemId.value)).toBe(false);
       // 追加した明細が存在する
-      expect(items.some((i) => i.itemName === "追加商品")).toBe(true);
+      expect(items.some((i) => i.itemName.value === "追加商品")).toBe(true);
     });
 
     it("バリエーションの追加・削除が反映され、残存バリエーションの id は保持される", async () => {
