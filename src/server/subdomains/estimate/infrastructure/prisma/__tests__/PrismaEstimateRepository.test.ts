@@ -13,6 +13,7 @@ import {
   makeVariation,
 } from "@subdomains/estimate/domain/entities/__tests__/estimateAggregateBuilder";
 import prisma from "@server/prisma";
+import { ConflictError } from "@server/shared/errors/ApplicationError";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { PrismaEstimateRepository } from "../PrismaEstimateRepository";
 
@@ -25,6 +26,7 @@ const EN = {
   updateSwap: "N9900003",
   findByNumber: "N9900004",
   del: "N9900005",
+  conflict: "N9900006",
   missing: "N9900099",
 } as const;
 const ALL_NUMBERS = Object.values(EN);
@@ -187,6 +189,18 @@ describe("PrismaEstimateRepository", () => {
     it("一致しない場合は null を返す", async () => {
       const found = await repository.findByEstimateNumber(EstimateNumber.parse(EN.missing));
       expect(found).toBeNull();
+    });
+  });
+
+  describe("save（採番衝突）", () => {
+    it("既存と同一の見積番号を別集約で新規保存すると ConflictError を投げる", async () => {
+      // 1 件目は成功
+      await repository.save(buildNewEstimate(ids, EN.conflict));
+
+      // 別 id・同一見積番号の集約を新規保存 → estimate_number @unique 違反
+      await expect(repository.save(buildNewEstimate(ids, EN.conflict))).rejects.toThrow(
+        ConflictError
+      );
     });
   });
 
