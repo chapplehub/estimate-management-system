@@ -124,15 +124,8 @@ describe("EstimateVariation", () => {
       );
     });
 
-    it("メモが 2001 文字超ならエラー", () => {
-      expect(() =>
-        EstimateVariation.create({
-          variationNumber: 1,
-          tax: TAX,
-          customerMemo: "あ".repeat(2001),
-        })
-      ).toThrow("2000文字以内");
-    });
+    // 注: メモの長さバリデーションは Memo VO のコンストラクタに移譲済み。
+    // 境界値テストは Memo の単体テストを参照。
   });
 
   describe("addItem / removeItem - 明細追加削除と自動再計算", () => {

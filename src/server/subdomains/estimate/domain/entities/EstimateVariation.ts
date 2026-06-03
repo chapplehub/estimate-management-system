@@ -3,6 +3,7 @@ import { EstimateAmountPolicy } from "../policies/EstimateAmountPolicy";
 import { DiscountRate } from "../values/DiscountRate";
 import type { EstimateItemId } from "../values/EstimateItemId";
 import { EstimateVariationId } from "../values/EstimateVariationId";
+import { Memo } from "../values/Memo";
 import { Money } from "../values/Money";
 import type { Quantity } from "../values/Quantity";
 import type { TaxRate } from "../values/TaxRate";
@@ -13,7 +14,6 @@ import { EstimateItem } from "./EstimateItem";
 /** §3.3 バリエーション番号は 1〜99。 */
 const VARIATION_NUMBER_MIN = 1;
 const VARIATION_NUMBER_MAX = 99;
-const MEMO_MAX = 2000;
 
 /**
  * 再計算のたびに親 Estimate から渡される税情報。
@@ -50,8 +50,8 @@ export class EstimateVariation {
     private readonly _id: EstimateVariationId,
     private _variationNumber: number,
     private _status: VariationStatus,
-    private _customerMemo: string | null,
-    private _internalMemo: string | null,
+    private _customerMemo: Memo | null,
+    private _internalMemo: Memo | null,
     private _overallDiscount: Money,
     private readonly _items: EstimateItem[],
     private _subtotal: Money,
@@ -74,12 +74,10 @@ export class EstimateVariation {
     status?: VariationStatus;
     items?: EstimateItem[];
     overallDiscount?: Money;
-    customerMemo?: string | null;
-    internalMemo?: string | null;
+    customerMemo?: Memo | null;
+    internalMemo?: Memo | null;
   }): EstimateVariation {
     EstimateVariation.assertVariationNumber(input.variationNumber);
-    EstimateVariation.assertMemo(input.customerMemo ?? null, "顧客メモ");
-    EstimateVariation.assertMemo(input.internalMemo ?? null, "社内メモ");
 
     const items = input.items ?? [];
     const overallDiscount = input.overallDiscount ?? Money.zero();
@@ -112,8 +110,8 @@ export class EstimateVariation {
     id: EstimateVariationId;
     variationNumber: number;
     status: VariationStatus;
-    customerMemo: string | null;
-    internalMemo: string | null;
+    customerMemo: Memo | null;
+    internalMemo: Memo | null;
     overallDiscount: Money;
     items: EstimateItem[];
     subtotal: Money;
@@ -223,14 +221,12 @@ export class EstimateVariation {
     this.touch();
   }
 
-  changeCustomerMemo(newMemo: string | null): void {
-    EstimateVariation.assertMemo(newMemo, "顧客メモ");
+  changeCustomerMemo(newMemo: Memo | null): void {
     this._customerMemo = newMemo;
     this.touch();
   }
 
-  changeInternalMemo(newMemo: string | null): void {
-    EstimateVariation.assertMemo(newMemo, "社内メモ");
+  changeInternalMemo(newMemo: Memo | null): void {
     this._internalMemo = newMemo;
     this.touch();
   }
@@ -310,13 +306,6 @@ export class EstimateVariation {
     }
   }
 
-  private static assertMemo(value: string | null, label: string): void {
-    if (value === null) return;
-    if (value.length > MEMO_MAX) {
-      throw new ValidationError(`${label}は${MEMO_MAX}文字以内で入力してください`);
-    }
-  }
-
   // ========================================
   // ゲッター
   // ========================================
@@ -337,11 +326,11 @@ export class EstimateVariation {
     return this._status.isActive();
   }
 
-  get customerMemo(): string | null {
+  get customerMemo(): Memo | null {
     return this._customerMemo;
   }
 
-  get internalMemo(): string | null {
+  get internalMemo(): Memo | null {
     return this._internalMemo;
   }
 
