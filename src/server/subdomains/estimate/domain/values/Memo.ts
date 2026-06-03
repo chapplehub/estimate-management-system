@@ -1,21 +1,37 @@
 import { StringValueObject } from "@server/shared/StringValueObject";
 
 /**
- * メモ値オブジェクト
+ * メモ値オブジェクト（任意項目）
  *
- * 見積明細・見積バリエーションの顧客メモ / 社内メモで共用する任意項目。
- * Prisma `EstimateItem.customerMemo / internalMemo` および
- * `EstimateVariation.customerMemo / internalMemo`（VarChar(2000)）に対応する。
+ * 見積明細・見積バリエーションの顧客メモ / 社内メモで共用する。
+ * 「未入力」は null ではなく空 Memo（value === ""）で表現し、null を
+ * ドメインから排除する。null / undefined / 空白のみ の吸収は {@link create}
+ * の1点に集約し、ドメイン内には常に非null の Memo を流す。
  *
- * null 許容は VO 内部では表現せず、呼び出し側で `Memo | null` として扱う
- * （既存流儀: ProductNote | null）。エラーメッセージは技術的制約（最大長）の
- * みを表す汎用 label とし、顧客 / 社内 の区別は付けない。
+ * エラーメッセージは技術的制約（最大長）のみを表す汎用 label とし、
+ * 顧客 / 社内 の区別は付けない。
  */
 export class Memo extends StringValueObject<"Memo"> {
   protected static readonly LABEL = "メモ";
   protected static readonly MAX_LENGTH = 2000;
 
+  // null 吸収を集約するため生成は create 経由を推奨する（呼び出し側移行後に
+  // private 化予定）。
   constructor(value: string) {
     super(value.trim());
+  }
+
+  /** 任意入力の唯一の入口。null / undefined / 空白 はすべて空 Memo に正規化する。 */
+  static create(value: string | null | undefined): Memo {
+    return new Memo(value ?? "");
+  }
+
+  /** 「メモなし」を明示的に作る読みやすさ用ヘルパ（= create(null)）。 */
+  static empty(): Memo {
+    return Memo.create(null);
+  }
+
+  isEmpty(): boolean {
+    return this.value.length === 0;
   }
 }
