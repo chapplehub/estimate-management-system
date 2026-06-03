@@ -22,8 +22,10 @@ export type EstimateItemCreateInput = {
   discountRate?: DiscountRate;
   /** 明細値引金額。省略時はゼロ。 */
   itemDiscount?: Money;
-  customerMemo?: Memo | null;
-  internalMemo?: Memo | null;
+  /** 顧客メモ。省略時は空メモ（Memo.empty()）。 */
+  customerMemo?: Memo;
+  /** 社内メモ。省略時は空メモ（Memo.empty()）。 */
+  internalMemo?: Memo;
   /** 得意先改訂で生まれた明細のみ持つ固有属性。省略時は null。 */
   revisedDetail?: RevisedEstimateItemDetail | null;
 };
@@ -54,8 +56,8 @@ export class EstimateItem {
     private _unitPrice: Money,
     private _discountRate: DiscountRate,
     private _itemDiscount: Money,
-    private _customerMemo: Memo | null,
-    private _internalMemo: Memo | null,
+    private _customerMemo: Memo,
+    private _internalMemo: Memo,
     private _revisedDetail: RevisedEstimateItemDetail | null,
     private _baseAmount: Money,
     private _discountedAmount: Money,
@@ -88,8 +90,8 @@ export class EstimateItem {
       input.unitPrice,
       discountRate,
       itemDiscount,
-      input.customerMemo ?? null,
-      input.internalMemo ?? null,
+      input.customerMemo ?? Memo.empty(),
+      input.internalMemo ?? Memo.empty(),
       input.revisedDetail ?? null,
       amounts.baseAmount,
       amounts.discountedAmount,
@@ -114,8 +116,8 @@ export class EstimateItem {
     unitPrice: Money;
     discountRate: DiscountRate;
     itemDiscount: Money;
-    customerMemo: Memo | null;
-    internalMemo: Memo | null;
+    customerMemo: Memo;
+    internalMemo: Memo;
     revisedDetail: RevisedEstimateItemDetail | null;
     baseAmount: Money;
     discountedAmount: Money;
@@ -183,12 +185,12 @@ export class EstimateItem {
     this.touch();
   }
 
-  changeCustomerMemo(newMemo: Memo | null): void {
+  changeCustomerMemo(newMemo: Memo): void {
     this._customerMemo = newMemo;
     this.touch();
   }
 
-  changeInternalMemo(newMemo: Memo | null): void {
+  changeInternalMemo(newMemo: Memo): void {
     this._internalMemo = newMemo;
     this.touch();
   }
@@ -264,11 +266,11 @@ export class EstimateItem {
     return this._itemDiscount;
   }
 
-  get customerMemo(): Memo | null {
+  get customerMemo(): Memo {
     return this._customerMemo;
   }
 
-  get internalMemo(): Memo | null {
+  get internalMemo(): Memo {
     return this._internalMemo;
   }
 

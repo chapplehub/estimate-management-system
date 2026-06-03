@@ -50,8 +50,8 @@ export class EstimateVariation {
     private readonly _id: EstimateVariationId,
     private _variationNumber: number,
     private _status: VariationStatus,
-    private _customerMemo: Memo | null,
-    private _internalMemo: Memo | null,
+    private _customerMemo: Memo,
+    private _internalMemo: Memo,
     private _overallDiscount: Money,
     private readonly _items: EstimateItem[],
     private _subtotal: Money,
@@ -74,8 +74,10 @@ export class EstimateVariation {
     status?: VariationStatus;
     items?: EstimateItem[];
     overallDiscount?: Money;
-    customerMemo?: Memo | null;
-    internalMemo?: Memo | null;
+    /** 顧客メモ。省略時は空メモ（Memo.empty()）。 */
+    customerMemo?: Memo;
+    /** 社内メモ。省略時は空メモ（Memo.empty()）。 */
+    internalMemo?: Memo;
   }): EstimateVariation {
     EstimateVariation.assertVariationNumber(input.variationNumber);
 
@@ -88,8 +90,8 @@ export class EstimateVariation {
       EstimateVariationId.generate(),
       input.variationNumber,
       input.status ?? VariationStatus.ACTIVE,
-      input.customerMemo ?? null,
-      input.internalMemo ?? null,
+      input.customerMemo ?? Memo.empty(),
+      input.internalMemo ?? Memo.empty(),
       overallDiscount,
       items,
       totals.subtotal,
@@ -110,8 +112,8 @@ export class EstimateVariation {
     id: EstimateVariationId;
     variationNumber: number;
     status: VariationStatus;
-    customerMemo: Memo | null;
-    internalMemo: Memo | null;
+    customerMemo: Memo;
+    internalMemo: Memo;
     overallDiscount: Money;
     items: EstimateItem[];
     subtotal: Money;
@@ -221,12 +223,12 @@ export class EstimateVariation {
     this.touch();
   }
 
-  changeCustomerMemo(newMemo: Memo | null): void {
+  changeCustomerMemo(newMemo: Memo): void {
     this._customerMemo = newMemo;
     this.touch();
   }
 
-  changeInternalMemo(newMemo: Memo | null): void {
+  changeInternalMemo(newMemo: Memo): void {
     this._internalMemo = newMemo;
     this.touch();
   }
@@ -326,11 +328,11 @@ export class EstimateVariation {
     return this._status.isActive();
   }
 
-  get customerMemo(): Memo | null {
+  get customerMemo(): Memo {
     return this._customerMemo;
   }
 
-  get internalMemo(): Memo | null {
+  get internalMemo(): Memo {
     return this._internalMemo;
   }
 

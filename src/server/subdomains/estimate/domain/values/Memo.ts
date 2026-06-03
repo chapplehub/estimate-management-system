@@ -15,9 +15,8 @@ export class Memo extends StringValueObject<"Memo"> {
   protected static readonly LABEL = "メモ";
   protected static readonly MAX_LENGTH = 2000;
 
-  // null 吸収を集約するため生成は create 経由を推奨する（呼び出し側移行後に
-  // private 化予定）。
-  constructor(value: string) {
+  // 生成は必ず create 経由に強制する（null 吸収を一極集中させるため）。
+  private constructor(value: string) {
     super(value.trim());
   }
 

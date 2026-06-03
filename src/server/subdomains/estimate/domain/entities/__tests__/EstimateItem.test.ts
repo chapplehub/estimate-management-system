@@ -76,10 +76,10 @@ describe("EstimateItem", () => {
       ).toThrow("値引き後の金額がマイナスになります");
     });
 
-    it("memo は省略可能（null）", () => {
+    it("memo は省略可能（空 Memo になる）", () => {
       const item = EstimateItem.create(buildInput());
-      expect(item.customerMemo).toBeNull();
-      expect(item.internalMemo).toBeNull();
+      expect(item.customerMemo.isEmpty()).toBe(true);
+      expect(item.internalMemo.isEmpty()).toBe(true);
     });
 
     it("revisedDetail は省略可能（null）", () => {
@@ -158,11 +158,11 @@ describe("EstimateItem", () => {
       expect(item.itemName.value).toBe("新ポンプ");
     });
 
-    it("changeCustomerMemo で null をセットできる（メモ消去）", () => {
-      const item = EstimateItem.create(buildInput({ customerMemo: new Memo("初期メモ") }));
-      expect(item.customerMemo?.value).toBe("初期メモ");
-      item.changeCustomerMemo(null);
-      expect(item.customerMemo).toBeNull();
+    it("changeCustomerMemo で空 Memo をセットできる（メモ消去）", () => {
+      const item = EstimateItem.create(buildInput({ customerMemo: Memo.create("初期メモ") }));
+      expect(item.customerMemo.value).toBe("初期メモ");
+      item.changeCustomerMemo(Memo.empty());
+      expect(item.customerMemo.isEmpty()).toBe(true);
     });
   });
 
@@ -196,8 +196,8 @@ describe("EstimateItem", () => {
         unitPrice: Money.fromMajorUnits(10000),
         discountRate: new DiscountRate(1.0),
         itemDiscount: Money.zero(),
-        customerMemo: null,
-        internalMemo: null,
+        customerMemo: Memo.empty(),
+        internalMemo: Memo.empty(),
         revisedDetail: null,
         baseAmount: Money.fromMajorUnits(9999), // 異常値だが信頼
         discountedAmount: Money.fromMajorUnits(9999),
