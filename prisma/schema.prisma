@@ -567,8 +567,8 @@ model EstimateVariation {
   status          VariationStatus @default(ACTIVE)
 
   // メモ
-  customerMemo String? @map("customer_memo") @db.VarChar(2000)
-  internalMemo String? @map("internal_memo") @db.VarChar(2000)
+  customerMemo String @default("") @map("customer_memo") @db.VarChar(2000)
+  internalMemo String @default("") @map("internal_memo") @db.VarChar(2000)
 
   // 全体値引
   overallDiscount Decimal @default(0) @map("overall_discount") @db.Decimal(12, 2)
@@ -624,8 +624,8 @@ model EstimateItem {
   unitPrice Decimal @map("unit_price") @db.Decimal(12, 2)
 
   // メモ
-  customerMemo String? @map("customer_memo") @db.VarChar(2000)
-  internalMemo String? @map("internal_memo") @db.VarChar(2000)
+  customerMemo String @default("") @map("customer_memo") @db.VarChar(2000)
+  internalMemo String @default("") @map("internal_memo") @db.VarChar(2000)
 
   // 値引き
   discountRate Decimal @default(1.0) @map("discount_rate") @db.Decimal(5, 4) // 掛率（1.0 = 値引なし）

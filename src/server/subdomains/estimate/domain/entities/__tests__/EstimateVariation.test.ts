@@ -1,9 +1,11 @@
 import { BusinessRuleViolationError, ValidationError } from "@server/shared/errors/DomainError";
 import { ProductId } from "@subdomains/product/domain/values/ProductId";
 import { describe, expect, it } from "vitest";
+import { ItemName } from "../../values/ItemName";
 import { Money } from "../../values/Money";
 import { Quantity } from "../../values/Quantity";
 import { TaxRate } from "../../values/TaxRate";
+import { Unit } from "../../values/Unit";
 import { TaxRoundingType } from "../../values/TaxRoundingType";
 import { VariationStatus } from "../../values/VariationStatus";
 import { EstimateItem } from "../EstimateItem";
@@ -23,9 +25,9 @@ function makeItem(opts?: {
   return EstimateItem.create({
     productId: ProductId.generate(),
     sortOrder: 1,
-    itemName: opts?.itemName ?? "テスト商品",
+    itemName: new ItemName(opts?.itemName ?? "テスト商品"),
     quantity: new Quantity(opts?.quantity ?? 1),
-    unit: "個",
+    unit: new Unit("個"),
     unitPrice: Money.fromMajorUnits(opts?.unitPrice ?? 1000),
     itemDiscount: Money.fromMajorUnits(opts?.itemDiscount ?? 0),
   });
@@ -122,15 +124,8 @@ describe("EstimateVariation", () => {
       );
     });
 
-    it("メモが 2001 文字超ならエラー", () => {
-      expect(() =>
-        EstimateVariation.create({
-          variationNumber: 1,
-          tax: TAX,
-          customerMemo: "あ".repeat(2001),
-        })
-      ).toThrow("2000文字以内");
-    });
+    // 注: メモの長さバリデーションは Memo VO のコンストラクタに移譲済み。
+    // 境界値テストは Memo の単体テストを参照。
   });
 
   describe("addItem / removeItem - 明細追加削除と自動再計算", () => {

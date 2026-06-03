@@ -1,10 +1,12 @@
-import { ValidationError } from "@server/shared/errors/DomainError";
 import { ProductId } from "@subdomains/product/domain/values/ProductId";
 import { describe, expect, it } from "vitest";
 import { DiscountRate } from "../../values/DiscountRate";
 import { EstimateItemId } from "../../values/EstimateItemId";
+import { ItemName } from "../../values/ItemName";
+import { Memo } from "../../values/Memo";
 import { Money } from "../../values/Money";
 import { Quantity } from "../../values/Quantity";
+import { Unit } from "../../values/Unit";
 import { EstimateItem, type EstimateItemCreateInput } from "../EstimateItem";
 import { RevisedEstimateItemDetail } from "../RevisedEstimateItemDetail";
 
@@ -12,9 +14,9 @@ function buildInput(overrides: Partial<EstimateItemCreateInput> = {}): EstimateI
   return {
     productId: ProductId.generate(),
     sortOrder: 1,
-    itemName: "ステンレスポンプ",
+    itemName: new ItemName("ステンレスポンプ"),
     quantity: new Quantity(2),
-    unit: "台",
+    unit: new Unit("台"),
     unitPrice: Money.fromMajorUnits(10000),
     ...overrides,
   };
@@ -25,7 +27,7 @@ describe("EstimateItem", () => {
     it("最低限の必須項目で作成できる（discountRate=1.0, itemDiscount=0 既定）", () => {
       const item = EstimateItem.create(buildInput());
 
-      expect(item.itemName).toBe("ステンレスポンプ");
+      expect(item.itemName.value).toBe("ステンレスポンプ");
       expect(item.quantity.value).toBe(2);
       expect(item.unitPrice.equals(Money.fromMajorUnits(10000))).toBe(true);
       expect(item.discountRate.value).toBe(1.0);
@@ -74,10 +76,10 @@ describe("EstimateItem", () => {
       ).toThrow("値引き後の金額がマイナスになります");
     });
 
-    it("memo は省略可能（null）", () => {
+    it("memo は省略可能（空 Memo になる）", () => {
       const item = EstimateItem.create(buildInput());
-      expect(item.customerMemo).toBeNull();
-      expect(item.internalMemo).toBeNull();
+      expect(item.customerMemo.isEmpty()).toBe(true);
+      expect(item.internalMemo.isEmpty()).toBe(true);
     });
 
     it("revisedDetail は省略可能（null）", () => {
@@ -85,38 +87,8 @@ describe("EstimateItem", () => {
       expect(item.revisedDetail).toBeNull();
     });
 
-    it("商品名 100 文字を受け入れる", () => {
-      const item = EstimateItem.create(buildInput({ itemName: "あ".repeat(100) }));
-      expect(item.itemName.length).toBe(100);
-    });
-  });
-
-  describe("create() - バリデーション", () => {
-    it("商品名が空ならエラー", () => {
-      expect(() => EstimateItem.create(buildInput({ itemName: "" }))).toThrow(ValidationError);
-    });
-
-    it("商品名が 101 文字超ならエラー", () => {
-      expect(() => EstimateItem.create(buildInput({ itemName: "あ".repeat(101) }))).toThrow(
-        "100文字以内"
-      );
-    });
-
-    it("単位が空ならエラー", () => {
-      expect(() => EstimateItem.create(buildInput({ unit: "" }))).toThrow(ValidationError);
-    });
-
-    it("単位が 21 文字超ならエラー", () => {
-      expect(() => EstimateItem.create(buildInput({ unit: "あ".repeat(21) }))).toThrow(
-        "20文字以内"
-      );
-    });
-
-    it("メモが 2001 文字超ならエラー", () => {
-      expect(() => EstimateItem.create(buildInput({ customerMemo: "あ".repeat(2001) }))).toThrow(
-        "2000文字以内"
-      );
-    });
+    // 注: 商品名 / 単位 / メモの長さ・必須バリデーションは VO（ItemName / Unit /
+    // Memo）のコンストラクタに移譲済み。境界値テストは各 VO の単体テストを参照。
   });
 
   describe("自動再計算（状態変更で再計算が走る）", () => {
@@ -182,15 +154,15 @@ describe("EstimateItem", () => {
   describe("メタ情報の変更", () => {
     it("changeItemName で名前を変更できる", () => {
       const item = EstimateItem.create(buildInput());
-      item.changeItemName("新ポンプ");
-      expect(item.itemName).toBe("新ポンプ");
+      item.changeItemName(new ItemName("新ポンプ"));
+      expect(item.itemName.value).toBe("新ポンプ");
     });
 
-    it("changeCustomerMemo で null をセットできる（メモ消去）", () => {
-      const item = EstimateItem.create(buildInput({ customerMemo: "初期メモ" }));
-      expect(item.customerMemo).toBe("初期メモ");
-      item.changeCustomerMemo(null);
-      expect(item.customerMemo).toBeNull();
+    it("changeCustomerMemo で空 Memo をセットできる（メモ消去）", () => {
+      const item = EstimateItem.create(buildInput({ customerMemo: Memo.create("初期メモ") }));
+      expect(item.customerMemo.value).toBe("初期メモ");
+      item.changeCustomerMemo(Memo.empty());
+      expect(item.customerMemo.isEmpty()).toBe(true);
     });
   });
 
@@ -218,14 +190,14 @@ describe("EstimateItem", () => {
         id: EstimateItemId.generate(),
         productId,
         sortOrder: 1,
-        itemName: "旧名称",
+        itemName: new ItemName("旧名称"),
         quantity: new Quantity(1),
-        unit: "個",
+        unit: new Unit("個"),
         unitPrice: Money.fromMajorUnits(10000),
         discountRate: new DiscountRate(1.0),
         itemDiscount: Money.zero(),
-        customerMemo: null,
-        internalMemo: null,
+        customerMemo: Memo.empty(),
+        internalMemo: Memo.empty(),
         revisedDetail: null,
         baseAmount: Money.fromMajorUnits(9999), // 異常値だが信頼
         discountedAmount: Money.fromMajorUnits(9999),
