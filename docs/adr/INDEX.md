@@ -26,6 +26,7 @@
 | [0021](0021-use-check-constraints-not-create-domain.md) | 数値・文字列の制約にCREATE DOMAINを使わずCHECK制約を継続する | 採用 | 2026-05-20 |
 | [0031](0031-aggregate-reconstitution-exception-via-single-file-eslint-override.md) | 集約再構築の例外経路をMapper限定のESLintオーバーライドで開ける | 採用 | 2026-06-02 |
 | [0032](0032-identity-preserving-diff-upsert-for-multilevel-aggregate-update.md) | 多階層集約の更新はidentity保持の差分upsertを命令的トランザクションで行う | 採用 | 2026-06-02 |
+| [0035](0035-numbering-concurrency-max-plus-one-unique-manual-retry.md) | 採番の同時並行一意性をMAX(sequence)+1 + unique制約 + 手動リトライで担保する | 採用 | 2026-06-06 |
 
 ## アプリケーション（フロントエンド・認可）
 
@@ -55,6 +56,7 @@
 | [0030](0030-pass-cross-cutting-context-via-method-arguments.md) | 集約内で横断的に必要なコンテキストは子に保持させず引数で渡す | 採用 | 2026-06-01 |
 | [0033](0033-persist-aggregated-totals-and-skip-recalculation-on-reconstitution.md) | 集計値を永続化し、再構築時には再計算せず保存値から復元する | 採用 | 2026-06-02 |
 | [0034](0034-memo-null-elimination-empty-value-null-object.md) | メモ任意項目を null ではなく空値 Null Object で表現する | 採用 | 2026-06-03 |
+| [0036](0036-aggregate-creation-via-in-aggregate-factory.md) | 集約外からの新規集約生成は集約内ドメインファクトリ経由で行う | 採用 | 2026-06-06 |
 
 ## アプリケーション（クエリ・DTO）
 

@@ -13,6 +13,7 @@ import {
   makeVariation,
 } from "@subdomains/estimate/domain/entities/__tests__/estimateAggregateBuilder";
 import prisma from "@server/prisma";
+import { ConflictError } from "@server/shared/errors/ApplicationError";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { PrismaEstimateRepository } from "../PrismaEstimateRepository";
 
@@ -25,9 +26,14 @@ const EN = {
   updateSwap: "N9900003",
   findByNumber: "N9900004",
   del: "N9900005",
+  conflict: "N9900006",
+  fkViolation: "N9900007",
   missing: "N9900099",
 } as const;
 const ALL_NUMBERS = Object.values(EN);
+
+// 形式は正しい（UUIDv7）が DB に存在しない得意先 ID。FK 違反を意図的に起こすために使う。
+const NON_EXISTENT_CUSTOMER_ID = "00000000-0000-7000-8000-000000000777";
 
 async function cleanupEstimates(): Promise<void> {
   await prisma.estimate.deleteMany({ where: { estimateNumber: { in: [...ALL_NUMBERS] } } });
@@ -187,6 +193,35 @@ describe("PrismaEstimateRepository", () => {
     it("一致しない場合は null を返す", async () => {
       const found = await repository.findByEstimateNumber(EstimateNumber.parse(EN.missing));
       expect(found).toBeNull();
+    });
+  });
+
+  describe("save（採番衝突）", () => {
+    it("既存と同一の見積番号を別集約で新規保存すると ConflictError を投げる", async () => {
+      // 1 件目は成功
+      await repository.save(buildNewEstimate(ids, EN.conflict));
+
+      // 別 id・同一見積番号の集約を新規保存 → estimate_number @unique 違反
+      await expect(repository.save(buildNewEstimate(ids, EN.conflict))).rejects.toThrow(
+        ConflictError
+      );
+    });
+
+    it("採番衝突以外のエラー（FK 違反）は ConflictError に変換せずそのまま投げる", async () => {
+      // 存在しない customerId を持つ集約を保存 → estimate_number ではなく FK 違反が起きる。
+      // isEstimateNumberConflict が false を返し、元のエラーがそのまま bubble することを検証する
+      // （= 衝突翻訳が estimate_number の P2002 以外を握りつぶさない）。
+      const invalidIds = { ...ids, customerId: NON_EXISTENT_CUSTOMER_ID };
+
+      let caught: unknown;
+      try {
+        await repository.save(buildNewEstimate(invalidIds, EN.fkViolation));
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBeDefined();
+      expect(caught).not.toBeInstanceOf(ConflictError);
     });
   });
 

@@ -17,3 +17,14 @@
  * 別バレルを切る等の方針を別イシューで決定する（計画 設計判断 6）。
  */
 export { Estimate } from "./Estimate";
+// EstimateFactory は集約外（アプリ層）からの集約生成口。入出力は VO 記述子と
+// 集約ルート Estimate のみで、子エンティティ型は露出しないため、本バレルから公開しても
+// 集約境界規約を損なわない。
+export {
+  EstimateFactory,
+  type EstimateFactoryInput,
+  type EstimateItemDescriptor,
+  type EstimateVariationDescriptor,
+  type RepairDetailDescriptor,
+  type AfterRepairDetailDescriptor,
+} from "./EstimateFactory";

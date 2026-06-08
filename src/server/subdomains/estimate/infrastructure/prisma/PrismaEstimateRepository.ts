@@ -1,4 +1,5 @@
 import prisma from "@server/prisma";
+import { ConflictError } from "@server/shared/errors/ApplicationError";
 import { Estimate } from "@subdomains/estimate/domain/entities";
 import { EstimateRepository } from "@subdomains/estimate/domain/repositories/EstimateRepository";
 import { EstimateId } from "@subdomains/estimate/domain/values/EstimateId";
@@ -26,9 +27,21 @@ export class PrismaEstimateRepository implements EstimateRepository {
     if (existing) {
       await PrismaEstimateRepository.update(estimate);
     } else {
-      await prisma.estimate.create({
-        data: EstimateMapper.toEstimateCreateInput(estimate),
-      });
+      try {
+        await prisma.estimate.create({
+          data: EstimateMapper.toEstimateCreateInput(estimate),
+        });
+      } catch (error) {
+        // 並行作成で見積番号（estimate_number @unique）が衝突した場合は、
+        // インフラ詳細の P2002 をアプリ層の ConflictError へ翻訳して表面化する。
+        // 採番は楽観的 MAX+1（PrismaEstimateNumberIssuer）であり、衝突は手動リトライで吸収する。
+        if (PrismaEstimateRepository.isEstimateNumberConflict(error)) {
+          throw new ConflictError(
+            `見積番号 ${estimate.estimateNumber.value} は既に使用されています。もう一度登録してください。`
+          );
+        }
+        throw error;
+      }
     }
 
     const row = await prisma.estimate.findUnique({
@@ -178,5 +191,27 @@ export class PrismaEstimateRepository implements EstimateRepository {
     });
 
     return row ? EstimateMapper.toDomain(row) : null;
+  }
+
+  /**
+   * 一意制約違反（P2002）が見積番号（estimate_number @unique）に対するものか判定する。
+   *
+   * P2002 の制約対象の伝わり方は Prisma の構成で異なる:
+   * - 旧来: `meta.target`（フィールド名配列または制約名文字列）。
+   * - Prisma 7 + ドライバアダプタ: `meta.target` は未設定で、
+   *   `meta.driverAdapterError.cause.constraint.fields` とエラーメッセージ側に入る。
+   * いずれの経路でも拾えるよう、関連情報を文字列化して列名/フィールド名の部分一致で判定する。
+   */
+  private static isEstimateNumberConflict(error: unknown): boolean {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") {
+      return false;
+    }
+    const target = error.meta?.target;
+    const haystack = [
+      Array.isArray(target) ? target.join(",") : String(target ?? ""),
+      JSON.stringify(error.meta?.driverAdapterError ?? ""),
+      error.message,
+    ].join(" ");
+    return haystack.includes("estimate_number") || haystack.includes("estimateNumber");
   }
 }

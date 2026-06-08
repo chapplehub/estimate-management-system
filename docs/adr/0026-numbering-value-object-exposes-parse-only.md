@@ -4,7 +4,7 @@
 | ------------ | ---------- |
 | ステータス   | 採用       |
 | 起票日       | 2026-05-23 |
-| 最終更新日   | 2026-05-23 |
+| 最終更新日   | 2026-06-06 |
 
 ## コンテキスト
 
@@ -138,9 +138,9 @@ static async issue(
 ## 影響
 
 - **`EstimateNumber` 等の採番系 VO は `parse(text)` のみを公開**。`fromParts` / `issue` 等のパーツファクトリ・払い出しメソッドを持たない
-- **採番（払い出し）は別 interface（例: `EstimateNumberIssuer`）として後続 Issue で実装**。インフラ実装は `PrismaEstimateNumberIssuer`（仮）として `infrastructure/prisma/` に配置する想定
+- **採番（払い出し）は別 interface（`EstimateNumberIssuer`）として後続 Issue で実装**。インフラ実装 `PrismaEstimateNumberIssuer` を `infrastructure/prisma/` に配置する（Issue #293 で実装済み）
 - **将来の `OrderNumber` `InvoiceNumber` 等も本 ADR を踏襲**
 - **テストはユニットテスト（`parse` の入出力）に閉じる**。採番ロジックのテストは「リポジトリ＋実 DB」の統合テストで行う（ADR-0012 のテスト DB 分離方針に従う）
-- **見積保存（C1 `CreateEstimate`）のフロー**は「アプリ層が `EstimateNumberIssuer.issue(...)` で `EstimateNumber` を取得 → 集約に渡して INSERT」になる
-- **「連番の同時並行採番に対する一意性担保」の実装方式**（リトライ vs カウンタテーブル vs RETURNING）は本 ADR のスコープ外。インフラ実装時に別 ADR を起票するか、コミットボディに記録する
-- 関連: `src/server/subdomains/estimate/domain/values/EstimateNumber.ts`, `docs/business/estimate/システム設計書(見積).md` §2, `docs/business/estimate/ユースケース一覧(見積).md`（横断ポリシー）, ADR-0022, ADR-0024
+- **見積保存（C1 `CreateEstimate`）のフロー**は「アプリ層が `EstimateNumberIssuer.issueNext(...)` で `EstimateNumber` を取得 → 集約に渡して INSERT」になる
+- **「連番の同時並行採番に対する一意性担保」の実装方式**（リトライ vs カウンタテーブル vs RETURNING）は本 ADR のスコープ外として先送りしていたが、**ADR-0035 で決定済み**（MAX(sequence)+1 + `@unique` + 手動リトライ）
+- 関連: `src/server/subdomains/estimate/domain/values/EstimateNumber.ts`, `docs/business/estimate/システム設計書(見積).md` §2, `docs/business/estimate/ユースケース一覧(見積).md`（横断ポリシー）, ADR-0022, ADR-0024, ADR-0035（採番の同時並行一意性の実装方式）
