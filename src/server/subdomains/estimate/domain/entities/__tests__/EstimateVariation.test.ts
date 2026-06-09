@@ -2,6 +2,7 @@ import { BusinessRuleViolationError, ValidationError } from "@server/shared/erro
 import { ProductId } from "@subdomains/product/domain/values/ProductId";
 import { describe, expect, it } from "vitest";
 import { ItemName } from "../../values/ItemName";
+import { Memo } from "../../values/Memo";
 import { Money } from "../../values/Money";
 import { Quantity } from "../../values/Quantity";
 import { TaxRate } from "../../values/TaxRate";
@@ -228,6 +229,73 @@ describe("EstimateVariation", () => {
 
       v.activate();
       expect(v.isActive()).toBe(true);
+    });
+  });
+
+  describe("replaceContent - 内容一括差替えと§3.4ガード", () => {
+    it("既存明細を別の明細セットに全置換し、集計が新セットで再計算される", () => {
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        tax: TAX,
+        items: [makeItem({ quantity: 1, unitPrice: 1000 })],
+      });
+      expect(v.subtotal.equals(Money.fromMajorUnits(1000))).toBe(true);
+
+      v.replaceContent(
+        {
+          items: [
+            makeItem({ quantity: 2, unitPrice: 500 }),
+            makeItem({ quantity: 1, unitPrice: 3000 }),
+          ],
+        },
+        TAX
+      );
+
+      // 500×2 + 3000 = 4000、税10% で finalTotal 4400
+      expect(v.items).toHaveLength(2);
+      expect(v.subtotal.equals(Money.fromMajorUnits(4000))).toBe(true);
+      expect(v.finalTotal.equals(Money.fromMajorUnits(4400))).toBe(true);
+    });
+
+    it("無効状態のバリエーションは replaceContent できない（§3.4）", () => {
+      const v = EstimateVariation.create({ variationNumber: 1, tax: TAX });
+      v.deactivate();
+
+      expect(() => v.replaceContent({ items: [makeItem()] }, TAX)).toThrow(
+        BusinessRuleViolationError
+      );
+    });
+
+    it("overallDiscount とメモを更新し、全体値引が finalSubtotal に反映される", () => {
+      const v = EstimateVariation.create({ variationNumber: 1, tax: TAX });
+
+      v.replaceContent(
+        {
+          items: [makeItem({ quantity: 1, unitPrice: 10000 })],
+          overallDiscount: Money.fromMajorUnits(1000),
+          customerMemo: Memo.create("客先メモ"),
+        },
+        TAX
+      );
+
+      // 10000 - 1000(全体値引) = 9000
+      expect(v.overallDiscount.equals(Money.fromMajorUnits(1000))).toBe(true);
+      expect(v.finalSubtotal.equals(Money.fromMajorUnits(9000))).toBe(true);
+      expect(v.customerMemo.value).toBe("客先メモ");
+    });
+
+    it("空配列で全置換すると全集計が 0 に戻る", () => {
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        tax: TAX,
+        items: [makeItem({ unitPrice: 5000 })],
+      });
+
+      v.replaceContent({ items: [] }, TAX);
+
+      expect(v.items).toHaveLength(0);
+      expect(v.subtotal.isZero()).toBe(true);
+      expect(v.finalTotal.isZero()).toBe(true);
     });
   });
 

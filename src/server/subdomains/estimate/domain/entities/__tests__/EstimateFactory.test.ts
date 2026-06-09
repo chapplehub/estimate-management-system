@@ -161,4 +161,18 @@ describe("EstimateFactory", () => {
       )
     ).toThrow();
   });
+
+  describe("buildVariationContent - C3/C4 用の番号なし内容構築", () => {
+    it("番号なし内容から構築済み明細を含む VariationContent を生成する", () => {
+      const content = EstimateFactory.buildVariationContent({
+        items: [item({ unitPrice: Money.fromMajorUnits(1000), quantity: new Quantity(2) })],
+        overallDiscount: Money.fromMajorUnits(500),
+      });
+
+      expect(content.items).toHaveLength(1);
+      // 1000 × 2 = 2000
+      expect(content.items[0].finalAmount.equals(Money.fromMajorUnits(2000))).toBe(true);
+      expect(content.overallDiscount?.equals(Money.fromMajorUnits(500))).toBe(true);
+    });
+  });
 });

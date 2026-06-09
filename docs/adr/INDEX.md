@@ -58,6 +58,12 @@
 | [0034](0034-memo-null-elimination-empty-value-null-object.md) | メモ任意項目を null ではなく空値 Null Object で表現する | 採用 | 2026-06-03 |
 | [0036](0036-aggregate-creation-via-in-aggregate-factory.md) | 集約外からの新規集約生成は集約内ドメインファクトリ経由で行う | 採用 | 2026-06-06 |
 
+## アプリケーション（コマンド）
+
+| # | タイトル | ステータス | 起票日 |
+|---|---------|-----------|--------|
+| [0037](0037-application-command-result-union-for-predictable-outcomes.md) | アプリケーション層コマンドは予測可能な業務結果を判別共用体(Result)で返し、想定外のみ throw する | 採用 | 2026-06-09 |
+
 ## アプリケーション（クエリ・DTO）
 
 | # | タイトル | ステータス | 起票日 |

@@ -17,7 +17,7 @@ import { TaxRate } from "../values/TaxRate";
 import { TaxRoundingType } from "../values/TaxRoundingType";
 import type { AfterRepairEstimateDetail } from "./AfterRepairEstimateDetail";
 import type { EstimateItem } from "./EstimateItem";
-import { EstimateVariation, type TaxContext } from "./EstimateVariation";
+import { EstimateVariation, type TaxContext, type VariationContent } from "./EstimateVariation";
 import type { RepairEstimateDetail } from "./RepairEstimateDetail";
 
 /**
@@ -168,6 +168,35 @@ export class Estimate {
   addVariation(variation: EstimateVariation): void {
     Estimate.assertNoVariationNumberDuplication([...this._variations, variation]);
     this._variations.push(variation);
+    this.touch();
+  }
+
+  /**
+   * 内容を指定して新バリエーションを追加する（C3 AddVariation）。
+   *
+   * バリエーション番号は集約内で `max(既存)+1` を自動採番する（§A.2 連番採番）。
+   * 歯抜け（removeVariation 後）があっても衝突しないよう count+1 ではなく max+1 を用いる。
+   * 採番は「集約内の一意性＋連番」という集約不変条件のためドメインに置く。
+   */
+  appendVariation(content: VariationContent): EstimateVariation {
+    const variation = EstimateVariation.create({
+      variationNumber: this.nextVariationNumber(),
+      tax: this.taxContext(),
+      items: content.items,
+      overallDiscount: content.overallDiscount,
+      customerMemo: content.customerMemo,
+      internalMemo: content.internalMemo,
+    });
+    this.addVariation(variation);
+    return variation;
+  }
+
+  /**
+   * 指定バリエーションの内容を一括差替えする（C4 UpdateVariation）。
+   * §3.4 無効状態の編集不可ガードは EstimateVariation.replaceContent 内で行う。
+   */
+  updateVariation(variationId: EstimateVariationId, content: VariationContent): void {
+    this.findVariationOrThrow(variationId).replaceContent(content, this.taxContext());
     this.touch();
   }
 
@@ -380,6 +409,14 @@ export class Estimate {
       v.recalculateForTaxChange(ctx);
     }
     this.touch();
+  }
+
+  /** §A.2: バリエーション番号は max(既存)+1 で連番採番。空なら 1 始まり。 */
+  private nextVariationNumber(): number {
+    if (this._variations.length === 0) {
+      return 1;
+    }
+    return Math.max(...this._variations.map((v) => v.variationNumber)) + 1;
   }
 
   private findVariationOrThrow(variationId: EstimateVariationId): EstimateVariation {

@@ -28,6 +28,17 @@ export type TaxContext = {
 };
 
 /**
+ * バリエーション内容（番号・ステータスを除く編集対象）。C3 AddVariation の追加内容、
+ * C4 UpdateVariation の全置換内容として共用する。明細は構築済み EstimateItem の配列で渡す。
+ */
+export type VariationContent = {
+  items: EstimateItem[];
+  overallDiscount?: Money;
+  customerMemo?: Memo;
+  internalMemo?: Memo;
+};
+
+/**
  * 見積バリエーションエンティティ（§11.3.1）。
  *
  * Estimate 集約の内部子エンティティ。バレル (entities/index.ts) からは
@@ -203,6 +214,28 @@ export class EstimateVariation {
     this.recalculate(tax);
   }
 
+  /**
+   * バリエーション内容（明細・全体値引・メモ）を宣言的に一括差替えする（C4 UpdateVariation）。
+   *
+   * 編集画面のフォーム全体を保存する用途。明細は識別子を保持せず新セットで全置換し、
+   * 最後に 1 回だけ再計算する（granular な addItem 連打による O(N^2) 再計算を避ける）。
+   * 永続化側（PrismaEstimateRepository.update）は id 差分 upsert で旧明細行を削除・新行を挿入する。
+   *
+   * §3.4: 無効状態のバリエーションは編集不可。先頭で assertEditable() で弾く。
+   */
+  replaceContent(input: VariationContent, tax: TaxContext): void {
+    this.assertEditable();
+
+    // _items は readonly 参照だが配列中身は可変。同一参照を保ったまま全置換する。
+    this._items.length = 0;
+    this._items.push(...input.items);
+    this._overallDiscount = input.overallDiscount ?? Money.zero();
+    this._customerMemo = input.customerMemo ?? Memo.empty();
+    this._internalMemo = input.internalMemo ?? Memo.empty();
+
+    this.recalculate(tax);
+  }
+
   // ========================================
   // 状態遷移・メタ情報
   // ========================================
@@ -281,6 +314,13 @@ export class EstimateVariation {
       taxAmount: policyResult.taxAmount,
       finalTotal: policyResult.finalTotal,
     };
+  }
+
+  /** §3.4: 無効状態のバリエーションは編集不可。 */
+  private assertEditable(): void {
+    if (this._status.isInactive()) {
+      throw new BusinessRuleViolationError("無効状態のバリエーションは編集できません");
+    }
   }
 
   private findItemOrThrow(itemId: EstimateItemId): EstimateItem {
