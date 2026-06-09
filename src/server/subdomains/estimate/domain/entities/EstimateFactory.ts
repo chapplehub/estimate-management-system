@@ -18,7 +18,7 @@ import { Unit } from "../values/Unit";
 import { AfterRepairEstimateDetail } from "./AfterRepairEstimateDetail";
 import { Estimate } from "./Estimate";
 import { EstimateItem } from "./EstimateItem";
-import { EstimateVariation, type TaxContext } from "./EstimateVariation";
+import { EstimateVariation, type TaxContext, type VariationContent } from "./EstimateVariation";
 import { RepairEstimateDetail } from "./RepairEstimateDetail";
 import { RevisedEstimateItemDetail } from "./RevisedEstimateItemDetail";
 
@@ -60,6 +60,12 @@ export type EstimateVariationDescriptor = {
   customerMemo?: Memo;
   internalMemo?: Memo;
 };
+
+/**
+ * 番号を含まないバリエーション内容の記述子。C3 AddVariation（番号は集約が採番）と
+ * C4 UpdateVariation（番号は変更しない）で共用する。
+ */
+export type VariationContentDescriptor = Omit<EstimateVariationDescriptor, "variationNumber">;
 
 /** 修理見積（事前）サブタイプ詳細の記述子。 */
 export type RepairDetailDescriptor = {
@@ -138,6 +144,20 @@ export class EstimateFactory {
           })
         : null,
     });
+  }
+
+  /**
+   * 番号なしのバリエーション内容から、構築済み子明細を含む VariationContent を生成する。
+   * C3 AddVariation / C4 UpdateVariation がアプリ層から子 EstimateItem を直接 new せずに
+   * 内容を組み立てるための入口（集約境界規約）。採番・差替えは集約ルートの責務。
+   */
+  static buildVariationContent(content: VariationContentDescriptor): VariationContent {
+    return {
+      items: content.items.map((item) => EstimateFactory.buildItem(item)),
+      overallDiscount: content.overallDiscount,
+      customerMemo: content.customerMemo,
+      internalMemo: content.internalMemo,
+    };
   }
 
   private static buildVariation(
