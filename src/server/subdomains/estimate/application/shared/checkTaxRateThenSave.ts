@@ -7,7 +7,7 @@ import type { TaxRate } from "@subdomains/estimate/domain/values/TaxRate";
  * 税率チェック→保存の共通結果（C2/C3/C4 共用）。
  *
  * 予測可能な業務分岐（税率不一致）は Result で返し、想定外（適用税率なし・採番衝突・
- * VO 検証失敗・見積不在）は呼び出し側へ throw で抜ける、という方針に従う。
+ * VO 検証失敗・見積不在）は呼び出し側へ throw で抜ける、という方針に従う（ADR-0037）。
  */
 export type TaxCheckedSaveResult =
   | { kind: "saved"; estimate: Estimate }
