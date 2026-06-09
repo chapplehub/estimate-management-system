@@ -338,4 +338,74 @@ describe("Estimate", () => {
       expect(() => e.detachRepairDetail()).toThrow("外せません");
     });
   });
+
+  describe("appendVariation - 連番採番付き追加（C3 / §A.2）", () => {
+    function makeEstimate(variations: EstimateVariation[]): Estimate {
+      return Estimate.create({
+        ...commonHeader(),
+        estimateNumber: EstimateNumber.parse("N2500001"),
+        variations,
+      });
+    }
+
+    it("max+1 で採番した新バリエーションを追加して返す", () => {
+      const e = makeEstimate([makeVariation(1)]);
+
+      const added = e.appendVariation({ items: [makeItem(2000, 1)] });
+
+      expect(added.variationNumber).toBe(2);
+      expect(e.variations).toHaveLength(2);
+      expect(added.subtotal.equals(Money.fromMajorUnits(2000))).toBe(true);
+    });
+
+    it("歯抜けがあっても max+1 で採番する（count+1 ではない）", () => {
+      const e = makeEstimate([makeVariation(1), makeVariation(3)]);
+
+      const added = e.appendVariation({ items: [makeItem()] });
+
+      // 既存 [1,3] → count+1=3 だと衝突。max+1=4 が正
+      expect(added.variationNumber).toBe(4);
+    });
+
+    it("内容（明細・全体値引）を反映して追加する", () => {
+      const e = makeEstimate([makeVariation(1)]);
+
+      const added = e.appendVariation({
+        items: [makeItem(10000, 1)],
+        overallDiscount: Money.fromMajorUnits(1000),
+      });
+
+      expect(added.finalSubtotal.equals(Money.fromMajorUnits(9000))).toBe(true);
+    });
+  });
+
+  describe("updateVariation - 内容一括差替え（C4）", () => {
+    function makeEstimate(variations: EstimateVariation[]): Estimate {
+      return Estimate.create({
+        ...commonHeader(),
+        estimateNumber: EstimateNumber.parse("N2500001"),
+        variations,
+      });
+    }
+
+    it("対象バリエーションの内容を全置換し再計算する", () => {
+      const target = makeVariation(1, [makeItem(1000, 1)]);
+      const e = makeEstimate([target]);
+
+      e.updateVariation(target.id, { items: [makeItem(500, 2), makeItem(3000, 1)] });
+
+      const updated = e.variations.find((v) => v.id.equals(target.id))!;
+      expect(updated.items).toHaveLength(2);
+      expect(updated.subtotal.equals(Money.fromMajorUnits(4000))).toBe(true);
+    });
+
+    it("存在しないバリエーションIDはエラー", () => {
+      const e = makeEstimate([makeVariation(1)]);
+      const other = makeVariation(2);
+
+      expect(() => e.updateVariation(other.id, { items: [makeItem()] })).toThrow(
+        "指定されたバリエーションは存在しません"
+      );
+    });
+  });
 });

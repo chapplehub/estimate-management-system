@@ -28,6 +28,17 @@ export type TaxContext = {
 };
 
 /**
+ * バリエーション内容（番号・ステータスを除く編集対象）。C3 AddVariation の追加内容、
+ * C4 UpdateVariation の全置換内容として共用する。明細は構築済み EstimateItem の配列で渡す。
+ */
+export type VariationContent = {
+  items: EstimateItem[];
+  overallDiscount?: Money;
+  customerMemo?: Memo;
+  internalMemo?: Memo;
+};
+
+/**
  * 見積バリエーションエンティティ（§11.3.1）。
  *
  * Estimate 集約の内部子エンティティ。バレル (entities/index.ts) からは
@@ -212,15 +223,7 @@ export class EstimateVariation {
    *
    * §3.4: 無効状態のバリエーションは編集不可。先頭で assertEditable() で弾く。
    */
-  replaceContent(
-    input: {
-      items: EstimateItem[];
-      overallDiscount?: Money;
-      customerMemo?: Memo;
-      internalMemo?: Memo;
-    },
-    tax: TaxContext
-  ): void {
+  replaceContent(input: VariationContent, tax: TaxContext): void {
     this.assertEditable();
 
     // _items は readonly 参照だが配列中身は可変。同一参照を保ったまま全置換する。
