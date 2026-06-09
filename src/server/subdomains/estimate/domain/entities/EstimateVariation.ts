@@ -203,6 +203,36 @@ export class EstimateVariation {
     this.recalculate(tax);
   }
 
+  /**
+   * バリエーション内容（明細・全体値引・メモ）を宣言的に一括差替えする（C4 UpdateVariation）。
+   *
+   * 編集画面のフォーム全体を保存する用途。明細は識別子を保持せず新セットで全置換し、
+   * 最後に 1 回だけ再計算する（granular な addItem 連打による O(N^2) 再計算を避ける）。
+   * 永続化側（PrismaEstimateRepository.update）は id 差分 upsert で旧明細行を削除・新行を挿入する。
+   *
+   * §3.4: 無効状態のバリエーションは編集不可。先頭で assertEditable() で弾く。
+   */
+  replaceContent(
+    input: {
+      items: EstimateItem[];
+      overallDiscount?: Money;
+      customerMemo?: Memo;
+      internalMemo?: Memo;
+    },
+    tax: TaxContext
+  ): void {
+    this.assertEditable();
+
+    // _items は readonly 参照だが配列中身は可変。同一参照を保ったまま全置換する。
+    this._items.length = 0;
+    this._items.push(...input.items);
+    this._overallDiscount = input.overallDiscount ?? Money.zero();
+    this._customerMemo = input.customerMemo ?? Memo.empty();
+    this._internalMemo = input.internalMemo ?? Memo.empty();
+
+    this.recalculate(tax);
+  }
+
   // ========================================
   // 状態遷移・メタ情報
   // ========================================
@@ -281,6 +311,13 @@ export class EstimateVariation {
       taxAmount: policyResult.taxAmount,
       finalTotal: policyResult.finalTotal,
     };
+  }
+
+  /** §3.4: 無効状態のバリエーションは編集不可。 */
+  private assertEditable(): void {
+    if (this._status.isInactive()) {
+      throw new BusinessRuleViolationError("無効状態のバリエーションは編集できません");
+    }
   }
 
   private findItemOrThrow(itemId: EstimateItemId): EstimateItem {
