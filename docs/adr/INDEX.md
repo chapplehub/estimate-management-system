@@ -62,7 +62,8 @@
 
 | # | タイトル | ステータス | 起票日 |
 |---|---------|-----------|--------|
-| [0037](0037-application-command-result-union-for-predictable-outcomes.md) | アプリケーション層コマンドは予測可能な業務結果を判別共用体(Result)で返し、想定外のみ throw する | 採用 | 2026-06-09 |
+| [0037](0037-application-command-result-union-for-predictable-outcomes.md) | アプリケーション層コマンドは予測可能な業務結果を判別共用体(Result)で返し、想定外のみ throw する | 置き換え済み（→ 0038） | 2026-06-09 |
+| [0038](0038-unify-failures-as-exceptions-and-limit-unions-to-multiple-normal-outcomes.md) | 失敗はすべて例外に統一し、判別共用体は「複数の正常な結末」の戻り値設計に限定する | 採用 | 2026-06-10 |
 
 ## アプリケーション（クエリ・DTO）
 
