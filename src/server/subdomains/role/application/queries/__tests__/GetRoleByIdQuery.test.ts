@@ -44,7 +44,7 @@ describe("GetRoleByIdQuery", () => {
       new RoleName("ID取得テスト役割"),
       new PositionId(kachouPositionId)
     );
-    await roleRepository.save(role);
+    await roleRepository.insert(role);
 
     const result = await query.execute({ id: role.id.value });
 

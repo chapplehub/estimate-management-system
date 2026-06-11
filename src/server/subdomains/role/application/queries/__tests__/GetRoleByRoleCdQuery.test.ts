@@ -44,7 +44,7 @@ describe("GetRoleByRoleCdQuery", () => {
       new RoleName("コード取得テスト役割"),
       new PositionId(kachouPositionId)
     );
-    await roleRepository.save(role);
+    await roleRepository.insert(role);
 
     const result = await query.execute({ roleCd: TEST_ROLE_CDS[0] });
 

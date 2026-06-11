@@ -49,8 +49,8 @@ describe("GetAllRolesQuery", () => {
       new RoleName("全取得テストB"),
       new PositionId(kachouPositionId)
     );
-    await roleRepository.save(role1);
-    await roleRepository.save(role2);
+    await roleRepository.insert(role1);
+    await roleRepository.insert(role2);
 
     const result = await query.execute({});
 
@@ -70,8 +70,8 @@ describe("GetAllRolesQuery", () => {
       new RoleName("全取得ソートB"),
       new PositionId(kachouPositionId)
     );
-    await roleRepository.save(role1);
-    await roleRepository.save(role2);
+    await roleRepository.insert(role1);
+    await roleRepository.insert(role2);
 
     const result = await query.execute({
       options: { orderBy: { field: "roleCd", direction: "desc" } },

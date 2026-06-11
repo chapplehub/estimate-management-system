@@ -54,8 +54,8 @@ describe("SearchRolesQuery", () => {
       new RoleName("検索東京開発課長"),
       new PositionId(kachouPositionId)
     );
-    await roleRepository.save(role1);
-    await roleRepository.save(role2);
+    await roleRepository.insert(role1);
+    await roleRepository.insert(role2);
 
     const result = await query.execute({ criteria: { name: "大阪" } });
 
@@ -70,7 +70,7 @@ describe("SearchRolesQuery", () => {
       new RoleName("検索コードテスト"),
       new PositionId(kachouPositionId)
     );
-    await roleRepository.save(role);
+    await roleRepository.insert(role);
 
     const result = await query.execute({ criteria: { roleCd: TEST_ROLE_CDS[0] } });
 
@@ -89,8 +89,8 @@ describe("SearchRolesQuery", () => {
       new RoleName("検索役職部長"),
       new PositionId(buchouPositionId)
     );
-    await roleRepository.save(role1);
-    await roleRepository.save(role2);
+    await roleRepository.insert(role1);
+    await roleRepository.insert(role2);
 
     const result = await query.execute({ criteria: { positionId: kachouPositionId } });
 
@@ -105,7 +105,7 @@ describe("SearchRolesQuery", () => {
       new RoleName("検索上位部長"),
       new PositionId(buchouPositionId)
     );
-    await roleRepository.save(buchouRole);
+    await roleRepository.insert(buchouRole);
 
     const kachouRole = Role.create(
       new RoleCd(TEST_ROLE_CDS[1]),
@@ -113,7 +113,7 @@ describe("SearchRolesQuery", () => {
       new PositionId(kachouPositionId),
       buchouRole.id
     );
-    await roleRepository.save(kachouRole);
+    await roleRepository.insert(kachouRole);
 
     const result = await query.execute({ criteria: { superiorRoleId: buchouRole.id.value } });
 
@@ -128,7 +128,7 @@ describe("SearchRolesQuery", () => {
       new RoleName("検索ルート部長"),
       new PositionId(buchouPositionId)
     );
-    await roleRepository.save(buchouRole);
+    await roleRepository.insert(buchouRole);
 
     const kachouRole = Role.create(
       new RoleCd(TEST_ROLE_CDS[1]),
@@ -136,7 +136,7 @@ describe("SearchRolesQuery", () => {
       new PositionId(kachouPositionId),
       buchouRole.id
     );
-    await roleRepository.save(kachouRole);
+    await roleRepository.insert(kachouRole);
 
     const result = await query.execute({ criteria: { superiorRoleId: null } });
 
@@ -151,7 +151,7 @@ describe("SearchRolesQuery", () => {
       new RoleName("検索DTO部長"),
       new PositionId(buchouPositionId)
     );
-    await roleRepository.save(buchouRole);
+    await roleRepository.insert(buchouRole);
 
     const kachouRole = Role.create(
       new RoleCd(TEST_ROLE_CDS[1]),
@@ -159,7 +159,7 @@ describe("SearchRolesQuery", () => {
       new PositionId(kachouPositionId),
       buchouRole.id
     );
-    await roleRepository.save(kachouRole);
+    await roleRepository.insert(kachouRole);
 
     const result = await query.execute({ criteria: { roleCd: TEST_ROLE_CDS[1] } });
 
@@ -183,8 +183,8 @@ describe("SearchRolesQuery", () => {
       new RoleName("検索オプB課長"),
       new PositionId(kachouPositionId)
     );
-    await roleRepository.save(role1);
-    await roleRepository.save(role2);
+    await roleRepository.insert(role1);
+    await roleRepository.insert(role2);
 
     const result = await query.execute({
       criteria: { name: "検索オプ" },

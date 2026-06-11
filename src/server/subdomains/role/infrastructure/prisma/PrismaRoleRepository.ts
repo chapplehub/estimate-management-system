@@ -48,19 +48,6 @@ export class PrismaRoleRepository implements RoleRepository {
     return RoleMapper.toDomain(updated);
   }
 
-  /**
-   * @deprecated insert / update へ移行中の一時併存メソッド（ADR-0039）。新規コードでは使用しない。
-   */
-  async save(role: Role): Promise<Role> {
-    const prismaRole = await prisma.role.upsert({
-      where: { id: role.id.value },
-      create: RoleMapper.toPrismaCreate(role),
-      update: RoleMapper.toPrismaUpdate(role),
-    });
-
-    return RoleMapper.toDomain(prismaRole);
-  }
-
   async delete(id: RoleId): Promise<void> {
     await prisma.role.delete({
       where: { id: id.value },

@@ -54,8 +54,8 @@ describe("GetRolesByPositionQuery", () => {
       new RoleName("役職別テスト部長"),
       new PositionId(buchouPositionId)
     );
-    await roleRepository.save(role1);
-    await roleRepository.save(role2);
+    await roleRepository.insert(role1);
+    await roleRepository.insert(role2);
 
     const result = await query.execute({ positionId: kachouPositionId });
 

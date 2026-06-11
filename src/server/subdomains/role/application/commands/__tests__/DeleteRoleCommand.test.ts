@@ -51,7 +51,7 @@ describe("DeleteRoleCommand", () => {
       new RoleName("削除テスト役割"),
       new PositionId(kachouPositionId)
     );
-    await roleRepository.save(role);
+    await roleRepository.insert(role);
 
     await command.execute({ id: role.id.value });
 
@@ -74,7 +74,7 @@ describe("DeleteRoleCommand", () => {
       new RoleName("テスト部長"),
       new PositionId(buchouPositionId)
     );
-    await roleRepository.save(buchouRole);
+    await roleRepository.insert(buchouRole);
 
     const kachouRole = Role.create(
       new RoleCd(TEST_ROLE_CDS[1]),
@@ -82,7 +82,7 @@ describe("DeleteRoleCommand", () => {
       new PositionId(kachouPositionId),
       buchouRole.id
     );
-    await roleRepository.save(kachouRole);
+    await roleRepository.insert(kachouRole);
 
     await expect(command.execute({ id: buchouRole.id.value })).rejects.toThrow(
       BusinessRuleViolationError

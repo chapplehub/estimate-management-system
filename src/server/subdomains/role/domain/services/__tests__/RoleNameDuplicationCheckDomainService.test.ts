@@ -48,7 +48,7 @@ describe("RoleNameDuplicationCheckDomainService", () => {
       new RoleName(TEST_ROLE_NAME),
       new PositionId(positionId)
     );
-    await repository.save(role);
+    await repository.insert(role);
 
     const isDuplicated = await service.execute(TEST_ROLE_NAME);
     expect(isDuplicated).toBe(true);
@@ -60,7 +60,7 @@ describe("RoleNameDuplicationCheckDomainService", () => {
       new RoleName(TEST_ROLE_NAME),
       new PositionId(positionId)
     );
-    const savedRole = await repository.save(role);
+    const savedRole = await repository.insert(role);
 
     const isDuplicated = await service.execute(TEST_ROLE_NAME, savedRole.id);
     expect(isDuplicated).toBe(false);

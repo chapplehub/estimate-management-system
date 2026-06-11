@@ -23,13 +23,6 @@ export interface RoleRepository {
   update(role: Role, expectedVersion: number): Promise<Role>;
 
   /**
-   * 役割を保存（新規作成・更新）
-   *
-   * @deprecated insert / update へ移行中の一時併存メソッド（ADR-0039）。新規コードでは使用しない。
-   */
-  save(role: Role): Promise<Role>;
-
-  /**
    * 役割を削除
    */
   delete(id: RoleId): Promise<void>;
