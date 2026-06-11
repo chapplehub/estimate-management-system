@@ -784,15 +784,16 @@ model OrderCancellation {
 //
 // 複製（§5）と得意先改訂（§7）は形は似るが業務操作・ルール・将来増える属性が異なる別概念。
 // kind 判別子で 1 表統合すると改訂固有属性が増えた時に複製側が NULL になるため、別々の交差テーブルに分離する（§11.2.1）。
-// いずれも target 側を @unique とし、1 派生先は高々 1 出自を持つ。どちらの表にも行が無い＝オリジナル。
+// いずれも「1 派生先は高々 1 出自を持つ」。どちらの表にも行が無い＝オリジナル。
+// 複製表は target(copiedVariationId) を自然主キー化（ADR-0041）。改訂表はサロゲート id + @unique 据え置き（自然キー化は C7 で判断）。
 // 「同じバリエーションが複製かつ改訂」になる二重派生の禁止はドメイン層で担保する（ADR-0019）。
 
 // 見積複製による派生（§5）
+// 純粋な関連テーブル。copiedVariationId → sourceVariationId の関数従属が成立し、
+// 複製先が完全な自然キーを成すためサロゲート id を持たず copiedVariationId を主キーとする（ADR-0041）。
 model EstimateVariationCopy {
-  id String @id @db.Uuid // ドメイン層でUUIDv7生成
-
-  // 複製で生まれたバリエーション（1 件のみ → @unique）
-  copiedVariationId String            @unique @map("copied_variation_id") @db.Uuid
+  // 複製で生まれたバリエーション（1 件のみ → 自然主キー）
+  copiedVariationId String            @id @map("copied_variation_id") @db.Uuid
   copiedVariation   EstimateVariation @relation("VariationCopyTarget", fields: [copiedVariationId], references: [id], onDelete: Cascade)
 
   // 複製元バリエーション
