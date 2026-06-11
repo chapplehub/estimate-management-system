@@ -53,7 +53,7 @@ describe("SuperiorRoleValidationDomainService", () => {
       new RoleName("テスト部長"),
       new PositionId(buchouPositionId)
     );
-    await roleRepository.save(buchouRole);
+    await roleRepository.insert(buchouRole);
 
     // 課長ポジションから部長ポジションの役割を上位に指定 → OK
     await expect(
@@ -67,7 +67,7 @@ describe("SuperiorRoleValidationDomainService", () => {
       new RoleName("テスト役割"),
       new PositionId(buchouPositionId)
     );
-    await roleRepository.save(someRole);
+    await roleRepository.insert(someRole);
 
     // 社長ポジションから上位役割を指定 → エラー
     await expect(service.execute(new PositionId(shachouPositionId), someRole.id)).rejects.toThrow(
@@ -85,7 +85,7 @@ describe("SuperiorRoleValidationDomainService", () => {
       new RoleName("テスト課長"),
       new PositionId(kachouPositionId)
     );
-    await roleRepository.save(kachouRole);
+    await roleRepository.insert(kachouRole);
 
     // 課長ポジションから同じ課長ポジションの役割を上位に指定 → エラー
     // （課長の上位は部長でなければならない）

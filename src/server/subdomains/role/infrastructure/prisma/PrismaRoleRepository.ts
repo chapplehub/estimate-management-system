@@ -4,16 +4,48 @@ import { RoleCd } from "@subdomains/role/domain/values/RoleCd";
 import { RoleId } from "@subdomains/role/domain/values/RoleId";
 import { RoleMapper } from "@subdomains/role/infrastructure/mappers/RoleMapper";
 import prisma from "@server/prisma";
+import { ConflictError } from "@server/shared/errors/ApplicationError";
 
 export class PrismaRoleRepository implements RoleRepository {
-  async save(role: Role): Promise<Role> {
-    const prismaRole = await prisma.role.upsert({
-      where: { id: role.id.value },
-      create: RoleMapper.toPrismaCreate(role),
-      update: RoleMapper.toPrismaUpdate(role),
+  async insert(role: Role): Promise<Role> {
+    const prismaRole = await prisma.role.create({
+      data: RoleMapper.toPrismaCreate(role),
     });
 
     return RoleMapper.toDomain(prismaRole);
+  }
+
+  /**
+   * 既存役割を更新（楽観ロック / ADR-0039）。
+   *
+   * Role は子を持たない単一テーブル集約のため、WHERE id AND version の条件付き
+   * updateMany 1 文で「比較→更新」を DB 上で原子化できる（estimate のような
+   * トランザクション＋差分 upsert は不要）。成功時に version を +1 する。
+   * count 0 は「version 不一致（先行更新あり）」と「行の消失（削除済み）」の両方を
+   * 含むが UPDATE 文からは区別できないため、両方を覆うメッセージで競合として扱う。
+   */
+  async update(role: Role, expectedVersion: number): Promise<Role> {
+    const result = await prisma.role.updateMany({
+      where: { id: role.id.value, version: expectedVersion },
+      data: {
+        ...RoleMapper.toPrismaUpdate(role),
+        version: { increment: 1 },
+      },
+    });
+
+    if (result.count === 0) {
+      throw new ConflictError(
+        "他のユーザーによって更新または削除されています。画面を再読み込みして最新の内容を確認してください。"
+      );
+    }
+
+    // updateMany は更新後の行を返さないため、+1 された version を含めて読み直す。
+    const updated = await prisma.role.findUnique({ where: { id: role.id.value } });
+    if (!updated) {
+      throw new Error(`保存した役割の再取得に失敗しました: ${role.id.value}`);
+    }
+
+    return RoleMapper.toDomain(updated);
   }
 
   async delete(id: RoleId): Promise<void> {

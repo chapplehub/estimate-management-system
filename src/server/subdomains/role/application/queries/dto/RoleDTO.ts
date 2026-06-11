@@ -11,6 +11,8 @@ export type RoleDTO = {
   positionName: string;
   superiorRoleId: string | null;
   superiorRoleName: string | null;
+  /** 楽観ロックトークン（ADR-0039）。編集フォームで往復させ更新時の競合検知に使う */
+  version: number;
   createdAt: Date;
   updatedAt: Date;
 };

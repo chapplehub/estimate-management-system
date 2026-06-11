@@ -48,7 +48,7 @@ describe("RoleCdDuplicationCheckDomainService", () => {
       new RoleName("テスト役割"),
       new PositionId(positionId)
     );
-    await repository.save(role);
+    await repository.insert(role);
 
     const isDuplicated = await service.execute(new RoleCd(TEST_ROLE_CD));
     expect(isDuplicated).toBe(true);

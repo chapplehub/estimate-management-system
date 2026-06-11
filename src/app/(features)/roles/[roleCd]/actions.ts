@@ -38,7 +38,7 @@ export async function updateRole(roleCd: string, prevState: unknown, formData: F
     return submission.reply();
   }
 
-  const { name, superiorRoleId } = submission.value;
+  const { name, superiorRoleId, version } = submission.value;
 
   // roleCdからidを取得
   const queryService = new PrismaRoleQueryService();
@@ -56,6 +56,9 @@ export async function updateRole(roleCd: string, prevState: unknown, formData: F
 
     await command.execute({
       id,
+      // version はフォーム由来（画面表示時のトークン）を渡す。ここで再 SELECT した
+      // 最新 version を使うと編集ウィンドウを守れないため（ADR-0039 選択肢2A）。
+      version,
       name,
       superiorRoleId: superiorRoleId ?? null,
     });

@@ -11,6 +11,8 @@ type Role = {
   name: string;
   positionName: string;
   superiorRoleId: string | null;
+  /** 楽観ロックトークン（ADR-0039）。hidden input で往復させ更新時の競合検知に使う */
+  version: number;
 };
 
 type SuperiorRoleOption = {
@@ -33,6 +35,7 @@ export function RoleUpdateForm({ role, canUpdate, superiorRoleOptions }: Props) 
     defaultValue: {
       name: role.name,
       superiorRoleId: role.superiorRoleId ?? "",
+      version: role.version,
     },
   });
 
@@ -54,6 +57,9 @@ export function RoleUpdateForm({ role, canUpdate, superiorRoleOptions }: Props) 
       )}
 
       <form {...getFormProps(form)} noValidate className="space-y-4">
+        {/* 楽観ロックトークン（ADR-0039）。画面表示時の version を更新時まで往復させる */}
+        <input {...getInputProps(fields.version, { type: "hidden" })} />
+
         <div>
           <label htmlFor="roleCd-display" className="block text-gray-700 text-sm font-bold mb-2">
             役割コード
