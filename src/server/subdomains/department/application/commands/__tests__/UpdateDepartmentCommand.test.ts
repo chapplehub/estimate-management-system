@@ -1,6 +1,6 @@
 import { generateId } from "@server/shared/generateId";
 import prisma from "@server/prisma";
-import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
+import { ConflictError, NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
 import { PrismaDepartmentRepository } from "@subdomains/department/infrastructure/prisma/PrismaDepartmentRepository";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -259,5 +259,29 @@ describe("UpdateDepartmentCommand", () => {
         parentId: deptCId,
       })
     ).rejects.toThrow("循環参照が発生するため、この親部署は設定できません");
+  });
+
+  it("古い version で更新すると ConflictError（expectedVersion がリポジトリへ素通しされる / ADR-0039）", async () => {
+    // 1 回目の更新は version 1 で成功し、DB の version は 2 へ進む
+    const updated = await command.execute({
+      id: baseDeptId,
+      version: 1,
+      name: "第1版",
+    });
+    expect(updated.name.value).toBe("第1版");
+
+    // 同じ古いトークン（version 1）で再度更新 → コマンドが素通しした expectedVersion が
+    // リポジトリの条件付き UPDATE で弾かれ、ConflictError になる
+    await expect(
+      command.execute({
+        id: baseDeptId,
+        version: 1,
+        name: "第2版",
+      })
+    ).rejects.toThrow(ConflictError);
+
+    // 先行の変更（第1版）が残っている（lost update なし）
+    const found = await repository.findById(updated.id);
+    expect(found?.name.value).toBe("第1版");
   });
 });
