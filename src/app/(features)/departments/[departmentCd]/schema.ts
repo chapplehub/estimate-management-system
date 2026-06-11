@@ -10,7 +10,7 @@ import { departmentBaseSchema } from "../_shared/schema";
  */
 export const updateDepartmentSchema = departmentBaseSchema.extend({
   isActive: z.coerce.boolean(),
-  version: z.coerce.number(),
+  version: z.coerce.number().int(),
 });
 
 export type UpdateDepartmentInput = z.infer<typeof updateDepartmentSchema>;
