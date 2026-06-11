@@ -4,6 +4,7 @@ import { Estimate } from "@subdomains/estimate/domain/entities";
 import { EstimateRepository } from "@subdomains/estimate/domain/repositories/EstimateRepository";
 import { EstimateId } from "@subdomains/estimate/domain/values/EstimateId";
 import { EstimateNumber } from "@subdomains/estimate/domain/values/EstimateNumber";
+import { EstimateVariationCopy } from "@subdomains/estimate/domain/values/EstimateVariationCopy";
 import {
   ESTIMATE_FULL_INCLUDE,
   EstimateMapper,
@@ -24,18 +25,51 @@ export class PrismaEstimateRepository implements EstimateRepository {
         data: EstimateMapper.toEstimateCreateInput(estimate),
       });
     } catch (error) {
-      // 並行作成で見積番号（estimate_number @unique）が衝突した場合は、
-      // インフラ詳細の P2002 をアプリ層の ConflictError へ翻訳して表面化する。
-      // 採番は楽観的 MAX+1（PrismaEstimateNumberIssuer）であり、衝突は手動リトライで吸収する。
-      if (PrismaEstimateRepository.isEstimateNumberConflict(error)) {
-        throw new ConflictError(
-          `見積番号 ${estimate.estimateNumber.value} は既に使用されています。もう一度登録してください。`
-        );
-      }
-      throw error;
+      PrismaEstimateRepository.translateInsertConflict(error, estimate);
     }
 
     return this.refetch(estimate.id.value);
+  }
+
+  /**
+   * 見積を新規作成し、複製系譜（estimate_variation_copies）を同一トランザクションで保存する（C6 / ADR-0040）。
+   *
+   * estimate.create のネスト書き込みでバリエーション行を先に生成し、その後 copies を createMany する
+   * （copiedVariationId の FK を満たすための順序）。系譜の copiedVariationId はすべて本 estimate 配下の
+   * バリエーションを指し、複製元へは id 参照のみ（書き込みなし）。
+   */
+  async insertWithCopies(estimate: Estimate, copies: EstimateVariationCopy[]): Promise<Estimate> {
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.estimate.create({
+          data: EstimateMapper.toEstimateCreateInput(estimate),
+        });
+        if (copies.length > 0) {
+          await tx.estimateVariationCopy.createMany({
+            data: EstimateMapper.toVariationCopyCreateManyInput(copies),
+          });
+        }
+      });
+    } catch (error) {
+      PrismaEstimateRepository.translateInsertConflict(error, estimate);
+    }
+
+    return this.refetch(estimate.id.value);
+  }
+
+  /**
+   * 新規作成系の例外を翻訳する（insert / insertWithCopies 共通）。
+   * 並行作成で見積番号（estimate_number @unique）が衝突した場合は、インフラ詳細の P2002 を
+   * アプリ層の ConflictError へ翻訳して表面化する。採番は楽観的 MAX+1
+   * （PrismaEstimateNumberIssuer）であり、衝突は手動リトライで吸収する。
+   */
+  private static translateInsertConflict(error: unknown, estimate: Estimate): never {
+    if (PrismaEstimateRepository.isEstimateNumberConflict(error)) {
+      throw new ConflictError(
+        `見積番号 ${estimate.estimateNumber.value} は既に使用されています。もう一度登録してください。`
+      );
+    }
+    throw error;
   }
 
   /**

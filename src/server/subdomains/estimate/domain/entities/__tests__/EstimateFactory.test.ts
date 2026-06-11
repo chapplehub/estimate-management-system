@@ -16,8 +16,11 @@ import { SubmissionType } from "../../values/SubmissionType";
 import { TaxRate } from "../../values/TaxRate";
 import { TaxRoundingType } from "../../values/TaxRoundingType";
 import { Unit } from "../../values/Unit";
+import { EstimateVariationId } from "../../values/EstimateVariationId";
 import {
   EstimateFactory,
+  type CopiedVariationDescriptor,
+  type EstimateDuplicateInput,
   type EstimateFactoryInput,
   type EstimateItemDescriptor,
 } from "../EstimateFactory";
@@ -160,6 +163,62 @@ describe("EstimateFactory", () => {
         })
       )
     ).toThrow();
+  });
+
+  describe("duplicate() - 複製集約と系譜の生成（C6）", () => {
+    function duplicateInput(
+      sources: EstimateVariationId[],
+      overrides: Partial<EstimateDuplicateInput> = {}
+    ): EstimateDuplicateInput {
+      const variations: CopiedVariationDescriptor[] = sources.map((sourceVariationId, i) => ({
+        variationNumber: i + 1,
+        items: [item({ unitPrice: Money.zero() })],
+        sourceVariationId,
+      }));
+      return { ...baseInput(), variations, ...overrides };
+    }
+
+    it("各複製先バリエーションの生成 id と複製元 id をペア化した系譜を返す", () => {
+      const sourceA = EstimateVariationId.generate();
+      const sourceB = EstimateVariationId.generate();
+
+      const { estimate, copies } = EstimateFactory.duplicate(duplicateInput([sourceA, sourceB]));
+
+      expect(estimate.variations).toHaveLength(2);
+      expect(copies).toHaveLength(2);
+      // 選択順 = 生成順 = 系譜順
+      expect(copies[0].copiedVariationId.equals(estimate.variations[0].id)).toBe(true);
+      expect(copies[0].sourceVariationId.equals(sourceA)).toBe(true);
+      expect(copies[1].copiedVariationId.equals(estimate.variations[1].id)).toBe(true);
+      expect(copies[1].sourceVariationId.equals(sourceB)).toBe(true);
+    });
+
+    it("複製先バリエーションは新規生成 id を持ち、複製元 id とは異なる", () => {
+      const source = EstimateVariationId.generate();
+
+      const { estimate, copies } = EstimateFactory.duplicate(duplicateInput([source]));
+
+      expect(estimate.variations[0].id.equals(source)).toBe(false);
+      expect(copies[0].copiedVariationId.equals(source)).toBe(false);
+    });
+
+    it("継承した修理詳細も複製集約に構築される", () => {
+      const source = EstimateVariationId.generate();
+
+      const { estimate } = EstimateFactory.duplicate(
+        duplicateInput([source], {
+          estimateNumber: EstimateNumber.parse("R2500009"),
+          repairDetail: {
+            targetProductId: new ProductId(UUID),
+            faultDescription: new FaultDescription("電源が入らない"),
+            scheduledRepairDate: new Date("2025-05-10T00:00:00.000Z"),
+          },
+        })
+      );
+
+      expect(estimate.estimateType.value).toBe("REPAIR");
+      expect(estimate.repairDetail?.faultDescription.value).toBe("電源が入らない");
+    });
   });
 
   describe("buildVariationContent - C3/C4 用の番号なし内容構築", () => {

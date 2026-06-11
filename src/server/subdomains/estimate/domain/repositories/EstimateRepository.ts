@@ -1,6 +1,7 @@
 import { Estimate } from "@subdomains/estimate/domain/entities";
 import { EstimateId } from "@subdomains/estimate/domain/values/EstimateId";
 import { EstimateNumber } from "@subdomains/estimate/domain/values/EstimateNumber";
+import { EstimateVariationCopy } from "@subdomains/estimate/domain/values/EstimateVariationCopy";
 
 /**
  * 見積リポジトリインターフェース
@@ -17,6 +18,14 @@ export interface EstimateRepository {
    * 見積を新規作成
    */
   insert(estimate: Estimate): Promise<Estimate>;
+
+  /**
+   * 見積を新規作成し、複製系譜（EstimateVariationCopy）も同一トランザクションで永続化する（C6 / ADR-0040）。
+   *
+   * 系譜は集約に属さない兄弟成果物であり、copies の copiedVariationId はすべて estimate 配下の
+   * バリエーションを指す。estimate と系譜をアトミックに保存する。
+   */
+  insertWithCopies(estimate: Estimate, copies: EstimateVariationCopy[]): Promise<Estimate>;
 
   /**
    * 既存見積を更新（楽観ロック / ADR-0039）

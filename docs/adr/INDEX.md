@@ -28,6 +28,7 @@
 | [0032](0032-identity-preserving-diff-upsert-for-multilevel-aggregate-update.md) | 多階層集約の更新はidentity保持の差分upsertを命令的トランザクションで行う | 採用 | 2026-06-02 |
 | [0035](0035-numbering-concurrency-max-plus-one-unique-manual-retry.md) | 採番の同時並行一意性をMAX(sequence)+1 + unique制約 + 手動リトライで担保する | 採用 | 2026-06-06 |
 | [0039](0039-cross-cutting-optimistic-locking-via-aggregate-root-version.md) | 楽観ロックは集約ルートの version 列＋フォーム往復＋リポジトリ insert/update 分割で横断適用する | 採用 | 2026-06-11 |
+| [0041](0041-variation-copy-natural-key.md) | 見積複製系譜表のキーをサロゲートidではなく自然キー(copiedVariationId)にする | 採用 | 2026-06-11 |
 
 ## アプリケーション（フロントエンド・認可）
 
@@ -58,6 +59,8 @@
 | [0033](0033-persist-aggregated-totals-and-skip-recalculation-on-reconstitution.md) | 集計値を永続化し、再構築時には再計算せず保存値から復元する | 採用 | 2026-06-02 |
 | [0034](0034-memo-null-elimination-empty-value-null-object.md) | メモ任意項目を null ではなく空値 Null Object で表現する | 採用 | 2026-06-03 |
 | [0036](0036-aggregate-creation-via-in-aggregate-factory.md) | 集約外からの新規集約生成は集約内ドメインファクトリ経由で行う | 採用 | 2026-06-06 |
+| [0040](0040-duplication-genealogy-as-sibling-artifact-persisted-via-insert-with-copies.md) | 見積複製の系譜を集約外の兄弟成果物として扱い insertWithCopies でアトミック永続化する | 採用 | 2026-06-11 |
+| [0042](0042-duplication-requires-at-least-one-variation.md) | 見積複製(C6)は最低1バリエーションの選択を要求する（§5.2 と §C1 の調停） | 採用 | 2026-06-11 |
 
 ## アプリケーション（コマンド）
 

@@ -15,6 +15,8 @@ import { SubmissionType } from "../values/SubmissionType";
 import { TaxRate } from "../values/TaxRate";
 import { TaxRoundingType } from "../values/TaxRoundingType";
 import { Unit } from "../values/Unit";
+import { EstimateVariationCopy } from "../values/EstimateVariationCopy";
+import { EstimateVariationId } from "../values/EstimateVariationId";
 import { AfterRepairEstimateDetail } from "./AfterRepairEstimateDetail";
 import { Estimate } from "./Estimate";
 import { EstimateItem } from "./EstimateItem";
@@ -99,6 +101,19 @@ export type EstimateFactoryInput = {
   afterRepairDetail?: AfterRepairDetailDescriptor | null;
 };
 
+/**
+ * 複製で生まれるバリエーションの記述子。複製元バリエーション（出自）を id 参照として添える。
+ * C6 DuplicateEstimate で「新バリエーションの生成 id ↔ 複製元 id」の系譜を作るために用いる。
+ */
+export type CopiedVariationDescriptor = EstimateVariationDescriptor & {
+  sourceVariationId: EstimateVariationId;
+};
+
+/** 見積複製の入力。variations 以外は新規生成と同じ記述子で、variations のみ系譜付き記述子。 */
+export type EstimateDuplicateInput = Omit<EstimateFactoryInput, "variations"> & {
+  variations: CopiedVariationDescriptor[];
+};
+
 export class EstimateFactory {
   /**
    * VO 記述子から子エンティティを組み立て、集約ルート Estimate を生成する。
@@ -116,6 +131,48 @@ export class EstimateFactory {
       EstimateFactory.buildVariation(variation, tax)
     );
 
+    return EstimateFactory.assembleEstimate(input, variations);
+  }
+
+  /**
+   * 複製元から作った系譜付き記述子で複製集約を生成し、系譜（複製先 id ↔ 複製元 id）も返す（C6）。
+   *
+   * 系譜は新バリエーションの生成 id が確定するこの場でペア化する。系譜は集約に属さない
+   * 兄弟成果物として返し、永続化は EstimateRepository.insertWithCopies が担う（ADR-0040）。
+   * 単価クリア・連番振り直し・継承項目の選択といった複製の業務判断は呼び出し側
+   * （EstimateDuplicationService）が記述子化済みで、本メソッドは構築とペア化のみを担う。
+   */
+  static duplicate(input: EstimateDuplicateInput): {
+    estimate: Estimate;
+    copies: EstimateVariationCopy[];
+  } {
+    const tax: TaxContext = {
+      taxRate: input.taxRate,
+      taxRoundingType: input.taxRoundingType,
+    };
+
+    const built = input.variations.map((variation) => ({
+      variation: EstimateFactory.buildVariation(variation, tax),
+      sourceVariationId: variation.sourceVariationId,
+    }));
+
+    const estimate = EstimateFactory.assembleEstimate(
+      input,
+      built.map((b) => b.variation)
+    );
+
+    const copies = built.map((b) =>
+      EstimateVariationCopy.create(b.variation.id, b.sourceVariationId)
+    );
+
+    return { estimate, copies };
+  }
+
+  /** 構築済みの子バリエーションと記述子から集約ルートを組み立てる（create / duplicate 共通）。 */
+  private static assembleEstimate(
+    input: Omit<EstimateFactoryInput, "variations">,
+    variations: EstimateVariation[]
+  ): Estimate {
     return Estimate.create({
       estimateNumber: input.estimateNumber,
       estimateDate: input.estimateDate,

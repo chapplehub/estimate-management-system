@@ -28,6 +28,8 @@ export {
   type VariationContentDescriptor,
   type RepairDetailDescriptor,
   type AfterRepairDetailDescriptor,
+  type CopiedVariationDescriptor,
+  type EstimateDuplicateInput,
 } from "./EstimateFactory";
 // VariationContent は appendVariation / updateVariation の引数型（集約ルートの公開 API）。
 // 子エンティティ EstimateVariation 自体は露出しないため境界規約を損なわない。
