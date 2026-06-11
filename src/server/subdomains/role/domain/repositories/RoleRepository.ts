@@ -10,7 +10,22 @@ import { RoleId } from "../values/RoleId";
  */
 export interface RoleRepository {
   /**
+   * 役割を新規作成
+   */
+  insert(role: Role): Promise<Role>;
+
+  /**
+   * 既存役割を更新（楽観ロック / ADR-0039）
+   *
+   * @param expectedVersion 編集画面表示時に取得した version（フォーム往復で持ち回るトークン）。
+   *   保存時点の version と一致しない場合は ConflictError を throw し、後勝ちの変更喪失を防ぐ。
+   */
+  update(role: Role, expectedVersion: number): Promise<Role>;
+
+  /**
    * 役割を保存（新規作成・更新）
+   *
+   * @deprecated insert / update へ移行中の一時併存メソッド（ADR-0039）。新規コードでは使用しない。
    */
   save(role: Role): Promise<Role>;
 
