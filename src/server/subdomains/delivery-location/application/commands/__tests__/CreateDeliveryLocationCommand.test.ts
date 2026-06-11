@@ -47,7 +47,7 @@ describe("CreateDeliveryLocationCommand", () => {
       new CompanyCode(CUSTOMER_TEST_CODE),
       new CompanyName("納品先テスト用得意先")
     );
-    const saved = await customerRepository.save(customer);
+    const saved = await customerRepository.insert(customer);
     testCustomerId = saved.id.value;
   });
 
@@ -143,10 +143,10 @@ describe("CreateDeliveryLocationCommand", () => {
   });
 
   it("親得意先が無効化されている場合は ValidationError", async () => {
-    // 得意先を無効化
+    // 得意先を無効化（beforeEach で insert 済み = version 1 を更新）
     const customer = await customerRepository.findById(new CustomerId(testCustomerId));
     customer!.deactivate();
-    await customerRepository.save(customer!);
+    await customerRepository.update(customer!, 1);
 
     await expect(
       command.execute({

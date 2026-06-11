@@ -91,6 +91,7 @@ export default async function CustomerDetailPage({
           customerId={customer.id}
           customerCode={customer.code}
           isActive={customer.isActive}
+          version={customer.version}
         />
         <CustomerDeleteForm customerId={customer.id} />
       </div>

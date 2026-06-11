@@ -16,6 +16,7 @@ type Customer = {
   faxNumber: string | null;
   contactPerson: string | null;
   marginRate: number | null;
+  version: number;
 };
 
 type Props = {
@@ -37,6 +38,7 @@ export function CustomerUpdateForm({ customer }: Props) {
       faxNumber: customer.faxNumber ?? "",
       contactPerson: customer.contactPerson ?? "",
       marginRate: customer.marginRate !== null ? String(customer.marginRate) : "",
+      version: String(customer.version),
     },
   });
 
@@ -53,6 +55,8 @@ export function CustomerUpdateForm({ customer }: Props) {
       )}
 
       <form {...getFormProps(form)} noValidate>
+        {/* 楽観ロックトークン（ADR-0039）。編集画面表示時の version を往復させる。 */}
+        <input {...getInputProps(fields.version, { type: "hidden" })} />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label htmlFor="code-display" className="block text-gray-700 text-sm font-bold mb-2">

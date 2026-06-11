@@ -122,6 +122,7 @@ export class PrismaCustomerQueryService implements CustomerQueryService {
       contactPerson: true,
       isActive: true,
       marginRate: true,
+      version: true,
       createdAt: true,
       updatedAt: true,
     } as const;
@@ -139,6 +140,7 @@ export class PrismaCustomerQueryService implements CustomerQueryService {
     contactPerson: string | null;
     isActive: boolean;
     marginRate: Prisma.Decimal | null;
+    version: number;
     createdAt: Date;
     updatedAt: Date;
   }): CustomerDTO {
@@ -154,6 +156,7 @@ export class PrismaCustomerQueryService implements CustomerQueryService {
       contactPerson: customer.contactPerson,
       isActive: customer.isActive,
       marginRate: customer.marginRate !== null ? Number(customer.marginRate) : null,
+      version: customer.version,
       createdAt: customer.createdAt,
       updatedAt: customer.updatedAt,
     };

@@ -37,7 +37,7 @@ describe("DeliveryLocationCodeDuplicationCheckDomainService", () => {
       new CompanyCode(CUSTOMER_TEST_CODE),
       new CompanyName("テスト得意先")
     );
-    const savedCustomer = await customerRepository.save(customer);
+    const savedCustomer = await customerRepository.insert(customer);
     customerId = savedCustomer.id;
 
     dlRepository = new PrismaDeliveryLocationRepository();

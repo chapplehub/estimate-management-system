@@ -36,7 +36,7 @@ describe("UpdateDeliveryLocationCommand", () => {
       new CompanyCode(CUSTOMER_TEST_CODE),
       new CompanyName("更新テスト用得意先")
     );
-    const savedCustomer = await customerRepository.save(customer);
+    const savedCustomer = await customerRepository.insert(customer);
     // テスト用納品先を事前作成
     const dl = DeliveryLocation.create(
       new CompanyCode(DL_TEST_CODES[0]),

@@ -7,9 +7,11 @@ type Props = {
   customerId: string;
   customerCode: string;
   isActive: boolean;
+  /** 楽観ロックトークン（ADR-0039）。状態変更時にフォームで往復させる。 */
+  version: number;
 };
 
-export function CustomerStatusForms({ customerId, customerCode, isActive }: Props) {
+export function CustomerStatusForms({ customerId, customerCode, isActive, version }: Props) {
   const [activateState, activateAction, isActivating] = useActionState(activateCustomer, {
     success: true,
   });
@@ -35,6 +37,7 @@ export function CustomerStatusForms({ customerId, customerCode, isActive }: Prop
         <form noValidate action={deactivateAction}>
           <input type="hidden" name="id" value={customerId} />
           <input type="hidden" name="code" value={customerCode} />
+          <input type="hidden" name="version" value={version} />
           <button
             type="submit"
             disabled={isDeactivating}
@@ -47,6 +50,7 @@ export function CustomerStatusForms({ customerId, customerCode, isActive }: Prop
         <form noValidate action={activateAction}>
           <input type="hidden" name="id" value={customerId} />
           <input type="hidden" name="code" value={customerCode} />
+          <input type="hidden" name="version" value={version} />
           <button
             type="submit"
             disabled={isActivating}

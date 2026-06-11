@@ -12,6 +12,8 @@ import { MarginRate } from "@subdomains/customer/domain/values/MarginRate";
 
 export type UpdateCustomerInput = {
   id: string;
+  /** 編集画面表示時の version（楽観ロックトークン / ADR-0039）。リポジトリへ素通しする。 */
+  expectedVersion: number;
   name: string;
   postalCode?: string | null;
   prefecture?: string | null;
@@ -57,6 +59,6 @@ export class UpdateCustomerCommand {
         : null
     );
 
-    await this.customerRepository.save(customer);
+    await this.customerRepository.update(customer, input.expectedVersion);
   }
 }

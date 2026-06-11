@@ -50,6 +50,6 @@ export class CreateCustomerCommand {
       marginRate: input.marginRate !== undefined ? new MarginRate(input.marginRate) : undefined,
     });
 
-    await this.customerRepository.save(customer);
+    await this.customerRepository.insert(customer);
   }
 }

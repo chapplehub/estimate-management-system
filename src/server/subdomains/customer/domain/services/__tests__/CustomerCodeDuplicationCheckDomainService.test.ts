@@ -37,7 +37,7 @@ describe("CustomerCodeDuplicationCheckDomainService", () => {
       new CompanyCode(TEST_CODES[0]),
       new CompanyName("テスト株式会社")
     );
-    await repository.save(customer);
+    await repository.insert(customer);
 
     const isDuplicated = await service.execute(new CompanyCode(TEST_CODES[0]));
     expect(isDuplicated).toBe(true);
@@ -48,7 +48,7 @@ describe("CustomerCodeDuplicationCheckDomainService", () => {
       new CompanyCode(TEST_CODES[0]),
       new CompanyName("テスト株式会社")
     );
-    await repository.save(customer);
+    await repository.insert(customer);
 
     const isDuplicated = await service.execute(new CompanyCode(TEST_CODES[1]));
     expect(isDuplicated).toBe(false);

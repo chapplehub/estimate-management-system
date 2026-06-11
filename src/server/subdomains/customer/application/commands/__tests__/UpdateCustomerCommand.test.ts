@@ -1,5 +1,5 @@
 import prisma from "@server/prisma";
-import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
+import { ConflictError, NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { CompanyCode } from "@server/shared/domain/values/CompanyCode";
 import { CompanyName } from "@server/shared/domain/values/CompanyName";
 import { Customer } from "@subdomains/customer/domain/entities/Customer";
@@ -28,7 +28,7 @@ describe("UpdateCustomerCommand", () => {
       new CompanyCode(TEST_CODES[0]),
       new CompanyName("更新前得意先")
     );
-    const saved = await repository.save(customer);
+    const saved = await repository.insert(customer);
     testCustomerId = saved.id.value;
   });
 
@@ -41,6 +41,7 @@ describe("UpdateCustomerCommand", () => {
   it("得意先情報を更新できる（名前変更）", async () => {
     await command.execute({
       id: testCustomerId,
+      expectedVersion: 1,
       name: "更新後得意先",
     });
 
@@ -52,6 +53,7 @@ describe("UpdateCustomerCommand", () => {
   it("住所・連絡先・マージン率を更新できる", async () => {
     await command.execute({
       id: testCustomerId,
+      expectedVersion: 1,
       name: "更新前得意先",
       postalCode: "200-0002",
       prefecture: "大阪府",
@@ -74,9 +76,10 @@ describe("UpdateCustomerCommand", () => {
   });
 
   it("nullを渡すとオプション項目をクリアできる", async () => {
-    // まず値を設定
+    // まず値を設定（version 1 → 2）
     await command.execute({
       id: testCustomerId,
+      expectedVersion: 1,
       name: "更新前得意先",
       postalCode: "200-0002",
       prefecture: "大阪府",
@@ -87,9 +90,10 @@ describe("UpdateCustomerCommand", () => {
       marginRate: 20,
     });
 
-    // nullで全クリア
+    // nullで全クリア（version 2 を提示）
     await command.execute({
       id: testCustomerId,
+      expectedVersion: 2,
       name: "更新前得意先",
       postalCode: null,
       prefecture: null,
@@ -115,14 +119,27 @@ describe("UpdateCustomerCommand", () => {
     await expect(
       command.execute({
         id: "00000000-0000-7000-8000-000000000000",
+        expectedVersion: 1,
         name: "存在しない",
       })
     ).rejects.toThrow(NotFoundEntityError);
     await expect(
       command.execute({
         id: "00000000-0000-7000-8000-000000000000",
+        expectedVersion: 1,
         name: "存在しない",
       })
     ).rejects.toThrow("得意先が見つかりません");
+  });
+
+  it("古い expectedVersion を渡すと ConflictError（リポジトリの楽観ロックへ素通しされる）", async () => {
+    // 現在の version は 1。stale なトークン（999）を渡すと条件付き UPDATE が count=0 になる
+    await expect(
+      command.execute({
+        id: testCustomerId,
+        expectedVersion: 999,
+        name: "競合する更新",
+      })
+    ).rejects.toThrow(ConflictError);
   });
 });
