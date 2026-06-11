@@ -4,6 +4,7 @@ import {
 } from "@server/__tests__/helpers/ensureEstimateFixtures";
 import { EstimateId } from "@subdomains/estimate/domain/values/EstimateId";
 import { EstimateNumber } from "@subdomains/estimate/domain/values/EstimateNumber";
+import { EstimateVariationCopy } from "@subdomains/estimate/domain/values/EstimateVariationCopy";
 import { Quantity } from "@subdomains/estimate/domain/values/Quantity";
 import {
   buildAfterRepairEstimate,
@@ -30,6 +31,8 @@ const EN = {
   fkViolation: "N9900007",
   optimistic: "N9900008",
   staleToken: "N9900009",
+  dupSource: "N9900010",
+  dup: "N9900011",
   missing: "N9900099",
 } as const;
 const ALL_NUMBERS = Object.values(EN);
@@ -38,6 +41,23 @@ const ALL_NUMBERS = Object.values(EN);
 const NON_EXISTENT_CUSTOMER_ID = "00000000-0000-7000-8000-000000000777";
 
 async function cleanupEstimates(): Promise<void> {
+  // 複製系譜（estimate_variation_copies）を先に削除する。source 側参照は cascade されないため、
+  // estimate を消す前に系譜行を除去しておく必要がある（C6 / ADR-0040・0041）。
+  const estimates = await prisma.estimate.findMany({
+    where: { estimateNumber: { in: [...ALL_NUMBERS] } },
+    select: { variations: { select: { id: true } } },
+  });
+  const variationIds = estimates.flatMap((e) => e.variations.map((v) => v.id));
+  if (variationIds.length > 0) {
+    await prisma.estimateVariationCopy.deleteMany({
+      where: {
+        OR: [
+          { copiedVariationId: { in: variationIds } },
+          { sourceVariationId: { in: variationIds } },
+        ],
+      },
+    });
+  }
   await prisma.estimate.deleteMany({ where: { estimateNumber: { in: [...ALL_NUMBERS] } } });
 }
 
@@ -282,6 +302,46 @@ describe("PrismaEstimateRepository", () => {
 
     it("存在しない ID の削除は no-op（例外を投げない）", async () => {
       await expect(repository.delete(EstimateId.generate())).resolves.toBeUndefined();
+    });
+  });
+
+  describe("insertWithCopies - 複製系譜の永続化（C6）", () => {
+    it("新見積と系譜を同一トランザクションで保存し、系譜行を確認できる", async () => {
+      const source = await repository.insert(
+        buildNewEstimate(ids, EN.dupSource, { variationNumbers: [1, 2] })
+      );
+      const target = buildNewEstimate(ids, EN.dup, { variationNumbers: [1, 2] });
+      const copies = [
+        EstimateVariationCopy.create(target.variations[0].id, source.variations[0].id),
+        EstimateVariationCopy.create(target.variations[1].id, source.variations[1].id),
+      ];
+
+      const saved = await repository.insertWithCopies(target, copies);
+
+      // 集約が保存される
+      const found = await repository.findById(saved.id);
+      expect(found).not.toBeNull();
+      expect(found?.variations).toHaveLength(2);
+
+      // 系譜行（自然キー copiedVariationId）が複製元を指して保存される
+      const rows = await prisma.estimateVariationCopy.findMany({
+        where: { copiedVariationId: { in: target.variations.map((v) => v.id.value) } },
+      });
+      expect(rows).toHaveLength(2);
+      const sourceByCopied = new Map(rows.map((r) => [r.copiedVariationId, r.sourceVariationId]));
+      expect(sourceByCopied.get(target.variations[0].id.value)).toBe(source.variations[0].id.value);
+      expect(sourceByCopied.get(target.variations[1].id.value)).toBe(source.variations[1].id.value);
+    });
+
+    it("copies が空でも新見積は保存される", async () => {
+      const saved = await repository.insertWithCopies(buildNewEstimate(ids, EN.dup), []);
+
+      expect(await repository.findById(saved.id)).not.toBeNull();
+      expect(
+        await prisma.estimateVariationCopy.count({
+          where: { copiedVariation: { estimate: { estimateNumber: EN.dup } } },
+        })
+      ).toBe(0);
     });
   });
 });

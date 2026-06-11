@@ -19,6 +19,7 @@ import { EmergencyReason } from "@subdomains/estimate/domain/values/EmergencyRea
 import { EstimateId } from "@subdomains/estimate/domain/values/EstimateId";
 import { EstimateItemId } from "@subdomains/estimate/domain/values/EstimateItemId";
 import { EstimateNumber } from "@subdomains/estimate/domain/values/EstimateNumber";
+import { EstimateVariationCopy } from "@subdomains/estimate/domain/values/EstimateVariationCopy";
 import { EstimateVariationId } from "@subdomains/estimate/domain/values/EstimateVariationId";
 import { FaultDescription } from "@subdomains/estimate/domain/values/FaultDescription";
 import { ItemName } from "@subdomains/estimate/domain/values/ItemName";
@@ -304,5 +305,18 @@ export class EstimateMapper {
           }
         : undefined,
     };
+  }
+
+  /**
+   * 複製系譜（EstimateVariationCopy）の一括 createMany 入力へ変換する（C6 / ADR-0040）。
+   * 自然キー（copiedVariationId）のみで、サロゲート id は持たない（ADR-0041）。
+   */
+  static toVariationCopyCreateManyInput(
+    copies: EstimateVariationCopy[]
+  ): Prisma.EstimateVariationCopyCreateManyInput[] {
+    return copies.map((copy) => ({
+      copiedVariationId: copy.copiedVariationId.value,
+      sourceVariationId: copy.sourceVariationId.value,
+    }));
   }
 }
