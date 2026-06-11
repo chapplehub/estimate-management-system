@@ -80,9 +80,7 @@
       "Read(id_ed25519)",
       "Write(.env*)",
       "Write(**/secrets/**)",
-      "Bash(pnpm db:migrate*)",
       "Bash(pnpm db:push*)",
-      "Bash(prisma migrate*)",
       "Bash(prisma db push*)"
     ]
   },
