@@ -114,6 +114,7 @@ export class PrismaRoleQueryService implements RoleQueryService {
       position: { select: { name: true } },
       superiorRoleId: true,
       superiorRole: { select: { name: true } },
+      version: true,
       createdAt: true,
       updatedAt: true,
     } as const;
@@ -127,6 +128,7 @@ export class PrismaRoleQueryService implements RoleQueryService {
     position: { name: string };
     superiorRoleId: string | null;
     superiorRole: { name: string } | null;
+    version: number;
     createdAt: Date;
     updatedAt: Date;
   }): RoleDTO {
@@ -138,6 +140,7 @@ export class PrismaRoleQueryService implements RoleQueryService {
       positionName: role.position.name,
       superiorRoleId: role.superiorRoleId,
       superiorRoleName: role.superiorRole?.name ?? null,
+      version: role.version,
       createdAt: role.createdAt,
       updatedAt: role.updatedAt,
     };
