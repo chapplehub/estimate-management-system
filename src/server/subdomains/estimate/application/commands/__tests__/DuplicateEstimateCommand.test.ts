@@ -26,10 +26,12 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { DuplicateEstimateCommand, type DuplicateEstimateInput } from "../DuplicateEstimateCommand";
 
-// 採番は「年度 × 種別の全行」を集約対象とするため年度単位で隔離する。
-// 2096 は他テスト（2097/2098/2099 帯）・実シードと衝突しない未使用年度。
-const FY = 2096;
-const SOURCE_DATE = new Date("2096-04-01T00:00:00.000Z");
+// 採番は「年度 × 種別の全行」を集約対象とするため、テストファイルごとに専用年度で隔離する
+// （vitest はファイル並列実行のため、年度を共有すると cleanup と採番が衝突する）。
+// 既使用: 2099=Repository / 2098=NumberIssuer / 2097=Create / 2096=Update / 2095=AddVariation /
+// 2094=UpdateVariation。本ファイル（Duplicate）は未使用の 2093 を使う。
+const FY = 2093;
+const SOURCE_DATE = new Date("2093-04-01T00:00:00.000Z");
 
 async function cleanupTestYear(): Promise<void> {
   // 複製系譜を先に削除（source 側参照は cascade されないため）。
@@ -86,9 +88,9 @@ describe("DuplicateEstimateCommand", () => {
       ],
     });
     return EstimateFactory.create({
-      estimateNumber: EstimateNumber.parse("N9600001"),
+      estimateNumber: EstimateNumber.parse("N9300001"),
       estimateDate: SOURCE_DATE,
-      deadline: new Date("2096-04-30T00:00:00.000Z"),
+      deadline: new Date("2093-04-30T00:00:00.000Z"),
       submissionType: SubmissionType.CUSTOMER,
       customerId: new CustomerId(ids.customerId),
       deliveryLocationId: new DeliveryLocationId(ids.deliveryLocationId),
@@ -108,7 +110,7 @@ describe("DuplicateEstimateCommand", () => {
       sourceEstimateId: source.id.value,
       selectedVariationIds: source.variations.map((v) => v.id.value),
       estimateDate: SOURCE_DATE,
-      deadline: new Date("2096-06-30T00:00:00.000Z"),
+      deadline: new Date("2093-06-30T00:00:00.000Z"),
       taxRate: 0.1,
       createdBy: ids.employeeId,
       departmentId: ids.departmentId,
@@ -126,8 +128,8 @@ describe("DuplicateEstimateCommand", () => {
       })
     );
 
-    // 複製元（N9600001）の次番号が払い出される
-    expect(result.estimateNumber.value).toBe("N9600002");
+    // 複製元（N9300001）の次番号が払い出される
+    expect(result.estimateNumber.value).toBe("N9300002");
     expect(result.estimateType.value).toBe("NEW");
 
     // 選択順を保持し連番に振り直し、単価はクリア
