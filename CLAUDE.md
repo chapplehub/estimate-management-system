@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-## Communication Language
+## Major premise
 
 常に日本語で対話すること
 
