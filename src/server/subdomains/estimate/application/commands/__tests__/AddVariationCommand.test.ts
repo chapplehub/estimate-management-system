@@ -79,6 +79,7 @@ describe("AddVariationCommand", () => {
 
     const result = await command.execute({
       estimateId: created.id.value,
+      version: 1,
       content: {
         items: [
           {
@@ -106,6 +107,7 @@ describe("AddVariationCommand", () => {
     await expect(
       command.execute({
         estimateId: "00000000-0000-7000-8000-0000000009ff",
+        version: 1,
         content: { items: [] },
       })
     ).rejects.toThrow(NotFoundEntityError);

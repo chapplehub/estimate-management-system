@@ -19,6 +19,8 @@ import {
 export type UpdateVariationInput = {
   estimateId: string;
   variationId: string;
+  /** 編集画面表示時に取得した親見積の楽観ロックトークン（ADR-0039）。フォーム往復で持ち回る */
+  version: number;
   content: VariationContentInput;
 };
 
@@ -47,7 +49,7 @@ export class UpdateVariationCommand {
     );
     estimate.updateVariation(new EstimateVariationId(input.variationId), content);
 
-    return checkTaxRateThenSave(estimate, {
+    return checkTaxRateThenSave(estimate, input.version, {
       taxRateConsistencyCheck: this.taxRateConsistencyCheck,
       estimateRepository: this.estimateRepository,
     });

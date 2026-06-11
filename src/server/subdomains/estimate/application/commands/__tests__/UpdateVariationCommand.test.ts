@@ -83,6 +83,7 @@ describe("UpdateVariationCommand", () => {
     const result = await command.execute({
       estimateId: created.id.value,
       variationId,
+      version: 1,
       content: {
         items: [
           {
@@ -123,12 +124,13 @@ describe("UpdateVariationCommand", () => {
     // 直接ドメイン経由で無効化して永続化（C5 De/Activate はスコープ外のため）
     const loaded = await repository.findById(created.id);
     loaded!.deactivateVariation(created.variations[0].id);
-    await repository.save(loaded!);
+    await repository.update(loaded!, 1);
 
     await expect(
       command.execute({
         estimateId: created.id.value,
         variationId,
+        version: 2, // 直前の無効化更新で 1 → 2 に進んでいる
         content: {
           items: [
             {
@@ -150,6 +152,7 @@ describe("UpdateVariationCommand", () => {
       command.execute({
         estimateId: "00000000-0000-7000-8000-0000000009ff",
         variationId: "00000000-0000-7000-8000-0000000009fe",
+        version: 1,
         content: { items: [] },
       })
     ).rejects.toThrow(NotFoundEntityError);

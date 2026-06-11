@@ -16,6 +16,12 @@ import {
  */
 export type AddVariationInput = {
   estimateId: string;
+  /**
+   * 編集画面表示時に取得した親見積の楽観ロックトークン（ADR-0039）。
+   * 追加型コマンドでも必須とする。差分 upsert（ADR-0032）は集約に無い子を deleteMany で
+   * 消すため、stale な集約からの保存が並行追加された他人のバリエーションを削除しうる。
+   */
+  version: number;
   content: VariationContentInput;
 };
 
@@ -43,7 +49,7 @@ export class AddVariationCommand {
     );
     estimate.appendVariation(content);
 
-    return checkTaxRateThenSave(estimate, {
+    return checkTaxRateThenSave(estimate, input.version, {
       taxRateConsistencyCheck: this.taxRateConsistencyCheck,
       estimateRepository: this.estimateRepository,
     });

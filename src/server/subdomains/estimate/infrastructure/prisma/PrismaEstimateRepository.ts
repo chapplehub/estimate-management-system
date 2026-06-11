@@ -18,18 +18,6 @@ import { Prisma } from "@generated/prisma/client";
  * 集約ルート Estimate 単位でのみ永続化し、子は集約経由でカスケードする。
  */
 export class PrismaEstimateRepository implements EstimateRepository {
-  /**
-   * @deprecated 移行期の互換 API。呼び出し元の insert / update 移行後に削除する（#301）。
-   */
-  async save(estimate: Estimate): Promise<Estimate> {
-    const existing = await prisma.estimate.findUnique({
-      where: { id: estimate.id.value },
-      select: { version: true },
-    });
-
-    return existing ? this.update(estimate, existing.version) : this.insert(estimate);
-  }
-
   async insert(estimate: Estimate): Promise<Estimate> {
     try {
       await prisma.estimate.create({

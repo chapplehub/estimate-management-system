@@ -138,7 +138,7 @@ export class CreateEstimateCommand {
     });
 
     // 4. 永続化（採番衝突時は ConflictError が infrastructure 層から bubble する）
-    return await this.estimateRepository.save(estimate);
+    return await this.estimateRepository.insert(estimate);
   }
 
   private toVariationDescriptor(

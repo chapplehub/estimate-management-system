@@ -19,6 +19,8 @@ import { checkTaxRateThenSave, type TaxCheckedSaveResult } from "../shared/check
  */
 export type UpdateEstimateInput = {
   estimateId: string;
+  /** 編集画面表示時に取得した楽観ロックトークン（ADR-0039）。フォーム往復で持ち回る */
+  version: number;
   estimateDate: Date;
   deadline: Date;
   submissionType: string;
@@ -60,7 +62,7 @@ export class UpdateEstimateCommand {
     estimate.changeTaxRate(new TaxRate(input.taxRate));
     estimate.changeTaxRoundingType(TaxRoundingType.from(input.taxRoundingType));
 
-    return checkTaxRateThenSave(estimate, {
+    return checkTaxRateThenSave(estimate, input.version, {
       taxRateConsistencyCheck: this.taxRateConsistencyCheck,
       estimateRepository: this.estimateRepository,
     });

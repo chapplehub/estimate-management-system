@@ -14,13 +14,6 @@ import { EstimateNumber } from "@subdomains/estimate/domain/values/EstimateNumbe
  */
 export interface EstimateRepository {
   /**
-   * 見積を保存（新規作成・更新）
-   *
-   * @deprecated 移行期の互換 API。insert / update へ移行後に削除する（#301）。
-   */
-  save(estimate: Estimate): Promise<Estimate>;
-
-  /**
    * 見積を新規作成
    */
   insert(estimate: Estimate): Promise<Estimate>;

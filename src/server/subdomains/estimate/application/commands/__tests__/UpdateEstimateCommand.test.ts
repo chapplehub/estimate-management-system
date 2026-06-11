@@ -3,7 +3,7 @@ import {
   type EstimateFixtureIds,
 } from "@server/__tests__/helpers/ensureEstimateFixtures";
 import prisma from "@server/prisma";
-import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
+import { ConflictError, NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { TaxRateConsistencyCheckDomainService } from "@subdomains/estimate/domain/services/TaxRateConsistencyCheckDomainService";
 import { PrismaEstimateNumberIssuer } from "@subdomains/estimate/infrastructure/prisma/PrismaEstimateNumberIssuer";
 import { PrismaEstimateRepository } from "@subdomains/estimate/infrastructure/prisma/PrismaEstimateRepository";
@@ -81,6 +81,7 @@ describe("UpdateEstimateCommand", () => {
   ): UpdateEstimateInput {
     return {
       estimateId,
+      version: 1, // 作成直後の集約は version 1（個々のテストで先行更新する場合は上書き）
       estimateDate: new Date("2096-04-01T00:00:00.000Z"),
       deadline: new Date("2096-04-30T00:00:00.000Z"),
       submissionType: "CUSTOMER",
@@ -137,5 +138,31 @@ describe("UpdateEstimateCommand", () => {
     await expect(
       command.execute(updateInput("00000000-0000-7000-8000-0000000009ff"))
     ).rejects.toThrow(NotFoundEntityError);
+  });
+
+  it("古い version での更新は ConflictError になり、先行の変更は失われない（楽観ロック / ADR-0039）", async () => {
+    const created = await createCommand.execute(createInput());
+
+    // 先行更新が version 1 → 2 に進める
+    await command.execute(
+      updateInput(created.id.value, {
+        version: 1,
+        deadline: new Date("2096-05-31T00:00:00.000Z"),
+      })
+    );
+
+    // 古い画面（version 1）からの保存は競合として弾かれる
+    await expect(
+      command.execute(
+        updateInput(created.id.value, {
+          version: 1,
+          deadline: new Date("2096-06-30T00:00:00.000Z"),
+        })
+      )
+    ).rejects.toThrow(ConflictError);
+
+    // 先行更新の内容が残っている（lost update が起きていない）
+    const found = await new PrismaEstimateRepository().findById(created.id);
+    expect(found?.deadline.toISOString()).toBe("2096-05-31T00:00:00.000Z");
   });
 });
