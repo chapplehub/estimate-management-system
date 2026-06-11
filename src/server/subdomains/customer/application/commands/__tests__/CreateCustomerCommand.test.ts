@@ -14,7 +14,7 @@ describe("CreateCustomerCommand", () => {
   const TEST_CODES = ["CUST999911", "CUST999912"];
 
   beforeEach(async () => {
-    await prisma.company.deleteMany({
+    await prisma.customer.deleteMany({
       where: { code: { in: TEST_CODES } },
     });
 
@@ -25,7 +25,7 @@ describe("CreateCustomerCommand", () => {
   });
 
   afterEach(async () => {
-    await prisma.company.deleteMany({
+    await prisma.customer.deleteMany({
       where: { code: { in: TEST_CODES } },
     });
   });

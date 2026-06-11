@@ -5,7 +5,7 @@ import {
 } from "@subdomains/delivery-location/application/queries/dto/DeliveryLocationSearchCriteria";
 import { DeliveryLocationQueryService } from "@subdomains/delivery-location/application/queries/DeliveryLocationQueryService";
 import prisma from "@server/prisma";
-import { CompanyType, Prisma } from "@generated/prisma/client";
+import { Prisma } from "@generated/prisma/client";
 
 export class PrismaDeliveryLocationQueryService implements DeliveryLocationQueryService {
   async findById(id: string): Promise<DeliveryLocationDTO | null> {
@@ -18,10 +18,9 @@ export class PrismaDeliveryLocationQueryService implements DeliveryLocationQuery
   }
 
   async findByCode(code: string): Promise<DeliveryLocationDTO | null> {
-    const dl = await prisma.deliveryLocation.findFirst({
-      where: {
-        company: { code, type: CompanyType.DELIVERY_LOCATION },
-      },
+    // 平坦化後（ADR-0043）は code が delivery_locations の一意列。型内一意なので findUnique で足りる。
+    const dl = await prisma.deliveryLocation.findUnique({
+      where: { code },
       select: this.getSelectFields(),
     });
 
@@ -50,25 +49,23 @@ export class PrismaDeliveryLocationQueryService implements DeliveryLocationQuery
     criteria: DeliveryLocationSearchCriteria
   ): Prisma.DeliveryLocationWhereInput {
     const where: Prisma.DeliveryLocationWhereInput = {};
-    const companyWhere: Prisma.CompanyWhereInput = { type: CompanyType.DELIVERY_LOCATION };
 
     if (criteria.name) {
-      companyWhere.name = { contains: criteria.name, mode: "insensitive" };
+      where.name = { contains: criteria.name, mode: "insensitive" };
     }
 
     if (criteria.code) {
-      companyWhere.code = criteria.code;
+      where.code = criteria.code;
     }
 
     if (criteria.isActive !== undefined) {
-      companyWhere.isActive = criteria.isActive;
+      where.isActive = criteria.isActive;
     }
 
     if (criteria.customerId) {
       where.customerId = criteria.customerId;
     }
 
-    where.company = companyWhere;
     return where;
   }
 
@@ -81,41 +78,30 @@ export class PrismaDeliveryLocationQueryService implements DeliveryLocationQuery
 
     const { field, direction } = options.orderBy;
 
-    if (field === "name" || field === "code") {
-      return { company: { [field]: direction } };
-    }
-
     return { [field]: direction };
   }
 
   private getSelectFields() {
     return {
       id: true,
+      code: true,
+      name: true,
+      postalCode: true,
+      prefecture: true,
+      address: true,
+      phoneNumber: true,
+      faxNumber: true,
+      contactPerson: true,
+      isActive: true,
       customerId: true,
       deliveryNotes: true,
       createdAt: true,
       updatedAt: true,
-      company: {
-        select: {
-          code: true,
-          name: true,
-          postalCode: true,
-          prefecture: true,
-          address: true,
-          phoneNumber: true,
-          faxNumber: true,
-          contactPerson: true,
-          isActive: true,
-        },
-      },
+      // 親得意先の名称・コード（一覧DTOにリレーション先名を含める / ADR-0013）
       customer: {
         select: {
-          company: {
-            select: {
-              name: true,
-              code: true,
-            },
-          },
+          name: true,
+          code: true,
         },
       },
     } as const;
@@ -123,42 +109,38 @@ export class PrismaDeliveryLocationQueryService implements DeliveryLocationQuery
 
   private toDTO(dl: {
     id: string;
+    code: string;
+    name: string;
+    postalCode: string | null;
+    prefecture: string | null;
+    address: string | null;
+    phoneNumber: string | null;
+    faxNumber: string | null;
+    contactPerson: string | null;
+    isActive: boolean;
     customerId: string;
     deliveryNotes: string | null;
     createdAt: Date;
     updatedAt: Date;
-    company: {
-      code: string;
-      name: string;
-      postalCode: string | null;
-      prefecture: string | null;
-      address: string | null;
-      phoneNumber: string | null;
-      faxNumber: string | null;
-      contactPerson: string | null;
-      isActive: boolean;
-    };
     customer: {
-      company: {
-        name: string;
-        code: string;
-      };
+      name: string;
+      code: string;
     };
   }): DeliveryLocationDTO {
     return {
       id: dl.id,
-      code: dl.company.code,
-      name: dl.company.name,
-      postalCode: dl.company.postalCode,
-      prefecture: dl.company.prefecture,
-      address: dl.company.address,
-      phoneNumber: dl.company.phoneNumber,
-      faxNumber: dl.company.faxNumber,
-      contactPerson: dl.company.contactPerson,
-      isActive: dl.company.isActive,
+      code: dl.code,
+      name: dl.name,
+      postalCode: dl.postalCode,
+      prefecture: dl.prefecture,
+      address: dl.address,
+      phoneNumber: dl.phoneNumber,
+      faxNumber: dl.faxNumber,
+      contactPerson: dl.contactPerson,
+      isActive: dl.isActive,
       customerId: dl.customerId,
-      customerName: dl.customer.company.name,
-      customerCode: dl.customer.company.code,
+      customerName: dl.customer.name,
+      customerCode: dl.customer.code,
       deliveryNotes: dl.deliveryNotes,
       createdAt: dl.createdAt,
       updatedAt: dl.updatedAt,

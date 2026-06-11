@@ -22,11 +22,11 @@ describe("CreateDeliveryLocationCommand", () => {
   const CUSTOMER_TEST_CODE = "CUST999931";
 
   beforeEach(async () => {
-    // DL の Company → Customer の Company の順で削除
-    await prisma.company.deleteMany({
+    // 納品先 → 得意先の順で削除（FK 制約）
+    await prisma.deliveryLocation.deleteMany({
       where: { code: { in: DL_TEST_CODES } },
     });
-    await prisma.company.deleteMany({
+    await prisma.customer.deleteMany({
       where: { code: CUSTOMER_TEST_CODE },
     });
 
@@ -52,10 +52,10 @@ describe("CreateDeliveryLocationCommand", () => {
   });
 
   afterEach(async () => {
-    await prisma.company.deleteMany({
+    await prisma.deliveryLocation.deleteMany({
       where: { code: { in: DL_TEST_CODES } },
     });
-    await prisma.company.deleteMany({
+    await prisma.customer.deleteMany({
       where: { code: CUSTOMER_TEST_CODE },
     });
   });

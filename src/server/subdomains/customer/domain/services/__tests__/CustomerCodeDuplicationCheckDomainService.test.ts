@@ -13,8 +13,7 @@ describe("CustomerCodeDuplicationCheckDomainService", () => {
   const TEST_CODES = ["CUST999801", "CUST999802"];
 
   async function cleanup() {
-    // Company 削除で Customer にカスケード
-    await prisma.company.deleteMany({
+    await prisma.customer.deleteMany({
       where: { code: { in: TEST_CODES } },
     });
   }

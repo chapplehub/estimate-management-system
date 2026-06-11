@@ -1,12 +1,9 @@
 import { CompanyCode } from "@server/shared/domain/values/CompanyCode";
-import { CompanyType } from "@generated/prisma/client";
 import prisma from "@server/prisma";
 import { DeliveryLocation } from "@subdomains/delivery-location/domain/entities/DeliveryLocation";
 import { DeliveryLocationRepository } from "@subdomains/delivery-location/domain/repositories/DeliveryLocationRepository";
 import { DeliveryLocationId } from "@subdomains/delivery-location/domain/values/DeliveryLocationId";
 import { DeliveryLocationMapper } from "@subdomains/delivery-location/infrastructure/mappers/DeliveryLocationMapper";
-
-const INCLUDE_COMPANY = { company: true } as const;
 
 export class PrismaDeliveryLocationRepository implements DeliveryLocationRepository {
   async save(deliveryLocation: DeliveryLocation): Promise<DeliveryLocation> {
@@ -14,55 +11,37 @@ export class PrismaDeliveryLocationRepository implements DeliveryLocationReposit
       where: { id: deliveryLocation.id.value },
     });
 
-    let prismaDeliveryLocation;
-
-    if (existing) {
-      prismaDeliveryLocation = await prisma.deliveryLocation.update({
-        where: { id: deliveryLocation.id.value },
-        data: DeliveryLocationMapper.toPrismaUpdate(deliveryLocation),
-        include: INCLUDE_COMPANY,
-      });
-    } else {
-      prismaDeliveryLocation = await prisma.deliveryLocation.create({
-        data: DeliveryLocationMapper.toPrismaCreate(deliveryLocation),
-        include: INCLUDE_COMPANY,
-      });
-    }
+    const prismaDeliveryLocation = existing
+      ? await prisma.deliveryLocation.update({
+          where: { id: deliveryLocation.id.value },
+          data: DeliveryLocationMapper.toPrismaUpdate(deliveryLocation),
+        })
+      : await prisma.deliveryLocation.create({
+          data: DeliveryLocationMapper.toPrismaCreate(deliveryLocation),
+        });
 
     return DeliveryLocationMapper.toDomain(prismaDeliveryLocation);
   }
 
   async delete(id: DeliveryLocationId): Promise<void> {
-    const deliveryLocation = await prisma.deliveryLocation.findUnique({
+    await prisma.deliveryLocation.delete({
       where: { id: id.value },
-      select: { companyId: true },
     });
-
-    if (deliveryLocation) {
-      await prisma.company.delete({
-        where: { id: deliveryLocation.companyId },
-      });
-    }
   }
 
   async findById(id: DeliveryLocationId): Promise<DeliveryLocation | null> {
     const prismaDeliveryLocation = await prisma.deliveryLocation.findUnique({
       where: { id: id.value },
-      include: INCLUDE_COMPANY,
     });
 
     return prismaDeliveryLocation ? DeliveryLocationMapper.toDomain(prismaDeliveryLocation) : null;
   }
 
   async findByCode(code: CompanyCode): Promise<DeliveryLocation | null> {
-    const prismaDeliveryLocation = await prisma.deliveryLocation.findFirst({
-      where: {
-        company: {
-          code: code.value,
-          type: CompanyType.DELIVERY_LOCATION,
-        },
-      },
-      include: INCLUDE_COMPANY,
+    // 平坦化後（ADR-0043）は code が delivery_locations の一意列。型内一意なので
+    // 旧 CTI のような company join / type 絞り込みは不要。
+    const prismaDeliveryLocation = await prisma.deliveryLocation.findUnique({
+      where: { code: code.value },
     });
 
     return prismaDeliveryLocation ? DeliveryLocationMapper.toDomain(prismaDeliveryLocation) : null;

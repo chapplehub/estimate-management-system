@@ -20,10 +20,10 @@ describe("UpdateDeliveryLocationCommand", () => {
   const CUSTOMER_TEST_CODE = "CUST999932";
 
   beforeEach(async () => {
-    await prisma.company.deleteMany({
+    await prisma.deliveryLocation.deleteMany({
       where: { code: { in: DL_TEST_CODES } },
     });
-    await prisma.company.deleteMany({
+    await prisma.customer.deleteMany({
       where: { code: CUSTOMER_TEST_CODE },
     });
 
@@ -48,10 +48,10 @@ describe("UpdateDeliveryLocationCommand", () => {
   });
 
   afterEach(async () => {
-    await prisma.company.deleteMany({
+    await prisma.deliveryLocation.deleteMany({
       where: { code: { in: DL_TEST_CODES } },
     });
-    await prisma.company.deleteMany({
+    await prisma.customer.deleteMany({
       where: { code: CUSTOMER_TEST_CODE },
     });
   });

@@ -1,6 +1,5 @@
 import { Address } from "@server/shared/domain/values/Address";
 import { CompanyCode } from "@server/shared/domain/values/CompanyCode";
-import { CompanyId } from "@server/shared/domain/values/CompanyId";
 import { CompanyName } from "@server/shared/domain/values/CompanyName";
 import { FaxNumber } from "@server/shared/domain/values/FaxNumber";
 import { PhoneNumber } from "@server/shared/domain/values/PhoneNumber";
@@ -23,7 +22,7 @@ export type DeliveryLocationCreateOptions = {
 /**
  * 納品先エンティティ
  *
- * Company（取引先基底）の情報を埋め込んだ集約ルート。
+ * 取引先共通属性（コード・名称・住所・連絡先・有効フラグ）を自テーブルに持つ集約ルート（ADR-0043）。
  * 必ず1つの得意先（Customer）に紐づく。
  */
 export class DeliveryLocation {
@@ -31,7 +30,6 @@ export class DeliveryLocation {
 
   private constructor(
     private readonly _id: DeliveryLocationId,
-    private readonly _companyId: CompanyId,
     private readonly _code: CompanyCode,
     private _name: CompanyName,
     private _postalCode: PostalCode | null,
@@ -65,7 +63,6 @@ export class DeliveryLocation {
 
     return new DeliveryLocation(
       DeliveryLocationId.generate(),
-      CompanyId.generate(),
       code,
       name,
       options?.postalCode ?? null,
@@ -87,7 +84,6 @@ export class DeliveryLocation {
    */
   static reconstruct(
     id: DeliveryLocationId,
-    companyId: CompanyId,
     code: CompanyCode,
     name: CompanyName,
     postalCode: PostalCode | null,
@@ -104,7 +100,6 @@ export class DeliveryLocation {
   ): DeliveryLocation {
     return new DeliveryLocation(
       id,
-      companyId,
       code,
       name,
       postalCode,
@@ -173,10 +168,6 @@ export class DeliveryLocation {
 
   get id(): DeliveryLocationId {
     return this._id;
-  }
-
-  get companyId(): CompanyId {
-    return this._companyId;
   }
 
   get code(): CompanyCode {

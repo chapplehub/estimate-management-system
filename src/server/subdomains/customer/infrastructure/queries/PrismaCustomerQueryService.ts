@@ -5,7 +5,7 @@ import {
 } from "@subdomains/customer/application/queries/dto/CustomerSearchCriteria";
 import { CustomerQueryService } from "@subdomains/customer/application/queries/CustomerQueryService";
 import prisma from "@server/prisma";
-import { CompanyType, Prisma } from "@generated/prisma/client";
+import { Prisma } from "@generated/prisma/client";
 
 export class PrismaCustomerQueryService implements CustomerQueryService {
   async findById(id: string): Promise<CustomerDTO | null> {
@@ -18,10 +18,9 @@ export class PrismaCustomerQueryService implements CustomerQueryService {
   }
 
   async findByCode(code: string): Promise<CustomerDTO | null> {
-    const customer = await prisma.customer.findFirst({
-      where: {
-        company: { code, type: CompanyType.CUSTOMER },
-      },
+    // 平坦化後（ADR-0043）は code が customers の一意列。型内一意なので findUnique で足りる。
+    const customer = await prisma.customer.findUnique({
+      where: { code },
       select: this.getSelectFields(),
     });
 
@@ -48,42 +47,41 @@ export class PrismaCustomerQueryService implements CustomerQueryService {
 
   private buildWhereClause(criteria: CustomerSearchCriteria): Prisma.CustomerWhereInput {
     const where: Prisma.CustomerWhereInput = {};
-    const companyWhere: Prisma.CompanyWhereInput = { type: CompanyType.CUSTOMER };
 
     if (criteria.name) {
-      companyWhere.name = { contains: criteria.name, mode: "insensitive" };
+      where.name = { contains: criteria.name, mode: "insensitive" };
     }
 
     if (criteria.code) {
-      companyWhere.code = criteria.code;
+      where.code = criteria.code;
     }
 
     if (criteria.postalCode) {
-      companyWhere.postalCode = criteria.postalCode.replace(/-/g, "");
+      where.postalCode = criteria.postalCode.replace(/-/g, "");
     }
 
     if (criteria.prefecture) {
-      companyWhere.prefecture = criteria.prefecture;
+      where.prefecture = criteria.prefecture;
     }
 
     if (criteria.address) {
-      companyWhere.address = { contains: criteria.address, mode: "insensitive" };
+      where.address = { contains: criteria.address, mode: "insensitive" };
     }
 
     if (criteria.phoneNumber) {
-      companyWhere.phoneNumber = criteria.phoneNumber;
+      where.phoneNumber = criteria.phoneNumber;
     }
 
     if (criteria.faxNumber) {
-      companyWhere.faxNumber = criteria.faxNumber;
+      where.faxNumber = criteria.faxNumber;
     }
 
     if (criteria.contactPerson) {
-      companyWhere.contactPerson = { contains: criteria.contactPerson, mode: "insensitive" };
+      where.contactPerson = { contains: criteria.contactPerson, mode: "insensitive" };
     }
 
     if (criteria.isActive !== undefined) {
-      companyWhere.isActive = criteria.isActive;
+      where.isActive = criteria.isActive;
     }
 
     if (criteria.createdAfter || criteria.createdBefore) {
@@ -96,7 +94,6 @@ export class PrismaCustomerQueryService implements CustomerQueryService {
       }
     }
 
-    where.company = companyWhere;
     return where;
   }
 
@@ -109,63 +106,53 @@ export class PrismaCustomerQueryService implements CustomerQueryService {
 
     const { field, direction } = options.orderBy;
 
-    if (field === "name" || field === "code") {
-      return { company: { [field]: direction } };
-    }
-
     return { [field]: direction };
   }
 
   private getSelectFields() {
     return {
       id: true,
+      code: true,
+      name: true,
+      postalCode: true,
+      prefecture: true,
+      address: true,
+      phoneNumber: true,
+      faxNumber: true,
+      contactPerson: true,
+      isActive: true,
       marginRate: true,
       createdAt: true,
       updatedAt: true,
-      company: {
-        select: {
-          code: true,
-          name: true,
-          postalCode: true,
-          prefecture: true,
-          address: true,
-          phoneNumber: true,
-          faxNumber: true,
-          contactPerson: true,
-          isActive: true,
-        },
-      },
     } as const;
   }
 
   private toDTO(customer: {
     id: string;
+    code: string;
+    name: string;
+    postalCode: string | null;
+    prefecture: string | null;
+    address: string | null;
+    phoneNumber: string | null;
+    faxNumber: string | null;
+    contactPerson: string | null;
+    isActive: boolean;
     marginRate: Prisma.Decimal | null;
     createdAt: Date;
     updatedAt: Date;
-    company: {
-      code: string;
-      name: string;
-      postalCode: string | null;
-      prefecture: string | null;
-      address: string | null;
-      phoneNumber: string | null;
-      faxNumber: string | null;
-      contactPerson: string | null;
-      isActive: boolean;
-    };
   }): CustomerDTO {
     return {
       id: customer.id,
-      code: customer.company.code,
-      name: customer.company.name,
-      postalCode: customer.company.postalCode,
-      prefecture: customer.company.prefecture,
-      address: customer.company.address,
-      phoneNumber: customer.company.phoneNumber,
-      faxNumber: customer.company.faxNumber,
-      contactPerson: customer.company.contactPerson,
-      isActive: customer.company.isActive,
+      code: customer.code,
+      name: customer.name,
+      postalCode: customer.postalCode,
+      prefecture: customer.prefecture,
+      address: customer.address,
+      phoneNumber: customer.phoneNumber,
+      faxNumber: customer.faxNumber,
+      contactPerson: customer.contactPerson,
+      isActive: customer.isActive,
       marginRate: customer.marginRate !== null ? Number(customer.marginRate) : null,
       createdAt: customer.createdAt,
       updatedAt: customer.updatedAt,
