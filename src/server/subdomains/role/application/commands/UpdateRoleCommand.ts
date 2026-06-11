@@ -10,6 +10,8 @@ import { ValidationError } from "@server/shared/errors/DomainError";
 
 export type UpdateRoleInput = {
   id: string;
+  /** 編集画面表示時に取得した楽観ロックトークン（ADR-0039）。フォーム往復で持ち回る */
+  version: number;
   name?: string;
   superiorRoleId?: string | null;
 };
@@ -58,7 +60,7 @@ export class UpdateRoleCommand {
       role.changeSuperiorRole(newSuperiorRoleId);
     }
 
-    return await this.roleRepository.save(role);
+    return await this.roleRepository.update(role, input.version);
   }
 
   /**

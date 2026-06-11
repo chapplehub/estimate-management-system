@@ -60,6 +60,6 @@ export class CreateRoleCommand {
 
     const newRole = Role.create(roleCd, roleName, positionId, superiorRoleId);
 
-    return await this.roleRepository.save(newRole);
+    return await this.roleRepository.insert(newRole);
   }
 }
