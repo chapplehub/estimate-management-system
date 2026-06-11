@@ -50,6 +50,7 @@ export default async function Page({ params }: { params: Promise<{ roleCd: strin
           name: role.name,
           positionName: role.positionName,
           superiorRoleId: role.superiorRoleId,
+          version: role.version,
         }}
         canUpdate={canUpdate}
         superiorRoleOptions={superiorRoleOptions}
