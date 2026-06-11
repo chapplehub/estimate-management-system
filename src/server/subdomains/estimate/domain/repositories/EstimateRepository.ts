@@ -14,9 +14,17 @@ import { EstimateNumber } from "@subdomains/estimate/domain/values/EstimateNumbe
  */
 export interface EstimateRepository {
   /**
-   * 見積を保存（新規作成・更新）
+   * 見積を新規作成
    */
-  save(estimate: Estimate): Promise<Estimate>;
+  insert(estimate: Estimate): Promise<Estimate>;
+
+  /**
+   * 既存見積を更新（楽観ロック / ADR-0039）
+   *
+   * @param expectedVersion 編集画面表示時に取得した version（フォーム往復で持ち回るトークン）。
+   *   保存時点の version と一致しない場合は ConflictError を throw し、後勝ちの変更喪失を防ぐ。
+   */
+  update(estimate: Estimate, expectedVersion: number): Promise<Estimate>;
 
   /**
    * 見積を削除

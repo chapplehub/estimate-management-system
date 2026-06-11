@@ -17,12 +17,17 @@ export type TaxCheckedSaveResult =
  * 見積保存時の横断ポリシー（設計書 §8.6 / §8.7）を 1 箇所に集約した共通機構。
  *
  * 見積年月日・締切日の税率一致を検証し、不一致なら**保存せず** Result を返す
- * （§8.7「保存時＝その場で修正」。不整合を確定保存しない意図）。一致時のみ save し
+ * （§8.7「保存時＝その場で修正」。不整合を確定保存しない意図）。一致時のみ更新し
  * 保存済み集約を返す。再計算自体は集約ミューテータが ADR-0028 で自動実行済みのため
  * ここでは行わない。
+ *
+ * 利用元は既存集約の更新系コマンド（C2/C3/C4）のみのため、保存は楽観ロック付きの
+ * update で行う（ADR-0039）。expectedVersion は編集画面からフォーム往復で持ち回った
+ * トークンであり、不一致時はリポジトリが ConflictError を throw する。
  */
 export async function checkTaxRateThenSave(
   estimate: Estimate,
+  expectedVersion: number,
   deps: {
     taxRateConsistencyCheck: TaxRateConsistencyCheckDomainService;
     estimateRepository: EstimateRepository;
@@ -41,6 +46,6 @@ export async function checkTaxRateThenSave(
     };
   }
 
-  const saved = await deps.estimateRepository.save(estimate);
+  const saved = await deps.estimateRepository.update(estimate, expectedVersion);
   return { kind: "saved", estimate: saved };
 }

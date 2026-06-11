@@ -49,8 +49,8 @@ describe("PrismaEstimateNumberIssuer", () => {
 
   it("既存の最大連番 + 1 を払い出す（欠番があっても MAX 基準）", async () => {
     // 連番 1 と 3 を保存（2 は欠番）→ MAX=3 なので次は 4
-    await repository.save(buildNewEstimate(ids, "N9800001"));
-    await repository.save(buildNewEstimate(ids, "N9800003"));
+    await repository.insert(buildNewEstimate(ids, "N9800001"));
+    await repository.insert(buildNewEstimate(ids, "N9800003"));
 
     const number = await issuer.issueNext(fiscalYear, EstimateType.NEW);
 
@@ -59,7 +59,7 @@ describe("PrismaEstimateNumberIssuer", () => {
 
   it("見積種別ごとに連番は独立して採番される", async () => {
     // NEW で連番 1 を消費しても、REPAIR は 1 から採番される
-    await repository.save(buildNewEstimate(ids, "N9800001"));
+    await repository.insert(buildNewEstimate(ids, "N9800001"));
 
     const repairNumber = await issuer.issueNext(fiscalYear, EstimateType.REPAIR);
 
@@ -67,7 +67,7 @@ describe("PrismaEstimateNumberIssuer", () => {
   });
 
   it("連番が上限 99999 に達している場合は BusinessRuleViolationError を投げる", async () => {
-    await repository.save(buildNewEstimate(ids, "N9899999"));
+    await repository.insert(buildNewEstimate(ids, "N9899999"));
 
     await expect(issuer.issueNext(fiscalYear, EstimateType.NEW)).rejects.toThrow(
       BusinessRuleViolationError

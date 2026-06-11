@@ -28,6 +28,8 @@ const EN = {
   del: "N9900005",
   conflict: "N9900006",
   fkViolation: "N9900007",
+  optimistic: "N9900008",
+  staleToken: "N9900009",
   missing: "N9900099",
 } as const;
 const ALL_NUMBERS = Object.values(EN);
@@ -56,9 +58,9 @@ describe("PrismaEstimateRepository", () => {
     await cleanupEstimates();
   });
 
-  describe("save（新規）→ findById ラウンドトリップ", () => {
+  describe("insert → findById ラウンドトリップ", () => {
     it("NEW: バリエーション・明細・改訂明細詳細を含めて等価に再構築できる", async () => {
-      const saved = await repository.save(buildNewEstimate(ids, EN.new));
+      const saved = await repository.insert(buildNewEstimate(ids, EN.new));
 
       const found = await repository.findById(saved.id);
 
@@ -93,7 +95,7 @@ describe("PrismaEstimateRepository", () => {
     });
 
     it("REPAIR: repairDetail を含めて等価に再構築でき、afterRepairDetail は null", async () => {
-      const saved = await repository.save(buildRepairEstimate(ids, EN.repair));
+      const saved = await repository.insert(buildRepairEstimate(ids, EN.repair));
       const found = await repository.findById(saved.id);
 
       expect(found).not.toBeNull();
@@ -107,7 +109,7 @@ describe("PrismaEstimateRepository", () => {
     });
 
     it("AFTER_REPAIR: afterRepairDetail（警告フラグ含む）を等価に再構築でき、repairDetail は null", async () => {
-      const saved = await repository.save(buildAfterRepairEstimate(ids, EN.afterRepair));
+      const saved = await repository.insert(buildAfterRepairEstimate(ids, EN.afterRepair));
       const found = await repository.findById(saved.id);
 
       expect(found).not.toBeNull();
@@ -121,9 +123,9 @@ describe("PrismaEstimateRepository", () => {
     });
   });
 
-  describe("save（更新・差分 upsert）", () => {
+  describe("update（差分 upsert）", () => {
     it("明細の追加・削除・数量変更が反映され、残存明細の id は保持される", async () => {
-      const saved = await repository.save(buildNewEstimate(ids, EN.updateItems));
+      const saved = await repository.insert(buildNewEstimate(ids, EN.updateItems));
       const variationId = saved.variations[0].id;
       const keepItemId = saved.variations[0].items[0].id; // sortOrder 1（残す・数量変更）
       const removeItemId = saved.variations[0].items[1].id; // sortOrder 2（削除）
@@ -136,7 +138,7 @@ describe("PrismaEstimateRepository", () => {
         makeItem(ids.productId, { sortOrder: 3, itemName: "追加商品", unitPrice: 300, quantity: 1 })
       );
 
-      await repository.save(saved);
+      await repository.update(saved, 1);
       const found = await repository.findById(saved.id);
 
       expect(found).not.toBeNull();
@@ -155,7 +157,7 @@ describe("PrismaEstimateRepository", () => {
     });
 
     it("バリエーションの追加・削除が反映され、残存バリエーションの id は保持される", async () => {
-      const saved = await repository.save(
+      const saved = await repository.insert(
         buildNewEstimate(ids, EN.updateSwap, { variationNumbers: [1, 2] })
       );
       const keepVariationId = saved.variations.find((v) => v.variationNumber === 1)?.id;
@@ -168,7 +170,7 @@ describe("PrismaEstimateRepository", () => {
       saved.removeVariation(removeVariationId);
       saved.addVariation(makeVariation(ids.productId, 3));
 
-      await repository.save(saved);
+      await repository.update(saved, 1);
       const found = await repository.findById(saved.id);
 
       expect(found).not.toBeNull();
@@ -185,7 +187,7 @@ describe("PrismaEstimateRepository", () => {
 
   describe("findByEstimateNumber", () => {
     it("一致する見積を取得できる", async () => {
-      const saved = await repository.save(buildNewEstimate(ids, EN.findByNumber));
+      const saved = await repository.insert(buildNewEstimate(ids, EN.findByNumber));
       const found = await repository.findByEstimateNumber(EstimateNumber.parse(EN.findByNumber));
       expect(found?.id.value).toBe(saved.id.value);
     });
@@ -196,13 +198,13 @@ describe("PrismaEstimateRepository", () => {
     });
   });
 
-  describe("save（採番衝突）", () => {
+  describe("insert（採番衝突）", () => {
     it("既存と同一の見積番号を別集約で新規保存すると ConflictError を投げる", async () => {
       // 1 件目は成功
-      await repository.save(buildNewEstimate(ids, EN.conflict));
+      await repository.insert(buildNewEstimate(ids, EN.conflict));
 
       // 別 id・同一見積番号の集約を新規保存 → estimate_number @unique 違反
-      await expect(repository.save(buildNewEstimate(ids, EN.conflict))).rejects.toThrow(
+      await expect(repository.insert(buildNewEstimate(ids, EN.conflict))).rejects.toThrow(
         ConflictError
       );
     });
@@ -215,7 +217,7 @@ describe("PrismaEstimateRepository", () => {
 
       let caught: unknown;
       try {
-        await repository.save(buildNewEstimate(invalidIds, EN.fkViolation));
+        await repository.insert(buildNewEstimate(invalidIds, EN.fkViolation));
       } catch (error) {
         caught = error;
       }
@@ -225,9 +227,45 @@ describe("PrismaEstimateRepository", () => {
     });
   });
 
+  describe("楽観ロック（ADR-0039）", () => {
+    it("insert した集約（version 1）を expectedVersion=1 で更新でき、更新後は 2 で更新できる", async () => {
+      const saved = await repository.insert(buildNewEstimate(ids, EN.optimistic));
+
+      // insert 直後の version は 1。一致するトークンでの更新は成功し、version は 2 に進む
+      const first = await repository.update(saved, 1);
+      expect(first.id.value).toBe(saved.id.value);
+
+      // 進んだ version 2 を提示すれば続けて更新できる
+      await expect(repository.update(first, 2)).resolves.toBeDefined();
+    });
+
+    it("古い expectedVersion での更新は ConflictError になり、先行の変更は失われない", async () => {
+      const saved = await repository.insert(buildNewEstimate(ids, EN.staleToken));
+
+      // 2人のユーザーが同じ version 1 の画面を開いた状況を再現
+      const loadedByB = await repository.findById(saved.id);
+      const loadedByA = await repository.findById(saved.id);
+      expect(loadedByB).not.toBeNull();
+      expect(loadedByA).not.toBeNull();
+      if (!loadedByB || !loadedByA) return;
+
+      // B が先に保存（version 1 → 2）
+      loadedByB.changeDeadline(new Date("2025-12-31T00:00:00.000Z"));
+      await repository.update(loadedByB, 1);
+
+      // A が古いトークン 1 のまま保存 → 競合として弾かれる
+      loadedByA.changeDeadline(new Date("2025-11-30T00:00:00.000Z"));
+      await expect(repository.update(loadedByA, 1)).rejects.toThrow(ConflictError);
+
+      // B の変更が残っている（lost update が起きていない）
+      const found = await repository.findById(saved.id);
+      expect(found?.deadline.toISOString()).toBe("2025-12-31T00:00:00.000Z");
+    });
+  });
+
   describe("delete", () => {
     it("見積を削除すると子（variation/item/revisedDetail）がカスケード削除される", async () => {
-      const saved = await repository.save(buildNewEstimate(ids, EN.del));
+      const saved = await repository.insert(buildNewEstimate(ids, EN.del));
       const estimateId = saved.id.value;
 
       await repository.delete(saved.id);

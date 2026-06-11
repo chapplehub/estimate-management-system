@@ -14,7 +14,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { CreateEstimateCommand, type CreateEstimateInput } from "../CreateEstimateCommand";
 import { UpdateVariationCommand } from "../UpdateVariationCommand";
 
-const TEST_FISCAL_YEAR = 2097;
+// 採番年度で隔離（ファイル専用年度。割り当て一覧は UpdateEstimateCommand.test.ts 参照）
+const TEST_FISCAL_YEAR = 2094;
 
 async function cleanupTestYear(): Promise<void> {
   await prisma.estimate.deleteMany({ where: { fiscalYear: TEST_FISCAL_YEAR } });
@@ -47,8 +48,8 @@ describe("UpdateVariationCommand", () => {
   function createInput(overrides: Partial<CreateEstimateInput> = {}): CreateEstimateInput {
     return {
       estimateType: "NEW",
-      estimateDate: new Date("2097-04-01T00:00:00.000Z"),
-      deadline: new Date("2097-04-30T00:00:00.000Z"),
+      estimateDate: new Date("2094-04-01T00:00:00.000Z"),
+      deadline: new Date("2094-04-30T00:00:00.000Z"),
       submissionType: "CUSTOMER",
       customerId: ids.customerId,
       deliveryLocationId: ids.deliveryLocationId,
@@ -82,6 +83,7 @@ describe("UpdateVariationCommand", () => {
     const result = await command.execute({
       estimateId: created.id.value,
       variationId,
+      version: 1,
       content: {
         items: [
           {
@@ -122,12 +124,13 @@ describe("UpdateVariationCommand", () => {
     // 直接ドメイン経由で無効化して永続化（C5 De/Activate はスコープ外のため）
     const loaded = await repository.findById(created.id);
     loaded!.deactivateVariation(created.variations[0].id);
-    await repository.save(loaded!);
+    await repository.update(loaded!, 1);
 
     await expect(
       command.execute({
         estimateId: created.id.value,
         variationId,
+        version: 2, // 直前の無効化更新で 1 → 2 に進んでいる
         content: {
           items: [
             {
@@ -149,6 +152,7 @@ describe("UpdateVariationCommand", () => {
       command.execute({
         estimateId: "00000000-0000-7000-8000-0000000009ff",
         variationId: "00000000-0000-7000-8000-0000000009fe",
+        version: 1,
         content: { items: [] },
       })
     ).rejects.toThrow(NotFoundEntityError);

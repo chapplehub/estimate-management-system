@@ -27,6 +27,7 @@
 | [0031](0031-aggregate-reconstitution-exception-via-single-file-eslint-override.md) | 集約再構築の例外経路をMapper限定のESLintオーバーライドで開ける | 採用 | 2026-06-02 |
 | [0032](0032-identity-preserving-diff-upsert-for-multilevel-aggregate-update.md) | 多階層集約の更新はidentity保持の差分upsertを命令的トランザクションで行う | 採用 | 2026-06-02 |
 | [0035](0035-numbering-concurrency-max-plus-one-unique-manual-retry.md) | 採番の同時並行一意性をMAX(sequence)+1 + unique制約 + 手動リトライで担保する | 採用 | 2026-06-06 |
+| [0039](0039-cross-cutting-optimistic-locking-via-aggregate-root-version.md) | 楽観ロックは集約ルートの version 列＋フォーム往復＋リポジトリ insert/update 分割で横断適用する | 採用 | 2026-06-11 |
 
 ## アプリケーション（フロントエンド・認可）
 

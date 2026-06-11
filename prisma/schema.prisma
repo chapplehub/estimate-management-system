@@ -56,6 +56,9 @@ model Role {
   employeeRoles       EmployeeRole[]
   employeesAsSuperior Employee[]     @relation("EmployeeSuperiorRole")
 
+  // 楽観ロックトークン（ADR-0039）。更新ごとに +1
+  version Int @default(1)
+
   // タイムスタンプ
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -109,6 +112,9 @@ model Employee {
   confirmedOrders OrderConfirmation[] @relation("OrderConfirmer")
   cancelledOrders OrderCancellation[] @relation("OrderCanceller")
 
+  // 楽観ロックトークン（ADR-0039）。更新ごとに +1
+  version Int @default(1)
+
   // タイムスタンプ
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -142,6 +148,9 @@ model Department {
 
   // 部署紐付け見積（逆参照）
   estimates Estimate[] @relation("EstimateDepartment")
+
+  // 楽観ロックトークン（ADR-0039）。更新ごとに +1
+  version Int @default(1)
 
   // タイムスタンプ
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
@@ -285,6 +294,9 @@ model Customer {
   // 得意先紐付け見積（逆参照）
   estimates Estimate[] @relation("CustomerEstimates")
 
+  // 楽観ロックトークン（ADR-0039）。更新ごとに +1
+  version Int @default(1)
+
   // タイムスタンプ
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -306,6 +318,9 @@ model DeliveryLocation {
 
   // 納品先紐付け見積（逆参照）
   estimates Estimate[] @relation("DeliveryLocationEstimates")
+
+  // 楽観ロックトークン（ADR-0039）。更新ごとに +1
+  version Int @default(1)
 
   // タイムスタンプ
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
@@ -363,6 +378,9 @@ model Product {
 
   // 見積明細の品目スナップショット参照
   estimateItems EstimateItem[] @relation("EstimateItemProduct")
+
+  // 楽観ロックトークン（ADR-0039）。更新ごとに +1
+  version Int @default(1)
 
   // タイムスタンプ
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
@@ -483,6 +501,9 @@ model Estimate {
 
   // バリエーション
   variations EstimateVariation[]
+
+  // 楽観ロックトークン（ADR-0039）。更新ごとに +1
+  version Int @default(1)
 
   // タイムスタンプ
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
