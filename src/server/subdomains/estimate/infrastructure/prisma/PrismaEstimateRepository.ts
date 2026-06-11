@@ -18,58 +18,68 @@ import { Prisma } from "@generated/prisma/client";
  * 集約ルート Estimate 単位でのみ永続化し、子は集約経由でカスケードする。
  */
 export class PrismaEstimateRepository implements EstimateRepository {
+  /**
+   * @deprecated 移行期の互換 API。呼び出し元の insert / update 移行後に削除する（#301）。
+   */
   async save(estimate: Estimate): Promise<Estimate> {
     const existing = await prisma.estimate.findUnique({
       where: { id: estimate.id.value },
-      select: { id: true },
+      select: { version: true },
     });
 
-    if (existing) {
-      await PrismaEstimateRepository.update(estimate);
-    } else {
-      try {
-        await prisma.estimate.create({
-          data: EstimateMapper.toEstimateCreateInput(estimate),
-        });
-      } catch (error) {
-        // 並行作成で見積番号（estimate_number @unique）が衝突した場合は、
-        // インフラ詳細の P2002 をアプリ層の ConflictError へ翻訳して表面化する。
-        // 採番は楽観的 MAX+1（PrismaEstimateNumberIssuer）であり、衝突は手動リトライで吸収する。
-        if (PrismaEstimateRepository.isEstimateNumberConflict(error)) {
-          throw new ConflictError(
-            `見積番号 ${estimate.estimateNumber.value} は既に使用されています。もう一度登録してください。`
-          );
-        }
-        throw error;
+    return existing ? this.update(estimate, existing.version) : this.insert(estimate);
+  }
+
+  async insert(estimate: Estimate): Promise<Estimate> {
+    try {
+      await prisma.estimate.create({
+        data: EstimateMapper.toEstimateCreateInput(estimate),
+      });
+    } catch (error) {
+      // 並行作成で見積番号（estimate_number @unique）が衝突した場合は、
+      // インフラ詳細の P2002 をアプリ層の ConflictError へ翻訳して表面化する。
+      // 採番は楽観的 MAX+1（PrismaEstimateNumberIssuer）であり、衝突は手動リトライで吸収する。
+      if (PrismaEstimateRepository.isEstimateNumberConflict(error)) {
+        throw new ConflictError(
+          `見積番号 ${estimate.estimateNumber.value} は既に使用されています。もう一度登録してください。`
+        );
       }
+      throw error;
     }
 
-    const row = await prisma.estimate.findUnique({
-      where: { id: estimate.id.value },
-      include: ESTIMATE_FULL_INCLUDE,
-    });
-    if (!row) {
-      throw new Error(`保存した見積の再取得に失敗しました: ${estimate.id.value}`);
-    }
-    return EstimateMapper.toDomain(row);
+    return this.refetch(estimate.id.value);
   }
 
   /**
    * 既存集約の更新。子の行 identity（id・createdAt）を保持する差分 upsert。
    * 全削除→再作成にしないのは、EstimateVariation を参照する Order / Copy / Revision を
    * カスケード破壊しないため。
+   *
+   * 楽観ロック（ADR-0039）: ルート更新を WHERE id AND version の条件付き UPDATE で行い、
+   * 成功時に version を +1 する。expectedVersion はフォーム往復で持ち回ったトークン。
    */
-  private static async update(estimate: Estimate): Promise<void> {
+  async update(estimate: Estimate, expectedVersion: number): Promise<Estimate> {
     const estimateId = estimate.id.value;
     const variationIds = estimate.variations.map((v) => v.id.value);
 
     try {
       await prisma.$transaction(async (tx) => {
-        // 1. ルートの scalar フィールドを更新
-        await tx.estimate.update({
-          where: { id: estimateId },
-          data: EstimateMapper.toEstimateScalarData(estimate),
+        // 1. ルートの scalar フィールドを条件付き更新（楽観ロックのチェック地点）。
+        //    count 0 は「version 不一致（先行更新あり）」と「行の消失（削除済み）」の両方を
+        //    含むが、UPDATE 文からは区別できないため両方を覆うメッセージで競合として扱う。
+        //    throw により $transaction 全体（子の差分 upsert 含む）がロールバックされる。
+        const rootUpdate = await tx.estimate.updateMany({
+          where: { id: estimateId, version: expectedVersion },
+          data: {
+            ...EstimateMapper.toEstimateScalarData(estimate),
+            version: { increment: 1 },
+          },
         });
+        if (rootUpdate.count === 0) {
+          throw new ConflictError(
+            "他のユーザーによって更新または削除されています。画面を再読み込みして最新の内容を確認してください。"
+          );
+        }
 
         // 2. 集約から消えたバリエーションを削除（items → revisedDetail へカスケード）
         await tx.estimateVariation.deleteMany({
@@ -158,6 +168,20 @@ export class PrismaEstimateRepository implements EstimateRepository {
       }
       throw error;
     }
+
+    return this.refetch(estimateId);
+  }
+
+  /** 保存後の集約を完全な include で読み直して返す（insert / update の戻り値共通化） */
+  private async refetch(estimateId: string): Promise<Estimate> {
+    const row = await prisma.estimate.findUnique({
+      where: { id: estimateId },
+      include: ESTIMATE_FULL_INCLUDE,
+    });
+    if (!row) {
+      throw new Error(`保存した見積の再取得に失敗しました: ${estimateId}`);
+    }
+    return EstimateMapper.toDomain(row);
   }
 
   async delete(id: EstimateId): Promise<void> {

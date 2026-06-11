@@ -28,6 +28,8 @@ const EN = {
   del: "N9900005",
   conflict: "N9900006",
   fkViolation: "N9900007",
+  optimistic: "N9900008",
+  staleToken: "N9900009",
   missing: "N9900099",
 } as const;
 const ALL_NUMBERS = Object.values(EN);
@@ -222,6 +224,42 @@ describe("PrismaEstimateRepository", () => {
 
       expect(caught).toBeDefined();
       expect(caught).not.toBeInstanceOf(ConflictError);
+    });
+  });
+
+  describe("楽観ロック（ADR-0039）", () => {
+    it("insert した集約（version 1）を expectedVersion=1 で更新でき、更新後は 2 で更新できる", async () => {
+      const saved = await repository.insert(buildNewEstimate(ids, EN.optimistic));
+
+      // insert 直後の version は 1。一致するトークンでの更新は成功し、version は 2 に進む
+      const first = await repository.update(saved, 1);
+      expect(first.id.value).toBe(saved.id.value);
+
+      // 進んだ version 2 を提示すれば続けて更新できる
+      await expect(repository.update(first, 2)).resolves.toBeDefined();
+    });
+
+    it("古い expectedVersion での更新は ConflictError になり、先行の変更は失われない", async () => {
+      const saved = await repository.insert(buildNewEstimate(ids, EN.staleToken));
+
+      // 2人のユーザーが同じ version 1 の画面を開いた状況を再現
+      const loadedByB = await repository.findById(saved.id);
+      const loadedByA = await repository.findById(saved.id);
+      expect(loadedByB).not.toBeNull();
+      expect(loadedByA).not.toBeNull();
+      if (!loadedByB || !loadedByA) return;
+
+      // B が先に保存（version 1 → 2）
+      loadedByB.changeDeadline(new Date("2025-12-31T00:00:00.000Z"));
+      await repository.update(loadedByB, 1);
+
+      // A が古いトークン 1 のまま保存 → 競合として弾かれる
+      loadedByA.changeDeadline(new Date("2025-11-30T00:00:00.000Z"));
+      await expect(repository.update(loadedByA, 1)).rejects.toThrow(ConflictError);
+
+      // B の変更が残っている（lost update が起きていない）
+      const found = await repository.findById(saved.id);
+      expect(found?.deadline.toISOString()).toBe("2025-12-31T00:00:00.000Z");
     });
   });
 
