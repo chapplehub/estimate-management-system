@@ -40,7 +40,7 @@ export async function updateDepartment(
     return submission.reply();
   }
 
-  const { name, abbreviation, parentId, isActive } = submission.value;
+  const { name, abbreviation, parentId, isActive, version } = submission.value;
 
   // departmentCdからidを取得
   const queryService = new PrismaDepartmentQueryService();
@@ -58,6 +58,7 @@ export async function updateDepartment(
 
     await command.execute({
       id,
+      version,
       name,
       abbreviation,
       parentId: parentId ?? null,

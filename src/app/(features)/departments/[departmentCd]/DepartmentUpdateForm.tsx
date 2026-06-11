@@ -12,6 +12,8 @@ type Department = {
   abbreviation: string;
   isActive: boolean;
   parentId: string | null;
+  /** 楽観ロックトークン（ADR-0039）。hidden input でフォーム往復させる */
+  version: number;
 };
 
 type Props = {
@@ -32,6 +34,7 @@ export function DepartmentUpdateForm({ department, canUpdate, parentDepartmentSe
       abbreviation: department.abbreviation,
       parentId: department.parentId ?? "",
       isActive: department.isActive,
+      version: department.version,
     },
   });
 
@@ -53,6 +56,9 @@ export function DepartmentUpdateForm({ department, canUpdate, parentDepartmentSe
       )}
 
       <form {...getFormProps(form)} noValidate className="space-y-4">
+        {/* 楽観ロックトークン（ADR-0039）。画面表示時の version を往復させ、保存時の競合検知に使う */}
+        <input {...getInputProps(fields.version, { type: "hidden" })} />
+
         <div>
           <label
             htmlFor="departmentCd-display"

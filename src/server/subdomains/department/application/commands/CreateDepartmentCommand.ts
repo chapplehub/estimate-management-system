@@ -52,6 +52,6 @@ export class CreateDepartmentCommand {
 
     const newDepartment = Department.create(departmentCd, name, abbreviation, parentId);
 
-    return await this.departmentRepository.save(newDepartment);
+    return await this.departmentRepository.insert(newDepartment);
   }
 }

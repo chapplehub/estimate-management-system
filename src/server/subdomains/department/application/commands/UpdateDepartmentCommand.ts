@@ -8,6 +8,8 @@ import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 
 export type UpdateDepartmentInput = {
   id: string;
+  /** 編集画面表示時に取得した楽観ロックトークン（ADR-0039）。フォーム往復で持ち回る */
+  version: number;
   name?: string;
   abbreviation?: string;
   parentId?: string | null;
@@ -64,7 +66,7 @@ export class UpdateDepartmentCommand {
       }
     }
 
-    return await this.departmentRepository.save(department);
+    return await this.departmentRepository.update(department, input.version);
   }
 
   /**

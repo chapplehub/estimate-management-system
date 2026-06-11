@@ -10,9 +10,17 @@ import { DepartmentId } from "../values/DepartmentId";
  */
 export interface DepartmentRepository {
   /**
-   * 部署を保存（新規作成・更新）
+   * 部署を新規作成
    */
-  save(department: Department): Promise<Department>;
+  insert(department: Department): Promise<Department>;
+
+  /**
+   * 既存部署を更新（楽観ロック / ADR-0039）
+   *
+   * @param expectedVersion 編集画面表示時に取得した version（フォーム往復で持ち回るトークン）。
+   *   保存時点の version と一致しない場合は ConflictError を throw し、後勝ちの変更喪失を防ぐ。
+   */
+  update(department: Department, expectedVersion: number): Promise<Department>;
 
   /**
    * 部署を削除
