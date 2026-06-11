@@ -47,6 +47,7 @@ describe("UpdateDepartmentCommand", () => {
   it("部署名を更新できる", async () => {
     const result = await command.execute({
       id: baseDeptId,
+      version: 1,
       name: "新営業部",
     });
 
@@ -56,6 +57,7 @@ describe("UpdateDepartmentCommand", () => {
   it("略称を更新できる", async () => {
     const result = await command.execute({
       id: baseDeptId,
+      version: 1,
       abbreviation: "新営業",
     });
 
@@ -66,12 +68,14 @@ describe("UpdateDepartmentCommand", () => {
     await expect(
       command.execute({
         id: "00000000-0000-7000-8000-000000000000",
+        version: 1,
         name: "新営業部",
       })
     ).rejects.toThrow(NotFoundEntityError);
     await expect(
       command.execute({
         id: "00000000-0000-7000-8000-000000000000",
+        version: 1,
         name: "新営業部",
       })
     ).rejects.toThrow("部署が見つかりません");
@@ -86,6 +90,7 @@ describe("UpdateDepartmentCommand", () => {
 
     const result = await command.execute({
       id: baseDeptId,
+      version: 1,
       isActive: true,
     });
 
@@ -95,6 +100,7 @@ describe("UpdateDepartmentCommand", () => {
   it("部署を無効化できる", async () => {
     const result = await command.execute({
       id: baseDeptId,
+      version: 1,
       isActive: false,
     });
 
@@ -117,12 +123,14 @@ describe("UpdateDepartmentCommand", () => {
     await expect(
       command.execute({
         id: baseDeptId,
+        version: 1,
         isActive: false,
       })
     ).rejects.toThrow(BusinessRuleViolationError);
     await expect(
       command.execute({
         id: baseDeptId,
+        version: 1,
         isActive: false,
       })
     ).rejects.toThrow("有効な子部署が存在するため、この部署を無効化できません");
@@ -142,6 +150,7 @@ describe("UpdateDepartmentCommand", () => {
 
     const result = await command.execute({
       id: baseDeptId,
+      version: 1,
       parentId: newParentId,
     });
 
@@ -152,12 +161,14 @@ describe("UpdateDepartmentCommand", () => {
     await expect(
       command.execute({
         id: baseDeptId,
+        version: 1,
         parentId: baseDeptId,
       })
     ).rejects.toThrow(BusinessRuleViolationError);
     await expect(
       command.execute({
         id: baseDeptId,
+        version: 1,
         parentId: baseDeptId,
       })
     ).rejects.toThrow("自分自身を親部署にすることはできません");
@@ -167,12 +178,14 @@ describe("UpdateDepartmentCommand", () => {
     await expect(
       command.execute({
         id: baseDeptId,
+        version: 1,
         parentId: "00000000-0000-7000-8000-000000000001",
       })
     ).rejects.toThrow(BusinessRuleViolationError);
     await expect(
       command.execute({
         id: baseDeptId,
+        version: 1,
         parentId: "00000000-0000-7000-8000-000000000001",
       })
     ).rejects.toThrow("親部署が存在しません");
@@ -193,12 +206,14 @@ describe("UpdateDepartmentCommand", () => {
     await expect(
       command.execute({
         id: baseDeptId,
+        version: 1,
         parentId: inactiveParentId,
       })
     ).rejects.toThrow(BusinessRuleViolationError);
     await expect(
       command.execute({
         id: baseDeptId,
+        version: 1,
         parentId: inactiveParentId,
       })
     ).rejects.toThrow("無効な部署を親部署に設定することはできません");
@@ -233,12 +248,14 @@ describe("UpdateDepartmentCommand", () => {
     await expect(
       command.execute({
         id: baseDeptId,
+        version: 1,
         parentId: deptCId,
       })
     ).rejects.toThrow(BusinessRuleViolationError);
     await expect(
       command.execute({
         id: baseDeptId,
+        version: 1,
         parentId: deptCId,
       })
     ).rejects.toThrow("循環参照が発生するため、この親部署は設定できません");

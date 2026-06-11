@@ -39,7 +39,7 @@ describe("DepartmentCdDuplicationCheckDomainService", () => {
       new DepartmentName("テスト部署"),
       new Abbreviation("テスト")
     );
-    await repository.save(department);
+    await repository.insert(department);
 
     const isDuplicated = await service.execute(new DepartmentCd(TEST_CODES[0]));
     expect(isDuplicated).toBe(true);

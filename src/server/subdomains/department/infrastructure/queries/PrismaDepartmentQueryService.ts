@@ -190,6 +190,7 @@ export class PrismaDepartmentQueryService implements DepartmentQueryService {
       abbreviation: true,
       isActive: true,
       parentId: true,
+      version: true,
       createdAt: true,
       updatedAt: true,
     } as const;
@@ -205,6 +206,7 @@ export class PrismaDepartmentQueryService implements DepartmentQueryService {
     abbreviation: string;
     isActive: boolean;
     parentId: string | null;
+    version: number;
     createdAt: Date;
     updatedAt: Date;
   }): DepartmentDTO {
@@ -215,6 +217,7 @@ export class PrismaDepartmentQueryService implements DepartmentQueryService {
       abbreviation: department.abbreviation,
       isActive: department.isActive,
       parentId: department.parentId,
+      version: department.version,
       createdAt: department.createdAt,
       updatedAt: department.updatedAt,
     };
