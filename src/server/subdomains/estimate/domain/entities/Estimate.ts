@@ -16,9 +16,10 @@ import { SubmissionType } from "../values/SubmissionType";
 import { TaxRate } from "../values/TaxRate";
 import { TaxRoundingType } from "../values/TaxRoundingType";
 import type { AfterRepairEstimateDetail } from "./AfterRepairEstimateDetail";
-import type { EstimateItem } from "./EstimateItem";
+import { EstimateItem } from "./EstimateItem";
 import { EstimateVariation, type TaxContext, type VariationContent } from "./EstimateVariation";
 import type { RepairEstimateDetail } from "./RepairEstimateDetail";
+import { RevisedEstimateItemDetail } from "./RevisedEstimateItemDetail";
 
 /**
  * Estimate 集約ルート（§11.3.1 / ADR-0019）。
@@ -185,6 +186,63 @@ export class Estimate {
     });
     this.addVariation(variation);
     return variation;
+  }
+
+  /**
+   * 得意先改訂（C7・§7.2）: 納品先宛の改訂元から得意先宛の新バリエーションを
+   * 同一集約内に生成する。採番なし・集約内で完結する（C6 複製と本質的に異なる）。
+   *
+   * 生成規則:
+   * - 明細・価格・値引・メモを全複写する（C6 の単価クリアと異なり、納品先価格を
+   *   得意先卸値へ「調整」する出発点として引き継ぐ）
+   * - 明細ごとに改訂元明細の finalAmount を deliveryPrice としてスナップショットする
+   *   （明細単位の粗利 = 納品先価格 − 得意先価格 の真実の源・§8.4。改訂元は凍結される
+   *   が、見積書に印字される確定値のため導出ではなくスナップショットを真実の源とする）
+   * - バリエーション番号は max+1（§A.2）・ステータス ACTIVE・出自 revisedFrom = 改訂元
+   *
+   * 前提条件: 改訂元は納品先宛かつ有効（ACTIVE）であること。
+   * 同一改訂元からの再改訂（複数の得意先宛派生）は許可される。
+   */
+  reviseForCustomer(sourceVariationId: EstimateVariationId): EstimateVariation {
+    const source = this.findVariationOrThrow(sourceVariationId);
+    if (!source.submissionType.isDeliveryLocation()) {
+      throw new BusinessRuleViolationError(
+        "得意先改訂の改訂元にできるのは納品先宛バリエーションのみです（§7.2）"
+      );
+    }
+    if (!source.isActive()) {
+      throw new BusinessRuleViolationError(
+        "無効状態のバリエーションは得意先改訂の改訂元にできません"
+      );
+    }
+
+    const items = source.items.map((item) =>
+      EstimateItem.create({
+        productId: item.productId,
+        sortOrder: item.sortOrder,
+        itemName: item.itemName,
+        quantity: item.quantity,
+        unit: item.unit,
+        unitPrice: item.unitPrice,
+        discountRate: item.discountRate,
+        itemDiscount: item.itemDiscount,
+        customerMemo: item.customerMemo,
+        internalMemo: item.internalMemo,
+        revisedDetail: RevisedEstimateItemDetail.create(item.finalAmount),
+      })
+    );
+    const revised = EstimateVariation.create({
+      variationNumber: this.nextVariationNumber(),
+      submissionType: SubmissionType.CUSTOMER,
+      revisedFrom: source.id,
+      tax: this.taxContext(),
+      items,
+      overallDiscount: source.overallDiscount,
+      customerMemo: source.customerMemo,
+      internalMemo: source.internalMemo,
+    });
+    this.addVariation(revised);
+    return revised;
   }
 
   /**

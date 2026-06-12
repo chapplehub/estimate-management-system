@@ -7,6 +7,7 @@ import { ProductId } from "@subdomains/product/domain/values/ProductId";
 import { describe, expect, it } from "vitest";
 import { EmergencyReason } from "../../values/EmergencyReason";
 import { EstimateNumber } from "../../values/EstimateNumber";
+import { EstimateVariationId } from "../../values/EstimateVariationId";
 import { FaultDescription } from "../../values/FaultDescription";
 import { ItemName } from "../../values/ItemName";
 import { Money } from "../../values/Money";
@@ -444,6 +445,113 @@ describe("Estimate", () => {
 
       expect(() => e.updateVariation(other.id, { items: [makeItem()] })).toThrow(
         "指定されたバリエーションは存在しません"
+      );
+    });
+  });
+
+  describe("reviseForCustomer() - 得意先改訂（C7・§7.2）", () => {
+    /** 納品先宛バリエーション1つ（明細2件・全体値引あり）の見積を組み立てる。 */
+    function buildDeliveryEstimate() {
+      const itemA = EstimateItem.create({
+        productId: ProductId.generate(),
+        sortOrder: 1,
+        itemName: new ItemName("商品A"),
+        quantity: new Quantity(2),
+        unit: new Unit("個"),
+        unitPrice: Money.fromMajorUnits(500000),
+        itemDiscount: Money.fromMajorUnits(10000),
+      });
+      const itemB = EstimateItem.create({
+        productId: ProductId.generate(),
+        sortOrder: 2,
+        itemName: new ItemName("商品B"),
+        quantity: new Quantity(1),
+        unit: new Unit("式"),
+        unitPrice: Money.fromMajorUnits(200000),
+      });
+      const source = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.DELIVERY_LOCATION,
+        tax: TAX,
+        items: [itemA, itemB],
+        overallDiscount: Money.fromMajorUnits(5000),
+      });
+      const estimate = Estimate.create({
+        ...commonHeader(),
+        estimateNumber: EstimateNumber.parse("N2500001"),
+        variations: [source],
+      });
+      return { estimate, source, itemA, itemB };
+    }
+
+    it("納品先宛バリエーションから得意先宛の新バリエーションを生成する（全複写・調整の出発点）", () => {
+      const { estimate, source, itemA, itemB } = buildDeliveryEstimate();
+
+      const revised = estimate.reviseForCustomer(source.id);
+
+      // 得意先宛・出自=改訂元・max+1採番・ACTIVE
+      expect(revised.submissionType).toBe(SubmissionType.CUSTOMER);
+      expect(revised.revisedFrom?.equals(source.id)).toBe(true);
+      expect(revised.variationNumber).toBe(2);
+      expect(revised.isActive()).toBe(true);
+      expect(estimate.variations).toHaveLength(2);
+
+      // 明細は全複写（C6 と異なり単価・値引もクリアしない）
+      expect(revised.items).toHaveLength(2);
+      const [revisedA, revisedB] = revised.items;
+      expect(revisedA!.itemName.value).toBe("商品A");
+      expect(revisedA!.unitPrice.equals(itemA.unitPrice)).toBe(true);
+      expect(revisedA!.quantity.value).toBe(2);
+      expect(revisedA!.itemDiscount.equals(itemA.itemDiscount)).toBe(true);
+      expect(revisedB!.unitPrice.equals(itemB.unitPrice)).toBe(true);
+      expect(revised.overallDiscount.equals(source.overallDiscount)).toBe(true);
+
+      // deliveryPrice スナップショット = 改訂元明細の finalAmount（§8.4）
+      expect(revisedA!.revisedDetail?.deliveryPrice.equals(itemA.finalAmount)).toBe(true);
+      expect(revisedB!.revisedDetail?.deliveryPrice.equals(itemB.finalAmount)).toBe(true);
+    });
+
+    it("得意先宛バリエーションは改訂元にできない", () => {
+      const { estimate, source } = buildDeliveryEstimate();
+      const revised = estimate.reviseForCustomer(source.id);
+
+      expect(() => estimate.reviseForCustomer(revised.id)).toThrow(BusinessRuleViolationError);
+    });
+
+    it("無効（INACTIVE）のバリエーションは改訂元にできない", () => {
+      const { estimate, source } = buildDeliveryEstimate();
+      estimate.deactivateVariation(source.id);
+
+      expect(() => estimate.reviseForCustomer(source.id)).toThrow(BusinessRuleViolationError);
+    });
+
+    it("存在しないバリエーションを改訂元に指定するとエラー", () => {
+      const { estimate } = buildDeliveryEstimate();
+
+      expect(() => estimate.reviseForCustomer(EstimateVariationId.generate())).toThrow(
+        BusinessRuleViolationError
+      );
+    });
+
+    it("同じ改訂元から再改訂できる（1ソース→複数の得意先宛派生）", () => {
+      const { estimate, source } = buildDeliveryEstimate();
+
+      const first = estimate.reviseForCustomer(source.id);
+      const second = estimate.reviseForCustomer(source.id);
+
+      expect(first.variationNumber).toBe(2);
+      expect(second.variationNumber).toBe(3);
+      expect(second.revisedFrom?.equals(source.id)).toBe(true);
+      expect(estimate.variations).toHaveLength(3);
+    });
+
+    it("改訂すると改訂元は凍結され、以降編集不可になる", () => {
+      const { estimate, source } = buildDeliveryEstimate();
+
+      estimate.reviseForCustomer(source.id);
+
+      expect(() => estimate.updateVariation(source.id, { items: [makeItem()] })).toThrow(
+        BusinessRuleViolationError
       );
     });
   });
