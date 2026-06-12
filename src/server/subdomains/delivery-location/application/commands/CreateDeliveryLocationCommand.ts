@@ -72,6 +72,6 @@ export class CreateDeliveryLocationCommand {
       }
     );
 
-    await this.deliveryLocationRepository.save(deliveryLocation);
+    await this.deliveryLocationRepository.insert(deliveryLocation);
   }
 }

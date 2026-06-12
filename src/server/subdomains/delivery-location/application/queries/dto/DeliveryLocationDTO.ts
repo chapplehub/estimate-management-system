@@ -16,6 +16,8 @@ export type DeliveryLocationDTO = {
   customerName: string;
   customerCode: string;
   deliveryNotes: string | null;
+  /** 楽観ロックトークン（ADR-0039）。編集・状態変更フォームで往復させる。 */
+  version: number;
   createdAt: Date;
   updatedAt: Date;
 };

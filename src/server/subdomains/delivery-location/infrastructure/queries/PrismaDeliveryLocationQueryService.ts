@@ -95,6 +95,7 @@ export class PrismaDeliveryLocationQueryService implements DeliveryLocationQuery
       isActive: true,
       customerId: true,
       deliveryNotes: true,
+      version: true,
       createdAt: true,
       updatedAt: true,
       // 親得意先の名称・コード（一覧DTOにリレーション先名を含める / ADR-0013）
@@ -120,6 +121,7 @@ export class PrismaDeliveryLocationQueryService implements DeliveryLocationQuery
     isActive: boolean;
     customerId: string;
     deliveryNotes: string | null;
+    version: number;
     createdAt: Date;
     updatedAt: Date;
     customer: {
@@ -142,6 +144,7 @@ export class PrismaDeliveryLocationQueryService implements DeliveryLocationQuery
       customerName: dl.customer.name,
       customerCode: dl.customer.code,
       deliveryNotes: dl.deliveryNotes,
+      version: dl.version,
       createdAt: dl.createdAt,
       updatedAt: dl.updatedAt,
     };

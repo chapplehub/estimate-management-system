@@ -1,5 +1,5 @@
 import prisma from "@server/prisma";
-import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
+import { ConflictError, NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { CompanyCode } from "@server/shared/domain/values/CompanyCode";
 import { CompanyName } from "@server/shared/domain/values/CompanyName";
 import { Customer } from "@subdomains/customer/domain/entities/Customer";
@@ -43,7 +43,7 @@ describe("UpdateDeliveryLocationCommand", () => {
       new CompanyName("更新前納品先"),
       savedCustomer.id
     );
-    const savedDl = await dlRepository.save(dl);
+    const savedDl = await dlRepository.insert(dl);
     testDeliveryLocationId = savedDl.id.value;
   });
 
@@ -59,6 +59,7 @@ describe("UpdateDeliveryLocationCommand", () => {
   it("納品先情報を更新できる（名前変更）", async () => {
     await command.execute({
       id: testDeliveryLocationId,
+      expectedVersion: 1,
       name: "更新後納品先",
     });
 
@@ -70,6 +71,7 @@ describe("UpdateDeliveryLocationCommand", () => {
   it("住所・連絡先・配送メモを更新できる", async () => {
     await command.execute({
       id: testDeliveryLocationId,
+      expectedVersion: 1,
       name: "更新前納品先",
       postalCode: "300-0003",
       prefecture: "愛知県",
@@ -92,9 +94,10 @@ describe("UpdateDeliveryLocationCommand", () => {
   });
 
   it("nullを渡すとオプション項目をクリアできる", async () => {
-    // まず値を設定
+    // まず値を設定（version 1 → 2）
     await command.execute({
       id: testDeliveryLocationId,
+      expectedVersion: 1,
       name: "更新前納品先",
       postalCode: "300-0003",
       prefecture: "愛知県",
@@ -105,9 +108,10 @@ describe("UpdateDeliveryLocationCommand", () => {
       deliveryNotes: "午前中のみ受付可能",
     });
 
-    // nullで全クリア
+    // nullで全クリア（version 2 → 3）
     await command.execute({
       id: testDeliveryLocationId,
+      expectedVersion: 2,
       name: "更新前納品先",
       postalCode: null,
       prefecture: null,
@@ -133,14 +137,27 @@ describe("UpdateDeliveryLocationCommand", () => {
     await expect(
       command.execute({
         id: "00000000-0000-7000-8000-000000000000",
+        expectedVersion: 1,
         name: "存在しない",
       })
     ).rejects.toThrow(NotFoundEntityError);
     await expect(
       command.execute({
         id: "00000000-0000-7000-8000-000000000000",
+        expectedVersion: 1,
         name: "存在しない",
       })
     ).rejects.toThrow("納品先が見つかりません");
+  });
+
+  it("古い expectedVersion を渡すと ConflictError（リポジトリの楽観ロックへ素通しされる）", async () => {
+    // 現在の version は 1。stale なトークン（999）を渡すと条件付き UPDATE が count=0 になる
+    await expect(
+      command.execute({
+        id: testDeliveryLocationId,
+        expectedVersion: 999,
+        name: "競合する更新",
+      })
+    ).rejects.toThrow(ConflictError);
   });
 });

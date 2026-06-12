@@ -19,6 +19,7 @@ type DeliveryLocation = {
   deliveryNotes: string | null;
   customerName: string;
   customerCode: string;
+  version: number;
 };
 
 type Props = {
@@ -40,6 +41,7 @@ export function DeliveryLocationUpdateForm({ deliveryLocation }: Props) {
       faxNumber: deliveryLocation.faxNumber ?? "",
       contactPerson: deliveryLocation.contactPerson ?? "",
       deliveryNotes: deliveryLocation.deliveryNotes ?? "",
+      version: String(deliveryLocation.version),
     },
   });
 
@@ -56,6 +58,8 @@ export function DeliveryLocationUpdateForm({ deliveryLocation }: Props) {
       )}
 
       <form {...getFormProps(form)} noValidate>
+        {/* 楽観ロックトークン（ADR-0039）。編集画面表示時の version を往復させる。 */}
+        <input {...getInputProps(fields.version, { type: "hidden" })} />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label htmlFor="code-display" className="block text-gray-700 text-sm font-bold mb-2">

@@ -9,9 +9,17 @@ import { DeliveryLocationId } from "@subdomains/delivery-location/domain/values/
  */
 export interface DeliveryLocationRepository {
   /**
-   * 納品先を保存（新規作成・更新）
+   * 納品先を新規作成
    */
-  save(deliveryLocation: DeliveryLocation): Promise<DeliveryLocation>;
+  insert(deliveryLocation: DeliveryLocation): Promise<DeliveryLocation>;
+
+  /**
+   * 既存納品先を更新（楽観ロック / ADR-0039）
+   *
+   * @param expectedVersion 編集画面表示時に取得した version（フォーム往復で持ち回るトークン）。
+   *   保存時点の version と一致しない場合は ConflictError を throw し、後勝ちの変更喪失を防ぐ。
+   */
+  update(deliveryLocation: DeliveryLocation, expectedVersion: number): Promise<DeliveryLocation>;
 
   /**
    * 納品先を削除

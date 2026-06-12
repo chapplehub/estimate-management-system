@@ -5,6 +5,8 @@ import { DeliveryLocationId } from "@subdomains/delivery-location/domain/values/
 
 export type ActivateDeliveryLocationInput = {
   id: string;
+  /** 一覧・詳細の有効化ボタン表示時の version（楽観ロックトークン / ADR-0039）。 */
+  expectedVersion: number;
 };
 
 /**
@@ -22,6 +24,6 @@ export class ActivateDeliveryLocationCommand {
 
     deliveryLocation.activate();
 
-    return await this.deliveryLocationRepository.save(deliveryLocation);
+    return await this.deliveryLocationRepository.update(deliveryLocation, input.expectedVersion);
   }
 }

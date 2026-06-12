@@ -12,6 +12,8 @@ import { DeliveryNotes } from "@subdomains/delivery-location/domain/values/Deliv
 
 export type UpdateDeliveryLocationInput = {
   id: string;
+  /** 編集画面表示時の version（楽観ロックトークン / ADR-0039）。リポジトリへ素通しする。 */
+  expectedVersion: number;
   name: string;
   postalCode?: string | null;
   prefecture?: string | null;
@@ -55,6 +57,6 @@ export class UpdateDeliveryLocationCommand {
       input.deliveryNotes ? new DeliveryNotes(input.deliveryNotes) : null
     );
 
-    await this.deliveryLocationRepository.save(deliveryLocation);
+    await this.deliveryLocationRepository.update(deliveryLocation, input.expectedVersion);
   }
 }

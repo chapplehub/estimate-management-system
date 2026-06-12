@@ -7,12 +7,15 @@ type Props = {
   deliveryLocationId: string;
   deliveryLocationCode: string;
   isActive: boolean;
+  /** 楽観ロックトークン（ADR-0039）。状態変更時にフォームで往復させる。 */
+  version: number;
 };
 
 export function DeliveryLocationStatusForms({
   deliveryLocationId,
   deliveryLocationCode,
   isActive,
+  version,
 }: Props) {
   const [activateState, activateAction, isActivating] = useActionState(activateDeliveryLocation, {
     success: true,
@@ -42,6 +45,7 @@ export function DeliveryLocationStatusForms({
         <form noValidate action={deactivateAction}>
           <input type="hidden" name="id" value={deliveryLocationId} />
           <input type="hidden" name="code" value={deliveryLocationCode} />
+          <input type="hidden" name="version" value={version} />
           <button
             type="submit"
             disabled={isDeactivating}
@@ -54,6 +58,7 @@ export function DeliveryLocationStatusForms({
         <form noValidate action={activateAction}>
           <input type="hidden" name="id" value={deliveryLocationId} />
           <input type="hidden" name="code" value={deliveryLocationCode} />
+          <input type="hidden" name="version" value={version} />
           <button
             type="submit"
             disabled={isActivating}
