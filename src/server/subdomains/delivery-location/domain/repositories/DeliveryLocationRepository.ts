@@ -9,13 +9,6 @@ import { DeliveryLocationId } from "@subdomains/delivery-location/domain/values/
  */
 export interface DeliveryLocationRepository {
   /**
-   * 納品先を保存（新規作成・更新）
-   *
-   * @deprecated insert / update へ移行中（ADR-0039）。新規コードでは使用しない。
-   */
-  save(deliveryLocation: DeliveryLocation): Promise<DeliveryLocation>;
-
-  /**
    * 納品先を新規作成
    */
   insert(deliveryLocation: DeliveryLocation): Promise<DeliveryLocation>;

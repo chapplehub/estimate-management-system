@@ -43,7 +43,7 @@ describe("DeleteDeliveryLocationCommand", () => {
       new CompanyName("削除テスト納品先"),
       savedCustomer.id
     );
-    const savedDl = await dlRepository.save(dl);
+    const savedDl = await dlRepository.insert(dl);
     testDeliveryLocationId = savedDl.id.value;
   });
 

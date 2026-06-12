@@ -39,9 +39,11 @@ export async function updateDeliveryLocation(code: string, prevState: unknown, f
     faxNumber,
     contactPerson,
     deliveryNotes,
+    version,
   } = submission.value;
 
-  // codeからidを取得
+  // codeからidを取得（version は再取得値ではなくフォーム由来の値を使う。
+  // 編集ウィンドウのトークンを守るため。ADR-0039）
   const query = getDeliveryLocationByCodeQueryFactory();
   const deliveryLocation = await query.execute({ code });
   if (!deliveryLocation) {
@@ -54,6 +56,7 @@ export async function updateDeliveryLocation(code: string, prevState: unknown, f
     const command = updateDeliveryLocationCommandFactory();
     await command.execute({
       id: deliveryLocation.id,
+      expectedVersion: version,
       name,
       postalCode: postalCode || null,
       prefecture: prefecture || null,
@@ -111,10 +114,11 @@ export async function activateDeliveryLocation(
 
   const id = formData.get("id") as string;
   const code = formData.get("code") as string;
+  const expectedVersion = Number(formData.get("version"));
 
   try {
     const command = activateDeliveryLocationCommandFactory();
-    await command.execute({ id });
+    await command.execute({ id, expectedVersion });
 
     revalidatePath("/delivery-locations");
     revalidatePath(`/delivery-locations/${code}`);
@@ -136,10 +140,11 @@ export async function deactivateDeliveryLocation(
 
   const id = formData.get("id") as string;
   const code = formData.get("code") as string;
+  const expectedVersion = Number(formData.get("version"));
 
   try {
     const command = deactivateDeliveryLocationCommandFactory();
-    await command.execute({ id });
+    await command.execute({ id, expectedVersion });
 
     revalidatePath("/delivery-locations");
     revalidatePath(`/delivery-locations/${code}`);

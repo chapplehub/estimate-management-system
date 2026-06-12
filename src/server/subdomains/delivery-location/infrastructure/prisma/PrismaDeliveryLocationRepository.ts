@@ -7,23 +7,6 @@ import { DeliveryLocationId } from "@subdomains/delivery-location/domain/values/
 import { DeliveryLocationMapper } from "@subdomains/delivery-location/infrastructure/mappers/DeliveryLocationMapper";
 
 export class PrismaDeliveryLocationRepository implements DeliveryLocationRepository {
-  async save(deliveryLocation: DeliveryLocation): Promise<DeliveryLocation> {
-    const existing = await prisma.deliveryLocation.findUnique({
-      where: { id: deliveryLocation.id.value },
-    });
-
-    const prismaDeliveryLocation = existing
-      ? await prisma.deliveryLocation.update({
-          where: { id: deliveryLocation.id.value },
-          data: DeliveryLocationMapper.toPrismaUpdate(deliveryLocation),
-        })
-      : await prisma.deliveryLocation.create({
-          data: DeliveryLocationMapper.toPrismaCreate(deliveryLocation),
-        });
-
-    return DeliveryLocationMapper.toDomain(prismaDeliveryLocation);
-  }
-
   /**
    * 納品先を新規作成（version は @default(1)）
    */

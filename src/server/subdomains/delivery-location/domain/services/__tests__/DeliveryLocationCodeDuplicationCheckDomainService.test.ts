@@ -55,7 +55,7 @@ describe("DeliveryLocationCodeDuplicationCheckDomainService", () => {
   it("重複がある場合、trueを返す", async () => {
     const code = new CompanyCode(DL_TEST_CODES[0]);
     const dl = DeliveryLocation.create(code, new CompanyName("テスト倉庫"), customerId);
-    await dlRepository.save(dl);
+    await dlRepository.insert(dl);
 
     const isDuplicated = await service.execute(code);
     expect(isDuplicated).toBe(true);
@@ -64,7 +64,7 @@ describe("DeliveryLocationCodeDuplicationCheckDomainService", () => {
   it("異なるコードで重複がない場合、falseを返す", async () => {
     const existingCode = new CompanyCode(DL_TEST_CODES[0]);
     const dl = DeliveryLocation.create(existingCode, new CompanyName("テスト倉庫"), customerId);
-    await dlRepository.save(dl);
+    await dlRepository.insert(dl);
 
     const newCode = new CompanyCode(DL_TEST_CODES[1]);
     const isDuplicated = await service.execute(newCode);
