@@ -190,16 +190,29 @@ export class Estimate {
   /**
    * 指定バリエーションの内容を一括差替えする（C4 UpdateVariation）。
    * §3.4 無効状態の編集不可ガードは EstimateVariation.replaceContent 内で行う。
+   * 凍結（改訂元・§7.2）ガードは集約横断の判定のためルートで行う。
    */
   updateVariation(variationId: EstimateVariationId, content: VariationContent): void {
-    this.findVariationOrThrow(variationId).replaceContent(content, this.taxContext());
+    this.editableVariationOrThrow(variationId).replaceContent(content, this.taxContext());
     this.touch();
   }
 
+  /**
+   * バリエーションを削除する。
+   *
+   * 凍結された改訂元は削除不可（系譜の参照先が消えるため・§7.2）。
+   * 逆に改訂先の削除は許可される: 出自（系譜）ごと消えるため、改訂元の凍結が
+   * 自動的に解ける（凍結＝系譜からの導出という設計の帰結・ADR-0044）。
+   */
   removeVariation(variationId: EstimateVariationId): void {
     if (this._variations.length === 1) {
       throw new BusinessRuleViolationError(
         "最後のバリエーションは削除できません（§C1 空見積不可）"
+      );
+    }
+    if (this.isVariationFrozen(variationId)) {
+      throw new BusinessRuleViolationError(
+        "凍結された改訂元バリエーションは削除できません（改訂先が存在する間・§7.2）"
       );
     }
     const index = this._variations.findIndex((v) => v.id.equals(variationId));
@@ -227,12 +240,12 @@ export class Estimate {
   // ========================================
 
   addItem(variationId: EstimateVariationId, item: EstimateItem): void {
-    this.findVariationOrThrow(variationId).addItem(item, this.taxContext());
+    this.editableVariationOrThrow(variationId).addItem(item, this.taxContext());
     this.touch();
   }
 
   removeItem(variationId: EstimateVariationId, itemId: EstimateItemId): void {
-    this.findVariationOrThrow(variationId).removeItem(itemId, this.taxContext());
+    this.editableVariationOrThrow(variationId).removeItem(itemId, this.taxContext());
     this.touch();
   }
 
@@ -241,7 +254,7 @@ export class Estimate {
     itemId: EstimateItemId,
     newQuantity: Quantity
   ): void {
-    this.findVariationOrThrow(variationId).changeItemQuantity(
+    this.editableVariationOrThrow(variationId).changeItemQuantity(
       itemId,
       newQuantity,
       this.taxContext()
@@ -254,7 +267,11 @@ export class Estimate {
     itemId: EstimateItemId,
     newPrice: Money
   ): void {
-    this.findVariationOrThrow(variationId).changeItemUnitPrice(itemId, newPrice, this.taxContext());
+    this.editableVariationOrThrow(variationId).changeItemUnitPrice(
+      itemId,
+      newPrice,
+      this.taxContext()
+    );
     this.touch();
   }
 
@@ -263,7 +280,7 @@ export class Estimate {
     itemId: EstimateItemId,
     newRate: DiscountRate
   ): void {
-    this.findVariationOrThrow(variationId).changeItemDiscountRate(
+    this.editableVariationOrThrow(variationId).changeItemDiscountRate(
       itemId,
       newRate,
       this.taxContext()
@@ -276,7 +293,7 @@ export class Estimate {
     itemId: EstimateItemId,
     newDiscount: Money
   ): void {
-    this.findVariationOrThrow(variationId).changeItemDiscount(
+    this.editableVariationOrThrow(variationId).changeItemDiscount(
       itemId,
       newDiscount,
       this.taxContext()
@@ -285,7 +302,10 @@ export class Estimate {
   }
 
   changeOverallDiscount(variationId: EstimateVariationId, newDiscount: Money): void {
-    this.findVariationOrThrow(variationId).changeOverallDiscount(newDiscount, this.taxContext());
+    this.editableVariationOrThrow(variationId).changeOverallDiscount(
+      newDiscount,
+      this.taxContext()
+    );
     this.touch();
   }
 
@@ -408,6 +428,34 @@ export class Estimate {
       return 1;
     }
     return Math.max(...this._variations.map((v) => v.variationNumber)) + 1;
+  }
+
+  /**
+   * 凍結判定（ADR-0044）: 「集約内に、自分を改訂元（revisedFrom）とするバリエーションが
+   * 存在する ⟺ 凍結」。凍結は改訂された事実（系譜）からの導出であり、保存された状態ではない。
+   * 他バリエーションの出自を横断して見る必要があるため、判定は集約ルートにしか置けない。
+   */
+  private isVariationFrozen(variationId: EstimateVariationId): boolean {
+    return this._variations.some((v) => v.revisedFrom?.equals(variationId) ?? false);
+  }
+
+  /** 凍結（§7.2）: 改訂元はメモ・ステータス以外の編集と削除を拒否する。 */
+  private assertVariationNotFrozen(variationId: EstimateVariationId): void {
+    if (this.isVariationFrozen(variationId)) {
+      throw new BusinessRuleViolationError(
+        "改訂元バリエーションは凍結されています。メモ以外は編集できません（§7.2）"
+      );
+    }
+  }
+
+  /**
+   * 内容編集系の入口（C4 差替え・明細操作・全体値引）が使う取得ヘルパ。
+   * 凍結（改訂元）を拒否してから返す。ステータス変更（activate/deactivate）と
+   * メモ変更は凍結中も許可されるため findVariationOrThrow を直接使う。
+   */
+  private editableVariationOrThrow(variationId: EstimateVariationId): EstimateVariation {
+    this.assertVariationNotFrozen(variationId);
+    return this.findVariationOrThrow(variationId);
   }
 
   private findVariationOrThrow(variationId: EstimateVariationId): EstimateVariation {
