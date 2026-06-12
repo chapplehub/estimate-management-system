@@ -1,0 +1,3 @@
+# フルスイート: 全テストを実行する（import グラフで絞らない）
+# 変更分だけの高速チェックは pre-commit（vitest related）で実施済み
+pnpm vitest run
