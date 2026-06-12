@@ -27,6 +27,7 @@ const mockEmployee = {
   employeeCd: "EMP000001",
   departmentId: "dept-1",
   role: USER_ROLES.USER,
+  version: 3,
 };
 
 // 部署選択スロットのモック
@@ -310,6 +311,34 @@ describe("EmployeeUpdateForm", () => {
       expect(formData.get("name")).toBe("田中花子");
       expect(formData.get("email")).toBe("yamada@example.com");
       expect(formData.get("role")).toBe(USER_ROLES.ADMIN);
+    });
+  });
+
+  describe("楽観ロック（ADR-0039）", () => {
+    test("編集画面表示時の version が hidden input としてフォームに含まれ、送信時に往復する", async () => {
+      const user = userEvent.setup();
+      const { container } = render(
+        <EmployeeUpdateForm
+          employee={mockEmployee}
+          canUpdate={true}
+          departmentSelectSlot={mockDepartmentSelectSlot}
+        />
+      );
+
+      // hidden input が存在し、画面表示時の version を保持している
+      const versionInput = container.querySelector('input[type="hidden"][name="version"]');
+      expect(versionInput).not.toBeNull();
+      expect(versionInput).toHaveValue("3");
+
+      // 送信した FormData に version が含まれる（フォーム往復の契約）
+      await act(async () => {
+        await user.click(screen.getByRole("button", { name: "更新" }));
+      });
+      await waitFor(() => {
+        expect(mockUpdateEmployee).toHaveBeenCalled();
+      });
+      const formData = mockUpdateEmployee.mock.calls[0][2] as FormData;
+      expect(formData.get("version")).toBe("3");
     });
   });
 

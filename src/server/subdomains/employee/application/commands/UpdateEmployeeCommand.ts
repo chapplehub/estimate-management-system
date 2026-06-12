@@ -13,6 +13,8 @@ import { EmployeeName } from "@subdomains/employee/domain/values/EmployeeName";
 export type UpdateEmployeeInput = {
   id: string;
   employeeCd: string;
+  /** 編集画面表示時の version（楽観ロックトークン / ADR-0039）。リポジトリへ素通しする。 */
+  expectedVersion: number;
   email: string;
   name: string;
   /** 所属部署ID */
@@ -58,7 +60,10 @@ export class UpdateEmployeeCommand {
     targetEmployee.changeEmail(newMailAddress);
     targetEmployee.changeDepartment(new DepartmentId(input.departmentId));
 
-    await this.employeeRepository.save(targetEmployee);
+    // 注意: この条件付き UPDATE（楽観ロック / ADR-0039）が後続の User 同期より先に走る順序が、
+    // User.email/role を employee の version で間接的に守る前提になっている。
+    // stale なフォームはここで ConflictError になり User 同期に到達しない（集約境界の再設計は #317）。
+    await this.employeeRepository.update(targetEmployee, input.expectedVersion);
 
     // 認証ユーザーの更新（email, role）
     const user = await this.userManagementService.findUserByEmployeeId(input.id);

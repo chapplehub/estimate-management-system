@@ -2,7 +2,7 @@ import { ensureTestDepartment } from "@server/__tests__/helpers/ensureTestDepart
 import prisma from "@server/prisma";
 import { FakeUserManagementService } from "@server/shared/auth/fake/FakeUserManagementService";
 import { USER_ROLES } from "@server/shared/auth/types";
-import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
+import { ConflictError, NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { ValidationError } from "@server/shared/errors/DomainError";
 import { MailAddressDuplicationCheckDomainService } from "@subdomains/employee/domain/services/MailAddressDuplicationCheckDomainService";
 import { PrismaEmployeeRepository } from "@subdomains/employee/infrastructure/prisma/PrismaEmployeeRepository";
@@ -94,6 +94,7 @@ describe("UpdateEmployeeCommand", () => {
       name: "更新後従業員",
       departmentId: TEST_DEPT_ID,
       role: USER_ROLES.USER,
+      expectedVersion: 1,
     });
 
     // DBに反映されたことを確認
@@ -113,6 +114,7 @@ describe("UpdateEmployeeCommand", () => {
       name: "既存従業員",
       departmentId: TEST_DEPT_ID,
       role: USER_ROLES.USER,
+      expectedVersion: 1,
     });
 
     // DBに反映されたことを確認
@@ -134,11 +136,51 @@ describe("UpdateEmployeeCommand", () => {
       name: "既存従業員",
       departmentId: TEST_DEPT_ID,
       role: USER_ROLES.ADMIN, // USER -> ADMIN に変更
+      expectedVersion: 1,
     });
 
     // 認証ユーザーのroleが更新されたことを確認
     const authUser = fakeUserManagementService.getUser(TEST_EMPLOYEE_ID);
     expect(authUser?.role).toBe(USER_ROLES.ADMIN);
+  });
+
+  it("stale な expectedVersion では ConflictError になり、認証ユーザーへの同期も行われない", async () => {
+    // 別ユーザーが先に保存して version が進んだ状況（1 → 2）を再現
+    await command.execute({
+      id: TEST_EMPLOYEE_ID,
+      employeeCd: "EMP999912",
+      email: "existing@example.com",
+      name: "先行ユーザーの変更",
+      departmentId: TEST_DEPT_ID,
+      role: USER_ROLES.USER,
+      expectedVersion: 1,
+    });
+
+    // 古い編集画面（version 1）からの保存 → 競合
+    await expect(
+      command.execute({
+        id: TEST_EMPLOYEE_ID,
+        employeeCd: "EMP999912",
+        email: "stale@example.com",
+        name: "後追いユーザーの変更",
+        departmentId: TEST_DEPT_ID,
+        role: USER_ROLES.ADMIN,
+        expectedVersion: 1,
+      })
+    ).rejects.toThrow(ConflictError);
+
+    // employee は先行ユーザーの変更のまま（lost update が起きていない）
+    const employee = await prisma.employee.findUnique({
+      where: { id: TEST_EMPLOYEE_ID },
+    });
+    expect(employee?.name).toBe("先行ユーザーの変更");
+    expect(employee?.email).toBe("existing@example.com");
+
+    // 認証ユーザーへの同期（email/role）にも到達していない。
+    // employee 行の条件付き UPDATE が User 同期より先に走る順序が、この保護の前提（#317）
+    const authUser = fakeUserManagementService.getUser(TEST_EMPLOYEE_ID);
+    expect(authUser?.email).toBe("existing@example.com");
+    expect(authUser?.role).toBe(USER_ROLES.USER);
   });
 
   it("存在しない従業員IDの場合はNotFoundEntityErrorがスローされる", async () => {
@@ -150,6 +192,7 @@ describe("UpdateEmployeeCommand", () => {
         name: "更新テスト",
         departmentId: TEST_DEPT_ID,
         role: USER_ROLES.USER,
+        expectedVersion: 1,
       })
     ).rejects.toThrow(NotFoundEntityError);
     await expect(
@@ -160,6 +203,7 @@ describe("UpdateEmployeeCommand", () => {
         name: "更新テスト",
         departmentId: TEST_DEPT_ID,
         role: USER_ROLES.USER,
+        expectedVersion: 1,
       })
     ).rejects.toThrow("従業員が見つかりません");
   });
@@ -173,6 +217,7 @@ describe("UpdateEmployeeCommand", () => {
         name: "既存従業員",
         departmentId: TEST_DEPT_ID,
         role: USER_ROLES.USER,
+        expectedVersion: 1,
       })
     ).rejects.toThrow(ValidationError);
     await expect(
@@ -183,6 +228,7 @@ describe("UpdateEmployeeCommand", () => {
         name: "既存従業員",
         departmentId: TEST_DEPT_ID,
         role: USER_ROLES.USER,
+        expectedVersion: 1,
       })
     ).rejects.toThrow("既に存在するメールアドレスです");
 

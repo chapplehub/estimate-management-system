@@ -45,7 +45,7 @@ describe("MailAddressDuplicationCheckDomainService", () => {
       new EmployeeName("テスト太郎"),
       TEST_DEPT_ID
     );
-    await repository.save(employee);
+    await repository.insert(employee);
 
     const isDuplicated = await service.execute(new MailAddress("ds-mail-dup-existing@example.com"));
     expect(isDuplicated).toBe(true);
@@ -58,7 +58,7 @@ describe("MailAddressDuplicationCheckDomainService", () => {
       new EmployeeName("テスト太郎"),
       TEST_DEPT_ID
     );
-    await repository.save(employee);
+    await repository.insert(employee);
 
     const isDuplicated = await service.execute(new MailAddress("ds-mail-dup-new@example.com"));
     expect(isDuplicated).toBe(false);

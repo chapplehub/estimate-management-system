@@ -33,9 +33,10 @@ export async function updateEmployee(employeeCd: string, prevState: unknown, for
     return submission.reply();
   }
 
-  const { name, email, role, departmentId } = submission.value;
+  const { name, email, role, departmentId, version } = submission.value;
 
-  // employeeCdからidを取得
+  // employeeCdからidを取得（version は再取得値ではなくフォーム由来の値を使う。
+  // 再取得値を使うと常に最新 version でチェックが素通りし、編集ウィンドウを守れない / ADR-0039）
   const queryService = new PrismaEmployeeQueryService();
   const employee = await queryService.findByEmployeeCd(employeeCd);
   if (!employee) {
@@ -60,6 +61,7 @@ export async function updateEmployee(employeeCd: string, prevState: unknown, for
       employeeCd,
       departmentId,
       role,
+      expectedVersion: version,
     });
 
     revalidatePath("/employees");

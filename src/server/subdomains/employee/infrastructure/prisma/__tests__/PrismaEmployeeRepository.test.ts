@@ -7,6 +7,7 @@ import { MailAddress } from "@server/shared/domain/values/MailAddress";
 import { DepartmentId } from "@subdomains/department/domain/values/DepartmentId";
 import { PrismaEmployeeRepository } from "../PrismaEmployeeRepository";
 import prisma from "@server/prisma";
+import { ConflictError } from "@server/shared/errors/ApplicationError";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 describe("PrismaEmployeeRepository", () => {
@@ -39,8 +40,8 @@ describe("PrismaEmployeeRepository", () => {
     });
   });
 
-  describe("save", () => {
-    it("新規従業員を保存できる", async () => {
+  describe("insert", () => {
+    it("新規従業員を保存でき、version は 1 で始まる", async () => {
       const employee = Employee.create(
         new EmployeeCd("EMP999001"),
         new MailAddress("test-save@example.com"),
@@ -48,7 +49,7 @@ describe("PrismaEmployeeRepository", () => {
         TEST_DEPT_ID
       );
 
-      const savedEmployee = await repository.save(employee);
+      const savedEmployee = await repository.insert(employee);
 
       // 保存されたエンティティを確認
       expect(savedEmployee).not.toBeNull();
@@ -57,7 +58,7 @@ describe("PrismaEmployeeRepository", () => {
       expect(savedEmployee.email.value).toBe("test-save@example.com");
       expect(savedEmployee.name.value).toBe("テスト太郎");
 
-      // DBから取得して確認
+      // DBから取得して確認（version 列は @default(1)）
       const saved = await prisma.employee.findUnique({
         where: { employeeCd: "EMP999001" },
       });
@@ -66,11 +67,12 @@ describe("PrismaEmployeeRepository", () => {
       expect(saved?.employeeCd).toBe("EMP999001");
       expect(saved?.email).toBe("test-save@example.com");
       expect(saved?.name).toBe("テスト太郎");
+      expect(saved?.version).toBe(1);
     });
   });
 
-  describe("save (update)", () => {
-    it("既存従業員を更新できる", async () => {
+  describe("update", () => {
+    it("一致する expectedVersion で更新でき、version が 1 進む", async () => {
       // まず保存
       const employee = Employee.create(
         new EmployeeCd("EMP999001"),
@@ -78,22 +80,55 @@ describe("PrismaEmployeeRepository", () => {
         new EmployeeName("更新前の名前"),
         TEST_DEPT_ID
       );
-      const savedEmployee = await repository.save(employee);
+      const savedEmployee = await repository.insert(employee);
 
       // 名前を変更
       savedEmployee.changeName(new EmployeeName("更新後の名前"));
-      const updatedEmployee = await repository.save(savedEmployee);
+      const updatedEmployee = await repository.update(savedEmployee, 1);
 
       // 更新されたエンティティを確認
       expect(updatedEmployee.name.value).toBe("更新後の名前");
       expect(updatedEmployee.id.value).toBe(savedEmployee.id.value);
 
-      // DBから再取得して確認
+      // DBから再取得して確認（version は 1 → 2 へ進む）
       const updated = await prisma.employee.findUnique({
         where: { employeeCd: "EMP999001" },
       });
 
       expect(updated?.name).toBe("更新後の名前");
+      expect(updated?.version).toBe(2);
+    });
+  });
+
+  describe("楽観ロック（ADR-0039）", () => {
+    it("古い expectedVersion での更新は ConflictError になり、先行の変更は失われない", async () => {
+      const saved = await repository.insert(
+        Employee.create(
+          new EmployeeCd("EMP999001"),
+          new MailAddress("test-lock@example.com"),
+          new EmployeeName("競合テスト"),
+          TEST_DEPT_ID
+        )
+      );
+
+      // 2人のユーザーが同じ version 1 の編集画面を開いた状況を再現
+      const loadedByB = await repository.findById(saved.id);
+      const loadedByA = await repository.findById(saved.id);
+      expect(loadedByB).not.toBeNull();
+      expect(loadedByA).not.toBeNull();
+      if (!loadedByB || !loadedByA) return;
+
+      // B が先に保存（version 1 → 2）
+      loadedByB.changeName(new EmployeeName("Bの変更"));
+      await repository.update(loadedByB, 1);
+
+      // A が古いトークン 1 のまま保存 → 競合として弾かれる
+      loadedByA.changeName(new EmployeeName("Aの変更"));
+      await expect(repository.update(loadedByA, 1)).rejects.toThrow(ConflictError);
+
+      // B の変更が残っている（後勝ちによる lost update が起きていない）
+      const found = await repository.findById(saved.id);
+      expect(found?.name.value).toBe("Bの変更");
     });
   });
 
@@ -106,7 +141,7 @@ describe("PrismaEmployeeRepository", () => {
         new EmployeeName("削除テスト"),
         TEST_DEPT_ID
       );
-      const savedEmployee = await repository.save(employee);
+      const savedEmployee = await repository.insert(employee);
 
       // 削除
       await repository.delete(savedEmployee.id);
@@ -128,7 +163,7 @@ describe("PrismaEmployeeRepository", () => {
         new EmployeeName("ID検索テスト"),
         TEST_DEPT_ID
       );
-      const savedEmployee = await repository.save(employee);
+      const savedEmployee = await repository.insert(employee);
 
       // findByIdで検索
       const found = await repository.findById(savedEmployee.id);
@@ -158,7 +193,7 @@ describe("PrismaEmployeeRepository", () => {
         new EmployeeName("社員コード検索テスト"),
         TEST_DEPT_ID
       );
-      await repository.save(employee);
+      await repository.insert(employee);
 
       // findByEmployeeCdで検索
       const found = await repository.findByEmployeeCd(new EmployeeCd("EMP999002"));
@@ -190,8 +225,8 @@ describe("PrismaEmployeeRepository", () => {
         TEST_DEPT_ID
       );
 
-      await repository.save(employee1);
-      await repository.save(employee2);
+      await repository.insert(employee1);
+      await repository.insert(employee2);
 
       // EMP999003を検索
       const found = await repository.findByEmployeeCd(new EmployeeCd("EMP999003"));

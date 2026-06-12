@@ -86,6 +86,8 @@ describe("GetEmployeeByEmployeeCdQuery", () => {
     expect(result).not.toBeNull();
     expect(result?.employeeCd).toBe(TEST_CODES[0]);
     expect(result?.email).toBe("getbycd-query@example.com");
+    // 楽観ロックトークン（ADR-0039）。編集画面はこの値をフォームで往復させる
+    expect(result?.version).toBe(1);
   });
 
   it("存在しない従業員CDの場合nullを返す", async () => {
