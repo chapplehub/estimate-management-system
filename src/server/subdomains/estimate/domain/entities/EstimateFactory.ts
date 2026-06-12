@@ -57,6 +57,8 @@ export type EstimateItemDescriptor = {
 /** バリエーションの記述子（値オブジェクト止まり）。 */
 export type EstimateVariationDescriptor = {
   variationNumber: number;
+  /** 提出区分（ADR-0045: バリエーション単位の不変保存属性。記述子ごとに指定する） */
+  submissionType: SubmissionType;
   items: EstimateItemDescriptor[];
   overallDiscount?: Money;
   customerMemo?: Memo;
@@ -66,8 +68,13 @@ export type EstimateVariationDescriptor = {
 /**
  * 番号を含まないバリエーション内容の記述子。C3 AddVariation（番号は集約が採番）と
  * C4 UpdateVariation（番号は変更しない）で共用する。
+ * 提出区分は不変属性（ADR-0045）のため C4 で指定できず、ここから型レベルで除外する。
+ * C3 では番号同様にバリエーション内容の外側で受け取る。
  */
-export type VariationContentDescriptor = Omit<EstimateVariationDescriptor, "variationNumber">;
+export type VariationContentDescriptor = Omit<
+  EstimateVariationDescriptor,
+  "variationNumber" | "submissionType"
+>;
 
 /** 修理見積（事前）サブタイプ詳細の記述子。 */
 export type RepairDetailDescriptor = {
@@ -89,7 +96,6 @@ export type EstimateFactoryInput = {
   estimateNumber: EstimateNumber;
   estimateDate: Date;
   deadline: Date;
-  submissionType: SubmissionType;
   customerId: CustomerId;
   deliveryLocationId: DeliveryLocationId;
   taxRate: TaxRate;
@@ -177,7 +183,6 @@ export class EstimateFactory {
       estimateNumber: input.estimateNumber,
       estimateDate: input.estimateDate,
       deadline: input.deadline,
-      submissionType: input.submissionType,
       customerId: input.customerId,
       deliveryLocationId: input.deliveryLocationId,
       taxRate: input.taxRate,
@@ -224,6 +229,7 @@ export class EstimateFactory {
     const items = variation.items.map((item) => EstimateFactory.buildItem(item));
     return EstimateVariation.create({
       variationNumber: variation.variationNumber,
+      submissionType: variation.submissionType,
       tax,
       items,
       overallDiscount: variation.overallDiscount,

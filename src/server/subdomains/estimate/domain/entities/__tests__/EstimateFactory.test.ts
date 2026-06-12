@@ -45,14 +45,13 @@ function baseInput(overrides: Partial<EstimateFactoryInput> = {}): EstimateFacto
     estimateNumber: EstimateNumber.parse("N2500001"),
     estimateDate: new Date("2025-04-01T00:00:00.000Z"),
     deadline: new Date("2025-04-30T00:00:00.000Z"),
-    submissionType: SubmissionType.CUSTOMER,
     customerId: new CustomerId(UUID),
     deliveryLocationId: new DeliveryLocationId(UUID),
     taxRate: new TaxRate(0.1),
     taxRoundingType: TaxRoundingType.ROUND_DOWN,
     createdBy: new EmployeeId(UUID),
     departmentId: new DepartmentId(UUID),
-    variations: [{ variationNumber: 1, items: [item()] }],
+    variations: [{ variationNumber: 1, submissionType: SubmissionType.CUSTOMER, items: [item()] }],
     ...overrides,
   };
 }
@@ -64,6 +63,7 @@ describe("EstimateFactory", () => {
         variations: [
           {
             variationNumber: 1,
+            submissionType: SubmissionType.CUSTOMER,
             items: [
               item({
                 sortOrder: 1,
@@ -91,12 +91,35 @@ describe("EstimateFactory", () => {
     expect(estimate.afterRepairDetail).toBeNull();
   });
 
+  it("記述子ごとの提出区分が各バリエーションに保持され、同一見積内で納品先宛と得意先宛が共存できる", () => {
+    const estimate = EstimateFactory.create(
+      baseInput({
+        variations: [
+          {
+            variationNumber: 1,
+            submissionType: SubmissionType.DELIVERY_LOCATION,
+            items: [item()],
+          },
+          {
+            variationNumber: 2,
+            submissionType: SubmissionType.CUSTOMER,
+            items: [item()],
+          },
+        ],
+      })
+    );
+
+    expect(estimate.variations[0].submissionType.isDeliveryLocation()).toBe(true);
+    expect(estimate.variations[1].submissionType.isCustomer()).toBe(true);
+  });
+
   it("revisedDeliveryPrice を指定した明細には改訂明細詳細が構築される", () => {
     const estimate = EstimateFactory.create(
       baseInput({
         variations: [
           {
             variationNumber: 1,
+            submissionType: SubmissionType.CUSTOMER,
             items: [item({ revisedDeliveryPrice: Money.fromMajorUnits(800) })],
           },
         ],
@@ -172,6 +195,7 @@ describe("EstimateFactory", () => {
     ): EstimateDuplicateInput {
       const variations: CopiedVariationDescriptor[] = sources.map((sourceVariationId, i) => ({
         variationNumber: i + 1,
+        submissionType: SubmissionType.CUSTOMER,
         items: [item({ unitPrice: Money.zero() })],
         sourceVariationId,
       }));

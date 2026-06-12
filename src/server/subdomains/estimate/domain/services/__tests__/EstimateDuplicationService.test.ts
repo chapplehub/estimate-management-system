@@ -29,7 +29,6 @@ function buildSourceNew(): Estimate {
     estimateNumber: EstimateNumber.parse("N2500001"),
     estimateDate: new Date("2025-04-01T00:00:00.000Z"),
     deadline: new Date("2025-04-30T00:00:00.000Z"),
-    submissionType: SubmissionType.CUSTOMER,
     customerId: new CustomerId(UUID),
     deliveryLocationId: new DeliveryLocationId(UUID),
     taxRate: new TaxRate(0.1),
@@ -39,6 +38,7 @@ function buildSourceNew(): Estimate {
     variations: [
       {
         variationNumber: 1,
+        submissionType: SubmissionType.DELIVERY_LOCATION,
         overallDiscount: Money.fromMajorUnits(300),
         customerMemo: Memo.create("バリエーション1メモ"),
         items: [
@@ -57,6 +57,7 @@ function buildSourceNew(): Estimate {
       },
       {
         variationNumber: 2,
+        submissionType: SubmissionType.CUSTOMER,
         items: [
           {
             productId: new ProductId(UUID),
@@ -141,6 +142,22 @@ describe("EstimateDuplicationService", () => {
       expect(variation.customerMemo.value).toBe("バリエーション1メモ");
     });
 
+    it("提出区分は複製元バリエーション単位で継承する（ADR-0045 / §5.3）", () => {
+      const source = buildSourceNew();
+      const ids = source.variations.map((v) => v.id);
+
+      // 逆順に選択しても、各複製先は自分の複製元の提出区分を引き継ぐ
+      const { estimate } = EstimateDuplicationService.duplicate({
+        source,
+        selectedVariationIds: [ids[1], ids[0]],
+        ...context(),
+      });
+
+      // 1 番目の複製先 = 複製元 ids[1]（得意先宛）、2 番目 = ids[0]（納品先宛）
+      expect(estimate.variations[0].submissionType.isCustomer()).toBe(true);
+      expect(estimate.variations[1].submissionType.isDeliveryLocation()).toBe(true);
+    });
+
     it("複製先バリエーションはすべて有効（ACTIVE）になる", () => {
       const source = buildSourceNew();
       const ids = source.variations.map((v) => v.id);
@@ -193,7 +210,6 @@ describe("EstimateDuplicationService", () => {
         estimateNumber: EstimateNumber.parse("R2500001"),
         estimateDate: new Date("2025-04-01T00:00:00.000Z"),
         deadline: new Date("2025-04-30T00:00:00.000Z"),
-        submissionType: SubmissionType.CUSTOMER,
         customerId: new CustomerId(UUID),
         deliveryLocationId: new DeliveryLocationId(UUID),
         taxRate: new TaxRate(0.1),
@@ -203,6 +219,7 @@ describe("EstimateDuplicationService", () => {
         variations: [
           {
             variationNumber: 1,
+            submissionType: SubmissionType.CUSTOMER,
             items: [
               {
                 productId: new ProductId(UUID),

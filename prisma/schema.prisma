@@ -462,8 +462,7 @@ model Estimate {
   estimateDate DateTime @map("estimate_date") @db.Timestamptz(3) // 見積年月日
   deadline     DateTime @db.Timestamptz(3) // 締切年月日
 
-  // 提出区分
-  submissionType SubmissionType @map("submission_type")
+  // 提出区分はバリエーション単位の属性（ADR-0045）。本モデルには持たない
 
   // 得意先・納品先（常に両方設定）
   customerId         String           @map("customer_id") @db.Uuid
@@ -508,7 +507,6 @@ model Estimate {
   @@index([departmentId])
   @@index([customerId])
   @@index([deliveryLocationId])
-  @@index([submissionType])
   @@map("estimates")
 }
 
@@ -579,6 +577,9 @@ model EstimateVariation {
 
   variationNumber Int             @map("variation_number") // 1〜99
   status          VariationStatus @default(ACTIVE)
+
+  // 提出区分（ADR-0045: バリエーション単位の不変保存属性。デフォルトなし＝作成時に明示必須）
+  submissionType SubmissionType @map("submission_type")
 
   // メモ
   customerMemo String @default("") @map("customer_memo") @db.VarChar(2000)

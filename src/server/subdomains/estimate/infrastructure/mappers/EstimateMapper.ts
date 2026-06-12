@@ -97,7 +97,6 @@ export class EstimateMapper {
       estimateNumber: EstimateNumber.parse(row.estimateNumber),
       estimateDate: row.estimateDate,
       deadline: row.deadline,
-      submissionType: SubmissionType.from(row.submissionType),
       customerId: new CustomerId(row.customerId),
       deliveryLocationId: new DeliveryLocationId(row.deliveryLocationId),
       taxRate: new TaxRate(Number(row.taxRate)),
@@ -136,6 +135,7 @@ export class EstimateMapper {
     return EstimateVariation.reconstruct({
       id: new EstimateVariationId(v.id),
       variationNumber: v.variationNumber,
+      submissionType: SubmissionType.from(v.submissionType),
       status: VariationStatus.from(v.status),
       customerMemo: Memo.create(v.customerMemo),
       internalMemo: Memo.create(v.internalMemo),
@@ -193,7 +193,6 @@ export class EstimateMapper {
       sequence: e.sequence,
       estimateDate: e.estimateDate,
       deadline: e.deadline,
-      submissionType: e.submissionType.value as PrismaSubmissionType,
       customerId: e.customerId.value,
       deliveryLocationId: e.deliveryLocationId.value,
       taxRate: new Prisma.Decimal(e.taxRate.value),
@@ -206,6 +205,7 @@ export class EstimateMapper {
   static toVariationScalarData(v: Readonly<EstimateVariation>) {
     return {
       variationNumber: v.variationNumber,
+      submissionType: v.submissionType.value as PrismaSubmissionType,
       status: v.status.value as PrismaVariationStatus,
       customerMemo: v.customerMemo.value,
       internalMemo: v.internalMemo.value,

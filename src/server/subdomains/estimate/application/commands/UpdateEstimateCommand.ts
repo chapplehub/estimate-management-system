@@ -6,7 +6,6 @@ import { Estimate } from "@subdomains/estimate/domain/entities";
 import { EstimateRepository } from "@subdomains/estimate/domain/repositories/EstimateRepository";
 import { TaxRateConsistencyCheckDomainService } from "@subdomains/estimate/domain/services/TaxRateConsistencyCheckDomainService";
 import { EstimateId } from "@subdomains/estimate/domain/values/EstimateId";
-import { SubmissionType } from "@subdomains/estimate/domain/values/SubmissionType";
 import { TaxRate } from "@subdomains/estimate/domain/values/TaxRate";
 import { TaxRoundingType } from "@subdomains/estimate/domain/values/TaxRoundingType";
 import { checkTaxRateThenSave, type TaxCheckedSaveResult } from "../shared/checkTaxRateThenSave";
@@ -14,8 +13,9 @@ import { checkTaxRateThenSave, type TaxCheckedSaveResult } from "../shared/check
 /**
  * 見積ヘッダ更新コマンドの入力（すべてプリミティブ型）。
  *
- * 更新対象は集約に変更メソッドがあるヘッダ 6 項目 + 税率系 2 項目。estimateType は
+ * 更新対象は集約に変更メソッドがあるヘッダ 5 項目 + 税率系 2 項目。estimateType は
  * 採番接頭辞 N/R/A（§2.1）と 1:1 のため変更不可、createdBy は監査項目のため対象外。
+ * 提出区分はバリエーション単位の不変属性（ADR-0045）のため本コマンドの対象外。
  */
 export type UpdateEstimateInput = {
   estimateId: string;
@@ -23,7 +23,6 @@ export type UpdateEstimateInput = {
   version: number;
   estimateDate: Date;
   deadline: Date;
-  submissionType: string;
   customerId: string;
   deliveryLocationId: string;
   departmentId: string;
@@ -55,7 +54,6 @@ export class UpdateEstimateCommand {
 
     estimate.changeEstimateDate(input.estimateDate);
     estimate.changeDeadline(input.deadline);
-    estimate.changeSubmissionType(SubmissionType.from(input.submissionType));
     estimate.changeCustomer(new CustomerId(input.customerId));
     estimate.changeDeliveryLocation(new DeliveryLocationId(input.deliveryLocationId));
     estimate.changeDepartment(new DepartmentId(input.departmentId));

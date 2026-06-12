@@ -44,7 +44,6 @@ describe("CreateEstimateCommand", () => {
       estimateType: "NEW",
       estimateDate: new Date("2097-04-01T00:00:00.000Z"),
       deadline: new Date("2097-04-30T00:00:00.000Z"),
-      submissionType: "CUSTOMER",
       customerId: ids.customerId,
       deliveryLocationId: ids.deliveryLocationId,
       taxRate: 0.1,
@@ -54,6 +53,7 @@ describe("CreateEstimateCommand", () => {
       variations: [
         {
           variationNumber: 1,
+          submissionType: "CUSTOMER",
           items: [
             {
               productId: ids.productId,
@@ -100,6 +100,48 @@ describe("CreateEstimateCommand", () => {
     expect(variation.subtotal.majorUnits).toBe(2500);
     expect(variation.items).toHaveLength(2);
     expect(variation.items[1].revisedDetail?.deliveryPrice.majorUnits).toBe(800);
+  });
+
+  it("バリエーションごとの提出区分で作成でき、納品先宛と得意先宛が同一見積内に共存して永続化される（ADR-0045）", async () => {
+    const created = await command.execute(
+      baseInput({
+        variations: [
+          {
+            variationNumber: 1,
+            submissionType: "DELIVERY_LOCATION",
+            items: [
+              {
+                productId: ids.productId,
+                sortOrder: 1,
+                itemName: "商品A",
+                quantity: 1,
+                unit: "個",
+                unitPrice: 1000,
+              },
+            ],
+          },
+          {
+            variationNumber: 2,
+            submissionType: "CUSTOMER",
+            items: [
+              {
+                productId: ids.productId,
+                sortOrder: 1,
+                itemName: "商品A",
+                quantity: 1,
+                unit: "個",
+                unitPrice: 900,
+              },
+            ],
+          },
+        ],
+      })
+    );
+
+    const found = await new PrismaEstimateRepository().findById(created.id);
+    expect(found?.variations).toHaveLength(2);
+    expect(found?.variations[0].submissionType.isDeliveryLocation()).toBe(true);
+    expect(found?.variations[1].submissionType.isCustomer()).toBe(true);
   });
 
   it("連続作成で連番が +1 される（保存時採番 §2.3・MAX+1）", async () => {

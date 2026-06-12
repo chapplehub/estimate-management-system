@@ -69,10 +69,12 @@ export function makeItem(
 export function makeVariation(
   productId: string,
   variationNumber: number,
-  items?: EstimateItem[]
+  items?: EstimateItem[],
+  submissionType: SubmissionType = SubmissionType.CUSTOMER
 ): EstimateVariation {
   return EstimateVariation.create({
     variationNumber,
+    submissionType,
     tax: TAX_CONTEXT,
     items: items ?? [makeItem(productId, { sortOrder: 1 })],
   });
@@ -82,7 +84,6 @@ function header(ids: EstimateFixtureIds) {
   return {
     estimateDate: new Date("2025-04-01T00:00:00.000Z"),
     deadline: new Date("2025-04-30T00:00:00.000Z"),
-    submissionType: SubmissionType.CUSTOMER,
     customerId: new CustomerId(ids.customerId),
     deliveryLocationId: new DeliveryLocationId(ids.deliveryLocationId),
     taxRate: TAX_CONTEXT.taxRate,

@@ -18,7 +18,8 @@ import { TaxRate } from "../values/TaxRate";
  *
  * 複製元集約（読み取り専用）と選択バリエーション（選択順 = 複製順）に加え、
  * 複製時に更新される項目（採番済み番号・日付・税率・作成者・部署）をアプリ層から受け取る。
- * 提出区分・得意先・納品先・税端数区分・修理詳細は複製元から継承する（§5.3）。
+ * 得意先・納品先・税端数区分・修理詳細は複製元から継承する（§5.3）。
+ * 提出区分は複製元バリエーション単位で継承する（ADR-0045）。
  */
 export type EstimateDuplicationInput = {
   source: Estimate;
@@ -69,8 +70,7 @@ export class EstimateDuplicationService {
       estimateNumber: input.estimateNumber,
       estimateDate: input.estimateDate,
       deadline: input.deadline,
-      // 継承（複製元）
-      submissionType: input.source.submissionType,
+      // 継承（複製元。提出区分はバリエーション単位で toCopiedDescriptor が継承する）
       customerId: input.source.customerId,
       deliveryLocationId: input.source.deliveryLocationId,
       taxRoundingType: input.source.taxRoundingType,
@@ -110,6 +110,8 @@ export class EstimateDuplicationService {
     return {
       variationNumber,
       sourceVariationId: source.id,
+      // 提出区分は複製元バリエーション単位で継承する（ADR-0045 / §5.3）
+      submissionType: source.submissionType,
       items: source.items.map((item) => ({
         productId: item.productId,
         sortOrder: item.sortOrder,

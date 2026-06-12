@@ -49,7 +49,6 @@ export class Estimate {
     private readonly _estimateNumber: EstimateNumber,
     private _estimateDate: Date,
     private _deadline: Date,
-    private _submissionType: SubmissionType,
     private _customerId: CustomerId,
     private _deliveryLocationId: DeliveryLocationId,
     private _taxRate: TaxRate,
@@ -73,7 +72,6 @@ export class Estimate {
     estimateNumber: EstimateNumber;
     estimateDate: Date;
     deadline: Date;
-    submissionType: SubmissionType;
     customerId: CustomerId;
     deliveryLocationId: DeliveryLocationId;
     taxRate: TaxRate;
@@ -102,7 +100,6 @@ export class Estimate {
       input.estimateNumber,
       input.estimateDate,
       input.deadline,
-      input.submissionType,
       input.customerId,
       input.deliveryLocationId,
       input.taxRate,
@@ -128,7 +125,6 @@ export class Estimate {
     estimateNumber: EstimateNumber;
     estimateDate: Date;
     deadline: Date;
-    submissionType: SubmissionType;
     customerId: CustomerId;
     deliveryLocationId: DeliveryLocationId;
     taxRate: TaxRate;
@@ -146,7 +142,6 @@ export class Estimate {
       input.estimateNumber,
       input.estimateDate,
       input.deadline,
-      input.submissionType,
       input.customerId,
       input.deliveryLocationId,
       input.taxRate,
@@ -178,9 +173,10 @@ export class Estimate {
    * 歯抜け（removeVariation 後）があっても衝突しないよう count+1 ではなく max+1 を用いる。
    * 採番は「集約内の一意性＋連番」という集約不変条件のためドメインに置く。
    */
-  appendVariation(content: VariationContent): EstimateVariation {
+  appendVariation(content: VariationContent, submissionType: SubmissionType): EstimateVariation {
     const variation = EstimateVariation.create({
       variationNumber: this.nextVariationNumber(),
+      submissionType,
       tax: this.taxContext(),
       items: content.items,
       overallDiscount: content.overallDiscount,
@@ -375,11 +371,6 @@ export class Estimate {
     this.touch();
   }
 
-  changeSubmissionType(newType: SubmissionType): void {
-    this._submissionType = newType;
-    this.touch();
-  }
-
   changeCustomer(newCustomerId: CustomerId): void {
     this._customerId = newCustomerId;
     this.touch();
@@ -518,10 +509,6 @@ export class Estimate {
 
   get deadline(): Date {
     return this._deadline;
-  }
-
-  get submissionType(): SubmissionType {
-    return this._submissionType;
   }
 
   get customerId(): CustomerId {
