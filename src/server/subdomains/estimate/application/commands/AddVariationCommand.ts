@@ -3,6 +3,7 @@ import { Estimate, EstimateFactory } from "@subdomains/estimate/domain/entities"
 import { EstimateRepository } from "@subdomains/estimate/domain/repositories/EstimateRepository";
 import { TaxRateConsistencyCheckDomainService } from "@subdomains/estimate/domain/services/TaxRateConsistencyCheckDomainService";
 import { EstimateId } from "@subdomains/estimate/domain/values/EstimateId";
+import { SubmissionType } from "@subdomains/estimate/domain/values/SubmissionType";
 import { checkTaxRateThenSave, type TaxCheckedSaveResult } from "../shared/checkTaxRateThenSave";
 import {
   toVariationContentDescriptor,
@@ -22,6 +23,8 @@ export type AddVariationInput = {
    * 消すため、stale な集約からの保存が並行追加された他人のバリエーションを削除しうる。
    */
   version: number;
+  /** 提出区分（"CUSTOMER" / "DELIVERY_LOCATION"）。作成時に確定する不変属性（ADR-0045）のため content と別に受け取る */
+  submissionType: string;
   content: VariationContentInput;
 };
 
@@ -47,7 +50,7 @@ export class AddVariationCommand {
     const content = EstimateFactory.buildVariationContent(
       toVariationContentDescriptor(input.content)
     );
-    estimate.appendVariation(content);
+    estimate.appendVariation(content, SubmissionType.from(input.submissionType));
 
     return checkTaxRateThenSave(estimate, input.version, {
       taxRateConsistencyCheck: this.taxRateConsistencyCheck,

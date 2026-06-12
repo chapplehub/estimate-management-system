@@ -6,6 +6,7 @@ import { EstimateVariationId } from "../values/EstimateVariationId";
 import { Memo } from "../values/Memo";
 import { Money } from "../values/Money";
 import type { Quantity } from "../values/Quantity";
+import type { SubmissionType } from "../values/SubmissionType";
 import type { TaxRate } from "../values/TaxRate";
 import type { TaxRoundingType } from "../values/TaxRoundingType";
 import { VariationStatus } from "../values/VariationStatus";
@@ -60,6 +61,8 @@ export class EstimateVariation {
   private constructor(
     private readonly _id: EstimateVariationId,
     private _variationNumber: number,
+    // 不変保存属性（ADR-0045）。ミューテータは提供せず、構造で不変性を担保する
+    private readonly _submissionType: SubmissionType,
     private _status: VariationStatus,
     private _customerMemo: Memo,
     private _internalMemo: Memo,
@@ -81,6 +84,8 @@ export class EstimateVariation {
    */
   static create(input: {
     variationNumber: number;
+    /** 提出区分（ADR-0045）。作成時に確定し、以後変更できない */
+    submissionType: SubmissionType;
     tax: TaxContext;
     status?: VariationStatus;
     items?: EstimateItem[];
@@ -100,6 +105,7 @@ export class EstimateVariation {
     return new EstimateVariation(
       EstimateVariationId.generate(),
       input.variationNumber,
+      input.submissionType,
       input.status ?? VariationStatus.ACTIVE,
       input.customerMemo ?? Memo.empty(),
       input.internalMemo ?? Memo.empty(),
@@ -122,6 +128,7 @@ export class EstimateVariation {
   static reconstruct(input: {
     id: EstimateVariationId;
     variationNumber: number;
+    submissionType: SubmissionType;
     status: VariationStatus;
     customerMemo: Memo;
     internalMemo: Memo;
@@ -138,6 +145,7 @@ export class EstimateVariation {
     return new EstimateVariation(
       input.id,
       input.variationNumber,
+      input.submissionType,
       input.status,
       input.customerMemo,
       input.internalMemo,
@@ -358,6 +366,10 @@ export class EstimateVariation {
 
   get variationNumber(): number {
     return this._variationNumber;
+  }
+
+  get submissionType(): SubmissionType {
+    return this._submissionType;
   }
 
   get status(): VariationStatus {

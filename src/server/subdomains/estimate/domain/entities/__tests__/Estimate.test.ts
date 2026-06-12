@@ -40,6 +40,7 @@ function makeItem(unitPrice = 1000, quantity = 1): EstimateItem {
 function makeVariation(variationNumber = 1, items?: EstimateItem[]): EstimateVariation {
   return EstimateVariation.create({
     variationNumber,
+    submissionType: SubmissionType.CUSTOMER,
     tax: TAX,
     items: items ?? [makeItem()],
   });
@@ -49,7 +50,6 @@ function commonHeader() {
   return {
     estimateDate: new Date("2025-04-01"),
     deadline: new Date("2025-04-30"),
-    submissionType: SubmissionType.CUSTOMER,
     customerId: CustomerId.generate(),
     deliveryLocationId: DeliveryLocationId.generate(),
     taxRate: TAX.taxRate,
@@ -248,7 +248,14 @@ describe("Estimate", () => {
       return Estimate.create({
         ...commonHeader(),
         estimateNumber: EstimateNumber.parse("N2500001"),
-        variations: [EstimateVariation.create({ variationNumber: 1, tax: TAX, items: [] })],
+        variations: [
+          EstimateVariation.create({
+            variationNumber: 1,
+            submissionType: SubmissionType.CUSTOMER,
+            tax: TAX,
+            items: [],
+          }),
+        ],
       });
     }
 
@@ -268,7 +275,14 @@ describe("Estimate", () => {
       const e = Estimate.create({
         ...commonHeader(),
         estimateNumber: EstimateNumber.parse("N2500001"),
-        variations: [EstimateVariation.create({ variationNumber: 1, tax: TAX, items: [item] })],
+        variations: [
+          EstimateVariation.create({
+            variationNumber: 1,
+            submissionType: SubmissionType.CUSTOMER,
+            tax: TAX,
+            items: [item],
+          }),
+        ],
       });
       const vId = e.variations[0].id;
 
@@ -279,7 +293,11 @@ describe("Estimate", () => {
 
     it("存在しない variationId はエラー", () => {
       const e = makeEstimateWithEmptyV();
-      const fakeVid = EstimateVariation.create({ variationNumber: 99, tax: TAX }).id;
+      const fakeVid = EstimateVariation.create({
+        variationNumber: 99,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+      }).id;
       expect(() => e.addItem(fakeVid, makeItem())).toThrow("バリエーションは存在しません");
     });
   });
@@ -290,8 +308,18 @@ describe("Estimate", () => {
         ...commonHeader(),
         estimateNumber: EstimateNumber.parse("N2500001"),
         variations: [
-          EstimateVariation.create({ variationNumber: 1, tax: TAX, items: [makeItem(1000)] }),
-          EstimateVariation.create({ variationNumber: 2, tax: TAX, items: [makeItem(2000)] }),
+          EstimateVariation.create({
+            variationNumber: 1,
+            submissionType: SubmissionType.CUSTOMER,
+            tax: TAX,
+            items: [makeItem(1000)],
+          }),
+          EstimateVariation.create({
+            variationNumber: 2,
+            submissionType: SubmissionType.CUSTOMER,
+            tax: TAX,
+            items: [makeItem(2000)],
+          }),
         ],
       });
       // 初期: 税率 10% → taxAmount 各 100 / 200
@@ -351,7 +379,7 @@ describe("Estimate", () => {
     it("max+1 で採番した新バリエーションを追加して返す", () => {
       const e = makeEstimate([makeVariation(1)]);
 
-      const added = e.appendVariation({ items: [makeItem(2000, 1)] });
+      const added = e.appendVariation({ items: [makeItem(2000, 1)] }, SubmissionType.CUSTOMER);
 
       expect(added.variationNumber).toBe(2);
       expect(e.variations).toHaveLength(2);
@@ -361,7 +389,7 @@ describe("Estimate", () => {
     it("歯抜けがあっても max+1 で採番する（count+1 ではない）", () => {
       const e = makeEstimate([makeVariation(1), makeVariation(3)]);
 
-      const added = e.appendVariation({ items: [makeItem()] });
+      const added = e.appendVariation({ items: [makeItem()] }, SubmissionType.CUSTOMER);
 
       // 既存 [1,3] → count+1=3 だと衝突。max+1=4 が正
       expect(added.variationNumber).toBe(4);
@@ -370,12 +398,23 @@ describe("Estimate", () => {
     it("内容（明細・全体値引）を反映して追加する", () => {
       const e = makeEstimate([makeVariation(1)]);
 
-      const added = e.appendVariation({
-        items: [makeItem(10000, 1)],
-        overallDiscount: Money.fromMajorUnits(1000),
-      });
+      const added = e.appendVariation(
+        {
+          items: [makeItem(10000, 1)],
+          overallDiscount: Money.fromMajorUnits(1000),
+        },
+        SubmissionType.CUSTOMER
+      );
 
       expect(added.finalSubtotal.equals(Money.fromMajorUnits(9000))).toBe(true);
+    });
+
+    it("指定した提出区分が新バリエーションに保持される（ADR-0045）", () => {
+      const e = makeEstimate([makeVariation(1)]);
+
+      const added = e.appendVariation({ items: [makeItem()] }, SubmissionType.DELIVERY_LOCATION);
+
+      expect(added.submissionType.isDeliveryLocation()).toBe(true);
     });
   });
 

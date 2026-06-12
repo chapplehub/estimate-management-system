@@ -10,11 +10,11 @@ const LABEL_MAP: Record<SubmissionTypeValue, string> = {
 };
 
 /**
- * 見積提出先区分の値オブジェクト
+ * 提出区分の値オブジェクト（ADR-0045: バリエーション単位の不変保存属性）
  *
  * Prisma の `SubmissionType` enum と 1:1 対応。
  *
- * §7.2「納品先向け見積は申請・受注作成不可」の判定基盤として
+ * §7.2「納品先宛バリエーションは申請・受注作成不可」の判定基盤として
  * `isCustomer()` / `isDeliveryLocation()` を提供する。
  */
 export class SubmissionType extends ValueObject<string, "SubmissionType"> {
