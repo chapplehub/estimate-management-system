@@ -22,11 +22,11 @@ describe("CreateDeliveryLocationCommand", () => {
   const CUSTOMER_TEST_CODE = "CUST999931";
 
   beforeEach(async () => {
-    // DL の Company → Customer の Company の順で削除
-    await prisma.company.deleteMany({
+    // 納品先 → 得意先の順で削除（FK 制約）
+    await prisma.deliveryLocation.deleteMany({
       where: { code: { in: DL_TEST_CODES } },
     });
-    await prisma.company.deleteMany({
+    await prisma.customer.deleteMany({
       where: { code: CUSTOMER_TEST_CODE },
     });
 
@@ -47,15 +47,15 @@ describe("CreateDeliveryLocationCommand", () => {
       new CompanyCode(CUSTOMER_TEST_CODE),
       new CompanyName("納品先テスト用得意先")
     );
-    const saved = await customerRepository.save(customer);
+    const saved = await customerRepository.insert(customer);
     testCustomerId = saved.id.value;
   });
 
   afterEach(async () => {
-    await prisma.company.deleteMany({
+    await prisma.deliveryLocation.deleteMany({
       where: { code: { in: DL_TEST_CODES } },
     });
-    await prisma.company.deleteMany({
+    await prisma.customer.deleteMany({
       where: { code: CUSTOMER_TEST_CODE },
     });
   });
@@ -143,10 +143,10 @@ describe("CreateDeliveryLocationCommand", () => {
   });
 
   it("親得意先が無効化されている場合は ValidationError", async () => {
-    // 得意先を無効化
+    // 得意先を無効化（beforeEach で insert 済み = version 1 を更新）
     const customer = await customerRepository.findById(new CustomerId(testCustomerId));
     customer!.deactivate();
-    await customerRepository.save(customer!);
+    await customerRepository.update(customer!, 1);
 
     await expect(
       command.execute({

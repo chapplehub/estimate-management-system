@@ -498,66 +498,44 @@ async function seedCustomersAndDeliveryLocations() {
   let deliveryLocationCount = 0;
 
   for (const customerData of CUSTOMERS) {
-    const companyId = generateId();
     const customerId = generateId();
 
-    await prisma.$transaction(async (tx) => {
-      await tx.company.create({
-        data: {
-          id: companyId,
-          code: customerData.code,
-          name: customerData.name,
-          type: "CUSTOMER",
-          postalCode: customerData.postalCode,
-          prefecture: customerData.prefecture,
-          address: customerData.address,
-          phoneNumber: customerData.phoneNumber,
-          faxNumber: customerData.faxNumber,
-          contactPerson: customerData.contactPerson,
-          isActive: customerData.isActive ?? true,
-        },
-      });
-
-      await tx.customer.create({
-        data: {
-          id: customerId,
-          companyId: companyId,
-          marginRate: customerData.marginRate,
-        },
-      });
+    await prisma.customer.create({
+      data: {
+        id: customerId,
+        code: customerData.code,
+        name: customerData.name,
+        postalCode: customerData.postalCode,
+        prefecture: customerData.prefecture,
+        address: customerData.address,
+        phoneNumber: customerData.phoneNumber,
+        faxNumber: customerData.faxNumber,
+        contactPerson: customerData.contactPerson,
+        isActive: customerData.isActive ?? true,
+        marginRate: customerData.marginRate,
+      },
     });
 
     customerCount++;
 
     for (const dlData of customerData.deliveryLocations) {
-      const dlCompanyId = generateId();
       const dlId = generateId();
 
-      await prisma.$transaction(async (tx) => {
-        await tx.company.create({
-          data: {
-            id: dlCompanyId,
-            code: dlData.code,
-            name: dlData.name,
-            type: "DELIVERY_LOCATION",
-            postalCode: dlData.postalCode,
-            prefecture: dlData.prefecture,
-            address: dlData.address,
-            phoneNumber: dlData.phoneNumber,
-            faxNumber: null,
-            contactPerson: null,
-            isActive: (dlData as { isActive?: boolean }).isActive ?? true,
-          },
-        });
-
-        await tx.deliveryLocation.create({
-          data: {
-            id: dlId,
-            companyId: dlCompanyId,
-            customerId: customerId,
-            deliveryNotes: dlData.deliveryNotes,
-          },
-        });
+      await prisma.deliveryLocation.create({
+        data: {
+          id: dlId,
+          code: dlData.code,
+          name: dlData.name,
+          postalCode: dlData.postalCode,
+          prefecture: dlData.prefecture,
+          address: dlData.address,
+          phoneNumber: dlData.phoneNumber,
+          faxNumber: null,
+          contactPerson: null,
+          isActive: (dlData as { isActive?: boolean }).isActive ?? true,
+          customerId: customerId,
+          deliveryNotes: dlData.deliveryNotes,
+        },
       });
 
       deliveryLocationCount++;
@@ -579,7 +557,6 @@ async function main() {
   await prisma.product.deleteMany();
   await prisma.deliveryLocation.deleteMany();
   await prisma.customer.deleteMany();
-  await prisma.company.deleteMany();
   await prisma.account.deleteMany();
   await prisma.session.deleteMany();
   await prisma.user.deleteMany();

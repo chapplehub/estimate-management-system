@@ -1,6 +1,5 @@
 import { Address } from "@server/shared/domain/values/Address";
 import { CompanyCode } from "@server/shared/domain/values/CompanyCode";
-import { CompanyId } from "@server/shared/domain/values/CompanyId";
 import { CompanyName } from "@server/shared/domain/values/CompanyName";
 import { FaxNumber } from "@server/shared/domain/values/FaxNumber";
 import { PhoneNumber } from "@server/shared/domain/values/PhoneNumber";
@@ -23,8 +22,6 @@ describe("DeliveryLocation Entity", () => {
       const dl = createTestDeliveryLocation();
 
       expect(dl.id).toBeTruthy();
-      expect(dl.companyId).toBeTruthy();
-      expect(dl.id).not.toBe(dl.companyId);
       expect(dl.code.value).toBe("DL001");
       expect(dl.name.value).toBe("テスト納品先");
       expect(dl.customerId.value).toBe(CUSTOMER_ID.value);
@@ -58,10 +55,8 @@ describe("DeliveryLocation Entity", () => {
     it("DBからの再構築が正しく動作する", () => {
       const now = new Date();
       const id = DeliveryLocationId.generate();
-      const companyId = CompanyId.generate();
       const dl = DeliveryLocation.reconstruct(
         id,
-        companyId,
         new CompanyCode("DL001"),
         new CompanyName("テスト納品先"),
         null,
@@ -78,7 +73,6 @@ describe("DeliveryLocation Entity", () => {
       );
 
       expect(dl.id.value).toBe(id.value);
-      expect(dl.companyId.value).toBe(companyId.value);
       expect(dl.customerId.value).toBe(CUSTOMER_ID.value);
     });
   });

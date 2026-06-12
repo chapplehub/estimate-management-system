@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { ValidationError } from "@server/shared/errors/DomainError";
 import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
 import { CustomerId } from "@subdomains/customer/domain/values/CustomerId";
-import { CompanyId } from "@server/shared/domain/values/CompanyId";
 import { DepartmentId } from "@subdomains/department/domain/values/DepartmentId";
 import { DeliveryLocationId } from "@subdomains/delivery-location/domain/values/DeliveryLocationId";
 import { PositionId } from "@subdomains/position/domain/values/PositionId";
@@ -59,7 +58,6 @@ describe("EntityId Value Objects", () => {
 
     it("各ID型のgenerate()が正しい型を返す", () => {
       expect(CustomerId.generate()).toBeInstanceOf(CustomerId);
-      expect(CompanyId.generate()).toBeInstanceOf(CompanyId);
       expect(DepartmentId.generate()).toBeInstanceOf(DepartmentId);
       expect(DeliveryLocationId.generate()).toBeInstanceOf(DeliveryLocationId);
       expect(PositionId.generate()).toBeInstanceOf(PositionId);

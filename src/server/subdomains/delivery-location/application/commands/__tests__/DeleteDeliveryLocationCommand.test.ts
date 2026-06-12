@@ -20,10 +20,10 @@ describe("DeleteDeliveryLocationCommand", () => {
   const CUSTOMER_TEST_CODE = "CUST999933";
 
   beforeEach(async () => {
-    await prisma.company.deleteMany({
+    await prisma.deliveryLocation.deleteMany({
       where: { code: { in: DL_TEST_CODES } },
     });
-    await prisma.company.deleteMany({
+    await prisma.customer.deleteMany({
       where: { code: CUSTOMER_TEST_CODE },
     });
 
@@ -36,7 +36,7 @@ describe("DeleteDeliveryLocationCommand", () => {
       new CompanyCode(CUSTOMER_TEST_CODE),
       new CompanyName("削除テスト用得意先")
     );
-    const savedCustomer = await customerRepository.save(customer);
+    const savedCustomer = await customerRepository.insert(customer);
     // テスト用納品先を事前作成
     const dl = DeliveryLocation.create(
       new CompanyCode(DL_TEST_CODES[0]),
@@ -48,10 +48,10 @@ describe("DeleteDeliveryLocationCommand", () => {
   });
 
   afterEach(async () => {
-    await prisma.company.deleteMany({
+    await prisma.deliveryLocation.deleteMany({
       where: { code: { in: DL_TEST_CODES } },
     });
-    await prisma.company.deleteMany({
+    await prisma.customer.deleteMany({
       where: { code: CUSTOMER_TEST_CODE },
     });
   });

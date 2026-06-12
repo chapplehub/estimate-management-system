@@ -5,6 +5,8 @@ import { CustomerId } from "@subdomains/customer/domain/values/CustomerId";
 
 export type DeactivateCustomerInput = {
   id: string;
+  /** 一覧・詳細の無効化ボタン表示時の version（楽観ロックトークン / ADR-0039）。 */
+  expectedVersion: number;
 };
 
 /**
@@ -22,6 +24,6 @@ export class DeactivateCustomerCommand {
 
     customer.deactivate();
 
-    return await this.customerRepository.save(customer);
+    return await this.customerRepository.update(customer, input.expectedVersion);
   }
 }

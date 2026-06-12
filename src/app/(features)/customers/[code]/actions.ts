@@ -39,9 +39,11 @@ export async function updateCustomer(code: string, prevState: unknown, formData:
     faxNumber,
     contactPerson,
     marginRate,
+    version,
   } = submission.value;
 
-  // codeからidを取得
+  // codeからidを取得（version は再取得値ではなくフォーム由来の値を使う。
+  // 編集ウィンドウのトークンを守るため。ADR-0039）
   const query = getCustomerByCodeQueryFactory();
   const customer = await query.execute({ code });
   if (!customer) {
@@ -54,6 +56,7 @@ export async function updateCustomer(code: string, prevState: unknown, formData:
     const command = updateCustomerCommandFactory();
     await command.execute({
       id: customer.id,
+      expectedVersion: version,
       name,
       postalCode: postalCode || null,
       prefecture: prefecture || null,
@@ -111,10 +114,11 @@ export async function activateCustomer(
 
   const id = formData.get("id") as string;
   const code = formData.get("code") as string;
+  const expectedVersion = Number(formData.get("version"));
 
   try {
     const command = activateCustomerCommandFactory();
-    await command.execute({ id });
+    await command.execute({ id, expectedVersion });
 
     revalidatePath("/customers");
     revalidatePath(`/customers/${code}`);
@@ -136,10 +140,11 @@ export async function deactivateCustomer(
 
   const id = formData.get("id") as string;
   const code = formData.get("code") as string;
+  const expectedVersion = Number(formData.get("version"));
 
   try {
     const command = deactivateCustomerCommandFactory();
-    await command.execute({ id });
+    await command.execute({ id, expectedVersion });
 
     revalidatePath("/customers");
     revalidatePath(`/customers/${code}`);

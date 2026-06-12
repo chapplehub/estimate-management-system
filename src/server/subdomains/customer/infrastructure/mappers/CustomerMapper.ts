@@ -1,6 +1,5 @@
 import { Address } from "@server/shared/domain/values/Address";
 import { CompanyCode } from "@server/shared/domain/values/CompanyCode";
-import { CompanyId } from "@server/shared/domain/values/CompanyId";
 import { CompanyName } from "@server/shared/domain/values/CompanyName";
 import { FaxNumber } from "@server/shared/domain/values/FaxNumber";
 import { PhoneNumber } from "@server/shared/domain/values/PhoneNumber";
@@ -9,32 +8,28 @@ import { Prefecture } from "@server/shared/domain/values/Prefecture";
 import { Customer } from "@subdomains/customer/domain/entities/Customer";
 import { CustomerId } from "@subdomains/customer/domain/values/CustomerId";
 import { MarginRate } from "@subdomains/customer/domain/values/MarginRate";
-import type { Company, Customer as PrismaCustomer } from "@generated/prisma/client";
-import { CompanyType, Prisma } from "@generated/prisma/client";
-
-type PrismaCustomerWithCompany = PrismaCustomer & {
-  company: Company;
-};
+import type { Customer as PrismaCustomer } from "@generated/prisma/client";
+import { Prisma } from "@generated/prisma/client";
 
 /**
  * CustomerMapper
  *
- * Company + Customer の複合データとドメインエンティティを相互変換する
+ * 平坦化後（ADR-0043）の customers テーブル行とドメインエンティティを相互変換する。
+ * 取引先共通属性は customers 自テーブルが直接保持する（companies 基底は廃止）。
  */
 export class CustomerMapper {
-  static toDomain(data: PrismaCustomerWithCompany): Customer {
+  static toDomain(data: PrismaCustomer): Customer {
     return Customer.reconstruct(
       new CustomerId(data.id),
-      new CompanyId(data.companyId),
-      new CompanyCode(data.company.code),
-      new CompanyName(data.company.name),
-      data.company.postalCode ? new PostalCode(data.company.postalCode) : null,
-      data.company.prefecture ? new Prefecture(data.company.prefecture) : null,
-      data.company.address ? new Address(data.company.address) : null,
-      data.company.phoneNumber ? new PhoneNumber(data.company.phoneNumber) : null,
-      data.company.faxNumber ? new FaxNumber(data.company.faxNumber) : null,
-      data.company.contactPerson,
-      data.company.isActive,
+      new CompanyCode(data.code),
+      new CompanyName(data.name),
+      data.postalCode ? new PostalCode(data.postalCode) : null,
+      data.prefecture ? new Prefecture(data.prefecture) : null,
+      data.address ? new Address(data.address) : null,
+      data.phoneNumber ? new PhoneNumber(data.phoneNumber) : null,
+      data.faxNumber ? new FaxNumber(data.faxNumber) : null,
+      data.contactPerson,
+      data.isActive,
       data.marginRate !== null ? new MarginRate(Number(data.marginRate)) : null,
       data.createdAt,
       data.updatedAt
@@ -44,43 +39,33 @@ export class CustomerMapper {
   static toPrismaCreate(customer: Customer) {
     return {
       id: customer.id.value,
+      code: customer.code.value,
+      name: customer.name.value,
+      postalCode: customer.postalCode?.value ?? null,
+      prefecture: customer.prefecture?.value ?? null,
+      address: customer.address?.value ?? null,
+      phoneNumber: customer.phoneNumber?.value ?? null,
+      faxNumber: customer.faxNumber?.value ?? null,
+      contactPerson: customer.contactPerson,
+      isActive: customer.isActive,
       marginRate:
         customer.marginRate !== null ? new Prisma.Decimal(customer.marginRate.value) : null,
-      company: {
-        create: {
-          id: customer.companyId.value,
-          code: customer.code.value,
-          name: customer.name.value,
-          type: CompanyType.CUSTOMER,
-          postalCode: customer.postalCode?.value ?? null,
-          prefecture: customer.prefecture?.value ?? null,
-          address: customer.address?.value ?? null,
-          phoneNumber: customer.phoneNumber?.value ?? null,
-          faxNumber: customer.faxNumber?.value ?? null,
-          contactPerson: customer.contactPerson,
-          isActive: customer.isActive,
-        },
-      },
     };
   }
 
   static toPrismaUpdate(customer: Customer) {
     return {
+      name: customer.name.value,
+      postalCode: customer.postalCode?.value ?? null,
+      prefecture: customer.prefecture?.value ?? null,
+      address: customer.address?.value ?? null,
+      phoneNumber: customer.phoneNumber?.value ?? null,
+      faxNumber: customer.faxNumber?.value ?? null,
+      contactPerson: customer.contactPerson,
+      isActive: customer.isActive,
       marginRate:
         customer.marginRate !== null ? new Prisma.Decimal(customer.marginRate.value) : null,
       updatedAt: customer.updatedAt,
-      company: {
-        update: {
-          name: customer.name.value,
-          postalCode: customer.postalCode?.value ?? null,
-          prefecture: customer.prefecture?.value ?? null,
-          address: customer.address?.value ?? null,
-          phoneNumber: customer.phoneNumber?.value ?? null,
-          faxNumber: customer.faxNumber?.value ?? null,
-          contactPerson: customer.contactPerson,
-          isActive: customer.isActive,
-        },
-      },
     };
   }
 }

@@ -1,13 +1,12 @@
 import { generateId } from "@server/shared/generateId";
 import prisma from "@server/prisma";
-import { CompanyType } from "@generated/prisma/client";
 import { PrismaCustomerQueryService } from "@subdomains/customer/infrastructure/queries/PrismaCustomerQueryService";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { SearchCustomersQuery } from "../SearchCustomersQuery";
 
 describe("SearchCustomersQuery", () => {
   let query: SearchCustomersQuery;
-  const testCompanyIds: string[] = [];
+  const testCustomerIds: string[] = [];
 
   const TEST_CODES = ["CUST999924", "CUST999925", "CUST999926", "CUST999927"];
 
@@ -17,35 +16,26 @@ describe("SearchCustomersQuery", () => {
     marginRate?: number;
     isActive?: boolean;
   }) {
-    const companyId = generateId();
     const customerId = generateId();
-
-    await prisma.company.create({
-      data: {
-        id: companyId,
-        code: data.code,
-        name: data.name,
-        type: CompanyType.CUSTOMER,
-        isActive: data.isActive ?? true,
-      },
-    });
 
     await prisma.customer.create({
       data: {
         id: customerId,
-        companyId,
+        code: data.code,
+        name: data.name,
+        isActive: data.isActive ?? true,
         marginRate: data.marginRate ?? null,
       },
     });
 
-    testCompanyIds.push(companyId);
-    return { companyId, customerId };
+    testCustomerIds.push(customerId);
+    return { customerId };
   }
 
   beforeEach(async () => {
-    testCompanyIds.length = 0;
+    testCustomerIds.length = 0;
 
-    await prisma.company.deleteMany({
+    await prisma.customer.deleteMany({
       where: { code: { in: TEST_CODES } },
     });
 
@@ -53,9 +43,9 @@ describe("SearchCustomersQuery", () => {
   });
 
   afterEach(async () => {
-    if (testCompanyIds.length > 0) {
-      await prisma.company.deleteMany({
-        where: { id: { in: testCompanyIds } },
+    if (testCustomerIds.length > 0) {
+      await prisma.customer.deleteMany({
+        where: { id: { in: testCustomerIds } },
       });
     }
   });

@@ -1,6 +1,6 @@
 import prisma from "@server/prisma";
 import { generateId } from "@server/shared/generateId";
-import { CompanyType, ProductCategory, ProductUnit } from "@generated/prisma/enums";
+import { ProductCategory, ProductUnit } from "@generated/prisma/enums";
 
 import { ensureTestDepartment } from "./ensureTestDepartment";
 
@@ -40,38 +40,27 @@ export async function ensureEstimateFixtures(): Promise<EstimateFixtureIds> {
     },
   });
 
-  // 得意先（Company + Customer）
-  const customerCompany = await prisma.company.upsert({
+  // 得意先（Customer）
+  const customer = await prisma.customer.upsert({
     where: { code: CUSTOMER_COMPANY_CODE },
     update: { name: "見積テスト得意先" },
     create: {
       id: generateId(),
       code: CUSTOMER_COMPANY_CODE,
       name: "見積テスト得意先",
-      type: CompanyType.CUSTOMER,
     },
   });
-  const customer = await prisma.customer.upsert({
-    where: { companyId: customerCompany.id },
-    update: {},
-    create: { id: generateId(), companyId: customerCompany.id },
-  });
 
-  // 納品先（Company + DeliveryLocation。親得意先は上記 customer）
-  const deliveryCompany = await prisma.company.upsert({
+  // 納品先（DeliveryLocation。親得意先は上記 customer）
+  const deliveryLocation = await prisma.deliveryLocation.upsert({
     where: { code: DELIVERY_COMPANY_CODE },
     update: { name: "見積テスト納品先" },
     create: {
       id: generateId(),
       code: DELIVERY_COMPANY_CODE,
       name: "見積テスト納品先",
-      type: CompanyType.DELIVERY_LOCATION,
+      customerId: customer.id,
     },
-  });
-  const deliveryLocation = await prisma.deliveryLocation.upsert({
-    where: { companyId: deliveryCompany.id },
-    update: {},
-    create: { id: generateId(), companyId: deliveryCompany.id, customerId: customer.id },
   });
 
   const product = await prisma.product.upsert({

@@ -16,7 +16,7 @@ describe("DeleteCustomerCommand", () => {
   const TEST_CODES = ["CUST999914"];
 
   beforeEach(async () => {
-    await prisma.company.deleteMany({
+    await prisma.customer.deleteMany({
       where: { code: { in: TEST_CODES } },
     });
 
@@ -28,12 +28,12 @@ describe("DeleteCustomerCommand", () => {
       new CompanyCode(TEST_CODES[0]),
       new CompanyName("削除テスト得意先")
     );
-    const saved = await repository.save(customer);
+    const saved = await repository.insert(customer);
     testCustomerId = saved.id.value;
   });
 
   afterEach(async () => {
-    await prisma.company.deleteMany({
+    await prisma.customer.deleteMany({
       where: { code: { in: TEST_CODES } },
     });
   });

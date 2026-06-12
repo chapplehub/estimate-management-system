@@ -18,12 +18,12 @@ describe("DeliveryLocationCodeDuplicationCheckDomainService", () => {
   const DL_TEST_CODES = ["DL999801", "DL999802"];
   const CUSTOMER_TEST_CODE = "CUST999811";
 
-  // クリーンアップ（FK制約考慮: DL の Company → Customer の Company の順）
+  // クリーンアップ（FK制約考慮: 納品先 → 得意先の順）
   async function cleanup() {
-    await prisma.company.deleteMany({
+    await prisma.deliveryLocation.deleteMany({
       where: { code: { in: DL_TEST_CODES } },
     });
-    await prisma.company.deleteMany({
+    await prisma.customer.deleteMany({
       where: { code: CUSTOMER_TEST_CODE },
     });
   }
@@ -37,7 +37,7 @@ describe("DeliveryLocationCodeDuplicationCheckDomainService", () => {
       new CompanyCode(CUSTOMER_TEST_CODE),
       new CompanyName("テスト得意先")
     );
-    const savedCustomer = await customerRepository.save(customer);
+    const savedCustomer = await customerRepository.insert(customer);
     customerId = savedCustomer.id;
 
     dlRepository = new PrismaDeliveryLocationRepository();

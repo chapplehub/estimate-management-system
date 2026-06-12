@@ -1,6 +1,5 @@
 import { Address } from "@server/shared/domain/values/Address";
 import { CompanyCode } from "@server/shared/domain/values/CompanyCode";
-import { CompanyId } from "@server/shared/domain/values/CompanyId";
 import { CompanyName } from "@server/shared/domain/values/CompanyName";
 import { FaxNumber } from "@server/shared/domain/values/FaxNumber";
 import { PhoneNumber } from "@server/shared/domain/values/PhoneNumber";
@@ -22,7 +21,7 @@ export type CustomerCreateOptions = {
 /**
  * 得意先エンティティ
  *
- * Company（取引先基底）の情報を埋め込んだ集約ルート。
+ * 取引先共通属性（コード・名称・住所・連絡先・有効フラグ）を自テーブルに持つ集約ルート（ADR-0043）。
  * 得意先固有の属性として標準マージン率を持つ。
  */
 export class Customer {
@@ -30,7 +29,6 @@ export class Customer {
 
   private constructor(
     private readonly _id: CustomerId,
-    private readonly _companyId: CompanyId,
     private readonly _code: CompanyCode,
     private _name: CompanyName,
     private _postalCode: PostalCode | null,
@@ -53,7 +51,6 @@ export class Customer {
 
     return new Customer(
       CustomerId.generate(),
-      CompanyId.generate(),
       code,
       name,
       options?.postalCode ?? null,
@@ -74,7 +71,6 @@ export class Customer {
    */
   static reconstruct(
     id: CustomerId,
-    companyId: CompanyId,
     code: CompanyCode,
     name: CompanyName,
     postalCode: PostalCode | null,
@@ -90,7 +86,6 @@ export class Customer {
   ): Customer {
     return new Customer(
       id,
-      companyId,
       code,
       name,
       postalCode,
@@ -158,10 +153,6 @@ export class Customer {
 
   get id(): CustomerId {
     return this._id;
-  }
-
-  get companyId(): CompanyId {
-    return this._companyId;
   }
 
   get code(): CompanyCode {
