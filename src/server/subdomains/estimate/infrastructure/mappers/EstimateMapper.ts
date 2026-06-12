@@ -34,6 +34,7 @@ import { TaxRoundingType } from "@subdomains/estimate/domain/values/TaxRoundingT
 import { Unit } from "@subdomains/estimate/domain/values/Unit";
 import { VariationStatus } from "@subdomains/estimate/domain/values/VariationStatus";
 
+import { generateId } from "@server/shared/generateId";
 import { Prisma } from "@generated/prisma/client";
 import type {
   EstimateType as PrismaEstimateType,
@@ -323,5 +324,25 @@ export class EstimateMapper {
       copiedVariationId: copy.copiedVariationId.value,
       sourceVariationId: copy.sourceVariationId.value,
     }));
+  }
+
+  /**
+   * 改訂系譜（EstimateVariationRevision）の create 入力へ変換する（C7 / ADR-0044）。
+   * 改訂で生まれたバリエーション（revisedFrom あり）のみが対象。
+   * id はスキーマ規約（サロゲート UUIDv7）に従いここで生成する。
+   */
+  static toVariationRevisionCreateInput(
+    variation: Readonly<EstimateVariation>
+  ): Prisma.EstimateVariationRevisionCreateManyInput {
+    if (!variation.revisedFrom) {
+      throw new Error(
+        `改訂で生まれていないバリエーションから改訂系譜は作れません: ${variation.id.value}`
+      );
+    }
+    return {
+      id: generateId(),
+      revisedVariationId: variation.id.value,
+      sourceVariationId: variation.revisedFrom.value,
+    };
   }
 }

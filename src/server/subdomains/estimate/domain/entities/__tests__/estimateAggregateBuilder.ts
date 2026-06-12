@@ -99,25 +99,30 @@ function header(ids: EstimateFixtureIds) {
 export function buildNewEstimate(
   ids: EstimateFixtureIds,
   estimateNumber: string,
-  opts: { variationNumbers?: number[] } = {}
+  opts: { variationNumbers?: number[]; submissionType?: SubmissionType } = {}
 ): Estimate {
   const variationNumbers = opts.variationNumbers ?? [1];
   const variations = variationNumbers.map((n, idx) =>
-    makeVariation(ids.productId, n, [
-      makeItem(ids.productId, {
-        sortOrder: 1,
-        itemName: `商品A-${idx}`,
-        unitPrice: 1000,
-        quantity: 2,
-      }),
-      makeItem(ids.productId, {
-        sortOrder: 2,
-        itemName: `商品B-${idx}`,
-        unitPrice: 500,
-        quantity: 1,
-        withRevisedDetail: true,
-      }),
-    ])
+    makeVariation(
+      ids.productId,
+      n,
+      [
+        makeItem(ids.productId, {
+          sortOrder: 1,
+          itemName: `商品A-${idx}`,
+          unitPrice: 1000,
+          quantity: 2,
+        }),
+        makeItem(ids.productId, {
+          sortOrder: 2,
+          itemName: `商品B-${idx}`,
+          unitPrice: 500,
+          quantity: 1,
+          withRevisedDetail: true,
+        }),
+      ],
+      opts.submissionType
+    )
   );
   return Estimate.create({
     ...header(ids),

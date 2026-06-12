@@ -15,6 +15,8 @@ import {
 } from "@subdomains/estimate/domain/entities/__tests__/estimateAggregateBuilder";
 import prisma from "@server/prisma";
 import { ConflictError } from "@server/shared/errors/ApplicationError";
+import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
+import { SubmissionType } from "@subdomains/estimate/domain/values/SubmissionType";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { PrismaEstimateRepository } from "../PrismaEstimateRepository";
 
@@ -33,6 +35,8 @@ const EN = {
   staleToken: "N9900009",
   dupSource: "N9900010",
   dup: "N9900011",
+  revise: "N9900012",
+  reviseDelete: "N9900013",
   missing: "N9900099",
 } as const;
 const ALL_NUMBERS = Object.values(EN);
@@ -53,6 +57,15 @@ async function cleanupEstimates(): Promise<void> {
       where: {
         OR: [
           { copiedVariationId: { in: variationIds } },
+          { sourceVariationId: { in: variationIds } },
+        ],
+      },
+    });
+    // 改訂系譜も source 側参照は cascade されないため先に削除する（C7 / ADR-0044）
+    await prisma.estimateVariationRevision.deleteMany({
+      where: {
+        OR: [
+          { revisedVariationId: { in: variationIds } },
           { sourceVariationId: { in: variationIds } },
         ],
       },
@@ -202,6 +215,50 @@ describe("PrismaEstimateRepository", () => {
       expect(found.variations.some((v) => v.id.value === removeVariationId.value)).toBe(false);
       // 追加した #3 が存在する
       expect(found.variations.some((v) => v.variationNumber === 3)).toBe(true);
+    });
+  });
+
+  describe("update - 得意先改訂の系譜永続化（C7・ADR-0044）", () => {
+    it("改訂系譜が保存され、再構築後も出自・凍結・deliveryPrice が保たれる", async () => {
+      const saved = await repository.insert(
+        buildNewEstimate(ids, EN.revise, { submissionType: SubmissionType.DELIVERY_LOCATION })
+      );
+      const source = saved.variations[0]!;
+      const revised = saved.reviseForCustomer(source.id);
+
+      await repository.update(saved, 1);
+      const found = await repository.findById(saved.id);
+
+      expect(found).not.toBeNull();
+      if (!found) return;
+      expect(found.variations).toHaveLength(2);
+
+      // 出自（改訂系譜）が永続化され、読み込み時に revisedFrom へ写像される
+      const foundRevised = found.variations.find((v) => v.id.value === revised.id.value);
+      expect(foundRevised).toBeDefined();
+      expect(foundRevised?.revisedFrom?.value).toBe(source.id.value);
+      expect(foundRevised?.submissionType.isCustomer()).toBe(true);
+
+      // 改訂先の全明細が deliveryPrice スナップショットを持つ（§8.4）
+      expect(foundRevised?.items.length).toBeGreaterThan(0);
+      expect(foundRevised?.items.every((i) => i.revisedDetail !== null)).toBe(true);
+
+      // 再構築後の集約でも凍結（導出）が機能する
+      expect(() => found.updateVariation(source.id, { items: [makeItem(ids.productId)] })).toThrow(
+        BusinessRuleViolationError
+      );
+    });
+
+    it("改訂を含む見積を削除できる（系譜・改訂明細詳細ごと消える）", async () => {
+      const saved = await repository.insert(
+        buildNewEstimate(ids, EN.reviseDelete, { submissionType: SubmissionType.DELIVERY_LOCATION })
+      );
+      saved.reviseForCustomer(saved.variations[0]!.id);
+      await repository.update(saved, 1);
+
+      await repository.delete(saved.id);
+
+      expect(await repository.findById(saved.id)).toBeNull();
     });
   });
 
