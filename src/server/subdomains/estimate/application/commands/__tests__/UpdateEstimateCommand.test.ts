@@ -49,7 +49,6 @@ describe("UpdateEstimateCommand", () => {
       estimateType: "NEW",
       estimateDate: new Date("2096-04-01T00:00:00.000Z"),
       deadline: new Date("2096-04-30T00:00:00.000Z"),
-      submissionType: "CUSTOMER",
       customerId: ids.customerId,
       deliveryLocationId: ids.deliveryLocationId,
       taxRate: 0.1,
@@ -59,6 +58,7 @@ describe("UpdateEstimateCommand", () => {
       variations: [
         {
           variationNumber: 1,
+          submissionType: "CUSTOMER",
           items: [
             {
               productId: ids.productId,
@@ -84,7 +84,6 @@ describe("UpdateEstimateCommand", () => {
       version: 1, // 作成直後の集約は version 1（個々のテストで先行更新する場合は上書き）
       estimateDate: new Date("2096-04-01T00:00:00.000Z"),
       deadline: new Date("2096-04-30T00:00:00.000Z"),
-      submissionType: "CUSTOMER",
       customerId: ids.customerId,
       deliveryLocationId: ids.deliveryLocationId,
       departmentId: ids.departmentId,

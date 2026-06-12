@@ -50,7 +50,6 @@ describe("UpdateVariationCommand", () => {
       estimateType: "NEW",
       estimateDate: new Date("2094-04-01T00:00:00.000Z"),
       deadline: new Date("2094-04-30T00:00:00.000Z"),
-      submissionType: "CUSTOMER",
       customerId: ids.customerId,
       deliveryLocationId: ids.deliveryLocationId,
       taxRate: 0.1,
@@ -60,6 +59,7 @@ describe("UpdateVariationCommand", () => {
       variations: [
         {
           variationNumber: 1,
+          submissionType: "CUSTOMER",
           items: [
             {
               productId: ids.productId,

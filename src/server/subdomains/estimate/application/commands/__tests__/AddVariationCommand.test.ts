@@ -48,7 +48,6 @@ describe("AddVariationCommand", () => {
       estimateType: "NEW",
       estimateDate: new Date("2095-04-01T00:00:00.000Z"),
       deadline: new Date("2095-04-30T00:00:00.000Z"),
-      submissionType: "CUSTOMER",
       customerId: ids.customerId,
       deliveryLocationId: ids.deliveryLocationId,
       taxRate: 0.1,
@@ -58,6 +57,7 @@ describe("AddVariationCommand", () => {
       variations: [
         {
           variationNumber: 1,
+          submissionType: "CUSTOMER",
           items: [
             {
               productId: ids.productId,
@@ -80,6 +80,8 @@ describe("AddVariationCommand", () => {
     const result = await command.execute({
       estimateId: created.id.value,
       version: 1,
+      // 既存バリエーション（得意先宛）と異なる区分を指定し、同一見積内の共存を検証する（ADR-0045）
+      submissionType: "DELIVERY_LOCATION",
       content: {
         items: [
           {
@@ -101,6 +103,10 @@ describe("AddVariationCommand", () => {
     const added = found?.variations.find((v) => v.variationNumber === 2);
     // 1500 × 2 = 3000
     expect(added?.subtotal.majorUnits).toBe(3000);
+    expect(added?.submissionType.isDeliveryLocation()).toBe(true);
+    expect(
+      found?.variations.find((v) => v.variationNumber === 1)?.submissionType.isCustomer()
+    ).toBe(true);
   });
 
   it("存在しない見積IDは NotFoundEntityError", async () => {
@@ -108,6 +114,7 @@ describe("AddVariationCommand", () => {
       command.execute({
         estimateId: "00000000-0000-7000-8000-0000000009ff",
         version: 1,
+        submissionType: "CUSTOMER",
         content: { items: [] },
       })
     ).rejects.toThrow(NotFoundEntityError);

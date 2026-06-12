@@ -46,6 +46,8 @@ export type CreateEstimateItemInput = {
 /** バリエーションの入力（プリミティブ）。 */
 export type CreateEstimateVariationInput = {
   variationNumber: number;
+  /** 提出区分（"CUSTOMER" / "DELIVERY_LOCATION"）。バリエーション単位の不変属性（ADR-0045） */
+  submissionType: string;
   items: CreateEstimateItemInput[];
   overallDiscount?: number;
   customerMemo?: string | null;
@@ -77,7 +79,6 @@ export type CreateEstimateInput = {
   estimateType: string;
   estimateDate: Date;
   deadline: Date;
-  submissionType: string;
   customerId: string;
   deliveryLocationId: string;
   taxRate: number;
@@ -106,7 +107,6 @@ export class CreateEstimateCommand {
   async execute(input: CreateEstimateInput): Promise<Estimate> {
     // 1. プリミティブ → 値オブジェクト変換
     const estimateType = EstimateType.from(input.estimateType);
-    const submissionType = SubmissionType.from(input.submissionType);
     const taxRate = new TaxRate(input.taxRate);
     const taxRoundingType = TaxRoundingType.from(input.taxRoundingType);
 
@@ -125,7 +125,6 @@ export class CreateEstimateCommand {
       estimateNumber,
       estimateDate: input.estimateDate,
       deadline: input.deadline,
-      submissionType,
       customerId: new CustomerId(input.customerId),
       deliveryLocationId: new DeliveryLocationId(input.deliveryLocationId),
       taxRate,
@@ -146,6 +145,7 @@ export class CreateEstimateCommand {
   ): EstimateVariationDescriptor {
     return {
       variationNumber: variation.variationNumber,
+      submissionType: SubmissionType.from(variation.submissionType),
       items: variation.items.map((item) => this.toItemDescriptor(item)),
       overallDiscount:
         variation.overallDiscount != null

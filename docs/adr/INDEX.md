@@ -62,6 +62,9 @@
 | [0040](0040-duplication-genealogy-as-sibling-artifact-persisted-via-insert-with-copies.md) | 見積複製の系譜を集約外の兄弟成果物として扱い insertWithCopies でアトミック永続化する | 採用 | 2026-06-11 |
 | [0042](0042-duplication-requires-at-least-one-variation.md) | 見積複製(C6)は最低1バリエーションの選択を要求する（§5.2 と §C1 の調停） | 採用 | 2026-06-11 |
 | [0043](0043-flatten-company-subtype-inheritance-into-aggregate-tables.md) | 取引先は CTI（基底テーブル継承）を廃し、サブタイプ平坦化で「集約 = 1 テーブル」にする | 採用 | 2026-06-11 |
+| [0044](0044-revision-genealogy-inside-aggregate-and-frozen-as-derived-state.md) | 改訂系譜は集約の内側に置き、凍結は系譜からの導出状態とする | 採用 | 2026-06-12 |
+| [0045](0045-submission-type-as-immutable-variation-attribute.md) | 提出区分はバリエーション単位の不変保存属性とする | 採用 | 2026-06-12 |
+| [0046](0046-revised-variation-rejects-bulk-replace-allow-granular-adjustment.md) | 改訂先バリエーションは C4 全置換を拒否し、調整は粒度別メソッドに限定する | 採用 | 2026-06-12 |
 
 ## アプリケーション（コマンド）
 

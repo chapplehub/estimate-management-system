@@ -76,6 +76,7 @@ describe("DuplicateEstimateCommand", () => {
   function buildSource(): Estimate {
     const variation = (variationNumber: number, itemName: string, unitPrice: number) => ({
       variationNumber,
+      submissionType: SubmissionType.CUSTOMER,
       items: [
         {
           productId: new ProductId(ids.productId),
@@ -91,7 +92,6 @@ describe("DuplicateEstimateCommand", () => {
       estimateNumber: EstimateNumber.parse("N9300001"),
       estimateDate: SOURCE_DATE,
       deadline: new Date("2093-04-30T00:00:00.000Z"),
-      submissionType: SubmissionType.CUSTOMER,
       customerId: new CustomerId(ids.customerId),
       deliveryLocationId: new DeliveryLocationId(ids.deliveryLocationId),
       taxRate: new TaxRate(0.1),

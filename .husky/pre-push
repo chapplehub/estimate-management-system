@@ -10,8 +10,10 @@ CHANGED_FILES=$(git diff --name-only --diff-filter=ACMR "$BASE"...HEAD)
 CODE_FILES=$(echo "$CHANGED_FILES" | grep -E '^(src/|prisma/|[^/]*\.(ts|js|mjs|tsx|jsx)$)' || true)
 
 if [ -z "$CODE_FILES" ]; then
-  echo "📝 No code changes in push range. Skipping full test suite."
+  echo "📝 No code changes in push range. Skipping tsc and full test suite."
   exit 0
 fi
 
+# 全体型チェック → フルスイート（どちらも全プログラム検査なのでここに集約）
+pnpm tsc --noEmit
 pnpm vitest run
