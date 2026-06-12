@@ -9,13 +9,12 @@ fi
 CODE_FILES=$(echo "$STAGED_FILES" | grep -E '^(src/|prisma/|[^/]*\.(ts|js|mjs|tsx|jsx)$)' || true)
 
 if [ -z "$CODE_FILES" ]; then
-  echo "📝 No code changes detected. Skipping lint-staged, tsc, and tests."
+  echo "📝 No code changes detected. Skipping lint-staged and tests."
   exit 0
 fi
 
 pnpm lint-staged
-pnpm tsc --noEmit
 
 # 変更されたコードに関連するテストだけ実行する（import グラフを逆引き）
-# フルスイートは pre-push（vitest run）で担保する
+# 全体型チェック（tsc）とフルスイートは pre-push で担保する
 echo "$CODE_FILES" | xargs pnpm vitest related --run
