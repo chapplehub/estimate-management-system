@@ -1,3 +1,17 @@
 # フルスイート: 全テストを実行する（import グラフで絞らない）
 # 変更分だけの高速チェックは pre-commit（vitest related）で実施済み
+
+# push されるコミット範囲を特定する
+# upstream 未設定（新規ブランチの初回 push）なら origin/develop を基準にする
+BASE=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || echo "origin/develop")
+
+# その範囲でコードファイルが変更されているかを判定（pre-commit と同じ正規表現）
+CHANGED_FILES=$(git diff --name-only --diff-filter=ACMR "$BASE"...HEAD)
+CODE_FILES=$(echo "$CHANGED_FILES" | grep -E '^(src/|prisma/|[^/]*\.(ts|js|mjs|tsx|jsx)$)' || true)
+
+if [ -z "$CODE_FILES" ]; then
+  echo "📝 No code changes in push range. Skipping full test suite."
+  exit 0
+fi
+
 pnpm vitest run
