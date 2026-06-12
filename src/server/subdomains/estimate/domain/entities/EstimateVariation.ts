@@ -63,6 +63,9 @@ export class EstimateVariation {
     private _variationNumber: number,
     // 不変保存属性（ADR-0045）。ミューテータは提供せず、構造で不変性を担保する
     private readonly _submissionType: SubmissionType,
+    // 改訂出自（ADR-0044）。改訂で生まれたバリエーションのみ改訂元 ID を持つ（高々1）。
+    // 永続化は EstimateVariationRevision（系譜）への写像で行う
+    private readonly _revisedFrom: EstimateVariationId | null,
     private _status: VariationStatus,
     private _customerMemo: Memo,
     private _internalMemo: Memo,
@@ -86,6 +89,8 @@ export class EstimateVariation {
     variationNumber: number;
     /** 提出区分（ADR-0045）。作成時に確定し、以後変更できない */
     submissionType: SubmissionType;
+    /** 改訂出自（ADR-0044）。得意先改訂で生まれた場合のみ改訂元 ID を渡す。 */
+    revisedFrom?: EstimateVariationId | null;
     tax: TaxContext;
     status?: VariationStatus;
     items?: EstimateItem[];
@@ -106,6 +111,7 @@ export class EstimateVariation {
       EstimateVariationId.generate(),
       input.variationNumber,
       input.submissionType,
+      input.revisedFrom ?? null,
       input.status ?? VariationStatus.ACTIVE,
       input.customerMemo ?? Memo.empty(),
       input.internalMemo ?? Memo.empty(),
@@ -129,6 +135,7 @@ export class EstimateVariation {
     id: EstimateVariationId;
     variationNumber: number;
     submissionType: SubmissionType;
+    revisedFrom: EstimateVariationId | null;
     status: VariationStatus;
     customerMemo: Memo;
     internalMemo: Memo;
@@ -146,6 +153,7 @@ export class EstimateVariation {
       input.id,
       input.variationNumber,
       input.submissionType,
+      input.revisedFrom,
       input.status,
       input.customerMemo,
       input.internalMemo,
@@ -166,11 +174,13 @@ export class EstimateVariation {
   // ========================================
 
   addItem(item: EstimateItem, tax: TaxContext): void {
+    this.assertLineStructureMutable();
     this._items.push(item);
     this.recalculate(tax);
   }
 
   removeItem(itemId: EstimateItemId, tax: TaxContext): void {
+    this.assertLineStructureMutable();
     const index = this._items.findIndex((i) => i.id.equals(itemId));
     if (index === -1) {
       throw new BusinessRuleViolationError(
@@ -233,6 +243,9 @@ export class EstimateVariation {
    */
   replaceContent(input: VariationContent, tax: TaxContext): void {
     this.assertEditable();
+    // 全置換は構造上「全行削除＋全行追加」であり行構成固定（§7.2）と原理的に矛盾する。
+    // 改訂先の調整は粒度別メソッド（changeItem* / changeOverallDiscount / メモ変更）で行う
+    this.assertLineStructureMutable();
 
     // _items は readonly 参照だが配列中身は可変。同一参照を保ったまま全置換する。
     this._items.length = 0;
@@ -331,6 +344,19 @@ export class EstimateVariation {
     }
   }
 
+  /**
+   * 行構成固定（§7.2）: 改訂で生まれたバリエーションは明細の追加・削除不可。
+   * 改訂元との明細1:1対応を保全し、明細単位の粗利（deliveryPrice − 得意先価格・§8.4）を
+   * 常に計算可能に保つ。単価・掛率・値引・数量・メモの調整は許可される。
+   */
+  private assertLineStructureMutable(): void {
+    if (this._revisedFrom !== null) {
+      throw new BusinessRuleViolationError(
+        "改訂で生まれたバリエーションは明細の追加・削除ができません（行構成固定・§7.2）"
+      );
+    }
+  }
+
   private findItemOrThrow(itemId: EstimateItemId): EstimateItem {
     const item = this._items.find((i) => i.id.equals(itemId));
     if (!item) {
@@ -370,6 +396,11 @@ export class EstimateVariation {
 
   get submissionType(): SubmissionType {
     return this._submissionType;
+  }
+
+  /** 改訂出自（ADR-0044）。改訂で生まれていなければ null。 */
+  get revisedFrom(): EstimateVariationId | null {
+    return this._revisedFrom;
   }
 
   get status(): VariationStatus {

@@ -5,6 +5,7 @@ import { ItemName } from "../../values/ItemName";
 import { Memo } from "../../values/Memo";
 import { Money } from "../../values/Money";
 import { Quantity } from "../../values/Quantity";
+import { EstimateVariationId } from "../../values/EstimateVariationId";
 import { SubmissionType } from "../../values/SubmissionType";
 import { TaxRate } from "../../values/TaxRate";
 import { Unit } from "../../values/Unit";
@@ -392,6 +393,81 @@ describe("EstimateVariation", () => {
       expect(v.items).toHaveLength(0);
       expect(v.subtotal.isZero()).toBe(true);
       expect(v.finalTotal.isZero()).toBe(true);
+    });
+  });
+
+  describe("改訂出自（revisedFrom）の保持", () => {
+    it("改訂で生まれたバリエーションは改訂元の出自を保持する", () => {
+      const sourceId = EstimateVariationId.generate();
+      const v = EstimateVariation.create({
+        variationNumber: 2,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        revisedFrom: sourceId,
+      });
+
+      expect(v.revisedFrom?.equals(sourceId)).toBe(true);
+    });
+
+    it("通常作成のバリエーションは出自を持たない（revisedFrom = null）", () => {
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.DELIVERY_LOCATION,
+        tax: TAX,
+      });
+
+      expect(v.revisedFrom).toBeNull();
+    });
+  });
+
+  describe("行構成固定（改訂先は明細の追加・削除不可）", () => {
+    function makeRevisedVariation(items?: EstimateItem[]): EstimateVariation {
+      return EstimateVariation.create({
+        variationNumber: 2,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        revisedFrom: EstimateVariationId.generate(),
+        items: items ?? [makeItem()],
+      });
+    }
+
+    it("改訂で生まれたバリエーションには明細を追加できない", () => {
+      const v = makeRevisedVariation();
+
+      expect(() => v.addItem(makeItem({ itemName: "追加商品" }), TAX)).toThrow(
+        BusinessRuleViolationError
+      );
+      expect(v.items).toHaveLength(1);
+    });
+
+    it("改訂で生まれたバリエーションの明細は削除できない", () => {
+      const item = makeItem();
+      const v = makeRevisedVariation([item]);
+
+      expect(() => v.removeItem(item.id, TAX)).toThrow(BusinessRuleViolationError);
+      expect(v.items).toHaveLength(1);
+    });
+
+    it("改訂で生まれたバリエーションは内容の一括差替え（C4）ができない", () => {
+      const v = makeRevisedVariation();
+
+      expect(() => v.replaceContent({ items: [makeItem()] }, TAX)).toThrow(
+        BusinessRuleViolationError
+      );
+    });
+
+    it("改訂で生まれたバリエーションでも単価・数量・値引・メモの調整はできる", () => {
+      const item = makeItem({ unitPrice: 1200 });
+      const v = makeRevisedVariation([item]);
+
+      v.changeItemUnitPrice(item.id, Money.fromMajorUnits(1000), TAX);
+      v.changeItemQuantity(item.id, new Quantity(3), TAX);
+      v.changeOverallDiscount(Money.fromMajorUnits(100), TAX);
+      v.changeCustomerMemo(Memo.create("得意先向けに調整"));
+
+      expect(item.unitPrice.equals(Money.fromMajorUnits(1000))).toBe(true);
+      expect(v.subtotal.equals(Money.fromMajorUnits(3000))).toBe(true);
+      expect(v.customerMemo.value).toBe("得意先向けに調整");
     });
   });
 

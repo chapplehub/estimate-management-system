@@ -54,6 +54,8 @@ export const ESTIMATE_FULL_INCLUDE = {
         orderBy: { sortOrder: "asc" },
         include: { revisedDetail: true },
       },
+      // 改訂出自（ADR-0044）。revisionTarget の存在 = このバリエーションが改訂で生まれた
+      revisionTarget: true,
     },
   },
   repairDetail: true,
@@ -136,6 +138,9 @@ export class EstimateMapper {
       id: new EstimateVariationId(v.id),
       variationNumber: v.variationNumber,
       submissionType: SubmissionType.from(v.submissionType),
+      revisedFrom: v.revisionTarget
+        ? new EstimateVariationId(v.revisionTarget.sourceVariationId)
+        : null,
       status: VariationStatus.from(v.status),
       customerMemo: Memo.create(v.customerMemo),
       internalMemo: Memo.create(v.internalMemo),
