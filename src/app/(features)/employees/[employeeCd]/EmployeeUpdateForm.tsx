@@ -14,6 +14,8 @@ type Employee = {
   employeeCd: string;
   departmentId: string;
   role: UserRole | null;
+  /** 楽観ロックトークン（ADR-0039）。編集画面表示時の値をフォームで往復させる */
+  version: number;
 };
 
 type Props = {
@@ -35,6 +37,7 @@ export function EmployeeUpdateForm({ employee, canUpdate, departmentSelectSlot }
       email: employee.email,
       departmentId: employee.departmentId,
       role: employee.role ?? USER_ROLES.USER,
+      version: String(employee.version),
     },
   });
 
@@ -56,6 +59,8 @@ export function EmployeeUpdateForm({ employee, canUpdate, departmentSelectSlot }
       )}
 
       <form {...getFormProps(form)} noValidate className="space-y-4">
+        {/* 楽観ロックトークン（ADR-0039）。編集画面表示時の version を往復させる。 */}
+        <input {...getInputProps(fields.version, { type: "hidden" })} />
         <div>
           <label htmlFor={fields.name.id} className="block text-gray-700 text-sm font-bold mb-2">
             名前

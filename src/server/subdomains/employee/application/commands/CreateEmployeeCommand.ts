@@ -58,7 +58,7 @@ export class CreateEmployeeCommand {
     const newEmployee = Employee.create(employeeCd, mailAddress, employeeName, departmentId);
 
     // Employee を保存
-    await this.employeeRepository.save(newEmployee);
+    await this.employeeRepository.insert(newEmployee);
 
     // 認証ユーザー（User/Account）を作成（roleはUser側で管理）
     const userResult = await this.userManagementService.createUser({

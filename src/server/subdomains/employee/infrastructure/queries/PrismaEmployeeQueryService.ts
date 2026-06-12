@@ -115,6 +115,7 @@ export class PrismaEmployeeQueryService implements EmployeeQueryService {
       email: true,
       name: true,
       departmentId: true,
+      version: true,
       createdAt: true,
       updatedAt: true,
       // Department.nameを取得
@@ -142,6 +143,7 @@ export class PrismaEmployeeQueryService implements EmployeeQueryService {
     name: string;
     departmentId: string;
     department: { name: string };
+    version: number;
     createdAt: Date;
     updatedAt: Date;
     user: { role: string | null } | null;
@@ -155,6 +157,7 @@ export class PrismaEmployeeQueryService implements EmployeeQueryService {
       departmentName: employee.department.name,
       // User.roleを使用（"admin" | "user" | null）
       role: (employee.user?.role as UserRole) ?? null,
+      version: employee.version,
       createdAt: employee.createdAt,
       updatedAt: employee.updatedAt,
     };

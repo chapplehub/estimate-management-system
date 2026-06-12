@@ -45,7 +45,7 @@ describe("EmployeeCdDuplicationCheckDomainService", () => {
       new EmployeeName("テスト太郎"),
       TEST_DEPT_ID
     );
-    await repository.save(employee);
+    await repository.insert(employee);
 
     const isDuplicated = await service.execute(new EmployeeCd(TEST_CODES[0]));
     expect(isDuplicated).toBe(true);
@@ -58,7 +58,7 @@ describe("EmployeeCdDuplicationCheckDomainService", () => {
       new EmployeeName("テスト太郎"),
       TEST_DEPT_ID
     );
-    await repository.save(employee);
+    await repository.insert(employee);
 
     const isDuplicated = await service.execute(new EmployeeCd(TEST_CODES[1]));
     expect(isDuplicated).toBe(false);

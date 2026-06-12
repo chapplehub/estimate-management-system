@@ -17,6 +17,8 @@ export type EmployeeDTO = {
   departmentName: string;
   /** ユーザーロール（User.roleから取得、Userが存在しない場合はnull） */
   role: UserRole | null;
+  /** 楽観ロックトークン（ADR-0039）。編集画面表示時の値をフォームで往復させる */
+  version: number;
   createdAt: Date;
   updatedAt: Date;
 };
