@@ -556,6 +556,52 @@ describe("Estimate", () => {
     });
   });
 
+  describe("改訂が存在する見積のヘッダ変更ガード（§7.2 / §8.7）", () => {
+    function buildRevisedEstimateViaRevise() {
+      const source = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.DELIVERY_LOCATION,
+        tax: TAX,
+        items: [makeItem(1200)],
+      });
+      const estimate = Estimate.create({
+        ...commonHeader(),
+        estimateNumber: EstimateNumber.parse("N2500001"),
+        variations: [source],
+      });
+      estimate.reviseForCustomer(source.id);
+      return estimate;
+    }
+
+    it("改訂が存在すると見積年月日・税率・税端数区分・得意先・納品先を変更できない", () => {
+      const e = buildRevisedEstimateViaRevise();
+
+      expect(() => e.changeEstimateDate(new Date("2025-05-01"))).toThrow(
+        BusinessRuleViolationError
+      );
+      expect(() => e.changeTaxRate(new TaxRate(0.08))).toThrow(BusinessRuleViolationError);
+      expect(() => e.changeTaxRoundingType(TaxRoundingType.ROUND_UP)).toThrow(
+        BusinessRuleViolationError
+      );
+      expect(() => e.changeCustomer(CustomerId.generate())).toThrow(BusinessRuleViolationError);
+      expect(() => e.changeDeliveryLocation(DeliveryLocationId.generate())).toThrow(
+        BusinessRuleViolationError
+      );
+    });
+
+    it("改訂が存在しても締切日・部署は変更できる", () => {
+      const e = buildRevisedEstimateViaRevise();
+      const newDeadline = new Date("2025-06-30");
+      const newDepartment = DepartmentId.generate();
+
+      e.changeDeadline(newDeadline);
+      e.changeDepartment(newDepartment);
+
+      expect(e.deadline).toEqual(newDeadline);
+      expect(e.departmentId.equals(newDepartment)).toBe(true);
+    });
+  });
+
   describe("凍結 - 改訂元バリエーションの編集ガード（ADR-0044）", () => {
     /**
      * 改訂済みの見積を組み立てる:

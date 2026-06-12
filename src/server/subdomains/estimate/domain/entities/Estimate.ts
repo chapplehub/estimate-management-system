@@ -372,11 +372,13 @@ export class Estimate {
   // ========================================
 
   changeTaxRate(newRate: TaxRate): void {
+    this.assertHeaderMutable();
     this._taxRate = newRate;
     this.propagateTaxToAllVariations();
   }
 
   changeTaxRoundingType(newType: TaxRoundingType): void {
+    this.assertHeaderMutable();
     this._taxRoundingType = newType;
     this.propagateTaxToAllVariations();
   }
@@ -440,21 +442,28 @@ export class Estimate {
   // ========================================
 
   changeEstimateDate(newDate: Date): void {
+    this.assertHeaderMutable();
     this._estimateDate = newDate;
     this.touch();
   }
 
+  /**
+   * 締切日は改訂後も変更可。税率境界をまたぐ変更は保存時の税率一致チェック
+   * （§8.7・checkTaxRateThenSave）が既に守っているため、ここではガードしない。
+   */
   changeDeadline(newDeadline: Date): void {
     this._deadline = newDeadline;
     this.touch();
   }
 
   changeCustomer(newCustomerId: CustomerId): void {
+    this.assertHeaderMutable();
     this._customerId = newCustomerId;
     this.touch();
   }
 
   changeDeliveryLocation(newId: DeliveryLocationId): void {
+    this.assertHeaderMutable();
     this._deliveryLocationId = newId;
     this.touch();
   }
@@ -502,6 +511,27 @@ export class Estimate {
     if (this.isVariationFrozen(variationId)) {
       throw new BusinessRuleViolationError(
         "改訂元バリエーションは凍結されています。メモ以外は編集できません（§7.2）"
+      );
+    }
+  }
+
+  /** 改訂系譜が集約内に1件でも存在するか（得意先改訂済みの見積か）。 */
+  private hasRevision(): boolean {
+    return this._variations.some((v) => v.revisedFrom !== null);
+  }
+
+  /**
+   * 改訂が存在する見積のヘッダ変更ガード（§7.2 / §8.7）。
+   *
+   * 改訂後は見積年月日を変更できず、それに依存する税率・税端数区分も変更不可
+   * （凍結バリエーションの税額再計算が起きない前提を守る）。得意先・納品先の
+   * 変更も不可（deliveryPrice スナップショットと粗利は特定の取引先ペアに紐づく
+   * ため）。締切日・部署は変更可。
+   */
+  private assertHeaderMutable(): void {
+    if (this.hasRevision()) {
+      throw new BusinessRuleViolationError(
+        "改訂が存在する見積では見積年月日・税率・税端数区分・得意先・納品先を変更できません（§7.2）"
       );
     }
   }
