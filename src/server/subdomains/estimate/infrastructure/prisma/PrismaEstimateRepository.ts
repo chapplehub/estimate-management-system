@@ -122,6 +122,18 @@ export class PrismaEstimateRepository implements EstimateRepository {
             update: variationScalar,
           });
 
+          // 改訂系譜（高々1・ADR-0044）の同期。出自 revisedFrom は不変かつ改訂で生まれた
+          // バリエーションは常に新規行のため create のみで足りるが、再保存の冪等性のため
+          // 自然キー（revisedVariationId @unique）で upsert する（update は no-op）。
+          // 改訂先バリエーションの削除時は onDelete: Cascade で系譜行も消える
+          if (variation.revisedFrom) {
+            await tx.estimateVariationRevision.upsert({
+              where: { revisedVariationId: variationId },
+              create: EstimateMapper.toVariationRevisionCreateInput(variation),
+              update: {},
+            });
+          }
+
           const itemIds = variation.items.map((i) => i.id.value);
           await tx.estimateItem.deleteMany({
             where: { variationId, id: { notIn: itemIds } },
@@ -218,7 +230,14 @@ export class PrismaEstimateRepository implements EstimateRepository {
 
     // 子エンティティ（variations → items → revisedDetail / repair・afterRepair）は
     // schema の onDelete: Cascade で連鎖削除される。
-    await prisma.estimate.delete({ where: { id: id.value } });
+    // 改訂系譜（ADR-0044）は両端とも本見積内のバリエーションを指すが、sourceVariation 側
+    // FK が Restrict のためカスケードの削除順序によっては違反になる。先に明示削除する
+    await prisma.$transaction(async (tx) => {
+      await tx.estimateVariationRevision.deleteMany({
+        where: { sourceVariation: { estimateId: id.value } },
+      });
+      await tx.estimate.delete({ where: { id: id.value } });
+    });
   }
 
   async findById(id: EstimateId): Promise<Estimate | null> {

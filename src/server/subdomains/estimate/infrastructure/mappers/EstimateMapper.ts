@@ -34,6 +34,7 @@ import { TaxRoundingType } from "@subdomains/estimate/domain/values/TaxRoundingT
 import { Unit } from "@subdomains/estimate/domain/values/Unit";
 import { VariationStatus } from "@subdomains/estimate/domain/values/VariationStatus";
 
+import { generateId } from "@server/shared/generateId";
 import { Prisma } from "@generated/prisma/client";
 import type {
   EstimateType as PrismaEstimateType,
@@ -54,6 +55,8 @@ export const ESTIMATE_FULL_INCLUDE = {
         orderBy: { sortOrder: "asc" },
         include: { revisedDetail: true },
       },
+      // 改訂出自（ADR-0044）。revisionTarget の存在 = このバリエーションが改訂で生まれた
+      revisionTarget: true,
     },
   },
   repairDetail: true,
@@ -136,6 +139,9 @@ export class EstimateMapper {
       id: new EstimateVariationId(v.id),
       variationNumber: v.variationNumber,
       submissionType: SubmissionType.from(v.submissionType),
+      revisedFrom: v.revisionTarget
+        ? new EstimateVariationId(v.revisionTarget.sourceVariationId)
+        : null,
       status: VariationStatus.from(v.status),
       customerMemo: Memo.create(v.customerMemo),
       internalMemo: Memo.create(v.internalMemo),
@@ -318,5 +324,25 @@ export class EstimateMapper {
       copiedVariationId: copy.copiedVariationId.value,
       sourceVariationId: copy.sourceVariationId.value,
     }));
+  }
+
+  /**
+   * 改訂系譜（EstimateVariationRevision）の create 入力へ変換する（C7 / ADR-0044）。
+   * 改訂で生まれたバリエーション（revisedFrom あり）のみが対象。
+   * id はスキーマ規約（サロゲート UUIDv7）に従いここで生成する。
+   */
+  static toVariationRevisionCreateInput(
+    variation: Readonly<EstimateVariation>
+  ): Prisma.EstimateVariationRevisionCreateManyInput {
+    if (!variation.revisedFrom) {
+      throw new Error(
+        `改訂で生まれていないバリエーションから改訂系譜は作れません: ${variation.id.value}`
+      );
+    }
+    return {
+      id: generateId(),
+      revisedVariationId: variation.id.value,
+      sourceVariationId: variation.revisedFrom.value,
+    };
   }
 }

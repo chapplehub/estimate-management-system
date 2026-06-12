@@ -16,9 +16,10 @@ import { SubmissionType } from "../values/SubmissionType";
 import { TaxRate } from "../values/TaxRate";
 import { TaxRoundingType } from "../values/TaxRoundingType";
 import type { AfterRepairEstimateDetail } from "./AfterRepairEstimateDetail";
-import type { EstimateItem } from "./EstimateItem";
+import { EstimateItem } from "./EstimateItem";
 import { EstimateVariation, type TaxContext, type VariationContent } from "./EstimateVariation";
 import type { RepairEstimateDetail } from "./RepairEstimateDetail";
+import { RevisedEstimateItemDetail } from "./RevisedEstimateItemDetail";
 
 /**
  * Estimate 集約ルート（§11.3.1 / ADR-0019）。
@@ -188,18 +189,88 @@ export class Estimate {
   }
 
   /**
+   * 得意先改訂（C7・§7.2）: 納品先宛の改訂元から得意先宛の新バリエーションを
+   * 同一集約内に生成する。採番なし・集約内で完結する（C6 複製と本質的に異なる）。
+   *
+   * 生成規則:
+   * - 明細・価格・値引・メモを全複写する（C6 の単価クリアと異なり、納品先価格を
+   *   得意先卸値へ「調整」する出発点として引き継ぐ）
+   * - 明細ごとに改訂元明細の finalAmount を deliveryPrice としてスナップショットする
+   *   （明細単位の粗利 = 納品先価格 − 得意先価格 の真実の源・§8.4。改訂元は凍結される
+   *   が、見積書に印字される確定値のため導出ではなくスナップショットを真実の源とする）
+   * - バリエーション番号は max+1（§A.2）・ステータス ACTIVE・出自 revisedFrom = 改訂元
+   *
+   * 前提条件: 改訂元は納品先宛かつ有効（ACTIVE）であること。
+   * 同一改訂元からの再改訂（複数の得意先宛派生）は許可される。
+   */
+  reviseForCustomer(sourceVariationId: EstimateVariationId): EstimateVariation {
+    const source = this.findVariationOrThrow(sourceVariationId);
+    if (!source.submissionType.isDeliveryLocation()) {
+      throw new BusinessRuleViolationError(
+        "得意先改訂の改訂元にできるのは納品先宛バリエーションのみです（§7.2）"
+      );
+    }
+    if (!source.isActive()) {
+      throw new BusinessRuleViolationError(
+        "無効状態のバリエーションは得意先改訂の改訂元にできません"
+      );
+    }
+
+    const items = source.items.map((item) =>
+      EstimateItem.create({
+        productId: item.productId,
+        sortOrder: item.sortOrder,
+        itemName: item.itemName,
+        quantity: item.quantity,
+        unit: item.unit,
+        unitPrice: item.unitPrice,
+        discountRate: item.discountRate,
+        itemDiscount: item.itemDiscount,
+        customerMemo: item.customerMemo,
+        internalMemo: item.internalMemo,
+        revisedDetail: RevisedEstimateItemDetail.create(item.finalAmount),
+      })
+    );
+    const revised = EstimateVariation.create({
+      variationNumber: this.nextVariationNumber(),
+      submissionType: SubmissionType.CUSTOMER,
+      revisedFrom: source.id,
+      tax: this.taxContext(),
+      items,
+      overallDiscount: source.overallDiscount,
+      customerMemo: source.customerMemo,
+      internalMemo: source.internalMemo,
+    });
+    this.addVariation(revised);
+    return revised;
+  }
+
+  /**
    * 指定バリエーションの内容を一括差替えする（C4 UpdateVariation）。
    * §3.4 無効状態の編集不可ガードは EstimateVariation.replaceContent 内で行う。
+   * 凍結（改訂元・§7.2）ガードは集約横断の判定のためルートで行う。
    */
   updateVariation(variationId: EstimateVariationId, content: VariationContent): void {
-    this.findVariationOrThrow(variationId).replaceContent(content, this.taxContext());
+    this.editableVariationOrThrow(variationId).replaceContent(content, this.taxContext());
     this.touch();
   }
 
+  /**
+   * バリエーションを削除する。
+   *
+   * 凍結された改訂元は削除不可（系譜の参照先が消えるため・§7.2）。
+   * 逆に改訂先の削除は許可される: 出自（系譜）ごと消えるため、改訂元の凍結が
+   * 自動的に解ける（凍結＝系譜からの導出という設計の帰結・ADR-0044）。
+   */
   removeVariation(variationId: EstimateVariationId): void {
     if (this._variations.length === 1) {
       throw new BusinessRuleViolationError(
         "最後のバリエーションは削除できません（§C1 空見積不可）"
+      );
+    }
+    if (this.isVariationFrozen(variationId)) {
+      throw new BusinessRuleViolationError(
+        "凍結された改訂元バリエーションは削除できません（改訂先が存在する間・§7.2）"
       );
     }
     const index = this._variations.findIndex((v) => v.id.equals(variationId));
@@ -227,12 +298,12 @@ export class Estimate {
   // ========================================
 
   addItem(variationId: EstimateVariationId, item: EstimateItem): void {
-    this.findVariationOrThrow(variationId).addItem(item, this.taxContext());
+    this.editableVariationOrThrow(variationId).addItem(item, this.taxContext());
     this.touch();
   }
 
   removeItem(variationId: EstimateVariationId, itemId: EstimateItemId): void {
-    this.findVariationOrThrow(variationId).removeItem(itemId, this.taxContext());
+    this.editableVariationOrThrow(variationId).removeItem(itemId, this.taxContext());
     this.touch();
   }
 
@@ -241,7 +312,7 @@ export class Estimate {
     itemId: EstimateItemId,
     newQuantity: Quantity
   ): void {
-    this.findVariationOrThrow(variationId).changeItemQuantity(
+    this.editableVariationOrThrow(variationId).changeItemQuantity(
       itemId,
       newQuantity,
       this.taxContext()
@@ -254,7 +325,11 @@ export class Estimate {
     itemId: EstimateItemId,
     newPrice: Money
   ): void {
-    this.findVariationOrThrow(variationId).changeItemUnitPrice(itemId, newPrice, this.taxContext());
+    this.editableVariationOrThrow(variationId).changeItemUnitPrice(
+      itemId,
+      newPrice,
+      this.taxContext()
+    );
     this.touch();
   }
 
@@ -263,7 +338,7 @@ export class Estimate {
     itemId: EstimateItemId,
     newRate: DiscountRate
   ): void {
-    this.findVariationOrThrow(variationId).changeItemDiscountRate(
+    this.editableVariationOrThrow(variationId).changeItemDiscountRate(
       itemId,
       newRate,
       this.taxContext()
@@ -276,7 +351,7 @@ export class Estimate {
     itemId: EstimateItemId,
     newDiscount: Money
   ): void {
-    this.findVariationOrThrow(variationId).changeItemDiscount(
+    this.editableVariationOrThrow(variationId).changeItemDiscount(
       itemId,
       newDiscount,
       this.taxContext()
@@ -285,7 +360,10 @@ export class Estimate {
   }
 
   changeOverallDiscount(variationId: EstimateVariationId, newDiscount: Money): void {
-    this.findVariationOrThrow(variationId).changeOverallDiscount(newDiscount, this.taxContext());
+    this.editableVariationOrThrow(variationId).changeOverallDiscount(
+      newDiscount,
+      this.taxContext()
+    );
     this.touch();
   }
 
@@ -294,11 +372,13 @@ export class Estimate {
   // ========================================
 
   changeTaxRate(newRate: TaxRate): void {
+    this.assertHeaderMutable();
     this._taxRate = newRate;
     this.propagateTaxToAllVariations();
   }
 
   changeTaxRoundingType(newType: TaxRoundingType): void {
+    this.assertHeaderMutable();
     this._taxRoundingType = newType;
     this.propagateTaxToAllVariations();
   }
@@ -362,21 +442,28 @@ export class Estimate {
   // ========================================
 
   changeEstimateDate(newDate: Date): void {
+    this.assertHeaderMutable();
     this._estimateDate = newDate;
     this.touch();
   }
 
+  /**
+   * 締切日は改訂後も変更可。税率境界をまたぐ変更は保存時の税率一致チェック
+   * （§8.7・checkTaxRateThenSave）が既に守っているため、ここではガードしない。
+   */
   changeDeadline(newDeadline: Date): void {
     this._deadline = newDeadline;
     this.touch();
   }
 
   changeCustomer(newCustomerId: CustomerId): void {
+    this.assertHeaderMutable();
     this._customerId = newCustomerId;
     this.touch();
   }
 
   changeDeliveryLocation(newId: DeliveryLocationId): void {
+    this.assertHeaderMutable();
     this._deliveryLocationId = newId;
     this.touch();
   }
@@ -408,6 +495,55 @@ export class Estimate {
       return 1;
     }
     return Math.max(...this._variations.map((v) => v.variationNumber)) + 1;
+  }
+
+  /**
+   * 凍結判定（ADR-0044）: 「集約内に、自分を改訂元（revisedFrom）とするバリエーションが
+   * 存在する ⟺ 凍結」。凍結は改訂された事実（系譜）からの導出であり、保存された状態ではない。
+   * 他バリエーションの出自を横断して見る必要があるため、判定は集約ルートにしか置けない。
+   */
+  private isVariationFrozen(variationId: EstimateVariationId): boolean {
+    return this._variations.some((v) => v.revisedFrom?.equals(variationId) ?? false);
+  }
+
+  /** 凍結（§7.2）: 改訂元はメモ・ステータス以外の編集と削除を拒否する。 */
+  private assertVariationNotFrozen(variationId: EstimateVariationId): void {
+    if (this.isVariationFrozen(variationId)) {
+      throw new BusinessRuleViolationError(
+        "改訂元バリエーションは凍結されています。メモ以外は編集できません（§7.2）"
+      );
+    }
+  }
+
+  /** 改訂系譜が集約内に1件でも存在するか（得意先改訂済みの見積か）。 */
+  private hasRevision(): boolean {
+    return this._variations.some((v) => v.revisedFrom !== null);
+  }
+
+  /**
+   * 改訂が存在する見積のヘッダ変更ガード（§7.2 / §8.7）。
+   *
+   * 改訂後は見積年月日を変更できず、それに依存する税率・税端数区分も変更不可
+   * （凍結バリエーションの税額再計算が起きない前提を守る）。得意先・納品先の
+   * 変更も不可（deliveryPrice スナップショットと粗利は特定の取引先ペアに紐づく
+   * ため）。締切日・部署は変更可。
+   */
+  private assertHeaderMutable(): void {
+    if (this.hasRevision()) {
+      throw new BusinessRuleViolationError(
+        "改訂が存在する見積では見積年月日・税率・税端数区分・得意先・納品先を変更できません（§7.2）"
+      );
+    }
+  }
+
+  /**
+   * 内容編集系の入口（C4 差替え・明細操作・全体値引）が使う取得ヘルパ。
+   * 凍結（改訂元）を拒否してから返す。ステータス変更（activate/deactivate）と
+   * メモ変更は凍結中も許可されるため findVariationOrThrow を直接使う。
+   */
+  private editableVariationOrThrow(variationId: EstimateVariationId): EstimateVariation {
+    this.assertVariationNotFrozen(variationId);
+    return this.findVariationOrThrow(variationId);
   }
 
   private findVariationOrThrow(variationId: EstimateVariationId): EstimateVariation {
