@@ -1,4 +1,5 @@
 import prisma from "@server/prisma";
+import { ConflictError } from "@server/shared/errors/ApplicationError";
 import { Product } from "@subdomains/product/domain/entities/Product";
 import { ProductRepository } from "@subdomains/product/domain/repositories/ProductRepository";
 import { ProductCode } from "@subdomains/product/domain/values/ProductCode";
@@ -17,6 +18,96 @@ const INCLUDE_RELATIONS = {
 } as const;
 
 export class PrismaProductRepository implements ProductRepository {
+  async insert(product: Product): Promise<Product> {
+    const result = await prisma.$transaction(async (tx) => {
+      await tx.product.create({
+        data: ProductMapper.toPrismaCreate(product),
+      });
+
+      if (product.relatedProducts.length > 0) {
+        await tx.productRelation.createMany({
+          data: product.relatedProducts.map((r) => ({
+            productId: product.id.value,
+            relatedProductId: r.relatedProductId.value,
+            quantity: r.quantity.value,
+          })),
+        });
+      }
+
+      if (product.components.length > 0) {
+        await tx.setProductComponent.createMany({
+          data: product.components.map((c) => ({
+            setProductId: product.id.value,
+            componentProductId: c.componentProductId.value,
+            quantity: c.quantity.value,
+          })),
+        });
+      }
+
+      return await tx.product.findUniqueOrThrow({
+        where: { id: product.id.value },
+        include: INCLUDE_RELATIONS,
+      });
+    });
+
+    return ProductMapper.toDomain(result);
+  }
+
+  async update(product: Product, expectedVersion: number): Promise<Product> {
+    const result = await prisma.$transaction(async (tx) => {
+      // 楽観ロック: 条件付き UPDATE をトランザクション先頭で実行（ADR-0039）
+      const rootUpdate = await tx.product.updateMany({
+        where: { id: product.id.value, version: expectedVersion },
+        data: {
+          ...ProductMapper.toPrismaUpdate(product),
+          version: { increment: 1 },
+        },
+      });
+
+      // count = 0 は「version 不一致」と「行の消失」の両方を覆う（ADR-0039 細目5）
+      if (rootUpdate.count === 0) {
+        throw new ConflictError(
+          "他のユーザーによって更新または削除されています。画面を再読み込みして最新の内容を確認してください。"
+        );
+      }
+
+      // 子テーブルは差分 upsert（全削除 → 再作成）
+      await tx.productRelation.deleteMany({
+        where: { productId: product.id.value },
+      });
+      await tx.setProductComponent.deleteMany({
+        where: { setProductId: product.id.value },
+      });
+
+      if (product.relatedProducts.length > 0) {
+        await tx.productRelation.createMany({
+          data: product.relatedProducts.map((r) => ({
+            productId: product.id.value,
+            relatedProductId: r.relatedProductId.value,
+            quantity: r.quantity.value,
+          })),
+        });
+      }
+
+      if (product.components.length > 0) {
+        await tx.setProductComponent.createMany({
+          data: product.components.map((c) => ({
+            setProductId: product.id.value,
+            componentProductId: c.componentProductId.value,
+            quantity: c.quantity.value,
+          })),
+        });
+      }
+
+      return await tx.product.findUniqueOrThrow({
+        where: { id: product.id.value },
+        include: INCLUDE_RELATIONS,
+      });
+    });
+
+    return ProductMapper.toDomain(result);
+  }
+
   async save(product: Product): Promise<Product> {
     const result = await prisma.$transaction(async (tx) => {
       // 既存のrelations/componentsを削除
