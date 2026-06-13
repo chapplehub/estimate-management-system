@@ -78,7 +78,7 @@ describe("PrismaProductRepository", () => {
       const saved = await repository.insert(
         Product.create(
           new ProductCode(TEST_CODES[0]),
-          new ProductName("競合テスト商品"),
+          new ProductName("PRREPO競合テスト商品"),
           ProductCategory.INDIVIDUAL,
           ProductUnit.UNIT
         )

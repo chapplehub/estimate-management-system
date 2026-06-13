@@ -58,7 +58,7 @@ describe("DeactivateProductCommand", () => {
   it("古い expectedVersion での無効化は ConflictError になる（楽観ロック / ADR-0039）", async () => {
     const product = Product.create(
       new ProductCode(TEST_CODE),
-      new ProductName("競合テスト商品"),
+      new ProductName("DEA競合テスト商品"),
       ProductCategory.INDIVIDUAL,
       ProductUnit.UNIT
     );
@@ -67,7 +67,7 @@ describe("DeactivateProductCommand", () => {
     // 別ユーザーの更新が version 1 → 2 に進める
     const loadedByOther = await repository.findById(saved.id);
     if (!loadedByOther) throw new Error("setup failed");
-    loadedByOther.changeName(new ProductName("別ユーザーの変更"));
+    loadedByOther.changeName(new ProductName("DEA別ユーザーの変更"));
     await repository.update(loadedByOther, 1);
 
     // 古い画面（version 1）からの無効化は競合として弾かれる

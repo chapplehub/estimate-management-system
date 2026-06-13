@@ -147,7 +147,7 @@ describe("UpdateProductCommand", () => {
   it("古い expectedVersion での更新は ConflictError になり、先行の変更は失われない（楽観ロック / ADR-0039）", async () => {
     const product = Product.create(
       new ProductCode(TEST_CODES[0]),
-      new ProductName("競合テスト商品"),
+      new ProductName("UPD競合テスト商品"),
       ProductCategory.INDIVIDUAL,
       ProductUnit.UNIT
     );
