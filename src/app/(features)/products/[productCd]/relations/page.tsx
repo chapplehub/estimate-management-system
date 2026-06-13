@@ -47,6 +47,7 @@ export default async function ProductRelationsPage({
         productCode={product.code}
         productId={product.id}
         initialRelations={product.relatedProducts}
+        version={product.version}
       />
 
       <div className="mt-4">

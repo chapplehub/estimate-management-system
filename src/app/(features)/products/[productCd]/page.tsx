@@ -224,12 +224,14 @@ export default async function ProductDetailPage({
               productId={product.id}
               productCd={product.code}
               referencingProducts={referencingProducts}
+              version={product.version}
             />
           ) : (
             <ProductStatusForms
               productId={product.id}
               productCd={product.code}
               isActive={product.isActive}
+              version={product.version}
             />
           )}
           <ProductDeleteForm productId={product.id} />

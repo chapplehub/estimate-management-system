@@ -14,6 +14,7 @@ type Product = {
   description: string | null;
   note: string | null;
   costPrice: number | null;
+  version: number;
 };
 
 type Props = {
@@ -34,6 +35,7 @@ export function ProductEditForm({ product }: Props) {
       description: product.description ?? "",
       note: product.note ?? "",
       costPrice: product.costPrice !== null ? String(product.costPrice) : "",
+      version: String(product.version),
     },
   });
 
@@ -52,6 +54,9 @@ export function ProductEditForm({ product }: Props) {
       )}
 
       <form {...getFormProps(form)} noValidate className="space-y-4">
+        {/* 楽観ロックトークン（ADR-0039）: 画面表示時の version を保存まで運ぶ */}
+        <input {...getInputProps(fields.version, { type: "hidden" })} />
+
         <div>
           <label htmlFor={fields.code.id} className="block text-gray-700 text-sm font-bold mb-2">
             商品コード
