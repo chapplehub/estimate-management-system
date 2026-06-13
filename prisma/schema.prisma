@@ -372,6 +372,9 @@ model Product {
   // 見積明細の品目スナップショット参照
   estimateItems EstimateItem[] @relation("EstimateItemProduct")
 
+  // セット群の品目スナップショット参照（ADR-0047）。逆リレーション仮想フィールド（FK列なし）
+  estimateSetGroups EstimateSetGroup[] @relation("EstimateSetGroupProduct")
+
   // 楽観ロックトークン（ADR-0039）。更新ごとに +1
   version Int @default(1)
 
@@ -610,6 +613,9 @@ model EstimateVariation {
 
   items EstimateItem[]
 
+  // セット群（ADR-0047）。逆リレーション仮想フィールド（FK列なし。FK は estimate_set_groups 側）
+  setGroups EstimateSetGroup[]
+
   // タイムスタンプ
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -654,6 +660,10 @@ model EstimateItem {
   // 得意先改訂で生まれた明細だけが持つ固有属性は別サブタイプ表に分離（§11.3.1）
   revisedDetail RevisedEstimateItemDetail?
 
+  // セット群への所属（ADR-0047）。逆リレーション仮想フィールド（FK列なし。FK は
+  // estimate_set_components 側）。交差表は item_id を PK とするため高々1件（排他所属）
+  setComponent EstimateSetComponent?
+
   // タイムスタンプ
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -677,6 +687,51 @@ model RevisedEstimateItemDetail {
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   @@map("revised_estimate_item_details")
+}
+
+// セット群（ADR-0047 / Shape ③-a）。価格・並び順・金額を持たない薄い衛星。
+// 金額＝構成明細 finalAmount 合計、表示位置＝構成明細の最小 sortOrder から導出（永続化する派生列ゼロ）。
+model EstimateSetGroup {
+  id          String            @id @db.Uuid // ドメイン層でUUIDv7生成
+  variationId String            @map("variation_id") @db.Uuid
+  variation   EstimateVariation @relation(fields: [variationId], references: [id], onDelete: Cascade)
+
+  // セット商品マスタへの参照（必須）
+  productId String  @map("product_id") @db.Uuid
+  product   Product @relation("EstimateSetGroupProduct", fields: [productId], references: [id])
+
+  // 商品名・単位スナップショット（SET 商品マスタからの複写、§8 金額保存形式と整合）
+  itemName String @map("item_name") @db.VarChar(100)
+  unit     String @db.VarChar(20)
+
+  // メモ
+  customerMemo String @default("") @map("customer_memo") @db.VarChar(2000)
+  internalMemo String @default("") @map("internal_memo") @db.VarChar(2000)
+
+  // 構成明細の所属（交差表）。行の存在で所属を表す
+  components EstimateSetComponent[]
+
+  // タイムスタンプ
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([variationId])
+  @@index([productId])
+  @@map("estimate_set_groups")
+}
+
+// 構成明細のセット群への所属（交差表・ADR-0047）。行の存在 ⟺ 所属。
+// item_id を PK とし、「1構成明細は高々1群」の排他所属を DB レベルで構造担保する
+// （nullable FK を作らず NULL ゼロ）。surrogate id・タイムスタンプは持たない（被参照なし）。
+model EstimateSetComponent {
+  itemId String       @id @map("item_id") @db.Uuid
+  item   EstimateItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  setGroupId String           @map("set_group_id") @db.Uuid
+  setGroup   EstimateSetGroup @relation(fields: [setGroupId], references: [id], onDelete: Cascade)
+
+  @@index([setGroupId])
+  @@map("estimate_set_components")
 }
 
 // ========================================
