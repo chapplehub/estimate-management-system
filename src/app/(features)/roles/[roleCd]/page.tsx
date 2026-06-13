@@ -57,7 +57,7 @@ export default async function Page({ params }: { params: Promise<{ roleCd: strin
       />
 
       {/* 削除フォーム（Client Component） */}
-      {canDelete && <RoleDeleteForm roleId={role.id} />}
+      {canDelete && <RoleDeleteForm roleId={role.id} version={role.version} />}
     </div>
   );
 }

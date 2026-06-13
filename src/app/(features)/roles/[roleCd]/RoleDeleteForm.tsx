@@ -5,9 +5,11 @@ import { deleteRole } from "./actions";
 
 type Props = {
   roleId: string;
+  /** 楽観ロックトークン（ADR-0039）。削除時にフォームで往復させる。 */
+  version: number;
 };
 
-export function RoleDeleteForm({ roleId }: Props) {
+export function RoleDeleteForm({ roleId, version }: Props) {
   const [deleteState, formAction, isPending] = useActionState(deleteRole, {
     success: true,
   });
@@ -26,8 +28,9 @@ export function RoleDeleteForm({ roleId }: Props) {
       )}
 
       <form noValidate action={formAction}>
-        {/* hidden inputでIDを渡す */}
+        {/* hidden inputでID・version（楽観ロック）を渡す */}
         <input type="hidden" name="id" value={roleId} />
+        <input type="hidden" name="version" value={version} />
 
         <button
           type="submit"

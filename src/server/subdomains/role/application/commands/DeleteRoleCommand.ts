@@ -6,6 +6,8 @@ import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 
 export type DeleteRoleInput = {
   id: string;
+  /** 削除画面表示時の version（楽観ロックトークン / ADR-0039）。リポジトリへ素通しする。 */
+  expectedVersion: number;
 };
 
 /**
@@ -39,6 +41,6 @@ export class DeleteRoleCommand {
       );
     }
 
-    await this.roleRepository.delete(roleId);
+    await this.roleRepository.delete(roleId, input.expectedVersion);
   }
 }
