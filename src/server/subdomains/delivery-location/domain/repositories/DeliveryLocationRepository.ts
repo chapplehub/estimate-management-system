@@ -22,9 +22,13 @@ export interface DeliveryLocationRepository {
   update(deliveryLocation: DeliveryLocation, expectedVersion: number): Promise<DeliveryLocation>;
 
   /**
-   * 納品先を削除
+   * 納品先を削除（楽観ロック / ADR-0039 細目3）
+   *
+   * @param expectedVersion 削除画面表示時に取得した version（フォーム往復で持ち回るトークン）。
+   *   `deleteMany({ where: { id, version } })` の count = 0（version 不一致 or 行の消失）は
+   *   ConflictError を throw し、stale な画面を見て下した削除判断による誤削除を防ぐ。
    */
-  delete(id: DeliveryLocationId): Promise<void>;
+  delete(id: DeliveryLocationId, expectedVersion: number): Promise<void>;
 
   /**
    * IDで納品先を取得

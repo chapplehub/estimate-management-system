@@ -5,6 +5,8 @@ import { DeliveryLocationId } from "@subdomains/delivery-location/domain/values/
 
 export type DeleteDeliveryLocationInput = {
   id: string;
+  /** 削除画面表示時の version（楽観ロックトークン / ADR-0039）。リポジトリへ素通しする。 */
+  expectedVersion: number;
 };
 
 /**
@@ -20,6 +22,6 @@ export class DeleteDeliveryLocationCommand {
       throw new NotFoundEntityError(DeliveryLocation, { id: input.id });
     }
 
-    await this.deliveryLocationRepository.delete(deliveryLocationId);
+    await this.deliveryLocationRepository.delete(deliveryLocationId, input.expectedVersion);
   }
 }

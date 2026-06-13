@@ -51,7 +51,7 @@ export default async function DeliveryLocationDetailPage({
           isActive={dl.isActive}
           version={dl.version}
         />
-        <DeliveryLocationDeleteForm deliveryLocationId={dl.id} />
+        <DeliveryLocationDeleteForm deliveryLocationId={dl.id} version={dl.version} />
       </div>
     </div>
   );
