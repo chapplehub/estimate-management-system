@@ -7,7 +7,19 @@ import { ProductName } from "../values/ProductName";
  * 商品リポジトリインターフェース
  */
 export interface ProductRepository {
-  save(product: Product): Promise<Product>;
+  /**
+   * 新規商品を保存する（version は 1 で始まる）
+   */
+  insert(product: Product): Promise<Product>;
+
+  /**
+   * 既存商品を更新する（楽観ロック / ADR-0039）
+   *
+   * @param expectedVersion 編集画面表示時に取得した version。
+   *   DB の現在値と一致しない場合は ConflictError を throw する
+   */
+  update(product: Product, expectedVersion: number): Promise<Product>;
+
   delete(id: ProductId): Promise<void>;
   findById(id: ProductId): Promise<Product | null>;
   findByCode(code: ProductCode): Promise<Product | null>;

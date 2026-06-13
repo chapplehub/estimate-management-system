@@ -21,12 +21,15 @@ type Props = {
     name: string;
     category: string;
   }[];
+  /** 画面表示時の version（楽観ロック / ADR-0039） */
+  version: number;
 };
 
 export function DeactivateWithReplacementDialog({
   productId,
   productCd,
   referencingProducts,
+  version,
 }: Props) {
   const replaceAction = deactivateWithReplacement.bind(null, productCd);
   const [replaceState, replaceFormAction, isReplacing] = useActionState(replaceAction, {
@@ -49,6 +52,7 @@ export function DeactivateWithReplacementDialog({
   const handleReplaceAndDeactivate = () => {
     const formData = new FormData();
     formData.set("id", productId);
+    formData.set("version", String(version));
     formData.set("replacementCode", replacementCode.trim().toUpperCase());
     startTransition(() => {
       replaceFormAction(formData);
@@ -59,6 +63,7 @@ export function DeactivateWithReplacementDialog({
     const formData = new FormData();
     formData.set("id", productId);
     formData.set("productCd", productCd);
+    formData.set("version", String(version));
     startTransition(() => {
       deactivateFormAction(formData);
     });

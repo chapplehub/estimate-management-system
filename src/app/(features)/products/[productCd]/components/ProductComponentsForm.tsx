@@ -20,9 +20,11 @@ type Props = {
     componentProductCategory: string;
     quantity: number;
   }[];
+  /** 画面表示時の version（楽観ロック / ADR-0039） */
+  version: number;
 };
 
-export function ProductComponentsForm({ productCode, initialComponents }: Props) {
+export function ProductComponentsForm({ productCode, initialComponents, version }: Props) {
   const action = setProductComponents.bind(null, productCode);
   const [state, formAction, isPending] = useActionState<SetComponentsState, FormData>(action, null);
 
@@ -86,6 +88,7 @@ export function ProductComponentsForm({ productCode, initialComponents }: Props)
       "components",
       JSON.stringify(components.map((c) => ({ code: c.code, quantity: c.quantity })))
     );
+    formData.set("version", String(version));
     startTransition(() => {
       formAction(formData);
     });

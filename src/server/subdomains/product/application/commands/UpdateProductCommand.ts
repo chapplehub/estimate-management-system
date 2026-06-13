@@ -15,6 +15,8 @@ import { ProductUnit } from "@subdomains/product/domain/values/ProductUnit";
 
 export type UpdateProductInput = {
   id: string;
+  /** 編集画面表示時の version（楽観ロック / ADR-0039） */
+  expectedVersion: number;
   category: string;
   code?: string;
   name?: string;
@@ -87,6 +89,6 @@ export class UpdateProductCommand {
       product.changeCostPrice(input.costPrice !== null ? new CostPrice(input.costPrice) : null);
     }
 
-    return await this.productRepository.save(product);
+    return await this.productRepository.update(product, input.expectedVersion);
   }
 }

@@ -41,7 +41,7 @@ describe("ProductCodeDuplicationCheckDomainService", () => {
       ProductCategory.INDIVIDUAL,
       ProductUnit.UNIT
     );
-    await repository.save(product);
+    await repository.insert(product);
 
     const result = await service.execute(new ProductCode(TEST_CODE));
     expect(result).toBe(true);
@@ -54,7 +54,7 @@ describe("ProductCodeDuplicationCheckDomainService", () => {
       ProductCategory.INDIVIDUAL,
       ProductUnit.UNIT
     );
-    const saved = await repository.save(product);
+    const saved = await repository.insert(product);
 
     const result = await service.execute(new ProductCode(TEST_CODE), saved.id);
     expect(result).toBe(false);

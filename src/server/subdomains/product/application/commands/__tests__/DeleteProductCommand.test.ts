@@ -40,7 +40,7 @@ describe("DeleteProductCommand", () => {
       ProductCategory.INDIVIDUAL,
       ProductUnit.UNIT
     );
-    const saved = await repository.save(product);
+    const saved = await repository.insert(product);
 
     await command.execute({ id: saved.id.value });
 

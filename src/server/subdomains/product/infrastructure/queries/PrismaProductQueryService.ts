@@ -138,6 +138,7 @@ export class PrismaProductQueryService implements ProductQueryService {
           quantity: c.quantity,
         })
       ),
+      version: product.version,
       createdAt: product.createdAt,
       updatedAt: product.updatedAt,
     };

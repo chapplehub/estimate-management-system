@@ -58,6 +58,6 @@ export class CreateProductCommand {
 
     const product = Product.create(code, name, category, unit, description, note, costPrice);
 
-    return await this.productRepository.save(product);
+    return await this.productRepository.insert(product);
   }
 }

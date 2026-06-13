@@ -25,7 +25,7 @@ export async function updateProduct(productCd: string, prevState: unknown, formD
     return submission.reply();
   }
 
-  const { code, name, category, unit, description, note, costPrice } = submission.value;
+  const { code, name, category, unit, description, note, costPrice, version } = submission.value;
 
   // productCdからidを取得
   const queryService = new PrismaProductQueryService();
@@ -42,6 +42,7 @@ export async function updateProduct(productCd: string, prevState: unknown, formD
     const command = updateProductCommandFactory();
     await command.execute({
       id,
+      expectedVersion: version,
       code,
       name,
       category,

@@ -13,6 +13,8 @@ export type ProductDTO = {
   costPrice: number | null;
   relatedProducts: ProductRelationDTO[];
   setComponents: SetProductComponentDTO[];
+  /** 楽観ロックトークン。編集画面からフォームで往復させる（ADR-0039） */
+  version: number;
   createdAt: Date;
   updatedAt: Date;
 };

@@ -43,7 +43,11 @@ export default async function ProductComponentsPage({
         {product.code}: {product.name}
       </p>
 
-      <ProductComponentsForm productCode={product.code} initialComponents={product.setComponents} />
+      <ProductComponentsForm
+        productCode={product.code}
+        initialComponents={product.setComponents}
+        version={product.version}
+      />
 
       <div className="mt-4">
         <Link

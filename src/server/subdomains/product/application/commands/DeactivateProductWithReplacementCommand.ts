@@ -7,6 +7,8 @@ import { ProductId } from "@subdomains/product/domain/values/ProductId";
 
 export type DeactivateProductWithReplacementInput = {
   id: string;
+  /** 画面表示時の version（楽観ロック / ADR-0039） */
+  expectedVersion: number;
   replacementCode: string;
 };
 
@@ -46,9 +48,10 @@ export class DeactivateProductWithReplacementCommand {
       referencingProducts
     );
 
-    // 対象商品を無効化
+    // 対象商品を無効化。競合（ConflictError）はここで発生するため、
+    // 後続の参照置換を含め何も変更される前に中断される（#322 の前提）
     target.deactivate();
-    await this.productRepository.save(target);
+    await this.productRepository.update(target, input.expectedVersion);
 
     // 周辺商品・セット構成の参照を一括置換
     await this.productRepository.replaceInRelationsAndComponents(targetId, replacement.id);

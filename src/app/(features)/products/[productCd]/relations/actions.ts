@@ -31,6 +31,14 @@ export async function setProductRelations(
     return { success: false, error: "不正なリクエストです" };
   }
 
+  // 楽観ロックトークン（ADR-0039）: 画面表示時の version。
+  // サーバー側で再取得した値では編集ウィンドウを守れないため、必ずフォーム由来の値を使う
+  const versionRaw = formData.get("version");
+  const version = Number(versionRaw);
+  if (typeof versionRaw !== "string" || !Number.isInteger(version)) {
+    return { success: false, error: "不正なリクエストです" };
+  }
+
   let relations: RelationInput[];
   try {
     relations = JSON.parse(relationsJson);
@@ -60,6 +68,7 @@ export async function setProductRelations(
     const command = setProductRelationsCommandFactory();
     await command.execute({
       productId: product.id,
+      expectedVersion: version,
       relations: resolvedRelations,
     });
 

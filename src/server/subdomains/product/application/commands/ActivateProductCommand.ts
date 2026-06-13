@@ -5,6 +5,8 @@ import { ProductId } from "@subdomains/product/domain/values/ProductId";
 
 export type ActivateProductInput = {
   id: string;
+  /** 画面表示時の version（楽観ロック / ADR-0039） */
+  expectedVersion: number;
 };
 
 /**
@@ -22,6 +24,6 @@ export class ActivateProductCommand {
 
     product.activate();
 
-    return await this.productRepository.save(product);
+    return await this.productRepository.update(product, input.expectedVersion);
   }
 }

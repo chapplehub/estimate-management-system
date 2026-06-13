@@ -7,6 +7,8 @@ import { ProductRelation } from "@subdomains/product/domain/values/ProductRelati
 
 export type SetProductRelationsInput = {
   productId: string;
+  /** 画面表示時の version（楽観ロック / ADR-0039） */
+  expectedVersion: number;
   relations: { relatedProductId: string; quantity: number }[];
 };
 
@@ -46,6 +48,6 @@ export class SetProductRelationsCommand {
     // Entity側でB003/B005/重複チェック
     product.setRelatedProducts(relations);
 
-    return await this.productRepository.save(product);
+    return await this.productRepository.update(product, input.expectedVersion);
   }
 }

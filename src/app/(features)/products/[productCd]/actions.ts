@@ -46,9 +46,16 @@ export async function activateProduct(
   const id = formData.get("id") as string;
   const productCd = formData.get("productCd") as string;
 
+  // 楽観ロックトークン（ADR-0039）: 画面表示時の version
+  const versionRaw = formData.get("version");
+  const version = Number(versionRaw);
+  if (typeof versionRaw !== "string" || !Number.isInteger(version)) {
+    return { success: false, error: "不正なリクエストです" };
+  }
+
   try {
     const command = activateProductCommandFactory();
-    await command.execute({ id });
+    await command.execute({ id, expectedVersion: version });
 
     revalidatePath("/products");
     revalidatePath(`/products/${productCd}`);
@@ -71,9 +78,16 @@ export async function deactivateProduct(
   const id = formData.get("id") as string;
   const productCd = formData.get("productCd") as string;
 
+  // 楽観ロックトークン（ADR-0039）: 画面表示時の version
+  const versionRaw = formData.get("version");
+  const version = Number(versionRaw);
+  if (typeof versionRaw !== "string" || !Number.isInteger(version)) {
+    return { success: false, error: "不正なリクエストです" };
+  }
+
   try {
     const command = deactivateProductCommandFactory();
-    await command.execute({ id });
+    await command.execute({ id, expectedVersion: version });
 
     revalidatePath("/products");
     revalidatePath(`/products/${productCd}`);
@@ -97,9 +111,16 @@ export async function deactivateWithReplacement(
   const id = formData.get("id") as string;
   const replacementCode = formData.get("replacementCode") as string;
 
+  // 楽観ロックトークン（ADR-0039）: 画面表示時の version
+  const versionRaw = formData.get("version");
+  const version = Number(versionRaw);
+  if (typeof versionRaw !== "string" || !Number.isInteger(version)) {
+    return { success: false, error: "不正なリクエストです" };
+  }
+
   try {
     const command = deactivateProductWithReplacementCommandFactory();
-    await command.execute({ id, replacementCode });
+    await command.execute({ id, expectedVersion: version, replacementCode });
 
     revalidatePath("/products");
     revalidatePath(`/products/${productCd}`);

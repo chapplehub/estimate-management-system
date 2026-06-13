@@ -7,9 +7,11 @@ type Props = {
   productId: string;
   productCd: string;
   isActive: boolean;
+  /** 画面表示時の version（楽観ロック / ADR-0039） */
+  version: number;
 };
 
-export function ProductStatusForms({ productId, productCd, isActive }: Props) {
+export function ProductStatusForms({ productId, productCd, isActive, version }: Props) {
   const [activateState, activateAction, isActivating] = useActionState(activateProduct, {
     success: true,
   });
@@ -35,6 +37,7 @@ export function ProductStatusForms({ productId, productCd, isActive }: Props) {
         <form noValidate action={deactivateAction}>
           <input type="hidden" name="id" value={productId} />
           <input type="hidden" name="productCd" value={productCd} />
+          <input type="hidden" name="version" value={version} />
           <button
             type="submit"
             disabled={isDeactivating}
@@ -47,6 +50,7 @@ export function ProductStatusForms({ productId, productCd, isActive }: Props) {
         <form noValidate action={activateAction}>
           <input type="hidden" name="id" value={productId} />
           <input type="hidden" name="productCd" value={productCd} />
+          <input type="hidden" name="version" value={version} />
           <button
             type="submit"
             disabled={isActivating}

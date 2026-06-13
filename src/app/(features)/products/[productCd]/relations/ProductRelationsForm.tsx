@@ -26,6 +26,8 @@ type Props = {
     relatedProductCategory: string;
     quantity: number;
   }[];
+  /** 画面表示時の version（楽観ロック / ADR-0039） */
+  version: number;
 };
 
 const productSearchFields: SearchFieldDef[] = [
@@ -43,7 +45,7 @@ const productSearchFields: SearchFieldDef[] = [
   },
 ];
 
-export function ProductRelationsForm({ productCode, productId, initialRelations }: Props) {
+export function ProductRelationsForm({ productCode, productId, initialRelations, version }: Props) {
   const action = setProductRelations.bind(null, productCode);
   const [state, formAction, isPending] = useActionState<SetRelationsState, FormData>(action, null);
 
@@ -90,6 +92,7 @@ export function ProductRelationsForm({ productCode, productId, initialRelations 
       "relations",
       JSON.stringify(relations.map((r) => ({ code: r.code, quantity: r.quantity })))
     );
+    formData.set("version", String(version));
     startTransition(() => {
       formAction(formData);
     });
