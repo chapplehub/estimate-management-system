@@ -65,6 +65,7 @@
 | [0044](0044-revision-genealogy-inside-aggregate-and-frozen-as-derived-state.md) | 改訂系譜は集約の内側に置き、凍結は系譜からの導出状態とする | 採用 | 2026-06-12 |
 | [0045](0045-submission-type-as-immutable-variation-attribute.md) | 提出区分はバリエーション単位の不変保存属性とする | 採用 | 2026-06-12 |
 | [0046](0046-revised-variation-rejects-bulk-replace-allow-granular-adjustment.md) | 改訂先バリエーションは C4 全置換を拒否し、調整は粒度別メソッドに限定する | 採用 | 2026-06-12 |
+| [0047](0047-set-line-as-priced-leaf-table-plus-set-group-satellite.md) | 見積のセット商品明細を価格付き末端行1表＋セット群衛星＋所属交差表でモデル化する | 採用 | 2026-06-13 |
 
 ## アプリケーション（コマンド）
 
