@@ -22,9 +22,13 @@ export interface CustomerRepository {
   update(customer: Customer, expectedVersion: number): Promise<Customer>;
 
   /**
-   * 得意先を削除
+   * 得意先を削除（楽観ロック / ADR-0039 細目3）
+   *
+   * @param expectedVersion 削除画面表示時に取得した version（フォーム往復で持ち回るトークン）。
+   *   `deleteMany({ where: { id, version } })` の count = 0（version 不一致 or 行の消失）は
+   *   ConflictError を throw し、stale な画面を見て下した削除判断による誤削除を防ぐ。
    */
-  delete(id: CustomerId): Promise<void>;
+  delete(id: CustomerId, expectedVersion: number): Promise<void>;
 
   /**
    * IDで得意先を取得

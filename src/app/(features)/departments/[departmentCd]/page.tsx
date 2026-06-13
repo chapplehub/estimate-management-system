@@ -42,7 +42,9 @@ export default async function Page({ params }: { params: Promise<{ departmentCd:
       />
 
       {/* 削除フォーム（Client Component） */}
-      {canDelete && <DepartmentDeleteForm departmentId={department.id} />}
+      {canDelete && (
+        <DepartmentDeleteForm departmentId={department.id} version={department.version} />
+      )}
     </div>
   );
 }

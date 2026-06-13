@@ -5,9 +5,11 @@ import { deleteDeliveryLocation } from "./actions";
 
 type Props = {
   deliveryLocationId: string;
+  /** 楽観ロックトークン（ADR-0039）。削除時にフォームで往復させる。 */
+  version: number;
 };
 
-export function DeliveryLocationDeleteForm({ deliveryLocationId }: Props) {
+export function DeliveryLocationDeleteForm({ deliveryLocationId, version }: Props) {
   const [deleteState, formAction, isPending] = useActionState(deleteDeliveryLocation, {
     success: true,
   });
@@ -26,6 +28,7 @@ export function DeliveryLocationDeleteForm({ deliveryLocationId }: Props) {
 
       <form noValidate action={formAction}>
         <input type="hidden" name="id" value={deliveryLocationId} />
+        <input type="hidden" name="version" value={version} />
 
         <button
           type="submit"

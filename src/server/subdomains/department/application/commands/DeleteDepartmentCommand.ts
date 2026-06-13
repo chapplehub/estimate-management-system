@@ -6,6 +6,8 @@ import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 
 export type DeleteDepartmentInput = {
   id: string;
+  /** 削除画面表示時の version（楽観ロックトークン / ADR-0039）。リポジトリへ素通しする。 */
+  expectedVersion: number;
 };
 
 /**
@@ -36,6 +38,6 @@ export class DeleteDepartmentCommand {
     // 従業員側のドメインサービスまたはアプリケーションサービスで実装する
     // ここでは部署ドメイン内で完結する制約のみをチェック
 
-    await this.departmentRepository.delete(departmentId);
+    await this.departmentRepository.delete(departmentId, input.expectedVersion);
   }
 }

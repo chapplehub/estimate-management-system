@@ -90,10 +90,17 @@ export async function deleteCustomer(
   await verifySession();
 
   const id = formData.get("id") as string;
+  // 楽観ロックトークン（ADR-0039）: 画面表示時の version。Zod は使わず
+  // deactivateWithReplacement と同じ手動ガードで不正値（改ざん等）を弾く。
+  const versionRaw = formData.get("version");
+  const expectedVersion = Number(versionRaw);
+  if (typeof versionRaw !== "string" || !Number.isInteger(expectedVersion)) {
+    return { success: false, error: "不正なリクエストです" };
+  }
 
   try {
     const command = deleteCustomerCommandFactory();
-    await command.execute({ id });
+    await command.execute({ id, expectedVersion });
 
     revalidatePath("/customers");
   } catch (error) {

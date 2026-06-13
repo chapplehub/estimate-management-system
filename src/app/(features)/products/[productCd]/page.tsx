@@ -234,7 +234,7 @@ export default async function ProductDetailPage({
               version={product.version}
             />
           )}
-          <ProductDeleteForm productId={product.id} />
+          <ProductDeleteForm productId={product.id} version={product.version} />
         </div>
       )}
     </div>

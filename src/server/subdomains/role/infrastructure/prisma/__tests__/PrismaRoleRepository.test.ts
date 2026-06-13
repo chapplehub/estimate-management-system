@@ -106,10 +106,36 @@ describe("PrismaRoleRepository", () => {
     it("存在しない（削除済み）役割の更新は ConflictError になる", async () => {
       const role = buildRole(TEST_ROLE_CDS[0], "消える役割");
       await repository.insert(role);
-      await repository.delete(role.id);
+      await repository.delete(role.id, 1);
 
       role.changeName(new RoleName("更新試行"));
       await expect(repository.update(role, 1)).rejects.toThrow(ConflictError);
+    });
+
+    it("古い expectedVersion での削除は ConflictError になり、行は残存する", async () => {
+      const role = buildRole(TEST_ROLE_CDS[0], "営業役割");
+      await repository.insert(role);
+
+      // 画面表示時の version 1 を A が握ったまま、B が更新して version を 2 へ進める
+      role.changeName(new RoleName("Bの変更"));
+      await repository.update(role, 1);
+
+      // A が stale な version 1 のまま削除 → 競合として弾かれる
+      await expect(repository.delete(role.id, 1)).rejects.toThrow(ConflictError);
+
+      // 行は残存している（stale な判断による誤削除が防止された）
+      const stillThere = await repository.findById(role.id);
+      expect(stillThere).not.toBeNull();
+    });
+
+    it("一致する expectedVersion での削除は成功し、行は消える", async () => {
+      const role = buildRole(TEST_ROLE_CDS[0], "消える役割2");
+      await repository.insert(role);
+
+      await repository.delete(role.id, 1);
+
+      const found = await repository.findById(role.id);
+      expect(found).toBeNull();
     });
   });
 });

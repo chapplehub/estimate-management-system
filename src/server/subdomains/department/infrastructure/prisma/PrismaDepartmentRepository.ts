@@ -58,14 +58,25 @@ export class PrismaDepartmentRepository implements DepartmentRepository {
   }
 
   /**
-   * 部署を削除
+   * 部署を削除（楽観ロック / ADR-0039 細目3）
+   *
+   * WHERE id AND version の条件付き deleteMany で「比較→削除」を DB 上で原子化する。
+   * count = 0 は「version 不一致（先行更新あり）」と「行の消失（削除済み）」の両方を含むが
+   * 区別できないため、両方を覆うメッセージで競合として扱う（ADR-0039 細目5/6）。
    *
    * @param id 部署ID
+   * @param expectedVersion 削除画面表示時のトークン（フォーム往復で持ち回った値）
    */
-  async delete(id: DepartmentId): Promise<void> {
-    await prisma.department.delete({
-      where: { id: id.value },
+  async delete(id: DepartmentId, expectedVersion: number): Promise<void> {
+    const result = await prisma.department.deleteMany({
+      where: { id: id.value, version: expectedVersion },
     });
+
+    if (result.count === 0) {
+      throw new ConflictError(
+        "他のユーザーによって更新または削除されています。画面を再読み込みして最新の内容を確認してください。"
+      );
+    }
   }
 
   /**

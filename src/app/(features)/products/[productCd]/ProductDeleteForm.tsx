@@ -5,9 +5,11 @@ import { deleteProduct } from "./actions";
 
 type Props = {
   productId: string;
+  /** 楽観ロックトークン（ADR-0039）。削除時にフォームで往復させる。 */
+  version: number;
 };
 
-export function ProductDeleteForm({ productId }: Props) {
+export function ProductDeleteForm({ productId, version }: Props) {
   const [deleteState, formAction, isPending] = useActionState(deleteProduct, {
     success: true,
   });
@@ -26,6 +28,7 @@ export function ProductDeleteForm({ productId }: Props) {
 
       <form noValidate action={formAction}>
         <input type="hidden" name="id" value={productId} />
+        <input type="hidden" name="version" value={version} />
         <button
           type="submit"
           disabled={isPending}
