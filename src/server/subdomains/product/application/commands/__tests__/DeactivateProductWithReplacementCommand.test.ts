@@ -123,7 +123,7 @@ describe("DeactivateProductWithReplacementCommand", () => {
 
     // 別ユーザーの更新が target の version を 1 → 2 に進める
     const loadedTarget = (await repository.findById(savedTarget.id))!;
-    loadedTarget.changeName(new ProductName("別ユーザーの変更"));
+    loadedTarget.changeName(new ProductName("DR別ユーザーの変更"));
     await repository.update(loadedTarget, 1);
 
     // 古い画面（version 1）からの実行は、何も変更される前に競合として弾かれる
