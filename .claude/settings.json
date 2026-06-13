@@ -34,6 +34,7 @@
       "Bash(gh issue view*)",
       "Bash(gh issue list*)",
       "Bash(gh issue create*)",
+      "Bash(gh issue edit*)",
       "Bash(gh issue comment*)",
       "Bash(gh issue close*)",
       "Bash(gh pr create*)",
