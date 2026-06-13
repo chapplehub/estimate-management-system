@@ -91,12 +91,15 @@ export async function deleteDepartment(
   await verifyAdmin();
 
   const id = formData.get("id") as string;
+  // version は activate/deactivate と同じくフォーム由来の値を直接読む（Zod 新設せず / ADR-0039）
+  const expectedVersion = Number(formData.get("version"));
 
   try {
     const command = deleteDepartmentCommandFactory();
 
     await command.execute({
       id,
+      expectedVersion,
     });
 
     revalidatePath("/departments");

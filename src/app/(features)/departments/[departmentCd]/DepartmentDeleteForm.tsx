@@ -5,9 +5,11 @@ import { deleteDepartment } from "./actions";
 
 type Props = {
   departmentId: string;
+  /** 楽観ロックトークン（ADR-0039）。削除時にフォームで往復させる。 */
+  version: number;
 };
 
-export function DepartmentDeleteForm({ departmentId }: Props) {
+export function DepartmentDeleteForm({ departmentId, version }: Props) {
   const [deleteState, formAction, isPending] = useActionState(deleteDepartment, {
     success: true,
   });
@@ -26,8 +28,9 @@ export function DepartmentDeleteForm({ departmentId }: Props) {
       )}
 
       <form noValidate action={formAction}>
-        {/* hidden inputでIDを渡す */}
+        {/* hidden inputでID・version（楽観ロック）を渡す */}
         <input type="hidden" name="id" value={departmentId} />
+        <input type="hidden" name="version" value={version} />
 
         <button
           type="submit"
