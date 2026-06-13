@@ -74,6 +74,34 @@ export class EstimateSetGroup {
     );
   }
 
+  /**
+   * 永続化値から再構築する。保存値を信頼し、空群チェック等の再検証は行わない
+   * （集約全体の「再構築時は信頼」方針と整合）。
+   */
+  static reconstruct(input: {
+    id: EstimateSetGroupId;
+    productId: ProductId;
+    itemName: ItemName;
+    unit: Unit;
+    customerMemo: Memo;
+    internalMemo: Memo;
+    memberItemIds: EstimateItemId[];
+    createdAt: Date;
+    updatedAt: Date;
+  }): EstimateSetGroup {
+    return new EstimateSetGroup(
+      input.id,
+      input.productId,
+      input.itemName,
+      input.unit,
+      input.customerMemo,
+      input.internalMemo,
+      [...input.memberItemIds],
+      input.createdAt,
+      input.updatedAt
+    );
+  }
+
   // ========================================
   // ゲッター
   // ========================================

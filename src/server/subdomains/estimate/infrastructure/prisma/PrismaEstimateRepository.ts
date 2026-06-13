@@ -19,10 +19,21 @@ import { Prisma } from "@generated/prisma/client";
  * 集約ルート Estimate 単位でのみ永続化し、子は集約経由でカスケードする。
  */
 export class PrismaEstimateRepository implements EstimateRepository {
+  /**
+   * 見積を新規作成する。セット群の所属交差表（estimate_set_components）は、ネスト create では
+   * 兄弟の estimate_items 行を参照できないため、estimate.create の後に同一トランザクションで
+   * createMany する（ADR-0047 / insertWithCopies と同型の順序制約）。
+   */
   async insert(estimate: Estimate): Promise<Estimate> {
     try {
-      await prisma.estimate.create({
-        data: EstimateMapper.toEstimateCreateInput(estimate),
+      await prisma.$transaction(async (tx) => {
+        await tx.estimate.create({
+          data: EstimateMapper.toEstimateCreateInput(estimate),
+        });
+        const components = EstimateMapper.toSetComponentCreateManyInput(estimate);
+        if (components.length > 0) {
+          await tx.estimateSetComponent.createMany({ data: components });
+        }
       });
     } catch (error) {
       PrismaEstimateRepository.translateInsertConflict(error, estimate);
@@ -44,6 +55,10 @@ export class PrismaEstimateRepository implements EstimateRepository {
         await tx.estimate.create({
           data: EstimateMapper.toEstimateCreateInput(estimate),
         });
+        const components = EstimateMapper.toSetComponentCreateManyInput(estimate);
+        if (components.length > 0) {
+          await tx.estimateSetComponent.createMany({ data: components });
+        }
         if (copies.length > 0) {
           await tx.estimateVariationCopy.createMany({
             data: EstimateMapper.toVariationCopyCreateManyInput(copies),
@@ -165,6 +180,40 @@ export class PrismaEstimateRepository implements EstimateRepository {
                 where: { estimateItemId: itemId },
               });
             }
+          }
+
+          // 3.5 セット群の差分同期（ADR-0047）。順序: 群（identity 保持 upsert）→ 交差表
+          //     （全削除→再作成）。明細 upsert の後に行うため、構成明細 FK は満たされる。
+          const setGroupIds = variation.setGroups.map((g) => g.id.value);
+          // 集約から消えた群を削除（配下の交差行は onDelete: Cascade で連鎖削除）
+          await tx.estimateSetGroup.deleteMany({
+            where: { variationId, id: { notIn: setGroupIds } },
+          });
+          // 生存・新規の群を id キーで upsert（群ヘッダのみ。被参照のため identity を保持）
+          for (const group of variation.setGroups) {
+            const groupScalar = EstimateMapper.toSetGroupScalarData(group);
+            await tx.estimateSetGroup.upsert({
+              where: { id: group.id.value },
+              create: { id: group.id.value, variationId, ...groupScalar },
+              update: groupScalar,
+            });
+          }
+          // 交差表は identity を持たない（surrogate id・被参照なし）。生存群の所属を全削除して
+          // 作り直す。削除済み明細・群の交差行は上のカスケードで既に消えているため、当該
+          // バリエーションの交差行はここでゼロになり、createMany で PK 衝突は起きない。
+          if (setGroupIds.length > 0) {
+            await tx.estimateSetComponent.deleteMany({
+              where: { setGroupId: { in: setGroupIds } },
+            });
+          }
+          const components = variation.setGroups.flatMap((g) =>
+            g.memberItemIds.map((memberId) => ({
+              itemId: memberId.value,
+              setGroupId: g.id.value,
+            }))
+          );
+          if (components.length > 0) {
+            await tx.estimateSetComponent.createMany({ data: components });
           }
         }
 

@@ -8,10 +8,14 @@ import { EstimateVariationCopy } from "@subdomains/estimate/domain/values/Estima
 import { Quantity } from "@subdomains/estimate/domain/values/Quantity";
 import {
   buildAfterRepairEstimate,
+  buildEstimateWithSetGroup,
+  buildEstimateWithTwoSetGroups,
   buildNewEstimate,
   buildRepairEstimate,
   makeItem,
+  makeSetGroup,
   makeVariation,
+  reconstructWithSetGroups,
 } from "@subdomains/estimate/domain/entities/__tests__/estimateAggregateBuilder";
 import prisma from "@server/prisma";
 import { ConflictError } from "@server/shared/errors/ApplicationError";
@@ -37,6 +41,10 @@ const EN = {
   dup: "N9900011",
   revise: "N9900012",
   reviseDelete: "N9900013",
+  setGroupRoundtrip: "N9900014",
+  setGroupAddRemove: "N9900015",
+  setGroupMove: "N9900016",
+  setGroupRemoveAdd: "N9900017",
   missing: "N9900099",
 } as const;
 const ALL_NUMBERS = Object.values(EN);
@@ -153,6 +161,148 @@ describe("PrismaEstimateRepository", () => {
       expect(found.afterRepairDetail?.emergencyReason.value).toBe("顧客ライン停止のため緊急対応");
       expect(found.afterRepairDetail?.afterServiceWarningAcknowledged).toBe(false);
       expect(found.afterRepairDetail?.id.value).toBe(saved.afterRepairDetail?.id.value);
+    });
+  });
+
+  describe("セット群（ADR-0047 / Shape ③-a）", () => {
+    it("insert → findById でセット群と構成明細の所属（sortOrder 順）を等価に再構築できる", async () => {
+      const saved = await repository.insert(
+        buildEstimateWithSetGroup(ids, EN.setGroupRoundtrip, { memberCount: 2 })
+      );
+
+      const found = await repository.findById(saved.id);
+
+      expect(found).not.toBeNull();
+      if (!found) return;
+      const fv = found.variations[0];
+      const savedGroup = saved.variations[0].setGroups[0];
+
+      // セット群が id 保持で再構築される
+      expect(fv.setGroups).toHaveLength(1);
+      const group = fv.setGroups[0];
+      expect(group.id.value).toBe(savedGroup.id.value);
+      expect(group.productId.value).toBe(ids.setProductId);
+
+      // 構成明細 id が sortOrder 昇順で保持される
+      const expectedMemberIds = saved.variations[0].items
+        .filter((i) => i.itemName.value.startsWith("構成"))
+        .map((i) => i.id.value);
+      expect(group.memberItemIds.map((m) => m.value)).toEqual(expectedMemberIds);
+
+      // 導出: 金額 = 1000 + 2000 = 3000、表示位置 = 最小 sortOrder = 1
+      const derived = fv.deriveSetGroup(group.id);
+      expect(derived.amount.majorUnits).toBe(3000);
+      expect(derived.sortOrder).toBe(1);
+
+      // 通常明細は群に含まれず、subtotal の二重計上もない（1000+2000+500=3500）
+      expect(fv.subtotal.majorUnits).toBe(3500);
+    });
+
+    it("update: 群の構成明細を入れ替え（追加＋削除）ても群 id は保持される", async () => {
+      const inserted = await repository.insert(
+        buildEstimateWithSetGroup(ids, EN.setGroupAddRemove, { memberCount: 2 })
+      );
+      const found = await repository.findById(inserted.id);
+      expect(found).not.toBeNull();
+      if (!found) return;
+
+      const items = found.variations[0].items; // [構成1(so1), 構成2(so2), 通常明細(so3)]
+      const groupId = found.variations[0].setGroups[0].id;
+      // 群を [構成1, 通常明細] に差し替え（構成2 を群から外し、通常明細を群に入れる）。id は維持
+      const newGroup = makeSetGroup(ids.setProductId, [items[0], items[2]], { id: groupId });
+
+      await repository.update(reconstructWithSetGroups(found, [newGroup]), 1);
+      const found2 = await repository.findById(inserted.id);
+
+      expect(found2).not.toBeNull();
+      if (!found2) return;
+      const g = found2.variations[0].setGroups;
+      expect(g).toHaveLength(1);
+      expect(g[0].id.value).toBe(groupId.value); // identity 保持 upsert
+      // 構成明細は sortOrder 順で [構成1(so1), 通常明細(so3)]
+      expect(g[0].memberItemIds.map((m) => m.value)).toEqual([
+        items[0].id.value,
+        items[2].id.value,
+      ]);
+    });
+
+    it("update: 構成明細を群Aから群Bへ移動でき、排他所属が保たれる", async () => {
+      const inserted = await repository.insert(buildEstimateWithTwoSetGroups(ids, EN.setGroupMove));
+      const found = await repository.findById(inserted.id);
+      expect(found).not.toBeNull();
+      if (!found) return;
+
+      const items = found.variations[0].items; // 構成1(so1), 構成2(so2), 構成3(so3)
+      const groups = found.variations[0].setGroups;
+      const groupA = groups.find((g) =>
+        g.memberItemIds.some((m) => m.value === items[0].id.value)
+      )!; // [構成1, 構成2]
+      const groupB = groups.find((g) =>
+        g.memberItemIds.some((m) => m.value === items[2].id.value)
+      )!; // [構成3]
+
+      // 構成2 を群A から群B へ移動。両群 id は維持
+      const newA = makeSetGroup(ids.setProductId, [items[0]], { id: groupA.id });
+      const newB = makeSetGroup(ids.setProductId, [items[1], items[2]], { id: groupB.id });
+      await repository.update(reconstructWithSetGroups(found, [newA, newB]), 1);
+
+      const found2 = await repository.findById(inserted.id);
+      expect(found2).not.toBeNull();
+      if (!found2) return;
+      const a = found2.variations[0].setGroups.find((g) => g.id.value === groupA.id.value)!;
+      const b = found2.variations[0].setGroups.find((g) => g.id.value === groupB.id.value)!;
+      expect(a.memberItemIds.map((m) => m.value)).toEqual([items[0].id.value]);
+      // sortOrder 順で [構成2(so2), 構成3(so3)]
+      expect(b.memberItemIds.map((m) => m.value)).toEqual([items[1].id.value, items[2].id.value]);
+    });
+
+    it("update: 群を1つ削除し、別の新群を追加できる", async () => {
+      const inserted = await repository.insert(
+        buildEstimateWithTwoSetGroups(ids, EN.setGroupRemoveAdd)
+      );
+      const found = await repository.findById(inserted.id);
+      expect(found).not.toBeNull();
+      if (!found) return;
+
+      const items = found.variations[0].items; // 構成1, 構成2, 構成3
+      const groups = found.variations[0].setGroups;
+      const groupA = groups.find((g) =>
+        g.memberItemIds.some((m) => m.value === items[0].id.value)
+      )!; // [構成1, 構成2]
+      const groupB = groups.find((g) =>
+        g.memberItemIds.some((m) => m.value === items[2].id.value)
+      )!; // [構成3]（削除対象）
+
+      // 群B を削除し、構成3 で新群C を追加。群A は維持
+      const keepA = makeSetGroup(ids.setProductId, [items[0], items[1]], { id: groupA.id });
+      const newC = makeSetGroup(ids.setProductId, [items[2]], { itemName: "セットC" });
+      await repository.update(reconstructWithSetGroups(found, [keepA, newC]), 1);
+
+      const found2 = await repository.findById(inserted.id);
+      expect(found2).not.toBeNull();
+      if (!found2) return;
+      const g2 = found2.variations[0].setGroups;
+      expect(g2).toHaveLength(2);
+      // 群A は id 保持、旧群B は消滅
+      expect(g2.some((g) => g.id.value === groupA.id.value)).toBe(true);
+      expect(g2.some((g) => g.id.value === groupB.id.value)).toBe(false);
+      // 新群C が 構成3 を持つ
+      const c = g2.find((g) => g.id.value !== groupA.id.value)!;
+      expect(c.memberItemIds.map((m) => m.value)).toEqual([items[2].id.value]);
+    });
+
+    it("delete: セット群・所属交差表もカスケード削除される", async () => {
+      const saved = await repository.insert(
+        buildEstimateWithSetGroup(ids, EN.setGroupRoundtrip, { memberCount: 2 })
+      );
+      const variationId = saved.variations[0].id.value;
+
+      await repository.delete(saved.id);
+
+      expect(await prisma.estimateSetGroup.count({ where: { variationId } })).toBe(0);
+      expect(
+        await prisma.estimateSetComponent.count({ where: { setGroup: { variationId } } })
+      ).toBe(0);
     });
   });
 
