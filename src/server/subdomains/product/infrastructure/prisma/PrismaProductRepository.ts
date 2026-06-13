@@ -217,6 +217,17 @@ export class PrismaProductRepository implements ProductRepository {
     replacementId: ProductId
   ): Promise<void> {
     await prisma.$transaction(async (tx) => {
+      // 参照元ルートは置換前に特定する（置換後は子行が入れ替え先を指し、条件が変わるため）
+      const referencingProducts = await tx.product.findMany({
+        where: {
+          OR: [
+            { relatedProducts: { some: { relatedProductId: targetId.value } } },
+            { setComponents: { some: { componentProductId: targetId.value } } },
+          ],
+        },
+        select: { id: true },
+      });
+
       // 周辺商品テーブル内の targetId → replacementId に置換
       await tx.productRelation.updateMany({
         where: { relatedProductId: targetId.value },
@@ -227,6 +238,14 @@ export class PrismaProductRepository implements ProductRepository {
       await tx.setProductComponent.updateMany({
         where: { componentProductId: targetId.value },
         data: { componentProductId: replacementId.value },
+      });
+
+      // ルートを経由しない横断一括書き込みのため、影響を受けた参照元の version を
+      // 無条件増分する（ADR-0039 細目7）。これを怠ると、参照元の編集フォームを
+      // 開いていたユーザーの stale な保存が入れ替え結果を静かに巻き戻す
+      await tx.product.updateMany({
+        where: { id: { in: referencingProducts.map((p) => p.id) } },
+        data: { version: { increment: 1 } },
       });
     });
   }

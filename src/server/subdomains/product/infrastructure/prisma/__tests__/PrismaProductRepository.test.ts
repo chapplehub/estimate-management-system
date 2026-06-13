@@ -1,10 +1,12 @@
 import prisma from "@server/prisma";
 import { ConflictError } from "@server/shared/errors/ApplicationError";
 import { Product } from "@subdomains/product/domain/entities/Product";
+import { ComponentQuantity } from "@subdomains/product/domain/values/ComponentQuantity";
 import { ProductCategory } from "@subdomains/product/domain/values/ProductCategory";
 import { ProductCode } from "@subdomains/product/domain/values/ProductCode";
 import { ProductName } from "@subdomains/product/domain/values/ProductName";
 import { ProductUnit } from "@subdomains/product/domain/values/ProductUnit";
+import { SetProductComponent } from "@subdomains/product/domain/values/SetProductComponent";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { PrismaProductRepository } from "../PrismaProductRepository";
 
@@ -103,6 +105,62 @@ describe("PrismaProductRepository", () => {
       // B の変更が残っている（後勝ちによる lost update が起きていない）
       const found = await repository.findById(saved.id);
       expect(found?.name.value).toBe("Bの変更");
+    });
+
+    it("入れ替えは参照元商品の version を増分し、stale な保存が入れ替え結果を巻き戻せない（ADR-0039 細目7）", async () => {
+      // P: 入れ替え対象、Q: 入れ替え先、X: P を構成商品に持つセット商品
+      const productP = await repository.insert(
+        Product.create(
+          new ProductCode(TEST_CODES[0]),
+          new ProductName("入れ替え対象P"),
+          ProductCategory.INDIVIDUAL,
+          ProductUnit.UNIT
+        )
+      );
+      const productQ = await repository.insert(
+        Product.create(
+          new ProductCode(TEST_CODES[1]),
+          new ProductName("入れ替え先Q"),
+          ProductCategory.INDIVIDUAL,
+          ProductUnit.UNIT
+        )
+      );
+      const setX = await repository.insert(
+        Product.create(
+          new ProductCode(TEST_CODES[2]),
+          new ProductName("セット商品X"),
+          ProductCategory.SET,
+          ProductUnit.SET
+        )
+      );
+      setX.setComponents([
+        SetProductComponent.create(productP.id, productP.category, new ComponentQuantity(2)),
+      ]);
+      await repository.update(setX, 1); // X: version 1 → 2
+
+      // ユーザーAが X のセット構成フォームを開く（version 2 の世界）
+      const loadedByA = await repository.findById(setX.id);
+      expect(loadedByA).not.toBeNull();
+      if (!loadedByA) return;
+
+      // 管理者が P を Q へ入れ替え → X の子行が Q を指し、X の version も進む
+      await repository.replaceInRelationsAndComponents(productP.id, productQ.id);
+
+      const rowX = await prisma.product.findUnique({
+        where: { code: TEST_CODES[2] },
+      });
+      expect(rowX?.version).toBe(3);
+
+      // A が stale な version 2 のまま保存 → 競合として弾かれる
+      loadedByA.setComponents([
+        SetProductComponent.create(productP.id, productP.category, new ComponentQuantity(5)),
+      ]);
+      await expect(repository.update(loadedByA, 2)).rejects.toThrow(ConflictError);
+
+      // 入れ替え結果（Q）が巻き戻っていない
+      const foundX = await repository.findById(setX.id);
+      expect(foundX?.components).toHaveLength(1);
+      expect(foundX?.components[0].componentProductId.equals(productQ.id)).toBe(true);
     });
   });
 });
