@@ -7,6 +7,8 @@ import { ProductId } from "@subdomains/product/domain/values/ProductId";
 
 export type DeleteProductInput = {
   id: string;
+  /** 削除画面表示時の version（楽観ロックトークン / ADR-0039）。リポジトリへ素通しする。 */
+  expectedVersion: number;
 };
 
 /**
@@ -31,6 +33,6 @@ export class DeleteProductCommand {
       throw new BusinessRuleViolationError("見積・受注で使用中の商品は削除できません");
     }
 
-    await this.productRepository.delete(productId);
+    await this.productRepository.delete(productId, input.expectedVersion);
   }
 }

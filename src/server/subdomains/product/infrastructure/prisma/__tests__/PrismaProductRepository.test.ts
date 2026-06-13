@@ -163,4 +163,44 @@ describe("PrismaProductRepository", () => {
       expect(foundX?.components[0].componentProductId.equals(productQ.id)).toBe(true);
     });
   });
+
+  describe("削除（楽観ロック / ADR-0039 細目3）", () => {
+    it("古い expectedVersion での削除は ConflictError になり、行は残存する", async () => {
+      const saved = await repository.insert(
+        Product.create(
+          new ProductCode(TEST_CODES[0]),
+          new ProductName("削除競合テスト商品"),
+          ProductCategory.INDIVIDUAL,
+          ProductUnit.UNIT
+        )
+      );
+
+      // 画面表示時の version 1 を A が握ったまま、B が更新して version を 2 へ進める
+      saved.changeName(new ProductName("Bの変更"));
+      await repository.update(saved, 1);
+
+      // A が stale な version 1 のまま削除 → 競合として弾かれる
+      await expect(repository.delete(saved.id, 1)).rejects.toThrow(ConflictError);
+
+      // 行は残存している（stale な判断による誤削除が防止された）
+      const stillThere = await repository.findById(saved.id);
+      expect(stillThere).not.toBeNull();
+    });
+
+    it("一致する expectedVersion での削除は成功し、行は消える", async () => {
+      const saved = await repository.insert(
+        Product.create(
+          new ProductCode(TEST_CODES[0]),
+          new ProductName("削除成功テスト商品"),
+          ProductCategory.INDIVIDUAL,
+          ProductUnit.UNIT
+        )
+      );
+
+      await repository.delete(saved.id, 1);
+
+      const found = await repository.findById(saved.id);
+      expect(found).toBeNull();
+    });
+  });
 });
