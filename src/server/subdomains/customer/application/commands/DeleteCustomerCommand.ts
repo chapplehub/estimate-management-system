@@ -5,6 +5,8 @@ import { CustomerId } from "@subdomains/customer/domain/values/CustomerId";
 
 export type DeleteCustomerInput = {
   id: string;
+  /** 削除画面表示時の version（楽観ロックトークン / ADR-0039）。リポジトリへ素通しする。 */
+  expectedVersion: number;
 };
 
 /**
@@ -20,6 +22,6 @@ export class DeleteCustomerCommand {
       throw new NotFoundEntityError(Customer, { id: input.id });
     }
 
-    await this.customerRepository.delete(customerId);
+    await this.customerRepository.delete(customerId, input.expectedVersion);
   }
 }

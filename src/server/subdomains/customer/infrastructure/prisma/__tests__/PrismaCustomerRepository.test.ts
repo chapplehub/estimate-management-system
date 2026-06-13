@@ -98,10 +98,37 @@ describe("PrismaCustomerRepository", () => {
       if (!loaded) return;
 
       // 画面表示後に行が物理削除された状況
-      await repository.delete(saved.id);
+      await repository.delete(saved.id, 1);
 
       loaded.changeName(new CompanyName("消えた行への更新"));
       await expect(repository.update(loaded, 1)).rejects.toThrow(ConflictError);
+    });
+
+    it("古い expectedVersion での削除は ConflictError になり、行は残存する", async () => {
+      const saved = await repository.insert(buildCustomer(TEST_CODES[0], "営業商事"));
+
+      // 画面表示時の version 1 を A が握ったまま、B が更新して version を 2 へ進める
+      const loaded = await repository.findById(saved.id);
+      expect(loaded).not.toBeNull();
+      if (!loaded) return;
+      loaded.changeName(new CompanyName("Bの変更"));
+      await repository.update(loaded, 1);
+
+      // A が stale な version 1 のまま削除 → 競合として弾かれる
+      await expect(repository.delete(saved.id, 1)).rejects.toThrow(ConflictError);
+
+      // 行は残存している（stale な判断による誤削除が防止された）
+      const stillThere = await repository.findById(saved.id);
+      expect(stillThere).not.toBeNull();
+    });
+
+    it("一致する expectedVersion での削除は成功し、行は消える", async () => {
+      const saved = await repository.insert(buildCustomer(TEST_CODES[0]));
+
+      await repository.delete(saved.id, 1);
+
+      const found = await repository.findById(saved.id);
+      expect(found).toBeNull();
     });
   });
 });

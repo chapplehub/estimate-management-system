@@ -93,7 +93,7 @@ export default async function CustomerDetailPage({
           isActive={customer.isActive}
           version={customer.version}
         />
-        <CustomerDeleteForm customerId={customer.id} />
+        <CustomerDeleteForm customerId={customer.id} version={customer.version} />
       </div>
     </div>
   );

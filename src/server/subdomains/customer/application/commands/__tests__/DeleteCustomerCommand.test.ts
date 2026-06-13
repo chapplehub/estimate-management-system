@@ -1,5 +1,5 @@
 import prisma from "@server/prisma";
-import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
+import { ConflictError, NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { CompanyCode } from "@server/shared/domain/values/CompanyCode";
 import { CompanyName } from "@server/shared/domain/values/CompanyName";
 import { Customer } from "@subdomains/customer/domain/entities/Customer";
@@ -39,18 +39,36 @@ describe("DeleteCustomerCommand", () => {
   });
 
   it("得意先を削除できる", async () => {
-    await command.execute({ id: testCustomerId });
+    await command.execute({ id: testCustomerId, expectedVersion: 1 });
 
     const deleted = await repository.findById(new CustomerId(testCustomerId));
     expect(deleted).toBeNull();
   });
 
   it("存在しないIDの場合は NotFoundEntityError", async () => {
-    await expect(command.execute({ id: "00000000-0000-7000-8000-000000000000" })).rejects.toThrow(
-      NotFoundEntityError
+    await expect(
+      command.execute({ id: "00000000-0000-7000-8000-000000000000", expectedVersion: 1 })
+    ).rejects.toThrow(NotFoundEntityError);
+    await expect(
+      command.execute({ id: "00000000-0000-7000-8000-000000000000", expectedVersion: 1 })
+    ).rejects.toThrow("得意先が見つかりません");
+  });
+
+  it("stale な expectedVersion での削除は ConflictError（expectedVersion 素通しの検証）", async () => {
+    // 別ユーザーが更新して version を 1 → 2 へ進める
+    const loaded = await repository.findById(new CustomerId(testCustomerId));
+    expect(loaded).not.toBeNull();
+    if (!loaded) return;
+    loaded.changeName(new CompanyName("更新後"));
+    await repository.update(loaded, 1);
+
+    // stale な version 1 のまま削除 → 競合として弾かれる（素通しが効いている証左）
+    await expect(command.execute({ id: testCustomerId, expectedVersion: 1 })).rejects.toThrow(
+      ConflictError
     );
-    await expect(command.execute({ id: "00000000-0000-7000-8000-000000000000" })).rejects.toThrow(
-      "得意先が見つかりません"
-    );
+
+    // 行は残存している（誤削除が防止された）
+    const stillThere = await repository.findById(new CustomerId(testCustomerId));
+    expect(stillThere).not.toBeNull();
   });
 });
