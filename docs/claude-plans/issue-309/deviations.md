@@ -3,7 +3,7 @@
 ## 逸脱1: 削除フォームの version 受け取りで Zod スキーマを新設しなかった
 
 - **元の計画内容**: issue 実装タスクの「削除 UI に version を持ち回り、**Zod スキーマに version を追加する**」。
-- **実際の実装内容**: Zod スキーマは新設せず、削除アクション内で `Number(formData.get("version"))` を直接読んでコマンドへ素通しした（5サブドメイン全て）。
+- **実際の実装内容**: Zod スキーマは新設せず、削除アクション内でフォーム由来の version を直接読んでコマンドへ素通しした（5サブドメイン全て）。当初は素の activate/deactivate に倣い `Number(formData.get("version"))` をノーガードで渡していたが、レビュー指摘を受け、より堅牢な `deactivateWithReplacement` に合わせて手動ガード（`typeof versionRaw !== "string" || !Number.isInteger(...)` で不正値を「不正なリクエストです」として早期 return）を5アクション全てに追加した。Zod を使わない方針は維持。
 - **逸脱の理由**: 削除アクションはそもそも Zod を使っておらず、最も近い手本である状態変更アクション（activate/deactivate）も `Number(formData.get("version"))` で直接読んでいる。削除フォームは id+version の2項目のみで、多フィールドの更新フォームより状態変更フォームに構造が近い。同じ詳細ページの `actions.ts` 内でパターンを揃え、2項目フォームのために 6つの Zod スキーマファイルを増やすのを避けた。grill-with-docs セッションで合意済み。
 
 ## 逸脱2: Employee を本イシューの対象から除外し別イシュー（#337）へ分離した

@@ -21,8 +21,13 @@ export async function deleteProduct(
   await verifyAdmin();
 
   const id = formData.get("id") as string;
-  // version は activate/deactivate と同じくフォーム由来の値を直接読む（Zod 新設せず / ADR-0039）
-  const expectedVersion = Number(formData.get("version"));
+  // 楽観ロックトークン（ADR-0039）: 画面表示時の version。Zod は使わず
+  // deactivateWithReplacement と同じ手動ガードで不正値（改ざん等）を弾く。
+  const versionRaw = formData.get("version");
+  const expectedVersion = Number(versionRaw);
+  if (typeof versionRaw !== "string" || !Number.isInteger(expectedVersion)) {
+    return { success: false, error: "不正なリクエストです" };
+  }
 
   try {
     const command = deleteProductCommandFactory();
