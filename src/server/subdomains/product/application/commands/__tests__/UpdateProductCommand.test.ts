@@ -1,5 +1,5 @@
 import prisma from "@server/prisma";
-import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
+import { ConflictError, NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { BusinessRuleViolationError, ValidationError } from "@server/shared/errors/DomainError";
 import { ProductCodeDuplicationCheckDomainService } from "@subdomains/product/domain/services/ProductCodeDuplicationCheckDomainService";
 import { ProductNameDuplicationCheckDomainService } from "@subdomains/product/domain/services/ProductNameDuplicationCheckDomainService";
@@ -43,10 +43,11 @@ describe("UpdateProductCommand", () => {
       ProductCategory.INDIVIDUAL,
       ProductUnit.UNIT
     );
-    const saved = await repository.save(product);
+    const saved = await repository.insert(product);
 
     await command.execute({
       id: saved.id.value,
+      expectedVersion: 1,
       category: "INDIVIDUAL",
       code: TEST_CODES[1],
       name: "更新後商品",
@@ -72,19 +73,21 @@ describe("UpdateProductCommand", () => {
       ProductCategory.INDIVIDUAL,
       ProductUnit.UNIT
     );
-    const saved = await repository.save(product);
+    const saved = await repository.insert(product);
 
     // まず説明と備考を設定
     await command.execute({
       id: saved.id.value,
+      expectedVersion: 1,
       category: "INDIVIDUAL",
       description: "一時的な説明",
       note: "一時的な備考",
     });
 
-    // nullで説明と備考をクリア
+    // nullで説明と備考をクリア（先行更新で version は 2 に進んでいる）
     await command.execute({
       id: saved.id.value,
+      expectedVersion: 2,
       category: "INDIVIDUAL",
       description: null,
       note: null,
@@ -99,6 +102,7 @@ describe("UpdateProductCommand", () => {
     await expect(
       command.execute({
         id: "00000000-0000-7000-8000-000000000000",
+        expectedVersion: 1,
         category: "INDIVIDUAL",
         name: "存在しない商品",
       })
@@ -106,6 +110,7 @@ describe("UpdateProductCommand", () => {
     await expect(
       command.execute({
         id: "00000000-0000-7000-8000-000000000000",
+        expectedVersion: 1,
         category: "INDIVIDUAL",
         name: "存在しない商品",
       })
@@ -119,11 +124,12 @@ describe("UpdateProductCommand", () => {
       ProductCategory.INDIVIDUAL,
       ProductUnit.UNIT
     );
-    const saved = await repository.save(product);
+    const saved = await repository.insert(product);
 
     await expect(
       command.execute({
         id: saved.id.value,
+        expectedVersion: 1,
         category: "SET",
         name: "変更後",
       })
@@ -131,10 +137,43 @@ describe("UpdateProductCommand", () => {
     await expect(
       command.execute({
         id: saved.id.value,
+        expectedVersion: 1,
         category: "SET",
         name: "変更後",
       })
     ).rejects.toThrow("商品区分は変更できません");
+  });
+
+  it("古い expectedVersion での更新は ConflictError になり、先行の変更は失われない（楽観ロック / ADR-0039）", async () => {
+    const product = Product.create(
+      new ProductCode(TEST_CODES[0]),
+      new ProductName("競合テスト商品"),
+      ProductCategory.INDIVIDUAL,
+      ProductUnit.UNIT
+    );
+    const saved = await repository.insert(product);
+
+    // 先行更新が version 1 → 2 に進める
+    await command.execute({
+      id: saved.id.value,
+      expectedVersion: 1,
+      category: "INDIVIDUAL",
+      name: "先行の変更",
+    });
+
+    // 古い画面（version 1）からの保存は競合として弾かれる
+    await expect(
+      command.execute({
+        id: saved.id.value,
+        expectedVersion: 1,
+        category: "INDIVIDUAL",
+        name: "後発の変更",
+      })
+    ).rejects.toThrow(ConflictError);
+
+    // 先行の変更が残っている
+    const found = await repository.findById(saved.id);
+    expect(found?.name.value).toBe("先行の変更");
   });
 
   it("コード重複チェックで自身は除外される", async () => {
@@ -144,12 +183,13 @@ describe("UpdateProductCommand", () => {
       ProductCategory.INDIVIDUAL,
       ProductUnit.UNIT
     );
-    const saved = await repository.save(product);
+    const saved = await repository.insert(product);
 
     // 同じコードで更新（自身なのでOK）
     await expect(
       command.execute({
         id: saved.id.value,
+        expectedVersion: 1,
         category: "INDIVIDUAL",
         code: TEST_CODES[0],
         name: "名前だけ変更",
@@ -170,12 +210,13 @@ describe("UpdateProductCommand", () => {
       ProductCategory.INDIVIDUAL,
       ProductUnit.UNIT
     );
-    await repository.save(product1);
-    const saved2 = await repository.save(product2);
+    await repository.insert(product1);
+    const saved2 = await repository.insert(product2);
 
     await expect(
       command.execute({
         id: saved2.id.value,
+        expectedVersion: 1,
         category: "INDIVIDUAL",
         code: TEST_CODES[0],
       })
@@ -183,6 +224,7 @@ describe("UpdateProductCommand", () => {
     await expect(
       command.execute({
         id: saved2.id.value,
+        expectedVersion: 1,
         category: "INDIVIDUAL",
         code: TEST_CODES[0],
       })

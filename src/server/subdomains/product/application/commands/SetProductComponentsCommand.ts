@@ -7,6 +7,8 @@ import { SetProductComponent } from "@subdomains/product/domain/values/SetProduc
 
 export type SetProductComponentsInput = {
   productId: string;
+  /** 画面表示時の version（楽観ロック / ADR-0039） */
+  expectedVersion: number;
   components: { componentProductId: string; quantity: number }[];
 };
 
@@ -46,6 +48,6 @@ export class SetProductComponentsCommand {
     // Entity側でB006/重複チェック
     product.setComponents(components);
 
-    return await this.productRepository.save(product);
+    return await this.productRepository.update(product, input.expectedVersion);
   }
 }

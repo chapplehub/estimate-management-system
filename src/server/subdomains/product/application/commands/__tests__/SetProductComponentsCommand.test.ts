@@ -1,5 +1,5 @@
 import prisma from "@server/prisma";
-import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
+import { ConflictError, NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
 import { Product } from "@subdomains/product/domain/entities/Product";
 import { ProductCategory } from "@subdomains/product/domain/values/ProductCategory";
@@ -37,7 +37,7 @@ describe("SetProductComponentsCommand", () => {
       ProductCategory.SET,
       ProductUnit.SET
     );
-    const savedSet = await repository.save(setProduct);
+    const savedSet = await repository.insert(setProduct);
 
     const individual = Product.create(
       new ProductCode(TEST_CODES[1]),
@@ -45,10 +45,11 @@ describe("SetProductComponentsCommand", () => {
       ProductCategory.INDIVIDUAL,
       ProductUnit.UNIT
     );
-    const savedIndividual = await repository.save(individual);
+    const savedIndividual = await repository.insert(individual);
 
     await command.execute({
       productId: savedSet.id.value,
+      expectedVersion: 1,
       components: [{ componentProductId: savedIndividual.id.value, quantity: 5 }],
     });
 
@@ -65,7 +66,7 @@ describe("SetProductComponentsCommand", () => {
       ProductCategory.SET,
       ProductUnit.SET
     );
-    const savedSet = await repository.save(setProduct);
+    const savedSet = await repository.insert(setProduct);
 
     const individual = Product.create(
       new ProductCode(TEST_CODES[1]),
@@ -73,17 +74,19 @@ describe("SetProductComponentsCommand", () => {
       ProductCategory.INDIVIDUAL,
       ProductUnit.UNIT
     );
-    const savedIndividual = await repository.save(individual);
+    const savedIndividual = await repository.insert(individual);
 
-    // 先に設定
+    // 先に設定（version 1 → 2）
     await command.execute({
       productId: savedSet.id.value,
+      expectedVersion: 1,
       components: [{ componentProductId: savedIndividual.id.value, quantity: 1 }],
     });
 
     // 空配列でクリア
     await command.execute({
       productId: savedSet.id.value,
+      expectedVersion: 2,
       components: [],
     });
 
@@ -98,14 +101,53 @@ describe("SetProductComponentsCommand", () => {
       ProductCategory.SET,
       ProductUnit.SET
     );
-    const savedSet = await repository.save(setProduct);
+    const savedSet = await repository.insert(setProduct);
 
     await expect(
       command.execute({
         productId: savedSet.id.value,
+        expectedVersion: 1,
         components: [{ componentProductId: "00000000-0000-7000-8000-000000000000", quantity: 1 }],
       })
     ).rejects.toThrow(NotFoundEntityError);
+  });
+
+  it("古い expectedVersion での構成商品設定は ConflictError になる（楽観ロック / ADR-0039）", async () => {
+    const setProduct = Product.create(
+      new ProductCode(TEST_CODES[0]),
+      new ProductName("競合テストセット"),
+      ProductCategory.SET,
+      ProductUnit.SET
+    );
+    const savedSet = await repository.insert(setProduct);
+
+    const individual = Product.create(
+      new ProductCode(TEST_CODES[1]),
+      new ProductName("競合テスト構成商品"),
+      ProductCategory.INDIVIDUAL,
+      ProductUnit.UNIT
+    );
+    const savedIndividual = await repository.insert(individual);
+
+    // 別ユーザーの設定が version 1 → 2 に進める
+    await command.execute({
+      productId: savedSet.id.value,
+      expectedVersion: 1,
+      components: [{ componentProductId: savedIndividual.id.value, quantity: 3 }],
+    });
+
+    // 古い画面（version 1）からの設定は競合として弾かれ、先行の設定が残る
+    await expect(
+      command.execute({
+        productId: savedSet.id.value,
+        expectedVersion: 1,
+        components: [],
+      })
+    ).rejects.toThrow(ConflictError);
+
+    const found = await repository.findById(savedSet.id);
+    expect(found?.components).toHaveLength(1);
+    expect(found?.components[0].quantity.value).toBe(3);
   });
 
   it("B006: 個別商品には構成商品を設定できない", async () => {
@@ -115,7 +157,7 @@ describe("SetProductComponentsCommand", () => {
       ProductCategory.INDIVIDUAL,
       ProductUnit.UNIT
     );
-    const saved = await repository.save(individual);
+    const saved = await repository.insert(individual);
 
     const another = Product.create(
       new ProductCode(TEST_CODES[1]),
@@ -123,17 +165,19 @@ describe("SetProductComponentsCommand", () => {
       ProductCategory.CONSUMABLE,
       ProductUnit.PIECE
     );
-    const savedAnother = await repository.save(another);
+    const savedAnother = await repository.insert(another);
 
     await expect(
       command.execute({
         productId: saved.id.value,
+        expectedVersion: 1,
         components: [{ componentProductId: savedAnother.id.value, quantity: 1 }],
       })
     ).rejects.toThrow(BusinessRuleViolationError);
     await expect(
       command.execute({
         productId: saved.id.value,
+        expectedVersion: 1,
         components: [{ componentProductId: savedAnother.id.value, quantity: 1 }],
       })
     ).rejects.toThrow("セット商品のみ構成商品を設定できます");
@@ -146,7 +190,7 @@ describe("SetProductComponentsCommand", () => {
       ProductCategory.SET,
       ProductUnit.SET
     );
-    const savedSet = await repository.save(setProduct);
+    const savedSet = await repository.insert(setProduct);
 
     const anotherSet = Product.create(
       new ProductCode(TEST_CODES[1]),
@@ -154,17 +198,19 @@ describe("SetProductComponentsCommand", () => {
       ProductCategory.SET,
       ProductUnit.SET
     );
-    const savedAnotherSet = await repository.save(anotherSet);
+    const savedAnotherSet = await repository.insert(anotherSet);
 
     await expect(
       command.execute({
         productId: savedSet.id.value,
+        expectedVersion: 1,
         components: [{ componentProductId: savedAnotherSet.id.value, quantity: 1 }],
       })
     ).rejects.toThrow(BusinessRuleViolationError);
     await expect(
       command.execute({
         productId: savedSet.id.value,
+        expectedVersion: 1,
         components: [{ componentProductId: savedAnotherSet.id.value, quantity: 1 }],
       })
     ).rejects.toThrow("セット商品を構成商品として設定することはできません");

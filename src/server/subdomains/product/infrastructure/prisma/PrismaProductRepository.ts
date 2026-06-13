@@ -108,55 +108,6 @@ export class PrismaProductRepository implements ProductRepository {
     return ProductMapper.toDomain(result);
   }
 
-  async save(product: Product): Promise<Product> {
-    const result = await prisma.$transaction(async (tx) => {
-      // 既存のrelations/componentsを削除
-      await tx.productRelation.deleteMany({
-        where: { productId: product.id.value },
-      });
-      await tx.setProductComponent.deleteMany({
-        where: { setProductId: product.id.value },
-      });
-
-      // Product本体をupsert
-      await tx.product.upsert({
-        where: { id: product.id.value },
-        create: ProductMapper.toPrismaCreate(product),
-        update: ProductMapper.toPrismaUpdate(product),
-      });
-
-      // relations を再作成
-      if (product.relatedProducts.length > 0) {
-        await tx.productRelation.createMany({
-          data: product.relatedProducts.map((r) => ({
-            productId: product.id.value,
-            relatedProductId: r.relatedProductId.value,
-            quantity: r.quantity.value,
-          })),
-        });
-      }
-
-      // components を再作成
-      if (product.components.length > 0) {
-        await tx.setProductComponent.createMany({
-          data: product.components.map((c) => ({
-            setProductId: product.id.value,
-            componentProductId: c.componentProductId.value,
-            quantity: c.quantity.value,
-          })),
-        });
-      }
-
-      // relations/components を含む完全なProductを再取得
-      return await tx.product.findUniqueOrThrow({
-        where: { id: product.id.value },
-        include: INCLUDE_RELATIONS,
-      });
-    });
-
-    return ProductMapper.toDomain(result);
-  }
-
   async delete(id: ProductId): Promise<void> {
     await prisma.product.delete({
       where: { id: id.value },

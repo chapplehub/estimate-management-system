@@ -20,7 +20,6 @@ export interface ProductRepository {
    */
   update(product: Product, expectedVersion: number): Promise<Product>;
 
-  save(product: Product): Promise<Product>;
   delete(id: ProductId): Promise<void>;
   findById(id: ProductId): Promise<Product | null>;
   findByCode(code: ProductCode): Promise<Product | null>;
