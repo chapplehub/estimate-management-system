@@ -10,7 +10,13 @@ import type { SubmissionType } from "../values/SubmissionType";
 import type { TaxRate } from "../values/TaxRate";
 import type { TaxRoundingType } from "../values/TaxRoundingType";
 import { VariationStatus } from "../values/VariationStatus";
+import {
+  SetGroupDerivationPolicy,
+  type SetGroupDerivation,
+} from "../policies/SetGroupDerivationPolicy";
+import type { EstimateSetGroupId } from "../values/EstimateSetGroupId";
 import { EstimateItem } from "./EstimateItem";
+import { EstimateSetGroup } from "./EstimateSetGroup";
 
 /** §3.3 バリエーション番号は 1〜99。 */
 const VARIATION_NUMBER_MIN = 1;
@@ -71,6 +77,9 @@ export class EstimateVariation {
     private _internalMemo: Memo,
     private _overallDiscount: Money,
     private readonly _items: EstimateItem[],
+    // セット群（ADR-0047 / Shape ③-a）。構成明細の所属を表す薄い衛星。
+    // 金額計算には関与しない（群は _items に行を持たず、computeTotals は _items のみ集計）。
+    private readonly _setGroups: EstimateSetGroup[],
     private _subtotal: Money,
     private _discountSubtotal: Money,
     private _finalSubtotal: Money,
@@ -94,6 +103,12 @@ export class EstimateVariation {
     tax: TaxContext;
     status?: VariationStatus;
     items?: EstimateItem[];
+    /**
+     * セット群（ADR-0047 / Shape ③-a）。省略時は空。構成明細は items に含めたうえで、
+     * その所属を群が `EstimateItemId[]` で参照する（案2-α）。構築時に参照整合・排他所属・
+     * 空群禁止を検証する。
+     */
+    setGroups?: EstimateSetGroup[];
     overallDiscount?: Money;
     /** 顧客メモ。省略時は空メモ（Memo.empty()）。 */
     customerMemo?: Memo;
@@ -103,6 +118,8 @@ export class EstimateVariation {
     EstimateVariation.assertVariationNumber(input.variationNumber);
 
     const items = input.items ?? [];
+    const setGroups = input.setGroups ?? [];
+    EstimateVariation.assertSetGroupsConsistency(items, setGroups);
     const overallDiscount = input.overallDiscount ?? Money.zero();
     const totals = EstimateVariation.computeTotals(items, overallDiscount, input.tax);
     const now = new Date();
@@ -117,6 +134,7 @@ export class EstimateVariation {
       input.internalMemo ?? Memo.empty(),
       overallDiscount,
       items,
+      setGroups,
       totals.subtotal,
       totals.discountSubtotal,
       totals.finalSubtotal,
@@ -141,6 +159,8 @@ export class EstimateVariation {
     internalMemo: Memo;
     overallDiscount: Money;
     items: EstimateItem[];
+    /** セット群（ADR-0047）。省略時は空。再構築時は信頼し再検証しない（保存済み集計と同方針）。 */
+    setGroups?: EstimateSetGroup[];
     subtotal: Money;
     discountSubtotal: Money;
     finalSubtotal: Money;
@@ -159,6 +179,7 @@ export class EstimateVariation {
       input.internalMemo,
       input.overallDiscount,
       input.items,
+      input.setGroups ?? [],
       input.subtotal,
       input.discountSubtotal,
       input.finalSubtotal,
@@ -255,6 +276,28 @@ export class EstimateVariation {
     this._internalMemo = input.internalMemo ?? Memo.empty();
 
     this.recalculate(tax);
+  }
+
+  // ========================================
+  // セット群の導出（金額・表示位置）
+  // ========================================
+
+  /**
+   * セット群の金額（構成明細 finalAmount 合計）と表示位置（最小 sortOrder）を導出する。
+   *
+   * 群自身は価格・金額・並び順を持たない（薄い衛星・ADR-0047）。構成明細 id を _items の
+   * 実体へ解決して {@link SetGroupDerivationPolicy} に渡す（案2-α: 群は id のみ保持）。
+   * 導出値は非永続・読み取り専用（ADR-0033 と両立: 永続化する派生列はゼロ）。
+   */
+  deriveSetGroup(setGroupId: EstimateSetGroupId): SetGroupDerivation {
+    const group = this._setGroups.find((g) => g.id.equals(setGroupId));
+    if (!group) {
+      throw new BusinessRuleViolationError(
+        `指定されたセット群はこのバリエーションに存在しません: ${setGroupId.value}`
+      );
+    }
+    const members = group.memberItemIds.map((id) => this.findItemOrThrow(id));
+    return SetGroupDerivationPolicy.derive(members);
   }
 
   // ========================================
@@ -371,6 +414,42 @@ export class EstimateVariation {
     this._updatedAt = new Date();
   }
 
+  /**
+   * セット群の構築時不変条件（ADR-0047 / Shape ③-a）。集約内で完結する構造的不変条件のみを
+   * 検証する。`create` でのみ呼び、`reconstruct` は信頼する（保存済み集計を信頼するのと同方針）。
+   *
+   * - 参照整合: 構成明細はこのバリエーションの items に存在しなければならない。
+   * - 排他所属: 1 つの構成明細が複数のセット群に所属してはならない（交差表 item_id PK と同義）。
+   *
+   * 空群禁止は EstimateSetGroup.create が群境界で担保するため、ここでは重ねて検証しない
+   * （variation 側で検証しても到達不能な分岐になる）。
+   *
+   * ネスト禁止・構成商品区分（ProductCategory）の検証は集約越え（Product 集約に依存）のため
+   * S1 では行わない。ADR-0029 に従い S5 のルール検証型 Domain Service（ドメインポート経由）で担保する。
+   */
+  private static assertSetGroupsConsistency(
+    items: ReadonlyArray<EstimateItem>,
+    setGroups: ReadonlyArray<EstimateSetGroup>
+  ): void {
+    const itemIds = new Set(items.map((i) => i.id.value));
+    const assigned = new Set<string>();
+    for (const group of setGroups) {
+      for (const memberId of group.memberItemIds) {
+        if (!itemIds.has(memberId.value)) {
+          throw new BusinessRuleViolationError(
+            `セット群の構成明細がバリエーションに存在しません: ${memberId.value}（参照整合）`
+          );
+        }
+        if (assigned.has(memberId.value)) {
+          throw new BusinessRuleViolationError(
+            `構成明細が複数のセット群に所属しています: ${memberId.value}（排他所属）`
+          );
+        }
+        assigned.add(memberId.value);
+      }
+    }
+  }
+
   private static assertVariationNumber(value: number): void {
     if (!Number.isInteger(value)) {
       throw new ValidationError("バリエーション番号は整数で指定してください");
@@ -429,6 +508,14 @@ export class EstimateVariation {
    */
   get items(): ReadonlyArray<Readonly<EstimateItem>> {
     return this._items;
+  }
+
+  /**
+   * セット群の読み取り専用ビュー（ADR-0047）。集約境界規約のため Readonly でラップする。
+   * 群の金額・表示位置は {@link deriveSetGroup} で導出する（衛星自身は値を持たない）。
+   */
+  get setGroups(): ReadonlyArray<Readonly<EstimateSetGroup>> {
+    return this._setGroups;
   }
 
   get subtotal(): Money {
