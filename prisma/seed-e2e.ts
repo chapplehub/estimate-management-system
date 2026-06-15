@@ -388,6 +388,12 @@ const PRODUCTS = [
   },
 ];
 
+// 消費税率マスタ（§8.7 の保存時税率一致チェックが参照）。8%(2014-) / 10%(2019-)。
+const TAX_RATES = [
+  { rate: "0.080", effectiveFrom: new Date("2014-04-01T00:00:00+09:00") },
+  { rate: "0.100", effectiveFrom: new Date("2019-10-01T00:00:00+09:00") },
+];
+
 // --- ヘルパー関数 ---
 
 function generateEmployeeCd(index: number): string {
@@ -558,6 +564,7 @@ async function main() {
   await prisma.estimateVariationCopy.deleteMany();
   await prisma.estimateVariationRevision.deleteMany();
   await prisma.estimate.deleteMany();
+  await prisma.taxRate.deleteMany();
   await prisma.setProductComponent.deleteMany();
   await prisma.productRelation.deleteMany();
   await prisma.product.deleteMany();
@@ -679,6 +686,15 @@ async function main() {
     });
   }
   console.log(`Created ${PRODUCTS.length} products`);
+
+  // 消費税率マスタを作成（§8.7 の保存時税率一致チェックが参照する）。
+  // 8%(2014-04-01〜) / 10%(2019-10-01〜)。見積編集（C2）の税率解決に必須。
+  for (const tr of TAX_RATES) {
+    await prisma.taxRate.create({
+      data: { id: generateId(), rate: tr.rate, effectiveFrom: tr.effectiveFrom },
+    });
+  }
+  console.log(`Created ${TAX_RATES.length} tax rates`);
 
   // パスワードハッシュ化
   const hashedPassword = await hashPassword(DEFAULT_PASSWORD);

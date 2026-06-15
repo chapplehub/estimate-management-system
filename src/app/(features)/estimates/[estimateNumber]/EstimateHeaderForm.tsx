@@ -188,6 +188,7 @@ export function EstimateHeaderForm({ estimate, departments, onCancel }: Props) {
                   type="button"
                   onClick={() => setCustomerModalOpen(true)}
                   disabled={locked || isPending}
+                  aria-label="得意先を選択"
                   className="bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm font-bold py-1 px-3 rounded disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                 >
                   選択
@@ -211,6 +212,7 @@ export function EstimateHeaderForm({ estimate, departments, onCancel }: Props) {
                   type="button"
                   onClick={() => setDeliveryModalOpen(true)}
                   disabled={locked || isPending || !customer.id}
+                  aria-label="納品先を選択"
                   className="bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm font-bold py-1 px-3 rounded disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                 >
                   選択
@@ -344,6 +346,7 @@ export function EstimateHeaderForm({ estimate, departments, onCancel }: Props) {
                     type="button"
                     onClick={() => setProductModalOpen(true)}
                     disabled={isPending}
+                    aria-label="修理対象機器を選択"
                     className="bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm font-bold py-1 px-3 rounded disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                   >
                     選択
@@ -411,6 +414,7 @@ export function EstimateHeaderForm({ estimate, departments, onCancel }: Props) {
                     type="button"
                     onClick={() => setProductModalOpen(true)}
                     disabled={isPending}
+                    aria-label="修理対象機器を選択"
                     className="bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm font-bold py-1 px-3 rounded disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                   >
                     選択
