@@ -382,6 +382,131 @@ describe("Estimate", () => {
     });
   });
 
+  describe("修理詳細の編集（bulk・集約ルート経由）", () => {
+    function makeRepairEstimate() {
+      return Estimate.create({
+        ...commonHeader(),
+        estimateNumber: EstimateNumber.parse("R2500001"),
+        variations: [makeVariation()],
+        repairDetail: RepairEstimateDetail.create({
+          targetProductId: ProductId.generate(),
+          faultDescription: new FaultDescription("初期故障"),
+          scheduledRepairDate: new Date("2025-05-01"),
+        }),
+      });
+    }
+
+    it("changeRepairDetail が子 detail へ委譲し修理対象機器・故障内容・修理予定日を更新する", () => {
+      const e = makeRepairEstimate();
+      const newProduct = ProductId.generate();
+
+      e.changeRepairDetail({
+        targetProductId: newProduct,
+        faultDescription: new FaultDescription("改訂後の故障"),
+        scheduledRepairDate: new Date("2025-06-15"),
+      });
+
+      expect(e.repairDetail!.targetProductId.equals(newProduct)).toBe(true);
+      expect(e.repairDetail!.faultDescription.value).toBe("改訂後の故障");
+      expect(e.repairDetail!.scheduledRepairDate).toEqual(new Date("2025-06-15"));
+    });
+
+    it("修理詳細を持たない見積（NEW）で changeRepairDetail を呼ぶと throw する", () => {
+      const e = Estimate.create({
+        ...commonHeader(),
+        estimateNumber: EstimateNumber.parse("N2500001"),
+        variations: [makeVariation()],
+      });
+
+      expect(() =>
+        e.changeRepairDetail({
+          targetProductId: ProductId.generate(),
+          faultDescription: new FaultDescription("故障"),
+          scheduledRepairDate: new Date(),
+        })
+      ).toThrow(BusinessRuleViolationError);
+    });
+
+    function makeAfterRepairEstimate() {
+      return Estimate.create({
+        ...commonHeader(),
+        estimateNumber: EstimateNumber.parse("A2500001"),
+        variations: [makeVariation()],
+        afterRepairDetail: AfterRepairEstimateDetail.create({
+          targetProductId: ProductId.generate(),
+          faultDescription: new FaultDescription("初期故障"),
+          actualRepairDate: new Date("2025-05-01"),
+          emergencyReason: new EmergencyReason("初期緊急理由"),
+        }),
+      });
+    }
+
+    it("changeAfterRepairDetail が子 detail へ委譲し対象機器・故障内容・実施日・緊急理由を更新する", () => {
+      const e = makeAfterRepairEstimate();
+      const newProduct = ProductId.generate();
+
+      e.changeAfterRepairDetail({
+        targetProductId: newProduct,
+        faultDescription: new FaultDescription("改訂後の故障"),
+        actualRepairDate: new Date("2025-06-20"),
+        emergencyReason: new EmergencyReason("改訂後の緊急理由"),
+      });
+
+      expect(e.afterRepairDetail!.targetProductId.equals(newProduct)).toBe(true);
+      expect(e.afterRepairDetail!.faultDescription.value).toBe("改訂後の故障");
+      expect(e.afterRepairDetail!.actualRepairDate).toEqual(new Date("2025-06-20"));
+      expect(e.afterRepairDetail!.emergencyReason.value).toBe("改訂後の緊急理由");
+    });
+
+    it("事後修理詳細を持たない見積（NEW）で changeAfterRepairDetail を呼ぶと throw する", () => {
+      const e = Estimate.create({
+        ...commonHeader(),
+        estimateNumber: EstimateNumber.parse("N2500001"),
+        variations: [makeVariation()],
+      });
+
+      expect(() =>
+        e.changeAfterRepairDetail({
+          targetProductId: ProductId.generate(),
+          faultDescription: new FaultDescription("故障"),
+          actualRepairDate: new Date(),
+          emergencyReason: new EmergencyReason("緊急"),
+        })
+      ).toThrow(BusinessRuleViolationError);
+    });
+
+    it("改訂が存在しても修理情報は編集できる（価格に無関係・ADR-0049 影響節）", () => {
+      // 納品先宛バリエーション + 修理詳細を持つ REPAIR 見積を改訂する
+      const source = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.DELIVERY_LOCATION,
+        tax: TAX,
+        items: [makeItem(1200)],
+      });
+      const e = Estimate.create({
+        ...commonHeader(),
+        estimateNumber: EstimateNumber.parse("R2500001"),
+        variations: [source],
+        repairDetail: RepairEstimateDetail.create({
+          targetProductId: ProductId.generate(),
+          faultDescription: new FaultDescription("初期故障"),
+          scheduledRepairDate: new Date("2025-05-01"),
+        }),
+      });
+      e.reviseForCustomer(source.id);
+      const newProduct = ProductId.generate();
+
+      e.changeRepairDetail({
+        targetProductId: newProduct,
+        faultDescription: new FaultDescription("改訂後でも編集できる"),
+        scheduledRepairDate: new Date("2025-07-01"),
+      });
+
+      expect(e.repairDetail!.targetProductId.equals(newProduct)).toBe(true);
+      expect(e.repairDetail!.faultDescription.value).toBe("改訂後でも編集できる");
+    });
+  });
+
   describe("appendVariation - 連番採番付き追加（C3 / §A.2）", () => {
     function makeEstimate(variations: EstimateVariation[]): Estimate {
       return Estimate.create({

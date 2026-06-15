@@ -4,7 +4,10 @@ import { CustomerId } from "@subdomains/customer/domain/values/CustomerId";
 import { DeliveryLocationId } from "@subdomains/delivery-location/domain/values/DeliveryLocationId";
 import { DepartmentId } from "@subdomains/department/domain/values/DepartmentId";
 import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
+import type { ProductId } from "@subdomains/product/domain/values/ProductId";
 import type { DiscountRate } from "../values/DiscountRate";
+import type { EmergencyReason } from "../values/EmergencyReason";
+import type { FaultDescription } from "../values/FaultDescription";
 import { EstimateId } from "../values/EstimateId";
 import type { EstimateItemId } from "../values/EstimateItemId";
 import { EstimateNumber } from "../values/EstimateNumber";
@@ -436,6 +439,48 @@ export class Estimate {
       );
     }
     this._afterRepairDetail = null;
+    this.touch();
+  }
+
+  // ========================================
+  // 修理詳細の編集（bulk・集約ルートが唯一の入口）
+  // ========================================
+  //
+  // 修理情報（対象機器・故障内容・修理日）は価格に無関係なため、改訂が存在しても
+  // 編集可とする（assertHeaderMutable を呼ばない・ADR-0049 影響節）。子 detail の
+  // change* へ委譲する。詳細が付いていない（型不一致）見積では throw する。
+
+  changeRepairDetail(input: {
+    targetProductId: ProductId;
+    faultDescription: FaultDescription;
+    scheduledRepairDate: Date;
+  }): void {
+    if (this._repairDetail === null) {
+      throw new BusinessRuleViolationError(
+        "事前修理見積詳細が存在しないため編集できません（estimateType=REPAIR の見積でのみ可能）"
+      );
+    }
+    this._repairDetail.changeTargetProduct(input.targetProductId);
+    this._repairDetail.changeFaultDescription(input.faultDescription);
+    this._repairDetail.changeScheduledRepairDate(input.scheduledRepairDate);
+    this.touch();
+  }
+
+  changeAfterRepairDetail(input: {
+    targetProductId: ProductId;
+    faultDescription: FaultDescription;
+    actualRepairDate: Date;
+    emergencyReason: EmergencyReason;
+  }): void {
+    if (this._afterRepairDetail === null) {
+      throw new BusinessRuleViolationError(
+        "事後修理見積詳細が存在しないため編集できません（estimateType=AFTER_REPAIR の見積でのみ可能）"
+      );
+    }
+    this._afterRepairDetail.changeTargetProduct(input.targetProductId);
+    this._afterRepairDetail.changeFaultDescription(input.faultDescription);
+    this._afterRepairDetail.changeActualRepairDate(input.actualRepairDate);
+    this._afterRepairDetail.changeEmergencyReason(input.emergencyReason);
     this.touch();
   }
 
