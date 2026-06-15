@@ -27,6 +27,7 @@ import {
   fromLineDTO,
   insertBelow,
   removeLine,
+  reorderLines,
   toLinePayload,
   type WorkingLine,
 } from "./variationLines";
@@ -101,6 +102,10 @@ export function VariationEditForm({
     if (activeRowId === rowId) setActiveRowId(null);
   };
 
+  const reorder = (from: number, to: number) => {
+    setLines((prev) => reorderLines(prev, from, to));
+  };
+
   // 本体の商品選択 → スナップショット解決 → アクティブ行直下に挿入 → 新規行を自動アクティブ。
   // 周辺商品（有効）があれば提案ダイアログを開く（本体行直下へ挿入するため rowId を保持）。
   const handleProductSelect = async (rows: ProductSelectionRow[]) => {
@@ -171,6 +176,7 @@ export function VariationEditForm({
           onSelectRow={setActiveRowId}
           onChangeLine={changeLine}
           onRemoveLine={deleteLine}
+          onReorder={reorder}
         />
         {fields.lines.errors && (
           <p className="text-red-500 text-xs mt-1">{fields.lines.errors[0]}</p>
