@@ -1,9 +1,5 @@
 # CLAUDE.md
 
-## Major premise
-
-常に日本語で対話すること
-
 ## Tech Stack
 
 Next.js 16 (App Router), React 19, Prisma ORM, PostgreSQL, Vitest, TailwindCSS 4, DDD architecture
