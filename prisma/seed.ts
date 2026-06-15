@@ -5,6 +5,7 @@ import { hashPassword } from "better-auth/crypto";
 import { PrismaClient } from "../generated/prisma/client";
 import type { UserRole } from "../src/server/shared/auth/types";
 import { USER_ROLES } from "../src/server/shared/auth/types";
+import { seedEstimates } from "./seed-estimates";
 
 config({ path: ".env" });
 
@@ -1151,6 +1152,10 @@ async function main() {
   console.log("");
 
   // 既存データを削除（外部キー制約を考慮した順序）
+  // 見積は得意先・納品先・部署・従業員・商品を参照する（onDelete: Restrict）ため先に消す。
+  await prisma.estimateVariationCopy.deleteMany();
+  await prisma.estimateVariationRevision.deleteMany();
+  await prisma.estimate.deleteMany();
   await prisma.taxRate.deleteMany();
   await prisma.setProductComponent.deleteMany();
   await prisma.productRelation.deleteMany();
@@ -1305,6 +1310,10 @@ async function main() {
     await prisma.employeeRole.create({ data });
   }
   console.log(`Created ${employeeRoleData.length} employee role assignments`);
+
+  // 見積（#330 / S2 閲覧画面のデモ用）。マスタ作成後に参照して作る。
+  const estimateCount = await seedEstimates(prisma);
+  console.log(`Created ${estimateCount} estimates`);
 
   const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
   console.log("");

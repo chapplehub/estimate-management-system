@@ -66,6 +66,7 @@
 | [0045](0045-submission-type-as-immutable-variation-attribute.md) | 提出区分はバリエーション単位の不変保存属性とする | 採用 | 2026-06-12 |
 | [0046](0046-revised-variation-rejects-bulk-replace-allow-granular-adjustment.md) | 改訂先バリエーションは C4 全置換を拒否し、調整は粒度別メソッドに限定する | 採用 | 2026-06-12 |
 | [0047](0047-set-line-as-priced-leaf-table-plus-set-group-satellite.md) | 見積のセット商品明細を価格付き末端行1表＋セット群衛星＋所属交差表でモデル化する | 採用 | 2026-06-13 |
+| [0048](0048-estimate-line-product-attributes-read-through-then-snapshot-on-commit.md) | 見積明細の商品由来属性（コード・区分）は編集中マスタ read-through・確定時スナップショット凍結とする | 採用（機構先送り） | 2026-06-15 |
 
 ## アプリケーション（コマンド）
 
