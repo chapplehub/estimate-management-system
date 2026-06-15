@@ -386,6 +386,25 @@ const PRODUCTS = [
     isActive: false,
     description: "販売終了品",
   },
+  // S4 周辺商品サジェスト（D6）E2E 用の専用商品。本体 PRD810 に周辺 PRD811 を関連付ける。
+  {
+    code: "PRD810",
+    name: "S4周辺テスト本体",
+    category: "INDIVIDUAL" as const,
+    unit: "UNIT" as const,
+    costPrice: 12000,
+    isActive: true,
+    description: "S4 周辺商品サジェスト E2E 用（本体）",
+  },
+  {
+    code: "PRD811",
+    name: "S4周辺テスト周辺",
+    category: "CONSUMABLE" as const,
+    unit: "PIECE" as const,
+    costPrice: 2000,
+    isActive: true,
+    description: "S4 周辺商品サジェスト E2E 用（周辺）",
+  },
 ];
 
 // 消費税率マスタ（§8.7 の保存時税率一致チェックが参照）。8%(2014-) / 10%(2019-)。
@@ -686,6 +705,17 @@ async function main() {
     });
   }
   console.log(`Created ${PRODUCTS.length} products`);
+
+  // S4 周辺商品サジェスト E2E 用の関連（本体 PRD810 → 周辺 PRD811・数量2）。
+  const suggestParent = await prisma.product.findUniqueOrThrow({ where: { code: "PRD810" } });
+  const suggestRelated = await prisma.product.findUniqueOrThrow({ where: { code: "PRD811" } });
+  await prisma.productRelation.create({
+    data: {
+      productId: suggestParent.id,
+      relatedProductId: suggestRelated.id,
+      quantity: 2,
+    },
+  });
 
   // 消費税率マスタを作成（§8.7 の保存時税率一致チェックが参照する）。
   // 8%(2014-04-01〜) / 10%(2019-10-01〜)。見積編集（C2）の税率解決に必須。

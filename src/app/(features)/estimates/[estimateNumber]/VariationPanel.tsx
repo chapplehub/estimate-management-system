@@ -5,34 +5,57 @@ import { Badge } from "@/app/_components/shadcnui/badge";
 import type { VariationDTO } from "@subdomains/estimate/application/queries/dto/EstimateDetailDTO";
 import { SUBMISSION_TYPE_LABELS, formatYen } from "../_shared/labels";
 import { LineTable } from "./components/LineTable";
+import { VariationEditForm } from "./VariationEditForm";
 
 type Props = {
+  estimateNumber: string;
+  /** 集約ルートの楽観ロックトークン（ADR-0039）。編集フォームへ往復させる。 */
+  version: number;
   variations: VariationDTO[];
+  /** 消費税率（金額プレビュー用・見積時点スナップショット）。 */
+  taxRate: number;
+  /** 税端数区分（金額プレビュー用）。 */
+  taxRoundingType: string;
 };
 
 /**
- * バリエーションパネル（④〜⑨・クライアントアイランド・計画 Q6）。
+ * バリエーションパネル（④〜⑨・クライアントアイランド）。
  *
- * タブ切替（activeVariationIndex）と明細行のアクティブ化（activeRowId）を管理する。
- * 書き込み経路は持たない（行アクティブ化はハイライトのみ。直下挿入・編集は S4 以降）。
+ * 閲覧（S2）と内容編集（S4 / C4）をタブ単位で切り替える。編集はアクティブなバリ1件のみ・
+ * ヘッダー編集（C2）とは独立したトグル。編集できるのは「セット群なし・非改訂・有効」バリに
+ * 限る（C4 はセット群を表現できないため・計画§1）。最終強制はドメイン、UI 抑止は二重防御の外側。
+ * 編集中のタブ切替は未保存の作業コピーが消えるため破棄確認する。
  */
-export function VariationPanel({ variations }: Props) {
+export function VariationPanel({
+  estimateNumber,
+  version,
+  variations,
+  taxRate,
+  taxRoundingType,
+}: Props) {
   // 既定タブ＝最小番号の ACTIVE バリ（全 INACTIVE なら最小番号）。variations は番号昇順。
   const firstActive = variations.findIndex((v) => v.status === "ACTIVE");
   const [activeIndex, setActiveIndex] = useState(firstActive >= 0 ? firstActive : 0);
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   const allInactive = variations.every((v) => v.status !== "ACTIVE");
   const active = variations[activeIndex];
 
   function selectVariation(index: number): void {
+    if (index === activeIndex) return;
+    // 編集中のタブ切替は作業コピーが消えるため破棄確認（計画§2）。
+    if (isEditing && !window.confirm("編集中の内容は破棄されます。タブを切り替えますか？")) {
+      return;
+    }
+    setIsEditing(false);
     setActiveIndex(index);
-    setActiveRowId(null); // タブ切替で行アクティブをリセット（Q6）
+    setActiveRowId(null); // タブ切替で行アクティブをリセット
   }
 
   return (
     <div>
-      {/* 全無効警告（presentation 導出・Q7。DTO に専用フラグは持たせない） */}
+      {/* 全無効警告（presentation 導出。DTO に専用フラグは持たせない） */}
       {allInactive && (
         <div
           role="alert"
@@ -70,7 +93,7 @@ export function VariationPanel({ variations }: Props) {
 
       {active && (
         <div>
-          {/* ⑤ 操作行（提出区分バッジ・状態インジケータ） */}
+          {/* ⑤ 操作行（提出区分バッジ・状態インジケータ・編集トグル） */}
           <div className="flex items-center gap-3 mb-4">
             <Badge variant="outline">
               {SUBMISSION_TYPE_LABELS[active.submissionType] ?? active.submissionType}
@@ -78,35 +101,89 @@ export function VariationPanel({ variations }: Props) {
             <span className="text-sm text-gray-600">
               {active.status === "ACTIVE" ? "● 有効" : "○ 無効"}
             </span>
+            {!isEditing && isVariationEditable(active) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveRowId(null);
+                  setIsEditing(true);
+                }}
+                className="ml-auto bg-blue-500 hover:bg-blue-700 text-white text-sm font-bold py-1 px-4 rounded"
+              >
+                内容を編集
+              </button>
+            )}
           </div>
 
-          {/* ⑥ 明細テーブル */}
-          <LineTable lines={active.lines} activeRowId={activeRowId} onSelectRow={setActiveRowId} />
-
-          {/* ⑦ 全体値引 */}
-          {active.overallDiscount > 0 && (
-            <div className="mt-4 text-right text-sm text-gray-700">
-              全体値引: -{formatYen(active.overallDiscount)}
-            </div>
+          {isEditing ? (
+            <VariationEditForm
+              estimateNumber={estimateNumber}
+              version={version}
+              variation={active}
+              taxRate={taxRate}
+              taxRoundingType={taxRoundingType}
+              onCancel={() => setIsEditing(false)}
+            />
+          ) : (
+            <ReadOnlyVariationBody
+              variation={active}
+              activeRowId={activeRowId}
+              onSelectRow={setActiveRowId}
+            />
           )}
-
-          {/* ⑧ メモ */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-            <MemoBlock label="顧客メモ" value={active.customerMemo} />
-            <MemoBlock label="社内メモ" value={active.internalMemo} />
-          </div>
-
-          {/* ⑨ 金額サマリー（選択中バリの永続集計・ADR-0033。バリは代替・合算しない） */}
-          <div className="mt-6 flex justify-end">
-            <dl className="w-full md:w-80 space-y-1 text-sm">
-              <SummaryRow label="小計" value={active.subtotal} />
-              <SummaryRow label="税抜合計" value={active.finalSubtotal} />
-              <SummaryRow label="消費税" value={active.taxAmount} />
-              <SummaryRow label="合計" value={active.finalTotal} emphasize />
-            </dl>
-          </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * 編集可能なバリか判定する（UI 抑止・二重防御の外側）。
+ * セット群を含まず（C4 はセット群を全置換できない）、有効で、改訂明細を含まないこと。
+ * 改訂バリは revisedDeliveryPrice を持つ明細がある（§8.4）。最終強制はドメイン（replaceContent）。
+ */
+function isVariationEditable(variation: VariationDTO): boolean {
+  if (variation.status !== "ACTIVE") return false;
+  return variation.lines.every((l) => l.kind === "line" && l.revisedDeliveryPrice === null);
+}
+
+/** 閲覧モードの ⑥明細・⑦全体値引・⑧メモ・⑨金額サマリー（read-only）。 */
+function ReadOnlyVariationBody({
+  variation,
+  activeRowId,
+  onSelectRow,
+}: {
+  variation: VariationDTO;
+  activeRowId: string | null;
+  onSelectRow: (id: string) => void;
+}) {
+  return (
+    <div>
+      {/* ⑥ 明細テーブル */}
+      <LineTable lines={variation.lines} activeRowId={activeRowId} onSelectRow={onSelectRow} />
+
+      {/* ⑦ 全体値引 */}
+      {variation.overallDiscount > 0 && (
+        <div className="mt-4 text-right text-sm text-gray-700">
+          全体値引: -{formatYen(variation.overallDiscount)}
+        </div>
+      )}
+
+      {/* ⑧ メモ */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+        <MemoBlock label="顧客メモ" value={variation.customerMemo} />
+        <MemoBlock label="社内メモ" value={variation.internalMemo} />
+      </div>
+
+      {/* ⑨ 金額サマリー（選択中バリの永続集計・ADR-0033。バリは代替・合算しない） */}
+      <div className="mt-6 flex justify-end">
+        <dl className="w-full md:w-80 space-y-1 text-sm">
+          <SummaryRow label="小計" value={variation.subtotal} />
+          <SummaryRow label="税抜合計" value={variation.finalSubtotal} />
+          <SummaryRow label="消費税" value={variation.taxAmount} />
+          <SummaryRow label="合計" value={variation.finalTotal} emphasize />
+        </dl>
+      </div>
     </div>
   );
 }
