@@ -29,8 +29,16 @@ export type EstimateDetailDTO = {
   creatorCode: string;
   creatorName: string;
 
-  /** 消費税率（見積時点スナップショット）。 */
+  /** 消費税率（見積時点スナップショット）。S3 では read-only 表示のみ（自由入力不可）。 */
   taxRate: number;
+  /** 税端数区分（"ROUND_DOWN" | "ROUND_UP" | "ROUND"）。S3 で編集可・閲覧モードにも表示。 */
+  taxRoundingType: string;
+  /**
+   * 改訂（C7 得意先改訂）がいずれかのバリエーションに存在するか（§7.2 / ADR-0044）。
+   * S3 でロック項目（見積年月日・得意先・納品先・税端数）の disabled 出し分けを駆動する。
+   * 最終強制はドメイン（assertHeaderMutable）が担う二重防御（ADR-0049）。
+   */
+  hasRevision: boolean;
 
   // ③ 修理情報（排他サブタイプ。REPAIR / AFTER_REPAIR のときだけ非 null・Q10）
   /** REPAIR のとき非 null。 */

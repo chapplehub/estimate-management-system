@@ -25,6 +25,7 @@ import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
 import { ProductId } from "@subdomains/product/domain/values/ProductId";
 import { DiscountRate } from "@subdomains/estimate/domain/values/DiscountRate";
 import { EstimateNumber } from "@subdomains/estimate/domain/values/EstimateNumber";
+import { FaultDescription } from "@subdomains/estimate/domain/values/FaultDescription";
 import { ItemName } from "@subdomains/estimate/domain/values/ItemName";
 import { Money } from "@subdomains/estimate/domain/values/Money";
 import { Quantity } from "@subdomains/estimate/domain/values/Quantity";
@@ -33,10 +34,16 @@ import { TaxRate } from "@subdomains/estimate/domain/values/TaxRate";
 import { TaxRoundingType } from "@subdomains/estimate/domain/values/TaxRoundingType";
 import { Unit } from "@subdomains/estimate/domain/values/Unit";
 
-/** シード見積番号（接頭辞 N + 年度 99 + 連番 05xxx）。テスト予約帯（0000x/0100x）と非重複。 */
+/** シード見積番号（接頭辞 N/R + 年度 99 + 連番 05xxx）。テスト予約帯（0000x/0100x）と非重複。 */
 export const SEED_ESTIMATE_NUMBERS = {
   full: "N9905001",
   allInactive: "N9905002",
+  /** S3 ヘッダー編集の E2E 用（締切日・部署・端数の編集対象）。 */
+  editable: "N9905003",
+  /** S3 修理情報編集の E2E 用（REPAIR）。 */
+  repair: "R9905001",
+  /** S3 改訂ロック表示の E2E 用（得意先改訂済み＝hasRevision）。 */
+  revised: "N9905004",
 } as const;
 
 /** 見積が参照する FK マスタ（呼び出し側 seed の作成済みデータから解決した ID）。 */
@@ -127,6 +134,61 @@ function buildFullEstimate(fk: EstimateSeedFk) {
   return estimate;
 }
 
+/** S3 編集 E2E 用のシンプルな NEW 見積（締切日・部署・端数の編集対象）。 */
+function buildEditableEstimate(fk: EstimateSeedFk) {
+  return EstimateFactory.create({
+    ...header(fk),
+    estimateNumber: EstimateNumber.parse(SEED_ESTIMATE_NUMBERS.editable),
+    variations: [
+      {
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        items: [mkItem(fk.productAId, 1, "編集対象明細", 1, 1000)],
+      },
+    ],
+  });
+}
+
+/** S3 修理情報編集 E2E 用の REPAIR 見積（事前修理詳細つき）。 */
+function buildRepairSeedEstimate(fk: EstimateSeedFk) {
+  return EstimateFactory.create({
+    ...header(fk),
+    estimateNumber: EstimateNumber.parse(SEED_ESTIMATE_NUMBERS.repair),
+    variations: [
+      {
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        items: [mkItem(fk.productAId, 1, "修理見積明細", 1, 5000)],
+      },
+    ],
+    repairDetail: {
+      targetProductId: new ProductId(fk.productAId),
+      faultDescription: new FaultDescription("起動時に異音がする"),
+      scheduledRepairDate: new Date("2026-05-15T00:00:00.000Z"),
+    },
+  });
+}
+
+/**
+ * S3 改訂ロック表示 E2E 用の改訂済み見積（hasRevision=true）。
+ * 納品先宛 V1 を得意先改訂して V2（revisedFrom=V1）を生成する。系譜行は呼び出し側で別途作る。
+ */
+function buildRevisedEstimate(fk: EstimateSeedFk) {
+  const estimate = EstimateFactory.create({
+    ...header(fk),
+    estimateNumber: EstimateNumber.parse(SEED_ESTIMATE_NUMBERS.revised),
+    variations: [
+      {
+        variationNumber: 1,
+        submissionType: SubmissionType.DELIVERY_LOCATION,
+        items: [mkItem(fk.productAId, 1, "改訂元明細", 1, 4000)],
+      },
+    ],
+  });
+  estimate.reviseForCustomer(estimate.variations[0].id);
+  return estimate;
+}
+
 /** 全バリエーション無効の見積（全無効警告の確認用）。 */
 function buildAllInactiveEstimate(fk: EstimateSeedFk) {
   const estimate = EstimateFactory.create({
@@ -181,10 +243,27 @@ export async function seedEstimates(prisma: PrismaClient): Promise<number> {
     productBId: products[1].id,
   };
 
-  const estimates = [buildFullEstimate(fk), buildAllInactiveEstimate(fk)];
+  const estimates = [
+    buildFullEstimate(fk),
+    buildAllInactiveEstimate(fk),
+    buildEditableEstimate(fk),
+    buildRepairSeedEstimate(fk),
+  ];
   for (const estimate of estimates) {
-    // セット群なし → 所属交差表の createMany は不要。改訂系譜も作らない（明細スナップショットのみ）。
+    // セット群なし → 所属交差表の createMany は不要。
     await prisma.estimate.create({ data: EstimateMapper.toEstimateCreateInput(estimate) });
   }
-  return estimates.length;
+
+  // 改訂済み見積（hasRevision）: 見積本体を作成後、改訂系譜行を別途書く
+  // （toEstimateCreateInput は系譜を出さない・insert 経路と同じ・ADR-0044）。
+  const revised = buildRevisedEstimate(fk);
+  await prisma.estimate.create({ data: EstimateMapper.toEstimateCreateInput(revised) });
+  const revisedVariation = revised.variations.find((v) => v.revisedFrom !== null);
+  if (revisedVariation) {
+    await prisma.estimateVariationRevision.create({
+      data: EstimateMapper.toVariationRevisionCreateInput(revisedVariation),
+    });
+  }
+
+  return estimates.length + 1;
 }

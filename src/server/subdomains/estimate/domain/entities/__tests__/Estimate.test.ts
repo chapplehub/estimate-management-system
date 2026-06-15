@@ -333,6 +333,20 @@ describe("Estimate", () => {
       expect(e.variations[0].taxAmount.equals(Money.fromMajorUnits(50))).toBe(true);
       expect(e.variations[1].taxAmount.equals(Money.fromMajorUnits(100))).toBe(true);
     });
+
+    it("同値の changeTaxRate は no-op（updatedAt を更新せず再計算もしない・ADR-0049）", () => {
+      const e = Estimate.create({
+        ...commonHeader(),
+        estimateNumber: EstimateNumber.parse("N2500001"),
+        variations: [makeVariation()],
+      });
+      const before = e.updatedAt;
+
+      e.changeTaxRate(new TaxRate(e.taxRate.value));
+
+      // touch() が呼ばれていなければ updatedAt は同一 Date 参照のまま
+      expect(e.updatedAt).toBe(before);
+    });
   });
 
   describe("サブタイプ詳細の付け替え", () => {
@@ -365,6 +379,131 @@ describe("Estimate", () => {
         }),
       });
       expect(() => e.detachRepairDetail()).toThrow("外せません");
+    });
+  });
+
+  describe("修理詳細の編集（bulk・集約ルート経由）", () => {
+    function makeRepairEstimate() {
+      return Estimate.create({
+        ...commonHeader(),
+        estimateNumber: EstimateNumber.parse("R2500001"),
+        variations: [makeVariation()],
+        repairDetail: RepairEstimateDetail.create({
+          targetProductId: ProductId.generate(),
+          faultDescription: new FaultDescription("初期故障"),
+          scheduledRepairDate: new Date("2025-05-01"),
+        }),
+      });
+    }
+
+    it("changeRepairDetail が子 detail へ委譲し修理対象機器・故障内容・修理予定日を更新する", () => {
+      const e = makeRepairEstimate();
+      const newProduct = ProductId.generate();
+
+      e.changeRepairDetail({
+        targetProductId: newProduct,
+        faultDescription: new FaultDescription("改訂後の故障"),
+        scheduledRepairDate: new Date("2025-06-15"),
+      });
+
+      expect(e.repairDetail!.targetProductId.equals(newProduct)).toBe(true);
+      expect(e.repairDetail!.faultDescription.value).toBe("改訂後の故障");
+      expect(e.repairDetail!.scheduledRepairDate).toEqual(new Date("2025-06-15"));
+    });
+
+    it("修理詳細を持たない見積（NEW）で changeRepairDetail を呼ぶと throw する", () => {
+      const e = Estimate.create({
+        ...commonHeader(),
+        estimateNumber: EstimateNumber.parse("N2500001"),
+        variations: [makeVariation()],
+      });
+
+      expect(() =>
+        e.changeRepairDetail({
+          targetProductId: ProductId.generate(),
+          faultDescription: new FaultDescription("故障"),
+          scheduledRepairDate: new Date(),
+        })
+      ).toThrow(BusinessRuleViolationError);
+    });
+
+    function makeAfterRepairEstimate() {
+      return Estimate.create({
+        ...commonHeader(),
+        estimateNumber: EstimateNumber.parse("A2500001"),
+        variations: [makeVariation()],
+        afterRepairDetail: AfterRepairEstimateDetail.create({
+          targetProductId: ProductId.generate(),
+          faultDescription: new FaultDescription("初期故障"),
+          actualRepairDate: new Date("2025-05-01"),
+          emergencyReason: new EmergencyReason("初期緊急理由"),
+        }),
+      });
+    }
+
+    it("changeAfterRepairDetail が子 detail へ委譲し対象機器・故障内容・実施日・緊急理由を更新する", () => {
+      const e = makeAfterRepairEstimate();
+      const newProduct = ProductId.generate();
+
+      e.changeAfterRepairDetail({
+        targetProductId: newProduct,
+        faultDescription: new FaultDescription("改訂後の故障"),
+        actualRepairDate: new Date("2025-06-20"),
+        emergencyReason: new EmergencyReason("改訂後の緊急理由"),
+      });
+
+      expect(e.afterRepairDetail!.targetProductId.equals(newProduct)).toBe(true);
+      expect(e.afterRepairDetail!.faultDescription.value).toBe("改訂後の故障");
+      expect(e.afterRepairDetail!.actualRepairDate).toEqual(new Date("2025-06-20"));
+      expect(e.afterRepairDetail!.emergencyReason.value).toBe("改訂後の緊急理由");
+    });
+
+    it("事後修理詳細を持たない見積（NEW）で changeAfterRepairDetail を呼ぶと throw する", () => {
+      const e = Estimate.create({
+        ...commonHeader(),
+        estimateNumber: EstimateNumber.parse("N2500001"),
+        variations: [makeVariation()],
+      });
+
+      expect(() =>
+        e.changeAfterRepairDetail({
+          targetProductId: ProductId.generate(),
+          faultDescription: new FaultDescription("故障"),
+          actualRepairDate: new Date(),
+          emergencyReason: new EmergencyReason("緊急"),
+        })
+      ).toThrow(BusinessRuleViolationError);
+    });
+
+    it("改訂が存在しても修理情報は編集できる（価格に無関係・ADR-0049 影響節）", () => {
+      // 納品先宛バリエーション + 修理詳細を持つ REPAIR 見積を改訂する
+      const source = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.DELIVERY_LOCATION,
+        tax: TAX,
+        items: [makeItem(1200)],
+      });
+      const e = Estimate.create({
+        ...commonHeader(),
+        estimateNumber: EstimateNumber.parse("R2500001"),
+        variations: [source],
+        repairDetail: RepairEstimateDetail.create({
+          targetProductId: ProductId.generate(),
+          faultDescription: new FaultDescription("初期故障"),
+          scheduledRepairDate: new Date("2025-05-01"),
+        }),
+      });
+      e.reviseForCustomer(source.id);
+      const newProduct = ProductId.generate();
+
+      e.changeRepairDetail({
+        targetProductId: newProduct,
+        faultDescription: new FaultDescription("改訂後でも編集できる"),
+        scheduledRepairDate: new Date("2025-07-01"),
+      });
+
+      expect(e.repairDetail!.targetProductId.equals(newProduct)).toBe(true);
+      expect(e.repairDetail!.faultDescription.value).toBe("改訂後でも編集できる");
     });
   });
 
@@ -599,6 +738,23 @@ describe("Estimate", () => {
 
       expect(e.deadline).toEqual(newDeadline);
       expect(e.departmentId.equals(newDepartment)).toBe(true);
+    });
+
+    it("改訂が存在してもロック項目を同値で呼ぶと no-op で素通りする（ADR-0049）", () => {
+      const e = buildRevisedEstimateViaRevise();
+
+      // フォームが全項目を送っても、現在値と同じ見積年月日なら変更ではないので throw しない
+      expect(() => e.changeEstimateDate(new Date(e.estimateDate.getTime()))).not.toThrow();
+    });
+
+    it("改訂済みでも全ロック項目を同値で送れば素通りし、フォーム全項目送信で保存できる（ADR-0049）", () => {
+      const e = buildRevisedEstimateViaRevise();
+
+      // 税率・端数・得意先・納品先も、現在値と等価なら no-op
+      expect(() => e.changeTaxRate(new TaxRate(e.taxRate.value))).not.toThrow();
+      expect(() => e.changeTaxRoundingType(e.taxRoundingType)).not.toThrow();
+      expect(() => e.changeCustomer(e.customerId)).not.toThrow();
+      expect(() => e.changeDeliveryLocation(e.deliveryLocationId)).not.toThrow();
     });
   });
 

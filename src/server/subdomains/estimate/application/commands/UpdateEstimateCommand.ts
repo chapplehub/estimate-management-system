@@ -2,20 +2,44 @@ import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { CustomerId } from "@subdomains/customer/domain/values/CustomerId";
 import { DeliveryLocationId } from "@subdomains/delivery-location/domain/values/DeliveryLocationId";
 import { DepartmentId } from "@subdomains/department/domain/values/DepartmentId";
+import { ProductId } from "@subdomains/product/domain/values/ProductId";
 import { Estimate } from "@subdomains/estimate/domain/entities";
 import { EstimateRepository } from "@subdomains/estimate/domain/repositories/EstimateRepository";
 import { TaxRateConsistencyCheckDomainService } from "@subdomains/estimate/domain/services/TaxRateConsistencyCheckDomainService";
+import { EmergencyReason } from "@subdomains/estimate/domain/values/EmergencyReason";
 import { EstimateId } from "@subdomains/estimate/domain/values/EstimateId";
-import { TaxRate } from "@subdomains/estimate/domain/values/TaxRate";
+import { FaultDescription } from "@subdomains/estimate/domain/values/FaultDescription";
 import { TaxRoundingType } from "@subdomains/estimate/domain/values/TaxRoundingType";
 import { checkTaxRateThenSave, type TaxCheckedSaveResult } from "../shared/checkTaxRateThenSave";
+
+/** 事前修理見積詳細の更新入力（プリミティブ）。estimateType=REPAIR の見積でのみ指定する。 */
+export type UpdateRepairDetailInput = {
+  targetProductId: string;
+  faultDescription: string;
+  scheduledRepairDate: Date;
+};
+
+/** 事後修理見積詳細の更新入力（プリミティブ）。estimateType=AFTER_REPAIR の見積でのみ指定する。 */
+export type UpdateAfterRepairDetailInput = {
+  targetProductId: string;
+  faultDescription: string;
+  actualRepairDate: Date;
+  emergencyReason: string;
+};
 
 /**
  * 見積ヘッダ更新コマンドの入力（すべてプリミティブ型）。
  *
- * 更新対象は集約に変更メソッドがあるヘッダ 5 項目 + 税率系 2 項目。estimateType は
- * 採番接頭辞 N/R/A（§2.1）と 1:1 のため変更不可、createdBy は監査項目のため対象外。
- * 提出区分はバリエーション単位の不変属性（ADR-0045）のため本コマンドの対象外。
+ * 更新対象は集約に変更メソッドがあるヘッダ項目 + 税端数区分 + 条件付きの修理情報。
+ * estimateType は採番接頭辞 N/R/A（§2.1）と 1:1 のため変更不可、createdBy は監査
+ * 項目のため対象外。提出区分はバリエーション単位の不変属性（ADR-0045）のため対象外。
+ *
+ * 税率（taxRate）は本コマンドの入力から除外する: §8.7 の整合チェックは見積年月日・
+ * 締切日から master 解決した税率で行い、利用者の自由入力値は使わないため（S3 決定・
+ * 画面でも read-only）。
+ *
+ * 修理情報は estimateType に応じて片方のみ指定する。指定された側のみ更新する
+ * （集約側が型不一致を throw でガードする）。
  */
 export type UpdateEstimateInput = {
   estimateId: string;
@@ -26,8 +50,9 @@ export type UpdateEstimateInput = {
   customerId: string;
   deliveryLocationId: string;
   departmentId: string;
-  taxRate: number;
   taxRoundingType: string;
+  repairDetail?: UpdateRepairDetailInput | null;
+  afterRepairDetail?: UpdateAfterRepairDetailInput | null;
 };
 
 /**
@@ -57,8 +82,23 @@ export class UpdateEstimateCommand {
     estimate.changeCustomer(new CustomerId(input.customerId));
     estimate.changeDeliveryLocation(new DeliveryLocationId(input.deliveryLocationId));
     estimate.changeDepartment(new DepartmentId(input.departmentId));
-    estimate.changeTaxRate(new TaxRate(input.taxRate));
     estimate.changeTaxRoundingType(TaxRoundingType.from(input.taxRoundingType));
+
+    if (input.repairDetail) {
+      estimate.changeRepairDetail({
+        targetProductId: new ProductId(input.repairDetail.targetProductId),
+        faultDescription: new FaultDescription(input.repairDetail.faultDescription),
+        scheduledRepairDate: input.repairDetail.scheduledRepairDate,
+      });
+    }
+    if (input.afterRepairDetail) {
+      estimate.changeAfterRepairDetail({
+        targetProductId: new ProductId(input.afterRepairDetail.targetProductId),
+        faultDescription: new FaultDescription(input.afterRepairDetail.faultDescription),
+        actualRepairDate: input.afterRepairDetail.actualRepairDate,
+        emergencyReason: new EmergencyReason(input.afterRepairDetail.emergencyReason),
+      });
+    }
 
     return checkTaxRateThenSave(estimate, input.version, {
       taxRateConsistencyCheck: this.taxRateConsistencyCheck,
