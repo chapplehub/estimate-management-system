@@ -26,8 +26,11 @@ const lineSchema = z.object({
     .max(9.9999, "掛率は9.9999以下で入力してください"),
   // 明細値引: 円・0 以上。
   itemDiscount: z.number().min(0, "明細値引は0以上で入力してください"),
-  customerMemo: z.string(),
-  internalMemo: z.string(),
+  // メモは optional: conform の parseWithZod は空フィールドを undefined に変換するため
+  // z.string() だと空メモが「expected string, received undefined」で失敗する。空＝未入力＝
+  // ドメインの Null Object（ADR-0034）に対応するので optional が正しい。required に戻さないこと。
+  customerMemo: z.string().optional(),
+  internalMemo: z.string().optional(),
 });
 
 export type VariationLineInput = z.infer<typeof lineSchema>;
@@ -51,8 +54,9 @@ export const updateVariationContentSchema = z.object({
   /** 編集対象バリエーション。estimateId は estimateNumber から DTO 解決する。 */
   variationId: z.string().min(1, "バリエーションが特定できません"),
   overallDiscount: z.coerce.number().min(0, "全体値引は0以上で入力してください"),
-  customerMemo: z.string(),
-  internalMemo: z.string(),
+  // メモは optional（conform は空フィールドを undefined 化する・上の lineSchema 同様）。
+  customerMemo: z.string().optional(),
+  internalMemo: z.string().optional(),
   lines: linesField,
 });
 

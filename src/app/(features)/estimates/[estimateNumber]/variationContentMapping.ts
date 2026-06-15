@@ -11,8 +11,9 @@ import type { VariationLineInput } from "./variationSchema";
 export type ValidatedVariationContent = {
   lines: VariationLineInput[];
   overallDiscount: number;
-  customerMemo: string;
-  internalMemo: string;
+  // conform は空フィールドを undefined 化するため optional（ADR-0034 の Null Object に対応）。
+  customerMemo?: string;
+  internalMemo?: string;
 };
 
 export function toVariationContentInput(value: ValidatedVariationContent): VariationContentInput {
