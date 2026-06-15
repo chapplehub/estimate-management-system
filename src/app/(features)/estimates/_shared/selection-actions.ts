@@ -19,6 +19,12 @@ export type ProductLineSnapshot = {
   unit: string;
 };
 
+/** 周辺商品サジェスト1件（スナップショット＋relation の推奨数量）。 */
+export type SuggestedProduct = ProductLineSnapshot & {
+  /** relation の数量（挿入行の初期数量。他項目は新規行既定）。 */
+  quantity: number;
+};
+
 /**
  * S3 ヘッダー編集の FK 選択（SelectionModal）用 検索サーバーアクション群。
  *
@@ -108,4 +114,39 @@ export async function getProductLineSnapshot(
     category: product.category,
     unit: product.unit,
   };
+}
+
+/**
+ * 本体商品の周辺商品（ProductRelation）を、明細サジェスト用に解決する（D6・計画§6）。
+ *
+ * relatedProducts は unit/isActive を持たないため、周辺ごとに findById で単位・有効性を引く
+ * （有効な周辺のみ提案）。カスケードは1段のみ（周辺の周辺は辿らない）。挿入行の数量は relation
+ * の quantity を初期値にし、他項目は新規行既定（呼び出し側の createWorkingLine が適用）。
+ */
+export async function getProductSuggestions(productId: string): Promise<SuggestedProduct[]> {
+  await verifySession();
+
+  const main = await getProductByIdQueryFactory().execute({ id: productId });
+  if (!main) {
+    return [];
+  }
+
+  const resolved = await Promise.all(
+    main.relatedProducts.map(async (relation) => {
+      const related = await getProductByIdQueryFactory().execute({ id: relation.relatedProductId });
+      if (!related || !related.isActive) {
+        return null;
+      }
+      return {
+        id: related.id,
+        code: related.code,
+        name: related.name,
+        category: related.category,
+        unit: related.unit,
+        quantity: relation.quantity,
+      } satisfies SuggestedProduct;
+    })
+  );
+
+  return resolved.filter((s): s is SuggestedProduct => s !== null);
 }

@@ -10,9 +10,15 @@ import type {
   VariationDTO,
 } from "@subdomains/estimate/application/queries/dto/EstimateDetailDTO";
 import { formatYen } from "../_shared/labels";
-import { getProductLineSnapshot, searchProductsForSelection } from "../_shared/selection-actions";
+import {
+  getProductLineSnapshot,
+  getProductSuggestions,
+  searchProductsForSelection,
+  type SuggestedProduct,
+} from "../_shared/selection-actions";
 import { productSelectionColumns, type ProductSelectionRow } from "../_shared/selectionColumns";
 import { LineEditTable } from "./components/LineEditTable";
+import { ProductSuggestDialog } from "./components/ProductSuggestDialog";
 import { previewVariationTotals } from "./previewAmounts";
 import { updateVariationContent } from "./actions";
 import { updateVariationContentSchema } from "./variationSchema";
@@ -77,6 +83,12 @@ export function VariationEditForm({
   const [overallDiscount, setOverallDiscount] = useState(variation.overallDiscount);
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
   const [productModalOpen, setProductModalOpen] = useState(false);
+  // 本体追加直後の周辺商品サジェスト（提案あり時のみ）。挿入は本体行（mainRowId）の直下。
+  const [suggestState, setSuggestState] = useState<{
+    mainRowId: string;
+    mainName: string;
+    suggestions: SuggestedProduct[];
+  } | null>(null);
 
   const totals = previewVariationTotals({ lines, overallDiscount, taxRate, taxRoundingType });
 
@@ -90,6 +102,7 @@ export function VariationEditForm({
   };
 
   // 本体の商品選択 → スナップショット解決 → アクティブ行直下に挿入 → 新規行を自動アクティブ。
+  // 周辺商品（有効）があれば提案ダイアログを開く（本体行直下へ挿入するため rowId を保持）。
   const handleProductSelect = async (rows: ProductSelectionRow[]) => {
     const picked = rows[0];
     if (!picked) return;
@@ -98,6 +111,21 @@ export function VariationEditForm({
     const newLine = createWorkingLine(crypto.randomUUID(), snapshot);
     setLines((prev) => insertBelow(prev, activeRowId, [newLine]));
     setActiveRowId(newLine.rowId);
+
+    const suggestions = await getProductSuggestions(snapshot.id);
+    if (suggestions.length > 0) {
+      setSuggestState({ mainRowId: newLine.rowId, mainName: snapshot.name, suggestions });
+    }
+  };
+
+  // 提案された周辺商品（選択分）を本体直下に通常行として挿入する（数量＝relation・他は新規行既定）。
+  const confirmSuggestions = (selected: SuggestedProduct[]) => {
+    if (!suggestState) return;
+    const peripheralLines = selected.map((s) =>
+      createWorkingLine(crypto.randomUUID(), s, { quantity: s.quantity })
+    );
+    setLines((prev) => insertBelow(prev, suggestState.mainRowId, peripheralLines));
+    setSuggestState(null);
   };
 
   return (
@@ -231,6 +259,15 @@ export function VariationEditForm({
         getRowId={(row) => row.id}
         emptyMessage="該当する商品が見つかりません"
       />
+
+      {suggestState && (
+        <ProductSuggestDialog
+          mainProductName={suggestState.mainName}
+          suggestions={suggestState.suggestions}
+          onConfirm={confirmSuggestions}
+          onCancel={() => setSuggestState(null)}
+        />
+      )}
     </>
   );
 }
