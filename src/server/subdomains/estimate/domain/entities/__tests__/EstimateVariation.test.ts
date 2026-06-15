@@ -12,6 +12,7 @@ import { Unit } from "../../values/Unit";
 import { TaxRoundingType } from "../../values/TaxRoundingType";
 import { VariationStatus } from "../../values/VariationStatus";
 import { EstimateItem } from "../EstimateItem";
+import { EstimateSetGroup } from "../EstimateSetGroup";
 import { EstimateVariation, type TaxContext } from "../EstimateVariation";
 
 const TAX: TaxContext = {
@@ -24,15 +25,25 @@ function makeItem(opts?: {
   quantity?: number;
   unitPrice?: number;
   itemDiscount?: number;
+  sortOrder?: number;
 }): EstimateItem {
   return EstimateItem.create({
     productId: ProductId.generate(),
-    sortOrder: 1,
+    sortOrder: opts?.sortOrder ?? 1,
     itemName: new ItemName(opts?.itemName ?? "テスト商品"),
     quantity: new Quantity(opts?.quantity ?? 1),
     unit: new Unit("個"),
     unitPrice: Money.fromMajorUnits(opts?.unitPrice ?? 1000),
     itemDiscount: Money.fromMajorUnits(opts?.itemDiscount ?? 0),
+  });
+}
+
+function makeSetGroup(memberItemIds: EstimateItem[]): EstimateSetGroup {
+  return EstimateSetGroup.create({
+    productId: ProductId.generate(),
+    itemName: new ItemName("セット商品"),
+    unit: new Unit("式"),
+    memberItemIds: memberItemIds.map((i) => i.id),
   });
 }
 
@@ -487,6 +498,103 @@ describe("EstimateVariation", () => {
       // 注: @ts-expect-error が将来不要になった（push が型上呼べる状態に
       // 退化した）場合、TS2578 で CI が落ちる仕組み。
       expect(items.length).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe("セット群（ADR-0047 / Shape ③-a）", () => {
+    it("セット群を保持し、computeTotals は構成明細を二重計上しない", () => {
+      const m1 = makeItem({ unitPrice: 1000 });
+      const m2 = makeItem({ unitPrice: 500 });
+      const normal = makeItem({ unitPrice: 2000 });
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items: [m1, m2, normal],
+        setGroups: [makeSetGroup([m1, m2])],
+      });
+
+      expect(v.setGroups).toHaveLength(1);
+      // 群は _items に行を持たないため、subtotal は全明細 finalAmount の単純合計
+      // 1000 + 500 + 2000 = 3500（構成明細の二重計上なし）
+      expect(v.subtotal.equals(Money.fromMajorUnits(3500))).toBe(true);
+    });
+
+    it("構成明細がバリエーションに存在しないとエラー（参照整合）", () => {
+      const inItem = makeItem({ unitPrice: 1000 });
+      const orphan = makeItem({ unitPrice: 500 }); // items に含めない
+
+      expect(() =>
+        EstimateVariation.create({
+          variationNumber: 1,
+          submissionType: SubmissionType.CUSTOMER,
+          tax: TAX,
+          items: [inItem],
+          setGroups: [makeSetGroup([inItem, orphan])],
+        })
+      ).toThrow("参照整合");
+    });
+
+    it("構成明細が複数のセット群に所属するとエラー（排他所属）", () => {
+      const shared = makeItem({ unitPrice: 1000 });
+      const other = makeItem({ unitPrice: 500 });
+
+      expect(() =>
+        EstimateVariation.create({
+          variationNumber: 1,
+          submissionType: SubmissionType.CUSTOMER,
+          tax: TAX,
+          items: [shared, other],
+          setGroups: [makeSetGroup([shared]), makeSetGroup([shared, other])],
+        })
+      ).toThrow("排他所属");
+    });
+
+    it("deriveSetGroup で金額（構成明細合計）と表示位置（最小 sortOrder）を導出する", () => {
+      const m1 = makeItem({ unitPrice: 1000, sortOrder: 5 });
+      const m2 = makeItem({ unitPrice: 500, sortOrder: 2 });
+      const group = makeSetGroup([m1, m2]);
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items: [m1, m2],
+        setGroups: [group],
+      });
+
+      const derived = v.deriveSetGroup(group.id);
+
+      expect(derived.amount.equals(Money.fromMajorUnits(1500))).toBe(true);
+      expect(derived.sortOrder).toBe(2);
+    });
+
+    it("reconstruct はセット群を再検証せず保存値を信頼する（create との非対称）", () => {
+      const item = makeItem({ unitPrice: 1000 });
+      // items に存在しない構成明細を含む（参照整合的に不正な）群でも reconstruct は通る。
+      // 保存済み集計を信頼するのと同じく、再構築時は再検証しない。
+      const inconsistentGroup = makeSetGroup([makeItem({ unitPrice: 999 })]);
+
+      const v = EstimateVariation.reconstruct({
+        id: EstimateVariationId.generate(),
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        revisedFrom: null,
+        status: VariationStatus.ACTIVE,
+        customerMemo: Memo.empty(),
+        internalMemo: Memo.empty(),
+        overallDiscount: Money.zero(),
+        items: [item],
+        setGroups: [inconsistentGroup],
+        subtotal: Money.fromMajorUnits(1000),
+        discountSubtotal: Money.zero(),
+        finalSubtotal: Money.fromMajorUnits(1000),
+        taxAmount: Money.fromMajorUnits(100),
+        finalTotal: Money.fromMajorUnits(1100),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      expect(v.setGroups).toHaveLength(1);
     });
   });
 });

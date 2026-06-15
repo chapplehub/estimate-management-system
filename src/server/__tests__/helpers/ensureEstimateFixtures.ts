@@ -17,6 +17,8 @@ export type EstimateFixtureIds = {
   customerId: string;
   deliveryLocationId: string;
   productId: string;
+  /** セット群（ADR-0047）テスト用の SET 区分商品。構成明細は productId（個別）を使う。 */
+  setProductId: string;
 };
 
 const EMPLOYEE_CD = "EMP999091";
@@ -24,6 +26,8 @@ const CUSTOMER_COMPANY_CODE = "CFX99901";
 const DELIVERY_COMPANY_CODE = "DFX99901";
 const PRODUCT_CODE = "PRDFX99901";
 const PRODUCT_NAME = "見積永続化テスト商品";
+const SET_PRODUCT_CODE = "PRDFX99902";
+const SET_PRODUCT_NAME = "見積永続化テストセット商品";
 
 export async function ensureEstimateFixtures(): Promise<EstimateFixtureIds> {
   const departmentId = await ensureTestDepartment();
@@ -75,11 +79,25 @@ export async function ensureEstimateFixtures(): Promise<EstimateFixtureIds> {
     },
   });
 
+  // セット群（ADR-0047）テスト用の SET 区分商品。
+  const setProduct = await prisma.product.upsert({
+    where: { code: SET_PRODUCT_CODE },
+    update: { name: SET_PRODUCT_NAME },
+    create: {
+      id: generateId(),
+      code: SET_PRODUCT_CODE,
+      name: SET_PRODUCT_NAME,
+      category: ProductCategory.SET,
+      unit: ProductUnit.SET,
+    },
+  });
+
   return {
     departmentId,
     employeeId: employee.id,
     customerId: customer.id,
     deliveryLocationId: deliveryLocation.id,
     productId: product.id,
+    setProductId: setProduct.id,
   };
 }

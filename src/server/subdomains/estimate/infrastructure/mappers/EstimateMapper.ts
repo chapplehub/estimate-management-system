@@ -9,6 +9,7 @@ import { Estimate } from "@subdomains/estimate/domain/entities/Estimate";
 // 永続化からの集約再構築のため、子エンティティの reconstruct() を直接呼ぶ。
 import { AfterRepairEstimateDetail } from "@subdomains/estimate/domain/entities/AfterRepairEstimateDetail";
 import { EstimateItem } from "@subdomains/estimate/domain/entities/EstimateItem";
+import { EstimateSetGroup } from "@subdomains/estimate/domain/entities/EstimateSetGroup";
 import { EstimateVariation } from "@subdomains/estimate/domain/entities/EstimateVariation";
 import { RepairEstimateDetail } from "@subdomains/estimate/domain/entities/RepairEstimateDetail";
 import { RevisedEstimateItemDetail } from "@subdomains/estimate/domain/entities/RevisedEstimateItemDetail";
@@ -27,6 +28,7 @@ import { Memo } from "@subdomains/estimate/domain/values/Memo";
 import { Money } from "@subdomains/estimate/domain/values/Money";
 import { Quantity } from "@subdomains/estimate/domain/values/Quantity";
 import { RepairEstimateDetailId } from "@subdomains/estimate/domain/values/RepairEstimateDetailId";
+import { EstimateSetGroupId } from "@subdomains/estimate/domain/values/EstimateSetGroupId";
 import { RevisedEstimateItemDetailId } from "@subdomains/estimate/domain/values/RevisedEstimateItemDetailId";
 import { SubmissionType } from "@subdomains/estimate/domain/values/SubmissionType";
 import { TaxRate } from "@subdomains/estimate/domain/values/TaxRate";
@@ -55,6 +57,12 @@ export const ESTIMATE_FULL_INCLUDE = {
         orderBy: { sortOrder: "asc" },
         include: { revisedDetail: true },
       },
+      // セット群（ADR-0047）。所属交差表 components を含めて再構築する。
+      // 群の並びは id 昇順で固定し、メンバーは構成明細の sortOrder 順に復元する。
+      setGroups: {
+        orderBy: { id: "asc" },
+        include: { components: true },
+      },
       // 改訂出自（ADR-0044）。revisionTarget の存在 = このバリエーションが改訂で生まれた
       revisionTarget: true,
     },
@@ -69,6 +77,7 @@ export type PrismaEstimateFull = Prisma.EstimateGetPayload<{
 
 type PrismaVariationFull = PrismaEstimateFull["variations"][number];
 type PrismaItemFull = PrismaVariationFull["items"][number];
+type PrismaSetGroupFull = PrismaVariationFull["setGroups"][number];
 
 /**
  * Decimal(12,2)（主単位 = 円・銭精度）と Money の相互変換。
@@ -135,6 +144,11 @@ export class EstimateMapper {
   }
 
   private static variationToDomain(v: PrismaVariationFull): EstimateVariation {
+    // items は include の orderBy で sortOrder 昇順。セット群のメンバーはこの順序を保つため、
+    // 所属（交差表）をマップ化してから items を filter して構成明細 id を sortOrder 順に並べる。
+    const items = v.items.map((i) => EstimateMapper.itemToDomain(i));
+    const setGroups = v.setGroups.map((sg) => EstimateMapper.setGroupToDomain(sg, items));
+
     return EstimateVariation.reconstruct({
       id: new EstimateVariationId(v.id),
       variationNumber: v.variationNumber,
@@ -146,7 +160,8 @@ export class EstimateMapper {
       customerMemo: Memo.create(v.customerMemo),
       internalMemo: Memo.create(v.internalMemo),
       overallDiscount: decimalToMoney(v.overallDiscount),
-      items: v.items.map((i) => EstimateMapper.itemToDomain(i)),
+      items,
+      setGroups,
       subtotal: decimalToMoney(v.subtotal),
       discountSubtotal: decimalToMoney(v.discountSubtotal),
       finalSubtotal: decimalToMoney(v.finalSubtotal),
@@ -154,6 +169,30 @@ export class EstimateMapper {
       finalTotal: decimalToMoney(v.finalTotal),
       createdAt: v.createdAt,
       updatedAt: v.updatedAt,
+    });
+  }
+
+  /**
+   * セット群を再構築する。所属交差表（components）の itemId 集合で、sortOrder 昇順の items を
+   * filter して構成明細 id の正準順序（sortOrder 順）を得る（案2-α）。
+   */
+  private static setGroupToDomain(
+    sg: PrismaSetGroupFull,
+    sortedItems: ReadonlyArray<EstimateItem>
+  ): EstimateSetGroup {
+    const memberIdSet = new Set(sg.components.map((c) => c.itemId));
+    const memberItemIds = sortedItems.filter((i) => memberIdSet.has(i.id.value)).map((i) => i.id);
+
+    return EstimateSetGroup.reconstruct({
+      id: new EstimateSetGroupId(sg.id),
+      productId: new ProductId(sg.productId),
+      itemName: new ItemName(sg.itemName),
+      unit: new Unit(sg.unit),
+      customerMemo: Memo.create(sg.customerMemo),
+      internalMemo: Memo.create(sg.internalMemo),
+      memberItemIds,
+      createdAt: sg.createdAt,
+      updatedAt: sg.updatedAt,
     });
   }
 
@@ -248,6 +287,20 @@ export class EstimateMapper {
     };
   }
 
+  /**
+   * セット群の scalar データ（ADR-0047）。価格・並び順・金額列は持たない（薄い衛星）。
+   * 所属（交差表 components）はネストせず、別 createMany で書く（兄弟 FK 順序事故回避）。
+   */
+  static toSetGroupScalarData(g: Readonly<EstimateSetGroup>) {
+    return {
+      productId: g.productId.value,
+      itemName: g.itemName.value,
+      unit: g.unit.value,
+      customerMemo: g.customerMemo.value,
+      internalMemo: g.internalMemo.value,
+    };
+  }
+
   static toRepairDetailScalarData(d: Readonly<RepairEstimateDetail>) {
     return {
       targetProductId: d.targetProductId.value,
@@ -292,6 +345,15 @@ export class EstimateMapper {
                 : undefined,
             })),
           },
+          // セット群は群ヘッダのみネスト create。所属交差表（components）はネストせず、
+          // 兄弟である estimate_items の行が出来た後に別 createMany で書く
+          // （toSetComponentCreateManyInput・insertWithCopies と同型の順序制約）。
+          setGroups: {
+            create: v.setGroups.map((g) => ({
+              id: g.id.value,
+              ...EstimateMapper.toSetGroupScalarData(g),
+            })),
+          },
         })),
       },
       repairDetail: e.repairDetail
@@ -311,6 +373,25 @@ export class EstimateMapper {
           }
         : undefined,
     };
+  }
+
+  /**
+   * セット群の所属交差表（estimate_set_components）の一括 createMany 入力へ変換する（ADR-0047）。
+   * 集約内の全バリエーション・全セット群を平坦化する。交差行は itemId を PK とし、
+   * surrogate id・タイムスタンプを持たない（行の存在＝所属）。estimate_items の行が
+   * 存在した後に呼ぶ（itemId FK を満たすため）。
+   */
+  static toSetComponentCreateManyInput(
+    estimate: Estimate
+  ): Prisma.EstimateSetComponentCreateManyInput[] {
+    return estimate.variations.flatMap((v) =>
+      v.setGroups.flatMap((g) =>
+        g.memberItemIds.map((itemId) => ({
+          itemId: itemId.value,
+          setGroupId: g.id.value,
+        }))
+      )
+    );
   }
 
   /**
