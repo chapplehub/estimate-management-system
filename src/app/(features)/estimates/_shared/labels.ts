@@ -29,6 +29,13 @@ export const PRODUCT_CATEGORY_LABELS: Record<string, string> = {
   SET: "セット商品",
 };
 
+/** 税端数区分（③ 税情報。S3 編集／閲覧の両方で表示・§8.3 / TaxRoundingType）。 */
+export const TAX_ROUNDING_TYPE_LABELS: Record<string, string> = {
+  ROUND_DOWN: "切捨",
+  ROUND_UP: "切上",
+  ROUND: "四捨五入",
+};
+
 /** 金額（円・主単位）を「1,000円」形式に整形する。 */
 export function formatYen(amount: number): string {
   return `${amount.toLocaleString("ja-JP")}円`;

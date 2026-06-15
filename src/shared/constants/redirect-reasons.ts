@@ -29,6 +29,7 @@ export const REDIRECT_REASON = {
   DELIVERY_LOCATION_DELETED: "delivery_location_deleted",
   DELIVERY_LOCATION_ACTIVATED: "delivery_location_activated",
   DELIVERY_LOCATION_DEACTIVATED: "delivery_location_deactivated",
+  ESTIMATE_UPDATED: "estimate_updated",
 } as const;
 
 export type RedirectReason = (typeof REDIRECT_REASON)[keyof typeof REDIRECT_REASON];
