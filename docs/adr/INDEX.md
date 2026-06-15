@@ -40,6 +40,7 @@
 | [0014](0014-modal-search-form-as-separate-component.md) | モーダル用検索フォームを既存SearchFormとは別コンポーネントにする | 採用 | 2026-04-13 |
 | [0015](0015-selection-modal-self-contained-state.md) | SelectionModalが内部でデータ・選択状態を一括管理する | 採用 | 2026-04-13 |
 | [0016](0016-exclude-filtering-on-client-side.md) | 選択モーダルの除外フィルタリングをクライアント側で行う | 採用 | 2026-04-13 |
+| [0050](0050-serialize-dynamic-line-array-as-json-hidden-field.md) | 動的明細配列は conform field-array でなく単一 JSON hidden field で往復する | 採用 | 2026-06-15 |
 
 ## ドメイン（設計パターン）
 
