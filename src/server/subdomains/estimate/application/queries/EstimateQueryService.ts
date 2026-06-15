@@ -1,4 +1,6 @@
 import { EstimateDetailDTO } from "./dto/EstimateDetailDTO";
+import { EstimateSummaryDTO } from "./dto/EstimateSummaryDTO";
+import { EstimateListOptions, EstimateSearchCriteria } from "./dto/EstimateSearchCriteria";
 
 /**
  * 見積クエリサービスインターフェース（CQRS read model の境界）。
@@ -9,4 +11,13 @@ import { EstimateDetailDTO } from "./dto/EstimateDetailDTO";
 export interface EstimateQueryService {
   /** 見積番号（自然キー・8桁文字列）で見積詳細を取得する。一致しなければ null。 */
   findByEstimateNumber(estimateNumber: string): Promise<EstimateDetailDTO | null>;
+
+  /**
+   * 一覧用の軽量サマリ DTO を検索する。1 行 = 見積 1 件（Estimate 単位）で、
+   * 金額・状態は代表バリエーション由来（ADR-0050）。本 issue では criteria は空の受け皿。
+   */
+  search(
+    criteria: EstimateSearchCriteria,
+    options?: EstimateListOptions
+  ): Promise<EstimateSummaryDTO[]>;
 }

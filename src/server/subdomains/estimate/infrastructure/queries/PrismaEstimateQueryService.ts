@@ -7,6 +7,11 @@ import {
   SetGroupDTO,
   VariationDTO,
 } from "@subdomains/estimate/application/queries/dto/EstimateDetailDTO";
+import { EstimateSummaryDTO } from "@subdomains/estimate/application/queries/dto/EstimateSummaryDTO";
+import {
+  EstimateListOptions,
+  EstimateSearchCriteria,
+} from "@subdomains/estimate/application/queries/dto/EstimateSearchCriteria";
 import { SetGroupDerivationPolicy } from "@subdomains/estimate/domain/policies/SetGroupDerivationPolicy";
 import { Money } from "@subdomains/estimate/domain/values/Money";
 
@@ -49,6 +54,22 @@ type ItemRow = VariationRow["items"][number];
 type SetGroupRow = VariationRow["setGroups"][number];
 
 /**
+ * 見積一覧（サマリ）の読み取り include 定義。詳細用 ESTIMATE_DETAIL_INCLUDE と違い、
+ * 一覧 1 行に必要な最小限だけを引く（得意先・作成者のコード/名称＋代表選択用の軽量 3 列）。
+ * variations は variationNumber 昇順で引き、代表選択（find(ACTIVE) ?? [0]）の決定性を担保する。
+ */
+const ESTIMATE_SUMMARY_INCLUDE = {
+  customer: { select: { code: true, name: true } },
+  creator: { select: { employeeCd: true, name: true } },
+  variations: {
+    orderBy: { variationNumber: "asc" },
+    select: { variationNumber: true, status: true, finalTotal: true },
+  },
+} satisfies Prisma.EstimateInclude;
+
+type EstimateSummaryRow = Prisma.EstimateGetPayload<{ include: typeof ESTIMATE_SUMMARY_INCLUDE }>;
+
+/**
  * EstimateQueryService の Prisma 実装（CQRS read model・計画 Q1）。
  *
  * 集約（Estimate）を再構築せず Prisma を直読みして表示 DTO を組み立てる。集計値は
@@ -61,6 +82,71 @@ export class PrismaEstimateQueryService implements EstimateQueryService {
       include: ESTIMATE_DETAIL_INCLUDE,
     });
     return row ? PrismaEstimateQueryService.toDTO(row) : null;
+  }
+
+  /**
+   * 一覧用サマリ DTO を検索する（CQRS read model・ADR-0050）。
+   *
+   * criteria は本 issue では空の受け皿（フィルタ未実装）。件数上限 take は呼び出し側が
+   * options.limit（＝presentation の LIST_FETCH_LIMIT）で渡す。infra から presentation 定数を
+   * import するとレイヤリングが逆転するため、ここでは保持しない（product の search と対称）。
+   */
+  async search(
+    _criteria: EstimateSearchCriteria,
+    options?: EstimateListOptions
+  ): Promise<EstimateSummaryDTO[]> {
+    const rows = await prisma.estimate.findMany({
+      where: {},
+      include: ESTIMATE_SUMMARY_INCLUDE,
+      orderBy: PrismaEstimateQueryService.buildOrderBy(options),
+      take: options?.limit,
+      skip: options?.offset,
+    });
+    return rows.map((row) => PrismaEstimateQueryService.toSummaryDTO(row));
+  }
+
+  /**
+   * 一覧の並び順を組み立てる。未指定なら多段既定 [deadline asc, createdAt asc, estimateNumber asc]。
+   * 指定時は [指定キー, estimateNumber asc] とし、第 2 キー（unique 列）で安定化する。
+   * ソート可能フィールドは Estimate 自身の列に限る（代表由来の金額・状態は不可・ADR-0050）。
+   */
+  private static buildOrderBy(
+    options?: EstimateListOptions
+  ): Prisma.EstimateOrderByWithRelationInput[] {
+    const orderBy = options?.orderBy;
+    if (!orderBy) {
+      return [{ deadline: "asc" }, { createdAt: "asc" }, { estimateNumber: "asc" }];
+    }
+    return [{ [orderBy.field]: orderBy.direction }, { estimateNumber: "asc" }];
+  }
+
+  /**
+   * 一覧行を組み立てる。金額・状態は代表バリエーション由来（ADR-0050）。
+   * 代表 = ACTIVE のうち最小 variationNumber → 無ければ全体の最小（variations は昇順前提）。
+   */
+  private static toSummaryDTO(e: EstimateSummaryRow): EstimateSummaryDTO {
+    const representative = e.variations.find((v) => v.status === "ACTIVE") ?? e.variations[0];
+    if (!representative) {
+      // 「最低 1 バリエーション」の集約不変条件により通常到達しない（データ破損時の防御）。
+      throw new Error(`見積 ${e.estimateNumber} に代表バリエーションが存在しません`);
+    }
+    return {
+      estimateId: e.id,
+      estimateNumber: e.estimateNumber,
+      estimateType: e.estimateType,
+      estimateDate: e.estimateDate,
+      deadline: e.deadline,
+      // ADR-0013: リレーション先の名前・コードを解決する。
+      customerCode: e.customer.code,
+      customerName: e.customer.name,
+      creatorCode: e.creator.employeeCd,
+      creatorName: e.creator.name,
+      // 永続集計をそのまま読む（再計算しない・ADR-0033）。
+      finalTotal: Number(representative.finalTotal),
+      activeStatus: representative.status,
+      // 表示ステータスは本 issue では常に null（場所だけ予約・ADR-0001/Order 系未実装）。
+      displayStatus: null,
+    };
   }
 
   private static toDTO(e: EstimateDetailRow): EstimateDetailDTO {

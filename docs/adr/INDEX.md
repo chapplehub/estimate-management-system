@@ -82,6 +82,7 @@
 | # | タイトル | ステータス | 起票日 |
 |---|---------|-----------|--------|
 | [0013](0013-list-dto-includes-related-names.md) | 一覧画面の DTO にリレーション先の名前を含める | 採用 | 2026-04-10 |
+| [0050](0050-list-representative-variation-selection-as-read-model-concern.md) | 見積一覧の代表バリエーションを「ACTIVE 優先の最小 → 全体の最小」で選び、read model に閉じる | 採用 | 2026-06-15 |
 
 ## テスト基盤
 
