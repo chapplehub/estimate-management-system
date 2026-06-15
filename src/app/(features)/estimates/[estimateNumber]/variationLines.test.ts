@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import type { LineDTO } from "@subdomains/estimate/application/queries/dto/EstimateDetailDTO";
 import {
   createWorkingLine,
+  fromLineDTO,
   insertBelow,
   removeLine,
   reorderLines,
@@ -48,6 +50,47 @@ describe("createWorkingLine（商品スナップショット＋新規行既定�
 function row(rowId: string): WorkingLine {
   return createWorkingLine(rowId, product);
 }
+
+describe("fromLineDTO（既存明細 DTO → 作業行）", () => {
+  const dto: LineDTO = {
+    kind: "line",
+    itemId: "item-9",
+    productId: "prod-1",
+    productCode: "P001",
+    productCategory: "INDIVIDUAL",
+    itemName: "商品A",
+    sortOrder: 1,
+    quantity: 2,
+    unit: "個",
+    unitPrice: 1000,
+    discountRate: 0.95,
+    itemDiscount: 100,
+    baseAmount: 2000,
+    finalAmount: 1800,
+    customerMemo: "顧客M",
+    internalMemo: "社内M",
+    revisedDeliveryPrice: null,
+  };
+
+  it("rowId に itemId を使い、各項目を写す", () => {
+    const line = fromLineDTO(dto);
+
+    expect(line).toEqual({
+      rowId: "item-9",
+      productId: "prod-1",
+      productCode: "P001",
+      productCategory: "INDIVIDUAL",
+      itemName: "商品A",
+      unit: "個",
+      quantity: 2,
+      unitPrice: 1000,
+      discountRate: 0.95,
+      itemDiscount: 100,
+      customerMemo: "顧客M",
+      internalMemo: "社内M",
+    });
+  });
+});
 
 describe("insertBelow（アクティブ行の直下に挿入・なければ末尾）", () => {
   it("アクティブ行の直下へ挿入する", () => {

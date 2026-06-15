@@ -1,3 +1,4 @@
+import type { LineDTO } from "@subdomains/estimate/application/queries/dto/EstimateDetailDTO";
 import type { VariationLineInput } from "./variationSchema";
 
 /**
@@ -74,6 +75,28 @@ export function createWorkingLine(
     ...overrides,
     customerMemo: "",
     internalMemo: "",
+  };
+}
+
+/**
+ * 既存明細 DTO（LineDTO）を作業行へ写す。編集開始時に閲覧データから作業コピーを初期化する。
+ * rowId は明細の itemId（永続・一意）をそのまま使う（新規行のみ呼び出し側で UUID を採番）。
+ * S4 編集対象は非改訂バリのため revisedDeliveryPrice は常に null で作業コピーには持ち込まない。
+ */
+export function fromLineDTO(line: LineDTO): WorkingLine {
+  return {
+    rowId: line.itemId,
+    productId: line.productId,
+    productCode: line.productCode,
+    productCategory: line.productCategory,
+    itemName: line.itemName,
+    unit: line.unit,
+    quantity: line.quantity,
+    unitPrice: line.unitPrice,
+    discountRate: line.discountRate,
+    itemDiscount: line.itemDiscount,
+    customerMemo: line.customerMemo,
+    internalMemo: line.internalMemo,
   };
 }
 
