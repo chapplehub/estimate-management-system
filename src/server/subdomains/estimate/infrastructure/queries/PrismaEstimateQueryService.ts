@@ -23,6 +23,9 @@ const ESTIMATE_DETAIL_INCLUDE = {
   variations: {
     orderBy: { variationNumber: "asc" },
     include: {
+      // 改訂で生まれたバリエーションは revisionTarget（出自・revisedFrom 相当）を持つ。
+      // hasRevision の導出に存在判定のみ使う（ADR-0044）。
+      revisionTarget: { select: { sourceVariationId: true } },
       items: {
         orderBy: { sortOrder: "asc" },
         // product は read-through（ADR-0048）で code/区分を解決。revisedDetail は §8.4 改訂価格。
@@ -80,6 +83,9 @@ export class PrismaEstimateQueryService implements EstimateQueryService {
       creatorCode: e.creator.employeeCd,
       creatorName: e.creator.name,
       taxRate: Number(e.taxRate),
+      taxRoundingType: e.taxRoundingType,
+      // 改訂で生まれたバリエーションが 1 件でもあれば改訂済み（domain hasRevision と同義・ADR-0044）。
+      hasRevision: e.variations.some((v) => v.revisionTarget !== null),
       repairDetail: e.repairDetail
         ? {
             targetProductId: e.repairDetail.targetProductId,

@@ -11,6 +11,7 @@ import {
 } from "@subdomains/estimate/domain/entities/__tests__/estimateAggregateBuilder";
 import { PrismaEstimateRepository } from "@subdomains/estimate/infrastructure/prisma/PrismaEstimateRepository";
 import { PrismaEstimateQueryService } from "@subdomains/estimate/infrastructure/queries/PrismaEstimateQueryService";
+import { SubmissionType } from "@subdomains/estimate/domain/values/SubmissionType";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { GetEstimateDetailQuery } from "../GetEstimateDetailQuery";
 
@@ -21,6 +22,7 @@ const EN = {
   basic: "N9901001",
   setGroup: "N9901002",
   multiVariation: "N9901003",
+  revised: "N9901004",
   repair: "R9901001",
   afterRepair: "A9901001",
   missing: "N9901099",
@@ -28,8 +30,18 @@ const EN = {
 const ALL_NUMBERS = Object.values(EN);
 
 async function cleanupEstimates(): Promise<void> {
-  // 本テストは改訂・複製系譜（source 側 FK Restrict）を生成しないため、
-  // estimate.deleteMany のカスケードのみで子（variation/item/setGroup/component）まで消える。
+  // hasRevision テストが改訂系譜（source 側 FK Restrict）を生成するため、
+  // estimate 削除前に系譜行を先に消す（ADR-0044）。
+  const ests = await prisma.estimate.findMany({
+    where: { estimateNumber: { in: [...ALL_NUMBERS] } },
+    select: { variations: { select: { id: true } } },
+  });
+  const variationIds = ests.flatMap((e) => e.variations.map((v) => v.id));
+  if (variationIds.length > 0) {
+    await prisma.estimateVariationRevision.deleteMany({
+      where: { sourceVariationId: { in: variationIds } },
+    });
+  }
   await prisma.estimate.deleteMany({ where: { estimateNumber: { in: [...ALL_NUMBERS] } } });
 }
 
@@ -64,6 +76,10 @@ describe("GetEstimateDetailQuery", () => {
       expect(dto.estimateType).toBe("NEW");
       // 楽観ロックトークンを前倒しで DTO に含める（ADR-0039・Q10）。insert 直後は 1
       expect(dto.version).toBe(1);
+      // 税端数区分は S3 編集で扱うため DTO に載せる（閲覧モードにも表示）。
+      expect(dto.taxRoundingType).toBe("ROUND_DOWN");
+      // 改訂なしの見積では hasRevision=false（S3 のロック出し分け駆動データ・ADR-0049）。
+      expect(dto.hasRevision).toBe(false);
       // ADR-0013: リレーション先の名前・コードを含める
       expect(dto.customerName).toBe("見積テスト得意先");
       expect(dto.customerCode).toBe("CFX99901");
@@ -179,6 +195,27 @@ describe("GetEstimateDetailQuery", () => {
       // 状態は保存値どおり（presentation が全無効警告・グレーアウトを導出する素材・Q7）。
       expect(dto.variations[0].status).toBe("ACTIVE");
       expect(dto.variations[1].status).toBe("INACTIVE");
+    });
+  });
+
+  describe("改訂済みの出し分けデータ（hasRevision・ADR-0049）", () => {
+    it("改訂が存在する見積は hasRevision=true を返す", async () => {
+      // 納品先宛バリエーションを持つ見積を作成 → 得意先改訂で系譜を永続化（update 経路）。
+      // insert は系譜を書かないため、reviseForCustomer 後に update して revisionTarget を残す。
+      const estimate = buildNewEstimate(ids, EN.revised, {
+        submissionType: SubmissionType.DELIVERY_LOCATION,
+      });
+      await repository.insert(estimate);
+      const loaded = await repository.findById(estimate.id);
+      expect(loaded).not.toBeNull();
+      if (!loaded) return;
+      loaded.reviseForCustomer(loaded.variations[0].id);
+      await repository.update(loaded, 1);
+
+      const dto = await query.execute({ estimateNumber: EN.revised });
+      expect(dto).not.toBeNull();
+      if (!dto) return;
+      expect(dto.hasRevision).toBe(true);
     });
   });
 
