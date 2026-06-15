@@ -372,12 +372,14 @@ export class Estimate {
   // ========================================
 
   changeTaxRate(newRate: TaxRate): void {
+    if (this._taxRate.equals(newRate)) return; // 同値は変更でない（ADR-0049・無駄な全バリ再計算も回避）
     this.assertHeaderMutable();
     this._taxRate = newRate;
     this.propagateTaxToAllVariations();
   }
 
   changeTaxRoundingType(newType: TaxRoundingType): void {
+    if (this._taxRoundingType.equals(newType)) return; // 同値は変更でない（ADR-0049）
     this.assertHeaderMutable();
     this._taxRoundingType = newType;
     this.propagateTaxToAllVariations();
@@ -442,6 +444,7 @@ export class Estimate {
   // ========================================
 
   changeEstimateDate(newDate: Date): void {
+    if (this._estimateDate.getTime() === newDate.getTime()) return; // 同値は変更でない（ADR-0049）
     this.assertHeaderMutable();
     this._estimateDate = newDate;
     this.touch();
@@ -457,12 +460,14 @@ export class Estimate {
   }
 
   changeCustomer(newCustomerId: CustomerId): void {
+    if (this._customerId.equals(newCustomerId)) return; // 同値は変更でない（ADR-0049）
     this.assertHeaderMutable();
     this._customerId = newCustomerId;
     this.touch();
   }
 
   changeDeliveryLocation(newId: DeliveryLocationId): void {
+    if (this._deliveryLocationId.equals(newId)) return; // 同値は変更でない（ADR-0049）
     this.assertHeaderMutable();
     this._deliveryLocationId = newId;
     this.touch();

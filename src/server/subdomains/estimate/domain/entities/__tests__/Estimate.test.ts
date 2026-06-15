@@ -333,6 +333,20 @@ describe("Estimate", () => {
       expect(e.variations[0].taxAmount.equals(Money.fromMajorUnits(50))).toBe(true);
       expect(e.variations[1].taxAmount.equals(Money.fromMajorUnits(100))).toBe(true);
     });
+
+    it("同値の changeTaxRate は no-op（updatedAt を更新せず再計算もしない・ADR-0049）", () => {
+      const e = Estimate.create({
+        ...commonHeader(),
+        estimateNumber: EstimateNumber.parse("N2500001"),
+        variations: [makeVariation()],
+      });
+      const before = e.updatedAt;
+
+      e.changeTaxRate(new TaxRate(e.taxRate.value));
+
+      // touch() が呼ばれていなければ updatedAt は同一 Date 参照のまま
+      expect(e.updatedAt).toBe(before);
+    });
   });
 
   describe("サブタイプ詳細の付け替え", () => {
@@ -599,6 +613,23 @@ describe("Estimate", () => {
 
       expect(e.deadline).toEqual(newDeadline);
       expect(e.departmentId.equals(newDepartment)).toBe(true);
+    });
+
+    it("改訂が存在してもロック項目を同値で呼ぶと no-op で素通りする（ADR-0049）", () => {
+      const e = buildRevisedEstimateViaRevise();
+
+      // フォームが全項目を送っても、現在値と同じ見積年月日なら変更ではないので throw しない
+      expect(() => e.changeEstimateDate(new Date(e.estimateDate.getTime()))).not.toThrow();
+    });
+
+    it("改訂済みでも全ロック項目を同値で送れば素通りし、フォーム全項目送信で保存できる（ADR-0049）", () => {
+      const e = buildRevisedEstimateViaRevise();
+
+      // 税率・端数・得意先・納品先も、現在値と等価なら no-op
+      expect(() => e.changeTaxRate(new TaxRate(e.taxRate.value))).not.toThrow();
+      expect(() => e.changeTaxRoundingType(e.taxRoundingType)).not.toThrow();
+      expect(() => e.changeCustomer(e.customerId)).not.toThrow();
+      expect(() => e.changeDeliveryLocation(e.deliveryLocationId)).not.toThrow();
     });
   });
 
