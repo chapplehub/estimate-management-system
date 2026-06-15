@@ -11,6 +11,7 @@ import { hashPassword } from "better-auth/crypto";
 import { PrismaClient } from "../generated/prisma/client";
 import type { UserRole } from "../src/server/shared/auth/types";
 import { USER_ROLES } from "../src/server/shared/auth/types";
+import { seedEstimates } from "./seed-estimates";
 
 config({ path: ".env.test" });
 
@@ -552,6 +553,11 @@ async function main() {
   console.log("");
 
   // 既存データを削除（FK制約を考慮した順序）
+  // 見積は得意先・納品先・部署・従業員・商品を参照する（onDelete: Restrict）ため、
+  // それらの削除より先に消す。配下（variation/item/setGroup 等）は Cascade で連鎖削除される。
+  await prisma.estimateVariationCopy.deleteMany();
+  await prisma.estimateVariationRevision.deleteMany();
+  await prisma.estimate.deleteMany();
   await prisma.setProductComponent.deleteMany();
   await prisma.productRelation.deleteMany();
   await prisma.product.deleteMany();
@@ -713,6 +719,10 @@ async function main() {
     });
   }
   console.log(`Created ${E2E_ONLY_EMPLOYEES.length} E2E-only employees`);
+
+  // 見積（#330 / S2 閲覧画面のデモ・E2E 用）。マスタ作成後に参照して作る。
+  const estimateCount = await seedEstimates(prisma);
+  console.log(`Created ${estimateCount} estimates`);
 
   console.log("");
   console.log("=".repeat(50));
