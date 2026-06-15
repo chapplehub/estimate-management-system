@@ -4,8 +4,20 @@ import { verifySession } from "@/app/_lib/verifyAuthentication";
 import { LIST_FETCH_LIMIT } from "@/app/_lib/searchParams";
 import { searchCustomersQueryFactory } from "@subdomains/customer/application/factories";
 import { searchDeliveryLocationsQueryFactory } from "@subdomains/delivery-location/application/factories";
-import { searchProductsQueryFactory } from "@subdomains/product/application/factories/productQueryFactory";
+import {
+  getProductByIdQueryFactory,
+  searchProductsQueryFactory,
+} from "@subdomains/product/application/factories/productQueryFactory";
 import type { CompanyRow, ProductSelectionRow } from "./selectionColumns";
+
+/** 明細追加で固定表示する商品スナップショット（id/コード/名称/区分/単位）。 */
+export type ProductLineSnapshot = {
+  id: string;
+  code: string;
+  name: string;
+  category: string;
+  unit: string;
+};
 
 /**
  * S3 ヘッダー編集の FK 選択（SelectionModal）用 検索サーバーアクション群。
@@ -72,4 +84,28 @@ export async function searchProductsForSelection(
   );
 
   return products.map((p) => ({ id: p.id, code: p.code, name: p.name, category: p.category }));
+}
+
+/**
+ * 明細追加で選んだ商品のスナップショット（単位を含む）を引く。
+ *
+ * 商品選択モーダルの行（ProductSelectionRow）は unit を持たないため、選択確定時に findById で
+ * 単位を解決して新規明細へスナップショットする（§8・商品名/単位は作成時凍結）。
+ */
+export async function getProductLineSnapshot(
+  productId: string
+): Promise<ProductLineSnapshot | null> {
+  await verifySession();
+
+  const product = await getProductByIdQueryFactory().execute({ id: productId });
+  if (!product) {
+    return null;
+  }
+  return {
+    id: product.id,
+    code: product.code,
+    name: product.name,
+    category: product.category,
+    unit: product.unit,
+  };
 }

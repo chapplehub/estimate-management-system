@@ -36,8 +36,14 @@ export default async function EstimateDetailPage({
         departments={departments.map((d) => ({ id: d.id, name: d.name }))}
       />
 
-      {/* ④〜⑨ バリエーション（タブ・明細・値引・メモ・金額サマリー） */}
-      <VariationPanel variations={estimate.variations} />
+      {/* ④〜⑨ バリエーション（タブ・明細・値引・メモ・金額サマリー・S4 内容編集） */}
+      <VariationPanel
+        estimateNumber={estimate.estimateNumber}
+        version={estimate.version}
+        variations={estimate.variations}
+        taxRate={estimate.taxRate}
+        taxRoundingType={estimate.taxRoundingType}
+      />
     </div>
   );
 }
