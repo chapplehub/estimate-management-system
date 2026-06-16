@@ -8,7 +8,7 @@ export type EstimateSearchCriteria = Record<string, never>;
 
 /**
  * 一覧でソート可能なフィールド。Estimate 自身の列に限る。
- * 代表由来の金額（finalTotal）・状態（activeStatus）は別テーブル/導出のため直接ソート不可（ADR-0050）。
+ * 代表由来の金額（finalTotal）・状態（activeStatus）は別テーブル/導出のため直接ソート不可（ADR-0051）。
  */
 export type EstimateSortField = "estimateNumber" | "estimateDate" | "deadline" | "createdAt";
 

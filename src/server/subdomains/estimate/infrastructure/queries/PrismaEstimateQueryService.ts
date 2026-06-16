@@ -85,7 +85,7 @@ export class PrismaEstimateQueryService implements EstimateQueryService {
   }
 
   /**
-   * 一覧用サマリ DTO を検索する（CQRS read model・ADR-0050）。
+   * 一覧用サマリ DTO を検索する（CQRS read model・ADR-0051）。
    *
    * criteria は本 issue では空の受け皿（フィルタ未実装）。件数上限 take は呼び出し側が
    * options.limit（＝presentation の LIST_FETCH_LIMIT）で渡す。infra から presentation 定数を
@@ -108,7 +108,7 @@ export class PrismaEstimateQueryService implements EstimateQueryService {
   /**
    * 一覧の並び順を組み立てる。未指定なら多段既定 [deadline asc, createdAt asc, estimateNumber asc]。
    * 指定時は [指定キー, estimateNumber asc] とし、第 2 キー（unique 列）で安定化する。
-   * ソート可能フィールドは Estimate 自身の列に限る（代表由来の金額・状態は不可・ADR-0050）。
+   * ソート可能フィールドは Estimate 自身の列に限る（代表由来の金額・状態は不可・ADR-0051）。
    */
   private static buildOrderBy(
     options?: EstimateListOptions
@@ -121,7 +121,7 @@ export class PrismaEstimateQueryService implements EstimateQueryService {
   }
 
   /**
-   * 一覧行を組み立てる。金額・状態は代表バリエーション由来（ADR-0050）。
+   * 一覧行を組み立てる。金額・状態は代表バリエーション由来（ADR-0051）。
    * 代表 = ACTIVE のうち最小 variationNumber → 無ければ全体の最小（variations は昇順前提）。
    */
   private static toSummaryDTO(e: EstimateSummaryRow): EstimateSummaryDTO {
