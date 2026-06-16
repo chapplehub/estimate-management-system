@@ -1,3 +1,4 @@
+import { PrismaProductQueryService } from "@subdomains/product/infrastructure/queries/PrismaProductQueryService";
 import { UpdateVariationCommand } from "../commands/UpdateVariationCommand";
 import { TaxRateConsistencyCheckDomainService } from "../../domain/services/TaxRateConsistencyCheckDomainService";
 import { PrismaEstimateRepository } from "../../infrastructure/prisma/PrismaEstimateRepository";
@@ -11,5 +12,10 @@ export function updateVariationCommandFactory(): UpdateVariationCommand {
   const taxRateConsistencyCheck = new TaxRateConsistencyCheckDomainService(
     new PrismaTaxRateRepository()
   );
-  return new UpdateVariationCommand(repository, taxRateConsistencyCheck);
+  // セット構成のライブ区分・有効性検証（ADR-0052）に商品クエリを注入する。
+  return new UpdateVariationCommand(
+    repository,
+    taxRateConsistencyCheck,
+    new PrismaProductQueryService()
+  );
 }

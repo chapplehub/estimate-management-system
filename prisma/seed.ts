@@ -933,6 +933,19 @@ const PRODUCTS = [
   },
 ];
 
+/**
+ * セット構成（SetProductComponent・ADR-0047）。SET 商品 → 構成商品（個別/消耗品）の対応。
+ * 自動展開（expandSetComponents）が構成を引けるよう、有効な SET 商品に構成を持たせる。
+ */
+const SET_COMPONENTS = [
+  { setCode: "PRD015", componentCode: "PRD001", quantity: 1 }, // デスクセット = 標準デスク
+  { setCode: "PRD015", componentCode: "PRD002", quantity: 1 }, //            + オフィスチェア
+  { setCode: "PRD016", componentCode: "PRD003", quantity: 1 }, // モニター環境 = モニターアーム
+  { setCode: "PRD016", componentCode: "PRD008", quantity: 2 }, //            + ケーブルダクト×2
+  { setCode: "PRD017", componentCode: "PRD011", quantity: 1 }, // 印刷消耗品 = トナー黒
+  { setCode: "PRD017", componentCode: "PRD009", quantity: 3 }, //            + コピー用紙A4×3
+];
+
 // 消費税率データ（昇順）
 const TAX_RATES = [
   { rate: "0.080", effectiveFrom: new Date("2014-04-01T00:00:00+09:00") },
@@ -1247,6 +1260,19 @@ async function main() {
     });
   }
   console.log(`Created ${PRODUCTS.length} products`);
+
+  // セット構成（SetProductComponent・ADR-0047）。コード→id を解決して交差行を作る。
+  const productsByCode = new Map(
+    (await prisma.product.findMany({ select: { id: true, code: true } })).map((p) => [p.code, p.id])
+  );
+  await prisma.setProductComponent.createMany({
+    data: SET_COMPONENTS.map((c) => ({
+      setProductId: productsByCode.get(c.setCode)!,
+      componentProductId: productsByCode.get(c.componentCode)!,
+      quantity: c.quantity,
+    })),
+  });
+  console.log(`Created ${SET_COMPONENTS.length} set product components`);
   console.log("");
 
   // 消費税率を作成（昇順で投入。前期間の終わり = 次の行の effectiveFrom の暗黙）

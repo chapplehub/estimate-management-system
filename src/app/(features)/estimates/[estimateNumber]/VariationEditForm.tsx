@@ -5,12 +5,10 @@ import { useState } from "react";
 import { useServerForm } from "@/app/_hooks/useServerForm";
 import { SelectionModal } from "@/app/_components/shared/SelectionModal";
 import type { SearchFieldDef } from "@/app/_components/shared/SearchForm";
-import type {
-  LineDTO,
-  VariationDTO,
-} from "@subdomains/estimate/application/queries/dto/EstimateDetailDTO";
+import type { VariationDTO } from "@subdomains/estimate/application/queries/dto/EstimateDetailDTO";
 import { formatYen } from "../_shared/labels";
 import {
+  expandSetComponents,
   getProductLineSnapshot,
   getProductSuggestions,
   searchProductsForSelection,
@@ -21,15 +19,20 @@ import { LineEditTable } from "./components/LineEditTable";
 import { ProductSuggestDialog } from "./components/ProductSuggestDialog";
 import { previewVariationTotals } from "./previewAmounts";
 import { updateVariationContent } from "./actions";
-import { updateVariationContentSchema } from "./variationSchema";
+import { updateVariationContentNodeSchema } from "./variationSchema";
 import {
+  changeNodeLine,
   createWorkingLine,
-  fromLineDTO,
-  insertBelow,
-  removeLine,
-  reorderLines,
-  toLinePayload,
+  createWorkingSetGroup,
+  flattenPricedLines,
+  fromVariationLines,
+  insertNodesBelow,
+  removeNode,
+  reorderComponents,
+  reorderNodes,
+  toNodePayload,
   type WorkingLine,
+  type WorkingNode,
 } from "./variationLines";
 
 type Props = {
@@ -51,11 +54,12 @@ const inputClass =
   "shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline";
 
 /**
- * バリ内容編集フォーム（S4 / C4）。明細はモーダル選択・インライン編集・D&D で client state が
- * 真実になるため作業コピー（lines・overallDiscount）を React state で保持し、submit 時に単一の
- * hidden へ JSON 化して往復する（ADR-0050）。version は hidden で往復（ADR-0039）。全体値引は
- * プレビューに効くため controlled state。バリメモは conform フィールド。確定金額はドメインが
- * 唯一の真実（ADR-0033）で保存後 DTO で上書きされ、ここでは簡易ライブプレビューのみ表示する。
+ * バリ内容編集フォーム（S4/S5・C4）。明細はモーダル選択・インライン編集・D&D で client state が
+ * 真実になるため作業コピー（nodes＝通常明細／セット群の union・overallDiscount）を React state で
+ * 保持し、submit 時に単一の hidden へ JSON 化して往復する（往復形状 A・ADR-0047/0050）。version は
+ * hidden で往復（ADR-0039）。全体値引はプレビューに効くため controlled state。バリメモは conform
+ * フィールド。確定金額はドメインが唯一の真実（ADR-0033）で保存後 DTO で上書きされ、ここでは簡易
+ * ライブプレビューのみ表示する。セット商品選択時は構成を自動展開して群ノードを挿入する（ADR-0047）。
  */
 export function VariationEditForm({
   estimateNumber,
@@ -68,7 +72,7 @@ export function VariationEditForm({
   const action = updateVariationContent.bind(null, estimateNumber);
   const { form, fields, isPending } = useServerForm({
     action,
-    schema: updateVariationContentSchema,
+    schema: updateVariationContentNodeSchema,
     defaultValue: {
       version: String(version),
       variationId: variation.variationId,
@@ -77,10 +81,8 @@ export function VariationEditForm({
     },
   });
 
-  // 作業コピー: 編集対象は非改訂・セット群なしバリのため lines はすべて通常明細（LineDTO）。
-  const [lines, setLines] = useState<WorkingLine[]>(() =>
-    variation.lines.filter((l): l is LineDTO => l.kind === "line").map(fromLineDTO)
-  );
+  // 作業コピー: 閲覧 DTO の行配列（通常明細 ＋ セット群）をノード union へ写す（往復形状 A・ADR-0047）。
+  const [nodes, setNodes] = useState<WorkingNode[]>(() => fromVariationLines(variation.lines));
   const [overallDiscount, setOverallDiscount] = useState(variation.overallDiscount);
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
   const [productModalOpen, setProductModalOpen] = useState(false);
@@ -91,30 +93,52 @@ export function VariationEditForm({
     suggestions: SuggestedProduct[];
   } | null>(null);
 
-  const totals = previewVariationTotals({ lines, overallDiscount, taxRate, taxRoundingType });
+  // 金額プレビューは価格付き末端行（通常明細＋全構成）のフラット列で計算する（群は価格を持たない）。
+  const totals = previewVariationTotals({
+    lines: flattenPricedLines(nodes),
+    overallDiscount,
+    taxRate,
+    taxRoundingType,
+  });
 
   const changeLine = (rowId: string, patch: Partial<WorkingLine>) => {
-    setLines((prev) => prev.map((l) => (l.rowId === rowId ? { ...l, ...patch } : l)));
+    setNodes((prev) => changeNodeLine(prev, rowId, patch));
   };
 
-  const deleteLine = (rowId: string) => {
-    setLines((prev) => removeLine(prev, rowId));
+  const deleteNode = (rowId: string) => {
+    setNodes((prev) => removeNode(prev, rowId));
     if (activeRowId === rowId) setActiveRowId(null);
   };
 
-  const reorder = (from: number, to: number) => {
-    setLines((prev) => reorderLines(prev, from, to));
+  const reorderTopLevel = (from: number, to: number) => {
+    setNodes((prev) => reorderNodes(prev, from, to));
   };
 
-  // 本体の商品選択 → スナップショット解決 → アクティブ行直下に挿入 → 新規行を自動アクティブ。
-  // 周辺商品（有効）があれば提案ダイアログを開く（本体行直下へ挿入するため rowId を保持）。
+  const reorderInGroup = (groupRowId: string, from: number, to: number) => {
+    setNodes((prev) => reorderComponents(prev, groupRowId, from, to));
+  };
+
+  // 商品選択: セット商品なら構成を自動展開して群ノードを挿入、通常商品ならスナップショット解決して
+  // 通常行を挿入する。挿入位置はアクティブノード直下（構成/群がアクティブなら群の直後＝トップレベル）。
   const handleProductSelect = async (rows: ProductSelectionRow[]) => {
     const picked = rows[0];
     if (!picked) return;
+
+    if (picked.category === "SET") {
+      const expanded = await expandSetComponents(picked.id);
+      if (!expanded) return;
+      const groupRowId = crypto.randomUUID();
+      const group = createWorkingSetGroup(groupRowId, expanded, () => crypto.randomUUID());
+      setNodes((prev) => insertNodesBelow(prev, activeRowId, [group]));
+      setActiveRowId(groupRowId);
+      // セット商品は周辺商品サジェストの対象外（構成は自動展開で確定）。
+      return;
+    }
+
     const snapshot = await getProductLineSnapshot(picked.id);
     if (!snapshot) return;
     const newLine = createWorkingLine(crypto.randomUUID(), snapshot);
-    setLines((prev) => insertBelow(prev, activeRowId, [newLine]));
+    setNodes((prev) => insertNodesBelow(prev, activeRowId, [newLine]));
     setActiveRowId(newLine.rowId);
 
     const suggestions = await getProductSuggestions(snapshot.id);
@@ -129,7 +153,7 @@ export function VariationEditForm({
     const peripheralLines = selected.map((s) =>
       createWorkingLine(crypto.randomUUID(), s, { quantity: s.quantity })
     );
-    setLines((prev) => insertBelow(prev, suggestState.mainRowId, peripheralLines));
+    setNodes((prev) => insertNodesBelow(prev, suggestState.mainRowId, peripheralLines));
     setSuggestState(null);
   };
 
@@ -153,8 +177,8 @@ export function VariationEditForm({
         <input type="hidden" name={fields.variationId.name} value={variation.variationId} />
         <input
           type="hidden"
-          name={fields.lines.name}
-          value={JSON.stringify(toLinePayload(lines))}
+          name={fields.nodes.name}
+          value={JSON.stringify(toNodePayload(nodes))}
         />
         <input type="hidden" name={fields.overallDiscount.name} value={String(overallDiscount)} />
 
@@ -171,15 +195,16 @@ export function VariationEditForm({
         </div>
 
         <LineEditTable
-          lines={lines}
+          nodes={nodes}
           activeRowId={activeRowId}
           onSelectRow={setActiveRowId}
           onChangeLine={changeLine}
-          onRemoveLine={deleteLine}
-          onReorder={reorder}
+          onRemoveNode={deleteNode}
+          onReorderNodes={reorderTopLevel}
+          onReorderComponents={reorderInGroup}
         />
-        {fields.lines.errors && (
-          <p className="text-red-500 text-xs mt-1">{fields.lines.errors[0]}</p>
+        {fields.nodes.errors && (
+          <p className="text-red-500 text-xs mt-1">{fields.nodes.errors[0]}</p>
         )}
 
         {/* 全体値引（プレビューに効くため controlled）。 */}

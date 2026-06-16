@@ -6,7 +6,7 @@ import { expect, test } from "@playwright/test";
  * 周辺商品サジェストを検証する（ADR-0017/0020）。
  *
  * D&D 並べ替えは dnd-kit のポインタ操作が Playwright で不安定なため E2E に含めず、並べ替え
- * ロジックは reorderLines のユニットテストで担保する（ヘッダー編集 E2E が税率不一致を除外するのと同方針）。
+ * ロジックは reorderNodes のユニットテストで担保する（ヘッダー編集 E2E が税率不一致を除外するのと同方針）。
  */
 const EDITABLE = "N9905003"; // 単一 ACTIVE バリ・1明細・セット群なし・非改訂（編集対象）
 const HAS_REVISED_LINE = "N9905001"; // 既定タブ V1 に改訂価格明細を含む（編集不可）

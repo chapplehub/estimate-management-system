@@ -11,17 +11,20 @@ import {
 import { restrictToParentElement, restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { PRODUCT_CATEGORY_LABELS, formatYen } from "../../_shared/labels";
-import { previewLineAmount } from "../previewAmounts";
-import type { WorkingLine } from "../variationLines";
+import { previewGroupAmount, previewLineAmount } from "../previewAmounts";
+import type { WorkingLine, WorkingNode, WorkingSetGroup } from "../variationLines";
 
 type Props = {
-  lines: WorkingLine[];
+  nodes: WorkingNode[];
   activeRowId: string | null;
   onSelectRow: (rowId: string) => void;
   onChangeLine: (rowId: string, patch: Partial<WorkingLine>) => void;
-  onRemoveLine: (rowId: string) => void;
-  /** D&D 並べ替え（配列 index ベース・ADR-0050）。 */
-  onReorder: (from: number, to: number) => void;
+  /** 通常明細・構成明細・セット群いずれも rowId で削除（群カスケード・最後の構成で群自動削除は親が担保）。 */
+  onRemoveNode: (rowId: string) => void;
+  /** トップレベル（通常明細・群）の D&D 並べ替え（index ベース・ADR-0050）。 */
+  onReorderNodes: (from: number, to: number) => void;
+  /** 指定セット群内の構成明細の D&D 並べ替え（群内のみ）。 */
+  onReorderComponents: (groupRowId: string, from: number, to: number) => void;
 };
 
 const cellInputClass =
@@ -29,19 +32,24 @@ const cellInputClass =
 const memoInputClass =
   "mt-1 w-full border rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400";
 
+const COLUMN_COUNT = 12;
+
 /**
- * 明細編集テーブル（⑥編集 variant・S4）。商品名・単位・コード・区分はスナップショット固定表示、
- * 数量・単価・掛率・明細値引・行メモ2種をインライン編集する。行金額はクライアント簡易ライブ
- * プレビュー（previewLineAmount・確定はドメイン）。改訂価格列は非改訂バリでは常に「—」のため省略。
- * 並べ替えは dnd-kit（縦のみ）。sortOrder は持たず配列順 = 真実（ADR-0050）。
+ * 明細編集テーブル（⑥編集 variant・S5）。通常明細・セット群（構成明細を入れ子）を描画する。
+ *
+ * セット群はヘッダ行（価格列は非活性・金額＝構成合計の導出表示）＋インデントした構成行で表す
+ * （ADR-0047）。無効構成商品（read-through isActive=false）はインライン警告バッジを出す（ADR-0052）。
+ * D&D は set-aware: 群＝トップレベルの並べ替え、構成＝所属群内のみ（dnd-kit・縦のみ）。sortOrder は
+ * 持たず配列順 = 真実（ADR-0050）。行金額はクライアント簡易ライブプレビュー（確定はドメイン）。
  */
 export function LineEditTable({
-  lines,
+  nodes,
   activeRowId,
   onSelectRow,
   onChangeLine,
-  onRemoveLine,
-  onReorder,
+  onRemoveNode,
+  onReorderNodes,
+  onReorderComponents,
 }: Props) {
   // クリックとドラッグを区別するため 6px 動いてからドラッグ開始。
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
@@ -49,10 +57,25 @@ export function LineEditTable({
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const from = lines.findIndex((l) => l.rowId === active.id);
-    const to = lines.findIndex((l) => l.rowId === over.id);
-    if (from < 0 || to < 0) return;
-    onReorder(from, to);
+
+    // トップレベル（通常明細・群）の並べ替え。
+    const fromTop = nodes.findIndex((n) => n.rowId === active.id);
+    if (fromTop >= 0) {
+      const toTop = nodes.findIndex((n) => n.rowId === over.id);
+      if (toTop >= 0) onReorderNodes(fromTop, toTop);
+      return;
+    }
+
+    // 構成明細の並べ替え（同一群内のみ。群をまたぐ移動は no-op）。
+    const owner = nodes.find(
+      (n): n is WorkingSetGroup =>
+        n.kind === "setGroup" && n.components.some((c) => c.rowId === active.id)
+    );
+    if (owner) {
+      const from = owner.components.findIndex((c) => c.rowId === active.id);
+      const to = owner.components.findIndex((c) => c.rowId === over.id);
+      if (from >= 0 && to >= 0) onReorderComponents(owner.rowId, from, to);
+    }
   };
 
   return (
@@ -80,25 +103,36 @@ export function LineEditTable({
           modifiers={[restrictToVerticalAxis, restrictToParentElement]}
           onDragEnd={handleDragEnd}
         >
-          <SortableContext items={lines.map((l) => l.rowId)} strategy={verticalListSortingStrategy}>
+          <SortableContext items={nodes.map((n) => n.rowId)} strategy={verticalListSortingStrategy}>
             <tbody>
-              {lines.length === 0 && (
+              {nodes.length === 0 && (
                 <tr>
-                  <td colSpan={12} className="px-3 py-6 text-center text-gray-400">
+                  <td colSpan={COLUMN_COUNT} className="px-3 py-6 text-center text-gray-400">
                     明細がありません。「明細追加」から商品を選択してください。
                   </td>
                 </tr>
               )}
-              {lines.map((line) => (
-                <EditRow
-                  key={line.rowId}
-                  line={line}
-                  isActive={activeRowId === line.rowId}
-                  onSelectRow={onSelectRow}
-                  onChangeLine={onChangeLine}
-                  onRemoveLine={onRemoveLine}
-                />
-              ))}
+              {nodes.map((node) =>
+                node.kind === "setGroup" ? (
+                  <SetGroupRows
+                    key={node.rowId}
+                    group={node}
+                    activeRowId={activeRowId}
+                    onSelectRow={onSelectRow}
+                    onChangeLine={onChangeLine}
+                    onRemoveNode={onRemoveNode}
+                  />
+                ) : (
+                  <EditRow
+                    key={node.rowId}
+                    line={node}
+                    isActive={activeRowId === node.rowId}
+                    onSelectRow={onSelectRow}
+                    onChangeLine={onChangeLine}
+                    onRemoveNode={onRemoveNode}
+                  />
+                )
+              )}
             </tbody>
           </SortableContext>
         </DndContext>
@@ -107,18 +141,139 @@ export function LineEditTable({
   );
 }
 
+/** セット群（ヘッダ行＋構成行）。構成は群内でのみ並べ替え可能な入れ子 SortableContext。 */
+function SetGroupRows({
+  group,
+  activeRowId,
+  onSelectRow,
+  onChangeLine,
+  onRemoveNode,
+}: {
+  group: WorkingSetGroup;
+  activeRowId: string | null;
+  onSelectRow: (rowId: string) => void;
+  onChangeLine: (rowId: string, patch: Partial<WorkingLine>) => void;
+  onRemoveNode: (rowId: string) => void;
+}) {
+  return (
+    <>
+      <GroupHeaderRow
+        group={group}
+        isActive={activeRowId === group.rowId}
+        onSelectRow={onSelectRow}
+        onRemoveNode={onRemoveNode}
+      />
+      <SortableContext
+        items={group.components.map((c) => c.rowId)}
+        strategy={verticalListSortingStrategy}
+      >
+        {group.components.map((component) => (
+          <EditRow
+            key={component.rowId}
+            line={component}
+            isActive={activeRowId === component.rowId}
+            indent
+            onSelectRow={onSelectRow}
+            onChangeLine={onChangeLine}
+            onRemoveNode={onRemoveNode}
+          />
+        ))}
+      </SortableContext>
+    </>
+  );
+}
+
+/** セット群ヘッダ行。価格列は非活性、金額＝構成合計の導出表示（ADR-0047）。群削除＝構成カスケード。 */
+function GroupHeaderRow({
+  group,
+  isActive,
+  onSelectRow,
+  onRemoveNode,
+}: {
+  group: WorkingSetGroup;
+  isActive: boolean;
+  onSelectRow: (rowId: string) => void;
+  onRemoveNode: (rowId: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: group.rowId,
+  });
+  const style: React.CSSProperties = {
+    transform: transform ? `translate3d(0, ${transform.y}px, 0)` : undefined,
+    transition,
+    opacity: isDragging ? 0.6 : undefined,
+  };
+  const amount = previewGroupAmount(group.components);
+
+  return (
+    <tr
+      ref={setNodeRef}
+      style={style}
+      data-rowid={group.rowId}
+      data-active={isActive}
+      data-kind="setGroup"
+      onClick={() => onSelectRow(group.rowId)}
+      className={`border-b font-medium ${isActive ? "bg-blue-50" : "bg-amber-50 hover:bg-amber-100"}`}
+    >
+      <td className="px-2 py-2 align-top">
+        <button
+          type="button"
+          aria-label={`並べ替え（${group.itemName}）`}
+          className="cursor-grab text-gray-400 hover:text-gray-700 active:cursor-grabbing"
+          onClick={(e) => e.stopPropagation()}
+          {...attributes}
+          {...listeners}
+        >
+          ⠿
+        </button>
+      </td>
+      <td className="px-3 py-2 align-top">{group.productCode}</td>
+      <td className="px-3 py-2 align-top">
+        <span className="inline-flex items-center gap-1">
+          <span className="rounded bg-amber-200 px-1.5 py-0.5 text-xs text-amber-800">セット</span>
+          {group.itemName}
+        </span>
+      </td>
+      <td className="px-3 py-2 align-top">{PRODUCT_CATEGORY_LABELS.SET ?? "セット商品"}</td>
+      {/* 数量・単価・掛率・明細値引は群では適用不能（価格を持たない薄い衛星・ADR-0047）。 */}
+      <td className="px-3 py-2 align-top text-right text-gray-400">—</td>
+      <td className="px-3 py-2 align-top">{group.unit}</td>
+      <td className="px-3 py-2 align-top text-right text-gray-400">—</td>
+      <td className="px-3 py-2 align-top text-right text-gray-400">—</td>
+      <td className="px-3 py-2 align-top text-right text-gray-400">—</td>
+      <td className="px-3 py-2 align-top text-right font-semibold">{formatYen(amount)}</td>
+      <td className="px-3 py-2 align-top text-xs text-gray-500">構成合計</td>
+      <td className="px-3 py-2 align-top text-center">
+        <button
+          type="button"
+          aria-label={`セットを削除（${group.itemName}）`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemoveNode(group.rowId);
+          }}
+          className="text-red-600 hover:text-red-800 text-sm font-bold"
+        >
+          削除
+        </button>
+      </td>
+    </tr>
+  );
+}
+
 function EditRow({
   line,
   isActive,
+  indent = false,
   onSelectRow,
   onChangeLine,
-  onRemoveLine,
+  onRemoveNode,
 }: {
   line: WorkingLine;
   isActive: boolean;
+  indent?: boolean;
   onSelectRow: (rowId: string) => void;
   onChangeLine: (rowId: string, patch: Partial<WorkingLine>) => void;
-  onRemoveLine: (rowId: string) => void;
+  onRemoveNode: (rowId: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: line.rowId,
@@ -140,10 +295,11 @@ function EditRow({
       style={style}
       data-rowid={line.rowId}
       data-active={isActive}
+      data-indent={indent}
       onClick={() => onSelectRow(line.rowId)}
       className={`border-b ${isActive ? "bg-blue-50" : "hover:bg-gray-50"}`}
     >
-      <td className="px-2 py-2 align-top">
+      <td className={`px-2 py-2 align-top ${indent ? "pl-6" : ""}`}>
         <button
           type="button"
           aria-label={`並べ替え（${label}）`}
@@ -155,8 +311,23 @@ function EditRow({
           ⠿
         </button>
       </td>
-      <td className="px-3 py-2 align-top">{line.productCode}</td>
-      <td className="px-3 py-2 align-top">{line.itemName}</td>
+      <td className={`px-3 py-2 align-top ${indent ? "pl-6 text-gray-600" : ""}`}>
+        {indent && <span className="mr-1 text-gray-400">└</span>}
+        {line.productCode}
+      </td>
+      <td className="px-3 py-2 align-top">
+        <span className="inline-flex items-center gap-1">
+          {line.itemName}
+          {!line.isActive && (
+            <span
+              className="rounded bg-red-100 px-1.5 py-0.5 text-xs text-red-700"
+              title="この商品は無効化されています（保存は可能ですが確認してください）"
+            >
+              無効
+            </span>
+          )}
+        </span>
+      </td>
       <td className="px-3 py-2 align-top">
         {PRODUCT_CATEGORY_LABELS[line.productCategory] ?? line.productCategory}
       </td>
@@ -233,7 +404,7 @@ function EditRow({
           aria-label={`明細を削除（${label}）`}
           onClick={(e) => {
             e.stopPropagation();
-            onRemoveLine(line.rowId);
+            onRemoveNode(line.rowId);
           }}
           className="text-red-600 hover:text-red-800 text-sm font-bold"
         >

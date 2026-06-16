@@ -69,6 +69,7 @@
 | [0047](0047-set-line-as-priced-leaf-table-plus-set-group-satellite.md) | 見積のセット商品明細を価格付き末端行1表＋セット群衛星＋所属交差表でモデル化する | 採用 | 2026-06-13 |
 | [0048](0048-estimate-line-product-attributes-read-through-then-snapshot-on-commit.md) | 見積明細の商品由来属性（コード・区分）は編集中マスタ read-through・確定時スナップショット凍結とする | 採用（機構先送り） | 2026-06-15 |
 | [0049](0049-header-setters-noop-on-equal-to-allow-deadline-department-edit-under-revision-freeze.md) | 見積ヘッダーのセッターを同値 no-op 化し、改訂凍結下でも締切日・部署の編集を成立させる | 採用 | 2026-06-15 |
+| [0052](0052-set-component-cross-aggregate-validation-via-method-arguments.md) | セット構成の集約越え検証はドメインポートではなく ADR-0030（メソッド引数）で行う | 採用 | 2026-06-16 |
 
 ## アプリケーション（コマンド）
 

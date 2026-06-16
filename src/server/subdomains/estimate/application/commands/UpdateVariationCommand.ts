@@ -4,6 +4,8 @@ import { EstimateRepository } from "@subdomains/estimate/domain/repositories/Est
 import { TaxRateConsistencyCheckDomainService } from "@subdomains/estimate/domain/services/TaxRateConsistencyCheckDomainService";
 import { EstimateId } from "@subdomains/estimate/domain/values/EstimateId";
 import { EstimateVariationId } from "@subdomains/estimate/domain/values/EstimateVariationId";
+import { ProductQueryService } from "@subdomains/product/application/queries/ProductQueryService";
+import { assertSetComponentsValid } from "../shared/assertSetComponentsValid";
 import { checkTaxRateThenSave, type TaxCheckedSaveResult } from "../shared/checkTaxRateThenSave";
 import {
   toVariationContentDescriptor,
@@ -35,7 +37,8 @@ export type UpdateVariationInput = {
 export class UpdateVariationCommand {
   constructor(
     private readonly estimateRepository: EstimateRepository,
-    private readonly taxRateConsistencyCheck: TaxRateConsistencyCheckDomainService
+    private readonly taxRateConsistencyCheck: TaxRateConsistencyCheckDomainService,
+    private readonly productQueryService: ProductQueryService
   ) {}
 
   async execute(input: UpdateVariationInput): Promise<TaxCheckedSaveResult> {
@@ -47,6 +50,9 @@ export class UpdateVariationCommand {
     const content = EstimateFactory.buildVariationContent(
       toVariationContentDescriptor(input.content)
     );
+    // セット群の構成について区分・有効性をライブ検証（ADR-0052・ペイロード防御）。
+    // 区分外（セット商品ネスト等）はここで BusinessRuleViolationError として弾く。
+    await assertSetComponentsValid(content, this.productQueryService);
     estimate.updateVariation(new EstimateVariationId(input.variationId), content);
 
     return checkTaxRateThenSave(estimate, input.version, {

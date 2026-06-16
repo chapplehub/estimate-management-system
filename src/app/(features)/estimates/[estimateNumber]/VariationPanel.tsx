@@ -5,6 +5,7 @@ import { Badge } from "@/app/_components/shadcnui/badge";
 import type { VariationDTO } from "@subdomains/estimate/application/queries/dto/EstimateDetailDTO";
 import { SUBMISSION_TYPE_LABELS, formatYen } from "../_shared/labels";
 import { LineTable } from "./components/LineTable";
+import { isVariationEditable } from "./variationEditable";
 import { VariationEditForm } from "./VariationEditForm";
 
 type Props = {
@@ -135,16 +136,6 @@ export function VariationPanel({
       )}
     </div>
   );
-}
-
-/**
- * 編集可能なバリか判定する（UI 抑止・二重防御の外側）。
- * セット群を含まず（C4 はセット群を全置換できない）、有効で、改訂明細を含まないこと。
- * 改訂バリは revisedDeliveryPrice を持つ明細がある（§8.4）。最終強制はドメイン（replaceContent）。
- */
-function isVariationEditable(variation: VariationDTO): boolean {
-  if (variation.status !== "ACTIVE") return false;
-  return variation.lines.every((l) => l.kind === "line" && l.revisedDeliveryPrice === null);
 }
 
 /** 閲覧モードの ⑥明細・⑦全体値引・⑧メモ・⑨金額サマリー（read-only）。 */

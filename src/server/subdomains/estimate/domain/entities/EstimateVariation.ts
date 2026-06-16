@@ -40,6 +40,12 @@ export type TaxContext = {
  */
 export type VariationContent = {
   items: EstimateItem[];
+  /**
+   * セット群（ADR-0047 / Shape ③-a）。省略時は空（既存群をクリア）。構成明細は items に
+   * 含めたうえで所属を群が `EstimateItemId[]` で参照する。replaceContent 時に参照整合・
+   * 排他所属を再検証する（create と同じ構造的不変条件）。
+   */
+  setGroups?: EstimateSetGroup[];
   overallDiscount?: Money;
   customerMemo?: Memo;
   internalMemo?: Memo;
@@ -268,9 +274,16 @@ export class EstimateVariation {
     // 改訂先の調整は粒度別メソッド（changeItem* / changeOverallDiscount / メモ変更）で行う
     this.assertLineStructureMutable();
 
-    // _items は readonly 参照だが配列中身は可変。同一参照を保ったまま全置換する。
+    // 構造的不変条件（参照整合・排他所属）を置換前に再検証する。create と同方針で、
+    // 集約内で完結する不変条件のみを担保する（区分検証は集約越えのためアプリ層・ADR-0052）。
+    const setGroups = input.setGroups ?? [];
+    EstimateVariation.assertSetGroupsConsistency(input.items, setGroups);
+
+    // _items / _setGroups は readonly 参照だが配列中身は可変。同一参照を保ったまま全置換する。
     this._items.length = 0;
     this._items.push(...input.items);
+    this._setGroups.length = 0;
+    this._setGroups.push(...setGroups);
     this._overallDiscount = input.overallDiscount ?? Money.zero();
     this._customerMemo = input.customerMemo ?? Memo.empty();
     this._internalMemo = input.internalMemo ?? Memo.empty();

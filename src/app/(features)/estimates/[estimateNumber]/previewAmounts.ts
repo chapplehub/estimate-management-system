@@ -24,6 +24,14 @@ export function previewLineAmount(line: PreviewLine): number {
   return discountedAmount - line.itemDiscount;
 }
 
+/**
+ * セット群の表示金額（円）＝構成明細の最終金額の合計（ADR-0047 導出）。
+ * 群自身は価格を持たないため、ヘッダ行はこの導出値を表示する。
+ */
+export function previewGroupAmount(components: ReadonlyArray<PreviewLine>): number {
+  return components.reduce((acc, line) => acc + previewLineAmount(line), 0);
+}
+
 /** バリ合計プレビューの結果（円）。 */
 export type PreviewTotals = {
   /** §8.1(4) 小計 = Σ行金額。 */

@@ -258,4 +258,76 @@ describe("EstimateFactory", () => {
       expect(content.overallDiscount?.equals(Money.fromMajorUnits(500))).toBe(true);
     });
   });
+
+  describe("セット群（ADR-0047）の会員解決", () => {
+    it("create: 構成明細を構築し、生成 id をセット群の memberItemIds へ配線する", () => {
+      const estimate = EstimateFactory.create(
+        baseInput({
+          variations: [
+            {
+              variationNumber: 1,
+              submissionType: SubmissionType.CUSTOMER,
+              items: [item({ sortOrder: 3, itemName: new ItemName("通常明細") })],
+              setGroups: [
+                {
+                  productId: new ProductId(UUID),
+                  itemName: new ItemName("セット商品"),
+                  unit: new Unit("式"),
+                  components: [
+                    item({
+                      sortOrder: 1,
+                      unitPrice: Money.fromMajorUnits(1000),
+                      quantity: new Quantity(1),
+                    }),
+                    item({
+                      sortOrder: 2,
+                      unitPrice: Money.fromMajorUnits(500),
+                      quantity: new Quantity(1),
+                    }),
+                  ],
+                },
+              ],
+            },
+          ],
+        })
+      );
+
+      const variation = estimate.variations[0];
+      // 通常 1 + 構成 2 = 3 明細が _items に同居する
+      expect(variation.items).toHaveLength(3);
+      expect(variation.setGroups).toHaveLength(1);
+
+      // 群の memberItemIds がすべて variation.items に存在する（＝会員解決が成功し参照整合が通る）
+      const group = variation.setGroups[0];
+      expect(group.memberItemIds).toHaveLength(2);
+      const itemIds = new Set(variation.items.map((i) => i.id.value));
+      for (const memberId of group.memberItemIds) {
+        expect(itemIds.has(memberId.value)).toBe(true);
+      }
+      // 群の金額導出 = 構成合計 1500
+      expect(variation.deriveSetGroup(group.id).amount.equals(Money.fromMajorUnits(1500))).toBe(
+        true
+      );
+    });
+
+    it("buildVariationContent: セット群を含む内容を構築し replaceContent に渡せる", () => {
+      const content = EstimateFactory.buildVariationContent({
+        items: [item({ sortOrder: 2, itemName: new ItemName("通常明細") })],
+        setGroups: [
+          {
+            productId: new ProductId(UUID),
+            itemName: new ItemName("セット商品"),
+            unit: new Unit("式"),
+            components: [item({ sortOrder: 1, unitPrice: Money.fromMajorUnits(2000) })],
+          },
+        ],
+      });
+
+      expect(content.items).toHaveLength(2);
+      expect(content.setGroups).toHaveLength(1);
+      // 群の構成 id が content.items に含まれる
+      const itemIds = new Set(content.items.map((i) => i.id.value));
+      expect(itemIds.has(content.setGroups![0].memberItemIds[0].value)).toBe(true);
+    });
+  });
 });

@@ -21,6 +21,18 @@ export class PrismaProductQueryService implements ProductQueryService {
     return product ? this.toDTO(product) : null;
   }
 
+  async findByIds(ids: string[]): Promise<ProductDTO[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+    const products = await prisma.product.findMany({
+      where: { id: { in: ids } },
+      include: this.getIncludeRelations(),
+    });
+
+    return products.map((p) => this.toDTO(p));
+  }
+
   async findByCode(code: string): Promise<ProductDTO | null> {
     const product = await prisma.product.findUnique({
       where: { code },
