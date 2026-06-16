@@ -15,7 +15,7 @@ export type EstimateSearchCriteria = {
   /** 見積区分フィルタ（"NEW" | "REPAIR" | "AFTER_REPAIR"。Estimate 自身の列の等値）。 */
   estimateType?: string;
   /**
-   * 状態フィルタ（"ACTIVE" | "INACTIVE"）。代表バリエーション由来（ADR-0050）の導出値だが、
+   * 状態フィルタ（"ACTIVE" | "INACTIVE"）。代表バリエーション由来（ADR-0051）の導出値だが、
    * 2 段階フォールバックの定義上「代表が ACTIVE」⟺「ACTIVE が 1 件以上存在」と一致するため、
    * Prisma 側で variations の some/none に落として DB で絞り込む。
    */
@@ -24,7 +24,7 @@ export type EstimateSearchCriteria = {
 
 /**
  * 一覧でソート可能なフィールド。Estimate 自身の列に限る。
- * 代表由来の金額（finalTotal）・状態（activeStatus）は別テーブル/導出のため直接ソート不可（ADR-0050）。
+ * 代表由来の金額（finalTotal）・状態（activeStatus）は別テーブル/導出のため直接ソート不可（ADR-0051）。
  */
 export type EstimateSortField = "estimateNumber" | "estimateDate" | "deadline" | "createdAt";
 

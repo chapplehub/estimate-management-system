@@ -32,7 +32,7 @@
 ### activeStatus の DB 絞り込み方式（本 issue の肝）
 - A. 代表バリエーション由来の `activeStatus` を some/none に落として WHERE で絞る（採用）
 - B. 全件取得後に mapper の導出結果でアプリ側フィルタ
-- 採用理由: ADR-0050（`docs/adr/0050-list-representative-variation-selection-as-read-model-concern.md`）
+- 採用理由: ADR-0051（`docs/adr/0051-list-representative-variation-selection-as-read-model-concern.md`）
   の代表選択規則「ACTIVE 優先の最小 → 無ければ全体の最小」の定義上、**「代表が ACTIVE」⟺「ACTIVE
   が1件以上存在」** が厳密に成立する。よって WHERE で正しく絞れる（B のアプリ側フィルタは take/件数
   と整合せず不要）。
@@ -63,14 +63,14 @@
   - 私有 static `buildWhereClause(criteria): Prisma.EstimateWhereInput` を新設（product と同型・4分岐）
   - 「空の受け皿」記述の doc コメントを実態へ更新
 - コミットメッセージ: `feat: 見積一覧にフィルタ絞り込みを実装する`
-  （body: activeStatus は代表導出値だが ADR-0050 の等価則で some/none に落とした判断を記載）
+  （body: activeStatus は代表導出値だが ADR-0051 の等価則で some/none に落とした判断を記載）
 
 ### Step 3: 見積一覧フィルタの単体テストを追加
 - 対象ファイル: `src/server/subdomains/estimate/application/queries/__tests__/SearchEstimatesQuery.test.ts`
 - 作業内容:
   - 予約番号レンジを拡張（`N9902007` 以降をフィルタ用）し予約レンジ後フィルタで隔離
   - `describe("フィルタ（#349）")`: estimateNumber 部分一致 / customerName 一致・非一致 /
-    estimateType NEW・REPAIR / activeStatus ACTIVE・INACTIVE（some/none と ADR-0050 等価則）/
+    estimateType NEW・REPAIR / activeStatus ACTIVE・INACTIVE（some/none と ADR-0051 等価則）/
     複数 AND / 未指定で全件
   - ビルダー（`estimateAggregateBuilder.ts`）は無変更
 - コミットメッセージ: `test: 見積一覧フィルタの単体テストを追加する`

@@ -4,11 +4,11 @@
 
 見積一覧画面（フロントは別 issue）が依存する CQRS read model を実装する。一覧 1 行 = 見積 1 件（Estimate 単位）で、金額・状態は「代表バリエーション」の値を表示する。軽量 DTO `EstimateSummaryDTO` と検索メソッド `EstimateQueryService.search` を新設し、商品の `SearchProductsQuery` 系に対称な構成を取る。詳細用 `EstimateDetailDTO`（全リレーション eager load）は流用しない。
 
-本計画は `/grill-with-docs` で合意した内容の結晶化。代表選択の設計は **ADR-0050** に記録済み。用語（代表バリエーション・表示ステータス・バリエーション状態）は `CONTEXT.md` に追記済み。
+本計画は `/grill-with-docs` で合意した内容の結晶化。代表選択の設計は **ADR-0051** に記録済み。用語（代表バリエーション・表示ステータス・バリエーション状態）は `CONTEXT.md` に追記済み。
 
 ## 設計判断
 
-### 代表バリエーションの選択ルール（ADR-0050 で確定）
+### 代表バリエーションの選択ルール（ADR-0051 で確定）
 - A. `variationNumber = 1` 固定（不採用。無効化された 1 番を代表にしてしまう／全 INACTIVE で破綻）
 - B. **ACTIVE 優先の最小 `variationNumber` → 無ければ全体の最小**（採用）
 - 採用理由: 物理削除は無いが無効化は可能で全 INACTIVE は正規状態。最低 1 バリエーションの不変条件により常に存在・決定的。`activeStatus` は全 INACTIVE 見積でも正直に INACTIVE を返す。
@@ -59,7 +59,7 @@
   - `pickRepresentative`: `find(v => v.status === "ACTIVE") ?? variations[0]`
   - `customer`（code/name）・`creator`（employeeCd/name）の名前解決
   - `buildOrderBy`（多段既定／第 2 キー安定化）、`take: LIST_FETCH_LIMIT`、`displayStatus` は常に `null`
-- コミットメッセージ: `feat: 見積一覧取得を PrismaEstimateQueryService に実装（代表バリエーション選択・ADR-0050）`（body に代表選択を infra に閉じる理由を記載）
+- コミットメッセージ: `feat: 見積一覧取得を PrismaEstimateQueryService に実装（代表バリエーション選択・ADR-0051）`（body に代表選択を infra に閉じる理由を記載）
 
 ### Step 4: ファクトリ追加
 - 対象ファイル: `.../application/factories/estimateQueryFactory.ts`

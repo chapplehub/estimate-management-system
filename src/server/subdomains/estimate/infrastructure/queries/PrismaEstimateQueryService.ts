@@ -85,7 +85,7 @@ export class PrismaEstimateQueryService implements EstimateQueryService {
   }
 
   /**
-   * 一覧用サマリ DTO を検索する（CQRS read model・ADR-0050）。
+   * 一覧用サマリ DTO を検索する（CQRS read model・ADR-0051）。
    *
    * criteria（#349）は estimateNumber/customerName の部分一致・estimateType の等値・
    * activeStatus（代表由来）の絞り込みを受け付ける（buildWhereClause を参照）。件数上限 take は
@@ -117,7 +117,7 @@ export class PrismaEstimateQueryService implements EstimateQueryService {
    * 検索条件から Prisma の where 句を組み立てる（#349・product の buildWhereClause と同型）。
    * 指定フィールドのみ積み、未指定は絞り込まない（AND 合成。全未指定なら空＝全件）。
    *
-   * activeStatus は代表バリエーション由来（ADR-0050）の導出値で単一カラムを持たないが、
+   * activeStatus は代表バリエーション由来（ADR-0051）の導出値で単一カラムを持たないが、
    * 代表選択「ACTIVE 優先の最小 → 無ければ全体の最小」の定義上、
    * 「代表が ACTIVE」⟺「ACTIVE が 1 件以上存在」が厳密に成立する。よって some/none の
    * リレーション存在判定として DB 側で絞り込める（mapper の find(ACTIVE) ?? [0] と同じ等価則）。
@@ -139,7 +139,7 @@ export class PrismaEstimateQueryService implements EstimateQueryService {
     }
 
     if (criteria.activeStatus === "ACTIVE") {
-      // 代表が ACTIVE ⟺ ACTIVE バリエーションが 1 件以上存在（ADR-0050）。
+      // 代表が ACTIVE ⟺ ACTIVE バリエーションが 1 件以上存在（ADR-0051）。
       where.variations = { some: { status: "ACTIVE" } };
     } else if (criteria.activeStatus === "INACTIVE") {
       // 代表が INACTIVE ⟺ ACTIVE バリエーションが 1 件も無い（全 INACTIVE）。
@@ -152,7 +152,7 @@ export class PrismaEstimateQueryService implements EstimateQueryService {
   /**
    * 一覧の並び順を組み立てる。未指定なら多段既定 [deadline asc, createdAt asc, estimateNumber asc]。
    * 指定時は [指定キー, estimateNumber asc] とし、第 2 キー（unique 列）で安定化する。
-   * ソート可能フィールドは Estimate 自身の列に限る（代表由来の金額・状態は不可・ADR-0050）。
+   * ソート可能フィールドは Estimate 自身の列に限る（代表由来の金額・状態は不可・ADR-0051）。
    */
   private static buildOrderBy(
     options?: EstimateListOptions
@@ -165,7 +165,7 @@ export class PrismaEstimateQueryService implements EstimateQueryService {
   }
 
   /**
-   * 一覧行を組み立てる。金額・状態は代表バリエーション由来（ADR-0050）。
+   * 一覧行を組み立てる。金額・状態は代表バリエーション由来（ADR-0051）。
    * 代表 = ACTIVE のうち最小 variationNumber → 無ければ全体の最小（variations は昇順前提）。
    */
   private static toSummaryDTO(e: EstimateSummaryRow): EstimateSummaryDTO {
