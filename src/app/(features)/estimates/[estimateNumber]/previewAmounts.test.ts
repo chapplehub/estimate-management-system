@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { previewLineAmount, previewVariationTotals } from "./previewAmounts";
+import { previewGroupAmount, previewLineAmount, previewVariationTotals } from "./previewAmounts";
 
 describe("previewLineAmount（行の最終金額・円単位の近似）", () => {
   it("数量×単価×掛率−明細値引（掛率1.0・値引0なら数量×単価）", () => {
@@ -54,5 +54,20 @@ describe("previewVariationTotals（小計→全体値引→税→合計の近似
     expect(previewVariationTotals({ ...base, taxRoundingType: "ROUND_DOWN" }).taxAmount).toBe(350);
     expect(previewVariationTotals({ ...base, taxRoundingType: "ROUND_UP" }).taxAmount).toBe(351);
     expect(previewVariationTotals({ ...base, taxRoundingType: "ROUND" }).taxAmount).toBe(350);
+  });
+});
+
+describe("previewGroupAmount（セット群の表示金額＝構成合計の導出）", () => {
+  it("構成明細の最終金額を合計する（群自身は価格を持たない・ADR-0047）", () => {
+    const amount = previewGroupAmount([
+      { quantity: 1, unitPrice: 1000, discountRate: 1.0, itemDiscount: 0 },
+      { quantity: 2, unitPrice: 500, discountRate: 1.0, itemDiscount: 0 },
+    ]);
+    // 1000 + 1000 = 2000
+    expect(amount).toBe(2000);
+  });
+
+  it("構成ゼロなら 0（呼び出し側で空群は禁止されるが安全側）", () => {
+    expect(previewGroupAmount([])).toBe(0);
   });
 });

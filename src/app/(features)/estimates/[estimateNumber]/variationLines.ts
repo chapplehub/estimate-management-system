@@ -24,7 +24,7 @@ export type ProductSnapshot = {
 
 /**
  * 作業コピー1行。`lineSchema` の項目に加え、表示用（productCode/productCategory）と
- * client 専用キー（rowId）を持つ上位集合。JSON 化時は {@link toLinePayload} で schema 項目へ絞る。
+ * client 専用キー（rowId）を持つ上位集合。JSON 化時は {@link toNodePayload} で schema 項目へ絞る。
  */
 export type WorkingLine = {
   /** トップレベル判別子（往復形状 A）。通常明細・構成明細とも "line"。 */
@@ -206,35 +206,6 @@ export function createWorkingSetGroup(
   };
 }
 
-/**
- * アクティブ行（activeRowId）の直下に newLines を挿入する。アクティブ行が null または
- * 見つからない場合は末尾へ追加する（行 UI 仕様）。元配列は破壊せず新しい配列を返す。
- */
-export function insertBelow(
-  lines: WorkingLine[],
-  activeRowId: string | null,
-  newLines: WorkingLine[]
-): WorkingLine[] {
-  const index = activeRowId === null ? -1 : lines.findIndex((l) => l.rowId === activeRowId);
-  if (index < 0) {
-    return [...lines, ...newLines];
-  }
-  return [...lines.slice(0, index + 1), ...newLines, ...lines.slice(index + 1)];
-}
-
-/** rowId に一致する行を取り除く（確認なし・§5）。一致しなければそのまま。 */
-export function removeLine(lines: WorkingLine[], rowId: string): WorkingLine[] {
-  return lines.filter((l) => l.rowId !== rowId);
-}
-
-/** index ベースで from を to へ移動する（D&D 並べ替え。dnd-kit の arrayMove と同型）。 */
-export function reorderLines(lines: WorkingLine[], from: number, to: number): WorkingLine[] {
-  const next = [...lines];
-  const [moved] = next.splice(from, 1);
-  next.splice(to, 0, moved);
-  return next;
-}
-
 /** 作業行を JSON 往復用のペイロード（lineSchema 項目）へ絞る。client 専用列を落とす。 */
 function lineFields(line: WorkingLine): VariationLineInput {
   return {
@@ -248,11 +219,6 @@ function lineFields(line: WorkingLine): VariationLineInput {
     customerMemo: line.customerMemo,
     internalMemo: line.internalMemo,
   };
-}
-
-/** 作業行を JSON 往復用のペイロード（lineSchema 項目）へ絞る。client 専用列を落とす。 */
-export function toLinePayload(lines: WorkingLine[]): VariationLineInput[] {
-  return lines.map(lineFields);
 }
 
 // ========================================
@@ -351,6 +317,14 @@ export function reorderComponents(
     components.splice(to, 0, moved);
     return { ...n, components };
   });
+}
+
+/**
+ * 全ノードから価格付き末端行（通常明細＋全構成明細）を出現順でフラット化する。
+ * セット群は価格を持たない薄い衛星のため、金額プレビュー（小計・合計）はこのフラット列で計算する。
+ */
+export function flattenPricedLines(nodes: ReadonlyArray<WorkingNode>): WorkingLine[] {
+  return nodes.flatMap((n) => (n.kind === "setGroup" ? n.components : [n]));
 }
 
 /** 作業ノードを JSON 往復用のペイロード（nodeSchema 項目）へ絞る。client 専用列を落とす。 */

@@ -8,6 +8,7 @@ import {
   changeNodeLine,
   createWorkingLine,
   createWorkingSetGroup,
+  flattenPricedLines,
   fromSetGroupDTO,
   fromVariationLines,
   insertNodesBelow,
@@ -223,6 +224,16 @@ describe("set-aware reorder", () => {
     const nodes = [group("G", ["c1", "c2", "c3"])];
     const result = reorderComponents(nodes, "G", 0, 2) as WorkingSetGroup[];
     expect(result[0].components.map((c) => c.rowId)).toEqual(["c2", "c3", "c1"]);
+  });
+});
+
+describe("flattenPricedLines（価格付き末端行のフラット化）", () => {
+  it("通常明細とセット群の構成を出現順で平坦化する（群ヘッダは含めない）", () => {
+    const nodes = [line("A"), group("G", ["c1", "c2"]), line("B")];
+    const flat = flattenPricedLines(nodes);
+    expect(flat.map((l) => l.rowId)).toEqual(["A", "c1", "c2", "B"]);
+    // すべて kind=line（価格付き末端行）
+    expect(flat.every((l) => l.kind === "line")).toBe(true);
   });
 });
 

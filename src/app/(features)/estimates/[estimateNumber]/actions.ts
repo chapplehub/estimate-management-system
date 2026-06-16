@@ -13,8 +13,8 @@ import { redirect } from "next/navigation";
 import { handleCommandError } from "../../_shared/error-handler";
 import { fromDateInputValue } from "../_shared/date";
 import { updateEstimateHeaderSchema } from "./schema";
-import { updateVariationContentSchema } from "./variationSchema";
-import { toVariationContentInput } from "./variationContentMapping";
+import { updateVariationContentNodeSchema } from "./variationSchema";
+import { toVariationContentInputFromNodes } from "./variationContentMapping";
 
 /**
  * 見積ヘッダー更新（C2）の Server Action。
@@ -98,8 +98,9 @@ export async function updateEstimateHeader(
  * バリエーション内容更新（C4）の Server Action。
  *
  * 対象は estimateNumber（→ DTO で estimateId 解決）と form の variationId で特定する。明細は
- * 単一 hidden の JSON を schema で検証し（ADR-0050）、sortOrder は配列順から導出して
- * `VariationContentInput` へ写す（toVariationContentInput）。C4 はバリ内容を宣言的に全置換する。
+ * 単一 hidden の JSON（通常明細・セット群のノード union・ADR-0047/0050）を schema で検証し、
+ * sortOrder は配列順から導出して `VariationContentInput`（items＋setGroups）へ写す
+ * （toVariationContentInputFromNodes）。C4 はバリ内容を宣言的に全置換する。
  * version はフォーム由来の楽観ロックトークン（ADR-0039）。税率不一致（§8.7）は例外でなく
  * Result のためフォームエラーで提示し編集を維持する。競合・その他例外は handleCommandError 経由。
  * 成功時のみ redirect で閲覧へ戻る（S3 ヘッダー編集と同型）。
@@ -111,7 +112,7 @@ export async function updateVariationContent(
 ) {
   await verifySession();
 
-  const submission = parseWithZod(formData, { schema: updateVariationContentSchema });
+  const submission = parseWithZod(formData, { schema: updateVariationContentNodeSchema });
   if (submission.status !== "success") {
     return submission.reply();
   }
@@ -126,7 +127,7 @@ export async function updateVariationContent(
     estimateId: dto.estimateId,
     variationId: value.variationId,
     version: value.version,
-    content: toVariationContentInput(value),
+    content: toVariationContentInputFromNodes(value),
   };
 
   let result;

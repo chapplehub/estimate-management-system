@@ -73,39 +73,15 @@ const nodesField = z
   })
   .pipe(z.array(nodeSchema));
 
-/** 明細配列フィールド: JSON 文字列をパースして配列スキーマへ pipe する（ADR-0050）。空配列を許可。 */
-const linesField = z
-  .string()
-  .transform((s, ctx) => {
-    try {
-      return JSON.parse(s);
-    } catch {
-      ctx.addIssue({ code: "custom", message: "明細データが不正です" });
-      return z.NEVER;
-    }
-  })
-  .pipe(z.array(lineSchema));
-
-export const updateVariationContentSchema = z.object({
+/**
+ * バリ内容編集スキーマ（S5・セット群対応）。明細フィールドは判別子 union のノード配列。
+ * version・全体値引・メモはスカラー（S3 ヘッダー編集と同型）。メモは optional（conform は空
+ * フィールドを undefined 化するため・lineSchema 同様。required に戻さないこと）。
+ */
+export const updateVariationContentNodeSchema = z.object({
   /** 楽観ロックトークン（ADR-0039・集約ルート）。hidden で往復。 */
   version: z.coerce.number().int(),
   /** 編集対象バリエーション。estimateId は estimateNumber から DTO 解決する。 */
-  variationId: z.string().min(1, "バリエーションが特定できません"),
-  overallDiscount: z.coerce.number().min(0, "全体値引は0以上で入力してください"),
-  // メモは optional（conform は空フィールドを undefined 化する・上の lineSchema 同様）。
-  customerMemo: z.string().optional(),
-  internalMemo: z.string().optional(),
-  lines: linesField,
-});
-
-export type UpdateVariationContentFormInput = z.infer<typeof updateVariationContentSchema>;
-
-/**
- * セット群対応版のバリ内容編集スキーマ（S5）。明細フィールドを判別子 union のノード配列にした以外は
- * {@link updateVariationContentSchema} と同型。フォーム配線（Step 7）でこちらへ切り替える。
- */
-export const updateVariationContentNodeSchema = z.object({
-  version: z.coerce.number().int(),
   variationId: z.string().min(1, "バリエーションが特定できません"),
   overallDiscount: z.coerce.number().min(0, "全体値引は0以上で入力してください"),
   customerMemo: z.string().optional(),
