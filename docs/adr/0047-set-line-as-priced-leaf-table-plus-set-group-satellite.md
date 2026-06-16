@@ -72,3 +72,5 @@
 - **三層統一**: 用語（セット群）・ドメインエンティティ（`EstimateSetGroup`）・永続化（`estimate_set_groups` / Prisma `EstimateSetGroup`）を同一語に揃え、Mapper の対訳体操を無くす。
 
 これに伴い、ドメイン層の区分駆動チェック（ネスト禁止・構成商品は個別/消耗品のみ）は、`Estimate` 集約が `ProductCategory` を知らない（Product 集約に依存しない）ため、ADR-0029 の集約越え例外に従い **`estimate/domain/services/` のルール検証型 Domain Service（ドメインポート経由）＋実装は S5** に置くことも併せて確定した。S1 のドメインが担保するのは集約内で完結する構造的不変条件（**空群禁止・参照整合・排他所属**）に限る。`item_id` を交差表の主キーとし、排他所属を DB レベルでも構造担保する。
+
+> **2026-06-16 追記（S5 着手時の /grill-with-docs で差し替え）**: 上記「ドメインポート経由のルール検証型 Domain Service」は **ADR-0052 で取り下げ**た。集約越えの区分/有効性検証は、ドメインポートを新設せず **ADR-0030（アプリ層が事実を集めメソッド引数で渡す）** で行う。理由・経緯は [ADR-0052](0052-set-component-cross-aggregate-validation-via-method-arguments.md) を参照。あわせて、区分/ネスト違反が UI から到達する経路（構成明細の手動追加）は S5 スコープ外とし issue #350 へ繰り延べ、S5 の検証はペイロード防御として導入する。
