@@ -4,7 +4,7 @@ import type {
   SetGroupDTO,
   VariationDTO,
 } from "@subdomains/estimate/application/queries/dto/EstimateDetailDTO";
-import { isVariationEditable } from "./variationEditable";
+import { isVariationDuplicatable, isVariationEditable } from "./variationEditable";
 
 /** テスト用の最小 LineDTO（必要なフィールドのみ上書き）。 */
 function line(overrides: Partial<LineDTO> = {}): LineDTO {
@@ -92,5 +92,25 @@ describe("isVariationEditable", () => {
       lines: [setGroup([line(), line({ revisedDeliveryPrice: 800 })])],
     });
     expect(isVariationEditable(v)).toBe(false);
+  });
+});
+
+describe("isVariationDuplicatable（複製元の適格性・C3）", () => {
+  it("改訂明細を含まないバリは複製元にできる", () => {
+    expect(isVariationDuplicatable(variation({ lines: [line()] }))).toBe(true);
+  });
+
+  it("改訂明細（revisedDeliveryPrice あり）を含むバリは複製元にできない", () => {
+    const v = variation({ lines: [line({ revisedDeliveryPrice: 800 })] });
+    expect(isVariationDuplicatable(v)).toBe(false);
+  });
+
+  it("セット構成内に改訂明細があるバリも複製元にできない（構成内まで走査）", () => {
+    const v = variation({ lines: [setGroup([line(), line({ revisedDeliveryPrice: 800 })])] });
+    expect(isVariationDuplicatable(v)).toBe(false);
+  });
+
+  it("無効(INACTIVE)でも改訂明細を含まなければ複製元にできる（状態を問わない・編集可否との差）", () => {
+    expect(isVariationDuplicatable(variation({ status: "INACTIVE", lines: [line()] }))).toBe(true);
   });
 });
