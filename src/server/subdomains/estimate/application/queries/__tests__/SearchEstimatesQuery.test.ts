@@ -129,6 +129,8 @@ describe("SearchEstimatesQuery", () => {
       expect(dto.customerName).toBe("見積テスト得意先");
       expect(dto.creatorCode).toBe("EMP999091");
       expect(dto.creatorName).toBe("見積テスト作成者");
+      // 納品先は名前のみ（Q1-b・code は載せない）。一覧の「納品先」列の供給元。
+      expect(dto.deliveryLocationName).toBe("見積テスト納品先");
       // 永続集計（ADR-0033）。デフォルト 1 バリエーション = 2750。
       expect(dto.finalTotal).toBe(2750);
       expect(dto.activeStatus).toBe("ACTIVE");

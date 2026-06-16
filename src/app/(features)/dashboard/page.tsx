@@ -3,6 +3,11 @@ import Link from "next/link";
 
 const navigationItems = [
   {
+    href: "/estimates",
+    title: "見積管理",
+    description: "見積の一覧表示・閲覧を行います。",
+  },
+  {
     href: "/employees",
     title: "従業員管理",
     description: "従業員の一覧表示、登録、編集、削除を行います。",
