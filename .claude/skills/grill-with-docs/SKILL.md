@@ -5,9 +5,11 @@ description: Grilling session that challenges your plan against the existing dom
 
 <what-to-do>
 
-Interview me relentlessly about every aspect of this plan until we reach a shared understanding. Walk down each branch of the design tree, resolving dependencies between decisions one-by-one. For each question, provide your recommended answer.
+Interview me relentlessly about every aspect of this plan until we reach a shared understanding. Walk down each branch of the design tree, resolving dependencies between decisions one-by-one.
 
-Ask the questions one at a time, waiting for feedback on each question before continuing.
+Ask the questions one at a time. For each question, state your recommendation and the reasoning behind it, then end your message with the single question asking for my decision — the question MUST be the last line, with nothing after it.
+
+After you ask, STOP and wait for my actual reply. Never write, simulate, quote, summarise, or assume my answer — even when my likely answer seems obvious. Do not emit anything in my voice, nor any "system"- or reminder-style text. If the only thing left to do is wait for me, end your turn immediately.
 
 If a question can be answered by exploring the codebase, explore the codebase instead.
 
