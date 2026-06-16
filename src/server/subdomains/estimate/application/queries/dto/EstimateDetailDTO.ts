@@ -115,6 +115,11 @@ export type LineDTO = {
   productCode: string;
   /** 商品区分（read-through・ADR-0048。enum 値 "INDIVIDUAL" | "CONSUMABLE" | "SET"）。 */
   productCategory: string;
+  /**
+   * 商品の有効フラグ（read-through・ADR-0048）。無効構成商品のインライン警告を
+   * UI が状態導出するために用いる（ADR-0052）。
+   */
+  isActive: boolean;
   /** 商品名スナップショット（作成時凍結・§8）。 */
   itemName: string;
   sortOrder: number;

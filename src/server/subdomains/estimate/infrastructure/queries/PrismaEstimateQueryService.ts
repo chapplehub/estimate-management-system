@@ -284,6 +284,7 @@ export class PrismaEstimateQueryService implements EstimateQueryService {
       // read-through（ADR-0048）。product FK は onDelete 既定 Restrict のため常に解決する。
       productCode: i.product.code,
       productCategory: i.product.category,
+      isActive: i.product.isActive,
       itemName: i.itemName,
       sortOrder: i.sortOrder,
       quantity: i.quantity,

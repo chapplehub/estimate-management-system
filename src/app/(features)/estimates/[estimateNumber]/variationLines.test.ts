@@ -58,6 +58,7 @@ describe("fromLineDTO（既存明細 DTO → 作業行）", () => {
     productId: "prod-1",
     productCode: "P001",
     productCategory: "INDIVIDUAL",
+    isActive: true,
     itemName: "商品A",
     sortOrder: 1,
     quantity: 2,
