@@ -104,7 +104,13 @@ export class PrismaEstimateQueryService implements EstimateQueryService {
       take: options?.limit,
       skip: options?.offset,
     });
-    return rows.map((row) => PrismaEstimateQueryService.toSummaryDTO(row));
+    // variations が空の行はマップ前に除外する。本番は集約不変条件（最低1バリエーション）で
+    // 常に length >= 1 のため無影響だが、(1) 共有 dev DB のテスト並行実行で他テストの一過性
+    // 空行を読んでも代表選択 throw に踏まないための堅牢化、(2) activeStatus="INACTIVE" の
+    // none フィルタが variations 0 件の行に vacuously マッチするエッジの封じ込め、を兼ねる。
+    return rows
+      .filter((row) => row.variations.length > 0)
+      .map((row) => PrismaEstimateQueryService.toSummaryDTO(row));
   }
 
   /**
@@ -166,6 +172,7 @@ export class PrismaEstimateQueryService implements EstimateQueryService {
     const representative = e.variations.find((v) => v.status === "ACTIVE") ?? e.variations[0];
     if (!representative) {
       // 「最低 1 バリエーション」の集約不変条件により通常到達しない（データ破損時の防御）。
+      // search からは空行を事前除外済みのため、ここは findByEstimateNumber 等への保険。
       throw new Error(`見積 ${e.estimateNumber} に代表バリエーションが存在しません`);
     }
     return {
