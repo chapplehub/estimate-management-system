@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { updateVariationContentNodeSchema } from "./variationSchema";
+import { addVariationNodeSchema, updateVariationContentNodeSchema } from "./variationSchema";
 
 describe("updateVariationContentNodeSchema（セット群対応・判別子 union・S5）", () => {
   const lineNode = {
@@ -72,5 +72,33 @@ describe("updateVariationContentNodeSchema（セット群対応・判別子 unio
 
   it("数量0 などドメイン制約違反の明細は弾く（VO と整合の二重防御）", () => {
     expect(parseNodes([{ ...lineNode, quantity: 0 }]).success).toBe(false);
+  });
+});
+
+describe("addVariationNodeSchema（作成・提出区分付き・C3）", () => {
+  function parseCreate(overrides: Record<string, unknown> = {}) {
+    return addVariationNodeSchema.safeParse({
+      version: "1",
+      submissionType: "CUSTOMER",
+      overallDiscount: "0",
+      nodes: JSON.stringify([]),
+      ...overrides,
+    });
+  }
+
+  it("提出区分付きの有効な作成入力を通す（tracer bullet）", () => {
+    expect(parseCreate().success).toBe(true);
+  });
+
+  it("納品先向けの提出区分も通す", () => {
+    expect(parseCreate({ submissionType: "DELIVERY_LOCATION" }).success).toBe(true);
+  });
+
+  it("列挙外の提出区分を拒否する（CUSTOMER/DELIVERY_LOCATION のみ・ADR-0045）", () => {
+    expect(parseCreate({ submissionType: "FOO" }).success).toBe(false);
+  });
+
+  it("提出区分なしを拒否する（作成時に必ず選ぶ・回帰ガード）", () => {
+    expect(parseCreate({ submissionType: undefined }).success).toBe(false);
   });
 });
