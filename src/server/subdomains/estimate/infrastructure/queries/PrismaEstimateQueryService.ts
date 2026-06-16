@@ -87,22 +87,60 @@ export class PrismaEstimateQueryService implements EstimateQueryService {
   /**
    * 一覧用サマリ DTO を検索する（CQRS read model・ADR-0050）。
    *
-   * criteria は本 issue では空の受け皿（フィルタ未実装）。件数上限 take は呼び出し側が
-   * options.limit（＝presentation の LIST_FETCH_LIMIT）で渡す。infra から presentation 定数を
-   * import するとレイヤリングが逆転するため、ここでは保持しない（product の search と対称）。
+   * criteria（#349）は estimateNumber/customerName の部分一致・estimateType の等値・
+   * activeStatus（代表由来）の絞り込みを受け付ける（buildWhereClause を参照）。件数上限 take は
+   * 呼び出し側が options.limit（＝presentation の LIST_FETCH_LIMIT）で渡す。infra から
+   * presentation 定数を import するとレイヤリングが逆転するため、ここでは保持しない
+   * （product の search と対称）。
    */
   async search(
-    _criteria: EstimateSearchCriteria,
+    criteria: EstimateSearchCriteria,
     options?: EstimateListOptions
   ): Promise<EstimateSummaryDTO[]> {
     const rows = await prisma.estimate.findMany({
-      where: {},
+      where: PrismaEstimateQueryService.buildWhereClause(criteria),
       include: ESTIMATE_SUMMARY_INCLUDE,
       orderBy: PrismaEstimateQueryService.buildOrderBy(options),
       take: options?.limit,
       skip: options?.offset,
     });
     return rows.map((row) => PrismaEstimateQueryService.toSummaryDTO(row));
+  }
+
+  /**
+   * 検索条件から Prisma の where 句を組み立てる（#349・product の buildWhereClause と同型）。
+   * 指定フィールドのみ積み、未指定は絞り込まない（AND 合成。全未指定なら空＝全件）。
+   *
+   * activeStatus は代表バリエーション由来（ADR-0050）の導出値で単一カラムを持たないが、
+   * 代表選択「ACTIVE 優先の最小 → 無ければ全体の最小」の定義上、
+   * 「代表が ACTIVE」⟺「ACTIVE が 1 件以上存在」が厳密に成立する。よって some/none の
+   * リレーション存在判定として DB 側で絞り込める（mapper の find(ACTIVE) ?? [0] と同じ等価則）。
+   */
+  private static buildWhereClause(criteria: EstimateSearchCriteria): Prisma.EstimateWhereInput {
+    const where: Prisma.EstimateWhereInput = {};
+
+    if (criteria.estimateNumber) {
+      where.estimateNumber = { contains: criteria.estimateNumber, mode: "insensitive" };
+    }
+
+    if (criteria.customerName) {
+      // ADR-0013: リレーション先（得意先）の名前で絞り込む。
+      where.customer = { name: { contains: criteria.customerName, mode: "insensitive" } };
+    }
+
+    if (criteria.estimateType) {
+      where.estimateType = criteria.estimateType as Prisma.EnumEstimateTypeFilter;
+    }
+
+    if (criteria.activeStatus === "ACTIVE") {
+      // 代表が ACTIVE ⟺ ACTIVE バリエーションが 1 件以上存在（ADR-0050）。
+      where.variations = { some: { status: "ACTIVE" } };
+    } else if (criteria.activeStatus === "INACTIVE") {
+      // 代表が INACTIVE ⟺ ACTIVE バリエーションが 1 件も無い（全 INACTIVE）。
+      where.variations = { none: { status: "ACTIVE" } };
+    }
+
+    return where;
   }
 
   /**
