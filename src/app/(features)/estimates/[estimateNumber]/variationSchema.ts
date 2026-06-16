@@ -35,6 +35,44 @@ const lineSchema = z.object({
 
 export type VariationLineInput = z.infer<typeof lineSchema>;
 
+/**
+ * トップレベル明細ノード（往復形状 A・ADR-0047）。通常明細は lineSchema ＋ 判別子 kind="line"。
+ */
+const lineNodeSchema = lineSchema.extend({ kind: z.literal("line") });
+
+/**
+ * セット群ノード（ADR-0047）。構成明細を入れ子の components で持つ。群自身は価格・並び順を持たない。
+ * components は `.min(1)` で空群を**第一防御**として弾く（空群禁止はドメインでも担保される二重防御）。
+ */
+const setGroupNodeSchema = z.object({
+  kind: z.literal("setGroup"),
+  productId: z.string().min(1, "セット商品を選択してください"),
+  itemName: z.string().min(1, "セット商品名が空です"),
+  unit: z.string().min(1, "単位が空です"),
+  customerMemo: z.string().optional(),
+  internalMemo: z.string().optional(),
+  components: z.array(lineSchema).min(1, "セットは最低1件の構成明細が必要です"),
+});
+
+/** トップレベルノード（通常明細 or セット群）。判別子 kind で分岐する。 */
+const nodeSchema = z.discriminatedUnion("kind", [lineNodeSchema, setGroupNodeSchema]);
+
+export type VariationNodeInput = z.infer<typeof nodeSchema>;
+export type VariationSetGroupNodeInput = z.infer<typeof setGroupNodeSchema>;
+
+/** ノード配列フィールド: JSON 文字列をパースして判別子 union 配列へ pipe する（ADR-0050）。空配列許可。 */
+const nodesField = z
+  .string()
+  .transform((s, ctx) => {
+    try {
+      return JSON.parse(s);
+    } catch {
+      ctx.addIssue({ code: "custom", message: "明細データが不正です" });
+      return z.NEVER;
+    }
+  })
+  .pipe(z.array(nodeSchema));
+
 /** 明細配列フィールド: JSON 文字列をパースして配列スキーマへ pipe する（ADR-0050）。空配列を許可。 */
 const linesField = z
   .string()
@@ -61,3 +99,18 @@ export const updateVariationContentSchema = z.object({
 });
 
 export type UpdateVariationContentFormInput = z.infer<typeof updateVariationContentSchema>;
+
+/**
+ * セット群対応版のバリ内容編集スキーマ（S5）。明細フィールドを判別子 union のノード配列にした以外は
+ * {@link updateVariationContentSchema} と同型。フォーム配線（Step 7）でこちらへ切り替える。
+ */
+export const updateVariationContentNodeSchema = z.object({
+  version: z.coerce.number().int(),
+  variationId: z.string().min(1, "バリエーションが特定できません"),
+  overallDiscount: z.coerce.number().min(0, "全体値引は0以上で入力してください"),
+  customerMemo: z.string().optional(),
+  internalMemo: z.string().optional(),
+  nodes: nodesField,
+});
+
+export type UpdateVariationContentNodeFormInput = z.infer<typeof updateVariationContentNodeSchema>;

@@ -77,10 +77,12 @@ describe("fromLineDTO（既存明細 DTO → 作業行）", () => {
     const line = fromLineDTO(dto);
 
     expect(line).toEqual({
+      kind: "line",
       rowId: "item-9",
       productId: "prod-1",
       productCode: "P001",
       productCategory: "INDIVIDUAL",
+      isActive: true,
       itemName: "商品A",
       unit: "個",
       quantity: 2,
