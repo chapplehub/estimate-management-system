@@ -24,6 +24,7 @@ export {
   EstimateFactory,
   type EstimateFactoryInput,
   type EstimateItemDescriptor,
+  type EstimateSetGroupDescriptor,
   type EstimateVariationDescriptor,
   type VariationContentDescriptor,
   type RepairDetailDescriptor,

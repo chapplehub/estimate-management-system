@@ -9,11 +9,14 @@ import {
   EstimateFactory,
   type AfterRepairDetailDescriptor,
   type EstimateItemDescriptor,
+  type EstimateSetGroupDescriptor,
   type EstimateVariationDescriptor,
   type RepairDetailDescriptor,
 } from "@subdomains/estimate/domain/entities";
 import { EstimateNumberIssuer } from "@subdomains/estimate/domain/repositories/EstimateNumberIssuer";
 import { EstimateRepository } from "@subdomains/estimate/domain/repositories/EstimateRepository";
+import { ProductQueryService } from "@subdomains/product/application/queries/ProductQueryService";
+import { assertSetComponentsValid } from "../shared/assertSetComponentsValid";
 import { EmergencyReason } from "@subdomains/estimate/domain/values/EmergencyReason";
 import { EstimateType } from "@subdomains/estimate/domain/values/EstimateType";
 import { FaultDescription } from "@subdomains/estimate/domain/values/FaultDescription";
@@ -43,12 +46,28 @@ export type CreateEstimateItemInput = {
   revisedDeliveryPrice?: number | null;
 };
 
+/**
+ * セット群の入力（プリミティブ。ADR-0047）。構成明細を入れ子の `components` で持つ。
+ * C1 は app/factory/domain 層まで配線（seed/テストでセット付き見積を生成可能）。create 画面 UI は #351。
+ */
+export type CreateEstimateSetGroupInput = {
+  productId: string;
+  itemName: string;
+  unit: string;
+  components: CreateEstimateItemInput[];
+  customerMemo?: string | null;
+  internalMemo?: string | null;
+};
+
 /** バリエーションの入力（プリミティブ）。 */
 export type CreateEstimateVariationInput = {
   variationNumber: number;
   /** 提出区分（"CUSTOMER" / "DELIVERY_LOCATION"）。バリエーション単位の不変属性（ADR-0045） */
   submissionType: string;
+  /** 通常明細（非セット）。構成明細は setGroups の入れ子側に持つ。 */
   items: CreateEstimateItemInput[];
+  /** セット群（ADR-0047）。省略時は空。 */
+  setGroups?: CreateEstimateSetGroupInput[];
   overallDiscount?: number;
   customerMemo?: string | null;
   internalMemo?: string | null;
@@ -101,7 +120,12 @@ export type CreateEstimateInput = {
 export class CreateEstimateCommand {
   constructor(
     private readonly estimateRepository: EstimateRepository,
-    private readonly numberIssuer: EstimateNumberIssuer
+    private readonly numberIssuer: EstimateNumberIssuer,
+    /**
+     * セット構成のライブ区分・有効性検証（ADR-0052）用の商品クエリ。
+     * セット群を含まない既存の作成経路では未使用のため任意注入とし、後方互換を保つ。
+     */
+    private readonly productQueryService?: ProductQueryService
   ) {}
 
   async execute(input: CreateEstimateInput): Promise<Estimate> {
@@ -136,6 +160,14 @@ export class CreateEstimateCommand {
       afterRepairDetail,
     });
 
+    // 3.5 セット構成のライブ区分・有効性検証（ADR-0052・ペイロード防御）。
+    // 商品クエリが注入されている場合のみ実行（セット群を含まない既存経路は後方互換でスキップ）。
+    if (this.productQueryService) {
+      for (const variation of estimate.variations) {
+        await assertSetComponentsValid(variation, this.productQueryService);
+      }
+    }
+
     // 4. 永続化（採番衝突時は ConflictError が infrastructure 層から bubble する）
     return await this.estimateRepository.insert(estimate);
   }
@@ -147,6 +179,7 @@ export class CreateEstimateCommand {
       variationNumber: variation.variationNumber,
       submissionType: SubmissionType.from(variation.submissionType),
       items: variation.items.map((item) => this.toItemDescriptor(item)),
+      setGroups: variation.setGroups?.map((group) => this.toSetGroupDescriptor(group)),
       overallDiscount:
         variation.overallDiscount != null
           ? Money.fromMajorUnits(variation.overallDiscount)
@@ -155,6 +188,17 @@ export class CreateEstimateCommand {
         variation.customerMemo != null ? Memo.create(variation.customerMemo) : undefined,
       internalMemo:
         variation.internalMemo != null ? Memo.create(variation.internalMemo) : undefined,
+    };
+  }
+
+  private toSetGroupDescriptor(group: CreateEstimateSetGroupInput): EstimateSetGroupDescriptor {
+    return {
+      productId: new ProductId(group.productId),
+      itemName: new ItemName(group.itemName),
+      unit: new Unit(group.unit),
+      components: group.components.map((item) => this.toItemDescriptor(item)),
+      customerMemo: group.customerMemo != null ? Memo.create(group.customerMemo) : undefined,
+      internalMemo: group.internalMemo != null ? Memo.create(group.internalMemo) : undefined,
     };
   }
 

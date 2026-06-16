@@ -26,6 +26,12 @@
 - **実際の対応**: C1 `CreateEstimate` は analysis 01 のとおり**詳細画面の対象外（新規作成は別画面）**。S5 では C1 を **app/factory/domain 層まで**配線（`EstimateVariationDescriptor` / `buildVariation` に setGroups を通す）するが、**create 画面 UI は作らない**（issue **#351** へ）。S5 の UI は C4（`VariationEditForm`）のみ。
 - **逸脱の理由**: create 画面は未実装の別スライス。ドメイン/ファクトリの対称性は保ちつつ（seed/テストでセット付き見積を生成可能）、UI は別 issue に切り出す。
 
+## 5. `VariationContentInput` は nodes union ではなく items + setGroups（後方互換）
+
+- **元の計画**: Step 3 で「`VariationContentInput` を `nodes: (line | setGroup)` union へ変更」。
+- **実際の対応**: app 入力境界（`VariationContentInput`）は **nodes union にせず**、ドメイン記述子と同形の `items: EstimateItemInput[]` ＋ オプショナルな `setGroups: EstimateSetGroupInput[]`（構成を入れ子）に拡張した（既存 `items` を保持＝後方互換）。トップレベル判別子 union は設計コミットメントどおり**作業コピー／JSON（プレゼン層・Step 6）**に置く。
+- **逸脱の理由**: `VariationContentInput` は C4 だけでなく **C3（AddVariation・S5 スコープ外）** も使う共有型。これを union へ破壊的変更すると C3 を巻き込みスコープが肥大する。設計判断「往復形状 A」が union を約束したのは「作業コピー／JSON」であり（本ファイル §補足）、app 境界の表現は設計コミットメントの対象外。items+setGroups はドメイン記述子（Step 1）と 1:1 で対応し、`toVariationContentDescriptor` を単純化する。
+
 ## 補足: 逸脱ではない継続事項
 
 - **JSON 往復の入れ子化（採用 (A)）**: 作業コピー／JSON を `(LineNode | SetGroupNode)[]` のトップレベル判別子 union とし、`SetGroupNode` が `components` を内包。これは ADR-0050 が「S5 も同じ往復方式を継承・セット群表現を JSON に拡張する想定」と明記した路線の具体化であり、逸脱ではない。
