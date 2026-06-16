@@ -597,4 +597,68 @@ describe("EstimateVariation", () => {
       expect(v.setGroups).toHaveLength(1);
     });
   });
+
+  describe("replaceContent とセット群（C4 全置換）", () => {
+    it("セット群も新セットで全置換され、構成明細が二重計上されない", () => {
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items: [makeItem({ unitPrice: 1000 })],
+      });
+      expect(v.setGroups).toHaveLength(0);
+
+      const m1 = makeItem({ unitPrice: 1000 });
+      const m2 = makeItem({ unitPrice: 500 });
+      v.replaceContent(
+        {
+          items: [m1, m2],
+          setGroups: [makeSetGroup([m1, m2])],
+        },
+        TAX
+      );
+
+      expect(v.setGroups).toHaveLength(1);
+      // 1000 + 500 = 1500（群は _items に行を持たないため二重計上なし）
+      expect(v.subtotal.equals(Money.fromMajorUnits(1500))).toBe(true);
+    });
+
+    it("置換後のセット群でも参照整合が再検証される（孤児構成はエラー）", () => {
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items: [makeItem({ unitPrice: 1000 })],
+      });
+
+      const inItem = makeItem({ unitPrice: 1000 });
+      const orphan = makeItem({ unitPrice: 500 }); // items に含めない
+
+      expect(() =>
+        v.replaceContent(
+          {
+            items: [inItem],
+            setGroups: [makeSetGroup([inItem, orphan])],
+          },
+          TAX
+        )
+      ).toThrow("参照整合");
+    });
+
+    it("セット群を省略すると既存のセット群がクリアされる", () => {
+      const m1 = makeItem({ unitPrice: 1000 });
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items: [m1],
+        setGroups: [makeSetGroup([m1])],
+      });
+      expect(v.setGroups).toHaveLength(1);
+
+      v.replaceContent({ items: [makeItem({ unitPrice: 2000 })] }, TAX);
+
+      expect(v.setGroups).toHaveLength(0);
+    });
+  });
 });

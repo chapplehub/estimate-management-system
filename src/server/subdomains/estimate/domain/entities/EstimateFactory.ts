@@ -20,6 +20,7 @@ import { EstimateVariationId } from "../values/EstimateVariationId";
 import { AfterRepairEstimateDetail } from "./AfterRepairEstimateDetail";
 import { Estimate } from "./Estimate";
 import { EstimateItem } from "./EstimateItem";
+import { EstimateSetGroup } from "./EstimateSetGroup";
 import { EstimateVariation, type TaxContext, type VariationContent } from "./EstimateVariation";
 import { RepairEstimateDetail } from "./RepairEstimateDetail";
 import { RevisedEstimateItemDetail } from "./RevisedEstimateItemDetail";
@@ -54,12 +55,35 @@ export type EstimateItemDescriptor = {
   revisedDeliveryPrice?: Money | null;
 };
 
+/**
+ * セット群の記述子（ADR-0047 / Shape ③-a）。構成明細を入れ子の `components` で持つ。
+ *
+ * **入れ子の理由（会員解決）**: 構成明細は `EstimateItem.create` で初めて id が確定するため、
+ * 記述子の段階では「どの構成明細がこの群に属すか」を id では参照できない。群に構成明細を
+ * 入れ子で持たせることで、ファクトリが構成を構築 → 生成 id を捕捉 → 群へ配線できる。
+ * これは読み取り DTO（`SetGroupDTO.components`）・作業コピー（往復形状 A）と対称。
+ */
+export type EstimateSetGroupDescriptor = {
+  productId: ProductId;
+  /** 商品名スナップショット（SET 商品マスタからの複写）。 */
+  itemName: ItemName;
+  /** 単位スナップショット。 */
+  unit: Unit;
+  /** 構成明細（入れ子）。空配列は不可（空群禁止は EstimateSetGroup.create が担保）。 */
+  components: EstimateItemDescriptor[];
+  customerMemo?: Memo;
+  internalMemo?: Memo;
+};
+
 /** バリエーションの記述子（値オブジェクト止まり）。 */
 export type EstimateVariationDescriptor = {
   variationNumber: number;
   /** 提出区分（ADR-0045: バリエーション単位の不変保存属性。記述子ごとに指定する） */
   submissionType: SubmissionType;
+  /** 通常明細（非セット）の記述子。構成明細は setGroups の入れ子側に持つ。 */
   items: EstimateItemDescriptor[];
+  /** セット群（ADR-0047）。各群が構成明細を入れ子で持つ。省略時は空。 */
+  setGroups?: EstimateSetGroupDescriptor[];
   overallDiscount?: Money;
   customerMemo?: Memo;
   internalMemo?: Memo;
@@ -214,8 +238,12 @@ export class EstimateFactory {
    * 内容を組み立てるための入口（集約境界規約）。採番・差替えは集約ルートの責務。
    */
   static buildVariationContent(content: VariationContentDescriptor): VariationContent {
+    const normalItems = content.items.map((item) => EstimateFactory.buildItem(item));
+    const { groups, componentItems } = EstimateFactory.buildSetGroups(content.setGroups ?? []);
     return {
-      items: content.items.map((item) => EstimateFactory.buildItem(item)),
+      // 価格付き末端行（通常明細＋構成明細）を 1 配列に同居させる（ADR-0047）。
+      items: [...normalItems, ...componentItems],
+      setGroups: groups,
       overallDiscount: content.overallDiscount,
       customerMemo: content.customerMemo,
       internalMemo: content.internalMemo,
@@ -226,16 +254,49 @@ export class EstimateFactory {
     variation: EstimateVariationDescriptor,
     tax: TaxContext
   ): EstimateVariation {
-    const items = variation.items.map((item) => EstimateFactory.buildItem(item));
+    const normalItems = variation.items.map((item) => EstimateFactory.buildItem(item));
+    const { groups, componentItems } = EstimateFactory.buildSetGroups(variation.setGroups ?? []);
     return EstimateVariation.create({
       variationNumber: variation.variationNumber,
       submissionType: variation.submissionType,
       tax,
-      items,
+      items: [...normalItems, ...componentItems],
+      setGroups: groups,
       overallDiscount: variation.overallDiscount,
       customerMemo: variation.customerMemo,
       internalMemo: variation.internalMemo,
     });
+  }
+
+  /**
+   * セット群記述子（入れ子の構成明細を持つ）から、群エンティティと平坦化した構成明細を構築する。
+   *
+   * **会員解決**: 構成明細を先に `EstimateItem.create` して id を確定させ、その id を群の
+   * `memberItemIds` へ配線する。群は実体ではなく順序付き id のみを保持し（案2-α）、構成明細の
+   * 実体は呼び出し側が `_items` へ同居させる。これにより `estimate_items` 1 表＋薄い衛星＋
+   * 所属交差表（ADR-0047）の形が、入れ子記述子から組み上がる。
+   */
+  private static buildSetGroups(descriptors: EstimateSetGroupDescriptor[]): {
+    groups: EstimateSetGroup[];
+    componentItems: EstimateItem[];
+  } {
+    const groups: EstimateSetGroup[] = [];
+    const componentItems: EstimateItem[] = [];
+    for (const descriptor of descriptors) {
+      const components = descriptor.components.map((c) => EstimateFactory.buildItem(c));
+      componentItems.push(...components);
+      groups.push(
+        EstimateSetGroup.create({
+          productId: descriptor.productId,
+          itemName: descriptor.itemName,
+          unit: descriptor.unit,
+          memberItemIds: components.map((c) => c.id),
+          customerMemo: descriptor.customerMemo,
+          internalMemo: descriptor.internalMemo,
+        })
+      );
+    }
+    return { groups, componentItems };
   }
 
   private static buildItem(item: EstimateItemDescriptor): EstimateItem {
