@@ -87,22 +87,66 @@ export class PrismaEstimateQueryService implements EstimateQueryService {
   /**
    * 一覧用サマリ DTO を検索する（CQRS read model・ADR-0051）。
    *
-   * criteria は本 issue では空の受け皿（フィルタ未実装）。件数上限 take は呼び出し側が
-   * options.limit（＝presentation の LIST_FETCH_LIMIT）で渡す。infra から presentation 定数を
-   * import するとレイヤリングが逆転するため、ここでは保持しない（product の search と対称）。
+   * criteria（#349）は estimateNumber/customerName の部分一致・estimateType の等値・
+   * activeStatus（代表由来）の絞り込みを受け付ける（buildWhereClause を参照）。件数上限 take は
+   * 呼び出し側が options.limit（＝presentation の LIST_FETCH_LIMIT）で渡す。infra から
+   * presentation 定数を import するとレイヤリングが逆転するため、ここでは保持しない
+   * （product の search と対称）。
    */
   async search(
-    _criteria: EstimateSearchCriteria,
+    criteria: EstimateSearchCriteria,
     options?: EstimateListOptions
   ): Promise<EstimateSummaryDTO[]> {
     const rows = await prisma.estimate.findMany({
-      where: {},
+      where: PrismaEstimateQueryService.buildWhereClause(criteria),
       include: ESTIMATE_SUMMARY_INCLUDE,
       orderBy: PrismaEstimateQueryService.buildOrderBy(options),
       take: options?.limit,
       skip: options?.offset,
     });
-    return rows.map((row) => PrismaEstimateQueryService.toSummaryDTO(row));
+    // variations が空の行はマップ前に除外する。本番は集約不変条件（最低1バリエーション）で
+    // 常に length >= 1 のため無影響だが、(1) 共有 dev DB のテスト並行実行で他テストの一過性
+    // 空行を読んでも代表選択 throw に踏まないための堅牢化、(2) activeStatus="INACTIVE" の
+    // none フィルタが variations 0 件の行に vacuously マッチするエッジの封じ込め、を兼ねる。
+    return rows
+      .filter((row) => row.variations.length > 0)
+      .map((row) => PrismaEstimateQueryService.toSummaryDTO(row));
+  }
+
+  /**
+   * 検索条件から Prisma の where 句を組み立てる（#349・product の buildWhereClause と同型）。
+   * 指定フィールドのみ積み、未指定は絞り込まない（AND 合成。全未指定なら空＝全件）。
+   *
+   * activeStatus は代表バリエーション由来（ADR-0051）の導出値で単一カラムを持たないが、
+   * 代表選択「ACTIVE 優先の最小 → 無ければ全体の最小」の定義上、
+   * 「代表が ACTIVE」⟺「ACTIVE が 1 件以上存在」が厳密に成立する。よって some/none の
+   * リレーション存在判定として DB 側で絞り込める（mapper の find(ACTIVE) ?? [0] と同じ等価則）。
+   */
+  private static buildWhereClause(criteria: EstimateSearchCriteria): Prisma.EstimateWhereInput {
+    const where: Prisma.EstimateWhereInput = {};
+
+    if (criteria.estimateNumber) {
+      where.estimateNumber = { contains: criteria.estimateNumber, mode: "insensitive" };
+    }
+
+    if (criteria.customerName) {
+      // ADR-0013: リレーション先（得意先）の名前で絞り込む。
+      where.customer = { name: { contains: criteria.customerName, mode: "insensitive" } };
+    }
+
+    if (criteria.estimateType) {
+      where.estimateType = criteria.estimateType as Prisma.EnumEstimateTypeFilter;
+    }
+
+    if (criteria.activeStatus === "ACTIVE") {
+      // 代表が ACTIVE ⟺ ACTIVE バリエーションが 1 件以上存在（ADR-0051）。
+      where.variations = { some: { status: "ACTIVE" } };
+    } else if (criteria.activeStatus === "INACTIVE") {
+      // 代表が INACTIVE ⟺ ACTIVE バリエーションが 1 件も無い（全 INACTIVE）。
+      where.variations = { none: { status: "ACTIVE" } };
+    }
+
+    return where;
   }
 
   /**
@@ -128,6 +172,7 @@ export class PrismaEstimateQueryService implements EstimateQueryService {
     const representative = e.variations.find((v) => v.status === "ACTIVE") ?? e.variations[0];
     if (!representative) {
       // 「最低 1 バリエーション」の集約不変条件により通常到達しない（データ破損時の防御）。
+      // search からは空行を事前除外済みのため、ここは findByEstimateNumber 等への保険。
       throw new Error(`見積 ${e.estimateNumber} に代表バリエーションが存在しません`);
     }
     return {
