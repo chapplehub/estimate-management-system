@@ -2,7 +2,7 @@
  * 見積一覧画面（フロントは別 issue）が依存する軽量 read model DTO（CQRS）。
  *
  * 一覧の 1 行 = 見積 1 件（Estimate 単位）。金額・状態は「代表バリエーション」
- * （ACTIVE 優先の最小 variationNumber → 無ければ全体の最小・ADR-0050）の値を載せる。
+ * （ACTIVE 優先の最小 variationNumber → 無ければ全体の最小・ADR-0051）の値を載せる。
  * 詳細用 EstimateDetailDTO は全リレーションを eager load して重いので一覧には流用しない。
  */
 export type EstimateSummaryDTO = {
@@ -20,9 +20,9 @@ export type EstimateSummaryDTO = {
   creatorCode: string;
   creatorName: string;
 
-  /** 代表バリエーションの最終合計金額（永続集計・ADR-0033 / ADR-0050）。 */
+  /** 代表バリエーションの最終合計金額（永続集計・ADR-0033 / ADR-0051）。 */
   finalTotal: number;
-  /** 代表バリエーションの有効/無効（"ACTIVE" | "INACTIVE"・ADR-0050）。 */
+  /** 代表バリエーションの有効/無効（"ACTIVE" | "INACTIVE"・ADR-0051）。 */
   activeStatus: string;
   /**
    * 表示ステータス（進行状態の導出値・設計書 §1.3）。本 issue では常に null（場所だけ予約）。

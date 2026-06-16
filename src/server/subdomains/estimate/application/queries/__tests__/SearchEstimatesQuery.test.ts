@@ -13,7 +13,7 @@ import { SearchEstimatesQuery } from "../SearchEstimatesQuery";
 
 // 予約済みテスト見積番号（接頭辞 N + 年度 99 + 連番 0200x）。
 // GetEstimateDetailQuery（0100x）/ PrismaEstimateRepository（0000x〜00099）と別レンジを使い、
-// 共有 dev DB での並行実行衝突を避ける（ADR-0050 / 計画 Q9）。search は空条件＝全件返すため、
+// 共有 dev DB での並行実行衝突を避ける（ADR-0051 / 計画 Q9）。search は空条件＝全件返すため、
 // 返り値はこの予約レンジで後フィルタして他データから隔離する。
 const EN = {
   repAllActive: "N9902001",
@@ -122,7 +122,7 @@ describe("SearchEstimatesQuery", () => {
     });
   });
 
-  describe("代表バリエーション選択（ADR-0050・2 段階フォールバック）", () => {
+  describe("代表バリエーション選択（ADR-0051・2 段階フォールバック）", () => {
     it("全 ACTIVE → 最小 variationNumber の値を代表にする", async () => {
       await createEstimate(EN.repAllActive, {
         variationNumbers: [1, 2, 3],
@@ -162,7 +162,7 @@ describe("SearchEstimatesQuery", () => {
     });
   });
 
-  describe("並び順（ADR-0050・Estimate 自身の列のみ）", () => {
+  describe("並び順（ADR-0051・Estimate 自身の列のみ）", () => {
     it("既定は deadline 昇順（多段既定 [deadline, createdAt, estimateNumber]）", async () => {
       await createEstimate(EN.order1, { deadline: new Date("2025-06-10T00:00:00.000Z") });
       await createEstimate(EN.order2, { deadline: new Date("2025-05-01T00:00:00.000Z") });

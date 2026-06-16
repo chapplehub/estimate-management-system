@@ -7,7 +7,7 @@ export function getEstimateDetailQueryFactory(): GetEstimateDetailQuery {
   return new GetEstimateDetailQuery(new PrismaEstimateQueryService());
 }
 
-/** 見積一覧取得クエリを組み立てる。代表選択・名前解決は PrismaEstimateQueryService に閉じる（ADR-0050）。 */
+/** 見積一覧取得クエリを組み立てる。代表選択・名前解決は PrismaEstimateQueryService に閉じる（ADR-0051）。 */
 export function searchEstimatesQueryFactory(): SearchEstimatesQuery {
   return new SearchEstimatesQuery(new PrismaEstimateQueryService());
 }

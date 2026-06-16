@@ -14,7 +14,7 @@ export interface EstimateQueryService {
 
   /**
    * 一覧用の軽量サマリ DTO を検索する。1 行 = 見積 1 件（Estimate 単位）で、
-   * 金額・状態は代表バリエーション由来（ADR-0050）。本 issue では criteria は空の受け皿。
+   * 金額・状態は代表バリエーション由来（ADR-0051）。本 issue では criteria は空の受け皿。
    */
   search(
     criteria: EstimateSearchCriteria,
