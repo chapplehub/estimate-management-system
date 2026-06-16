@@ -717,6 +717,18 @@ async function main() {
     },
   });
 
+  // S5 セット構成（SetProductComponent・ADR-0047）。SET 商品 PRD005 = 標準デスク + オフィスチェア。
+  // 自動展開（expandSetComponents）が構成を引けるようにする（E2E のセット追加フロー）。
+  const setProduct = await prisma.product.findUniqueOrThrow({ where: { code: "PRD005" } });
+  const deskComponent = await prisma.product.findUniqueOrThrow({ where: { code: "PRD001" } });
+  const chairComponent = await prisma.product.findUniqueOrThrow({ where: { code: "PRD002" } });
+  await prisma.setProductComponent.createMany({
+    data: [
+      { setProductId: setProduct.id, componentProductId: deskComponent.id, quantity: 1 },
+      { setProductId: setProduct.id, componentProductId: chairComponent.id, quantity: 1 },
+    ],
+  });
+
   // 消費税率マスタを作成（§8.7 の保存時税率一致チェックが参照する）。
   // 8%(2014-04-01〜) / 10%(2019-10-01〜)。見積編集（C2）の税率解決に必須。
   for (const tr of TAX_RATES) {

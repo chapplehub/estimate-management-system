@@ -7,14 +7,16 @@
  *   ※ 計画は PrismaEstimateRepository.save() を想定していたが、repository は @server/prisma
  *     シングルトン（別 DB）を使うため seed では使えない。EstimateMapper 経由に置き換えた。
  *
- * セット群は S5（セット編集スライス）へ先送り（本スライスではドメインに群生成の公開経路が
- * 無いため・deviations.md 参照）。改訂は明細の revisedDeliveryPrice スナップショットのみで表現する。
+ * セット群（ADR-0047）は S5 で追加した（buildSetGroupEstimate）。群ヘッダは toEstimateCreateInput の
+ * ネスト create、所属交差表は estimate_items 作成後に別 createMany で書く（Mapper の順序制約）。
+ * 改訂は明細の revisedDeliveryPrice スナップショットのみで表現する。
  */
 import type { PrismaClient } from "../generated/prisma/client";
 import { ProductCategory } from "../generated/prisma/enums";
 import {
   EstimateFactory,
   type EstimateItemDescriptor,
+  type EstimateSetGroupDescriptor,
   type EstimateVariationDescriptor,
 } from "@subdomains/estimate/domain/entities/EstimateFactory";
 import { EstimateMapper } from "@subdomains/estimate/infrastructure/mappers/EstimateMapper";
@@ -44,6 +46,8 @@ export const SEED_ESTIMATE_NUMBERS = {
   repair: "R9905001",
   /** S3 改訂ロック表示の E2E 用（得意先改訂済み＝hasRevision）。 */
   revised: "N9905004",
+  /** S5 セット群編集の E2E 用（セット群1＋通常明細1・非改訂 ACTIVE＝編集対象）。 */
+  setGroup: "N9905005",
 } as const;
 
 /** 見積が参照する FK マスタ（呼び出し側 seed の作成済みデータから解決した ID）。 */
@@ -54,6 +58,8 @@ type EstimateSeedFk = {
   createdBy: string;
   productAId: string;
   productBId: string;
+  /** セット群（ADR-0047）の群ヘッダに使う SET 区分商品。構成は productA/B（個別）を使う。 */
+  setProductId: string;
 };
 
 const TAX_RATE = new TaxRate(0.1);
@@ -214,7 +220,35 @@ function buildAllInactiveEstimate(fk: EstimateSeedFk) {
 }
 
 /**
- * 既存の作成済みマスタ（納品先・部署・従業員・個別商品×2）を参照して見積を作成する。
+ * S5 セット群編集 E2E 用の NEW 見積（ADR-0047）。構成2件のセット群1つ＋通常明細1件。非改訂 ACTIVE。
+ * 群ヘッダは SET 商品、構成は個別商品（productA/B）。表示位置・金額は構成から導出される。
+ */
+function buildSetGroupEstimate(fk: EstimateSeedFk) {
+  const setGroup: EstimateSetGroupDescriptor = {
+    productId: new ProductId(fk.setProductId),
+    itemName: new ItemName("デスクセット一式"),
+    unit: new Unit("式"),
+    components: [
+      mkItem(fk.productAId, 1, "構成: デスク", 1, 3000),
+      mkItem(fk.productBId, 2, "構成: チェア", 1, 1500),
+    ],
+  };
+  return EstimateFactory.create({
+    ...header(fk),
+    estimateNumber: EstimateNumber.parse(SEED_ESTIMATE_NUMBERS.setGroup),
+    variations: [
+      {
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        items: [mkItem(fk.productAId, 3, "通常明細", 1, 2000)],
+        setGroups: [setGroup],
+      },
+    ],
+  });
+}
+
+/**
+ * 既存の作成済みマスタ（納品先・部署・従業員・個別商品×2・SET 商品×1）を参照して見積を作成する。
  * FK は findFirst の決定的順序で解決し、特定コードへ結合しない（dev/e2e 双方で再利用するため）。
  */
 export async function seedEstimates(prisma: PrismaClient): Promise<number> {
@@ -226,10 +260,15 @@ export async function seedEstimates(prisma: PrismaClient): Promise<number> {
     orderBy: { code: "asc" },
     take: 2,
   });
+  // セット群の群ヘッダに使う有効な SET 商品（決定的順序）。
+  const setProduct = await prisma.product.findFirst({
+    where: { category: ProductCategory.SET, isActive: true },
+    orderBy: { code: "asc" },
+  });
 
-  if (!deliveryLocation || !department || !employee || products.length < 2) {
+  if (!deliveryLocation || !department || !employee || products.length < 2 || !setProduct) {
     throw new Error(
-      "seedEstimates: 前提マスタ（納品先・部署・従業員・個別商品×2）が不足しています"
+      "seedEstimates: 前提マスタ（納品先・部署・従業員・個別商品×2・SET 商品×1）が不足しています"
     );
   }
 
@@ -241,6 +280,7 @@ export async function seedEstimates(prisma: PrismaClient): Promise<number> {
     createdBy: employee.id,
     productAId: products[0].id,
     productBId: products[1].id,
+    setProductId: setProduct.id,
   };
 
   const estimates = [
@@ -250,9 +290,18 @@ export async function seedEstimates(prisma: PrismaClient): Promise<number> {
     buildRepairSeedEstimate(fk),
   ];
   for (const estimate of estimates) {
-    // セット群なし → 所属交差表の createMany は不要。
+    // 上記はセット群なし → 所属交差表の createMany は不要。
     await prisma.estimate.create({ data: EstimateMapper.toEstimateCreateInput(estimate) });
   }
+
+  // セット群付き見積（S5）: 群ヘッダはネスト create、所属交差表は estimate_items 作成後に別 createMany。
+  const setGroupEstimate = buildSetGroupEstimate(fk);
+  await prisma.estimate.create({
+    data: EstimateMapper.toEstimateCreateInput(setGroupEstimate),
+  });
+  await prisma.estimateSetComponent.createMany({
+    data: EstimateMapper.toSetComponentCreateManyInput(setGroupEstimate),
+  });
 
   // 改訂済み見積（hasRevision）: 見積本体を作成後、改訂系譜行を別途書く
   // （toEstimateCreateInput は系譜を出さない・insert 経路と同じ・ADR-0044）。
@@ -265,5 +314,6 @@ export async function seedEstimates(prisma: PrismaClient): Promise<number> {
     });
   }
 
-  return estimates.length + 1;
+  // estimates（4）＋ セット群付き（1）＋ 改訂済み（1）。
+  return estimates.length + 2;
 }
