@@ -9,6 +9,7 @@ import {
   searchProductsQueryFactory,
 } from "@subdomains/product/application/factories/productQueryFactory";
 import type { CompanyRow, ProductSelectionRow } from "./selectionColumns";
+import { toExpandedSetGroup, type ExpandedSetGroup } from "./setComponentExpansion";
 
 /** 明細追加で固定表示する商品スナップショット（id/コード/名称/区分/単位）。 */
 export type ProductLineSnapshot = {
@@ -149,4 +150,31 @@ export async function getProductSuggestions(productId: string): Promise<Suggeste
   );
 
   return resolved.filter((s): s is SuggestedProduct => s !== null);
+}
+
+/**
+ * SET 商品を選んだとき、その構成（SetProductComponent）をセット群スナップショットへ自動展開する
+ * （ADR-0047・計画 自動展開 B）。構成定義（code/name/category/quantity）に加え、構成商品本体を
+ * findById して単位・有効性を補う。**無効構成も捨てない**（セット定義そのもの・周辺サジェストと非対称）。
+ *
+ * SET でない商品 id が渡されたら null（呼び出し側は通常明細として扱う）。単価は要入力のため
+ * ここでは持たせず、UI が 0 初期化する。
+ */
+export async function expandSetComponents(productId: string): Promise<ExpandedSetGroup | null> {
+  await verifySession();
+
+  const setProduct = await getProductByIdQueryFactory().execute({ id: productId });
+  if (!setProduct) {
+    return null;
+  }
+
+  // 構成商品本体を解決して単位・有効性を補う（構成定義は unit/isActive を持たない）。
+  const resolvedList = await Promise.all(
+    setProduct.setComponents.map((component) =>
+      getProductByIdQueryFactory().execute({ id: component.componentProductId })
+    )
+  );
+  const byId = new Map(resolvedList.filter((p) => p !== null).map((p) => [p.id, p]));
+
+  return toExpandedSetGroup(setProduct, (id) => byId.get(id) ?? null);
 }
