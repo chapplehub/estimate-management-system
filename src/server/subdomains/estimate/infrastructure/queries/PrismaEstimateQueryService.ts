@@ -60,6 +60,8 @@ type SetGroupRow = VariationRow["setGroups"][number];
  */
 const ESTIMATE_SUMMARY_INCLUDE = {
   customer: { select: { code: true, name: true } },
+  // 一覧「納品先」列は名前のみ（Q1-b）。code は引かない。
+  deliveryLocation: { select: { name: true } },
   creator: { select: { employeeCd: true, name: true } },
   variations: {
     orderBy: { variationNumber: "asc" },
@@ -184,6 +186,8 @@ export class PrismaEstimateQueryService implements EstimateQueryService {
       // ADR-0013: リレーション先の名前・コードを解決する。
       customerCode: e.customer.code,
       customerName: e.customer.name,
+      // 納品先は名前のみ（Q1-b）。
+      deliveryLocationName: e.deliveryLocation.name,
       creatorCode: e.creator.employeeCd,
       creatorName: e.creator.name,
       // 永続集計をそのまま読む（再計算しない・ADR-0033）。

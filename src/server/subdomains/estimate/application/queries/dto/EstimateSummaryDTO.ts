@@ -16,6 +16,11 @@ export type EstimateSummaryDTO = {
   // ADR-0013: リレーション先の名前・コードを含める（FK の ID は一覧では持たない）
   customerCode: string;
   customerName: string;
+  /**
+   * 納品先名（一覧「納品先」列・Q1-b）。表示は名前のみのため code は持たない
+   * （Q1 の得意先コード非表示方針と一貫・YAGNI）。名前解決は ADR-0013 のリレーション越し。
+   */
+  deliveryLocationName: string;
   /** 作成者（見積担当者）の社員コード（Employee.employeeCd）。 */
   creatorCode: string;
   creatorName: string;
