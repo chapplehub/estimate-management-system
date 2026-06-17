@@ -117,6 +117,10 @@ const FLASH_MESSAGES: Record<RedirectReason, FlashMessage> = {
     type: FLASH_MESSAGE_TYPE.SUCCESS,
     message: "納品先を無効化しました。",
   },
+  [REDIRECT_REASON.ESTIMATE_CREATED]: {
+    type: FLASH_MESSAGE_TYPE.SUCCESS,
+    message: "見積を登録しました。",
+  },
   [REDIRECT_REASON.ESTIMATE_UPDATED]: {
     type: FLASH_MESSAGE_TYPE.SUCCESS,
     message: "見積を更新しました。",
