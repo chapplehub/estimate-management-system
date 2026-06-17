@@ -4,8 +4,9 @@ import { getFormProps, getInputProps, getTextareaProps } from "@conform-to/react
 import { useState } from "react";
 import { useServerForm } from "@/app/_hooks/useServerForm";
 import { SelectionModal } from "@/app/_components/shared/SelectionModal";
-import type { SearchFieldDef } from "@/app/_components/shared/SearchForm";
+import { inputClass } from "../_shared/formStyles";
 import { SUBMISSION_TYPE_LABELS } from "../_shared/labels";
+import { productSearchFields } from "../_shared/productSearch";
 import {
   expandSetComponents,
   getProductLineSnapshot,
@@ -48,14 +49,6 @@ type Props = {
   initialValues?: VariationCreateInitialValues;
   onCancel: () => void;
 };
-
-const productSearchFields: SearchFieldDef[] = [
-  { type: "text", key: "code", label: "商品コード", placeholder: "部分一致" },
-  { type: "text", key: "name", label: "商品名", placeholder: "部分一致" },
-];
-
-const inputClass =
-  "shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline";
 
 /**
  * バリエーション作成フォーム（C3・新規追加／複製プリフィル）。C4 編集フォームと同じ作業コピー

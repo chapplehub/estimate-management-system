@@ -4,8 +4,9 @@ import { getFormProps, getInputProps, getTextareaProps } from "@conform-to/react
 import { useState } from "react";
 import { useServerForm } from "@/app/_hooks/useServerForm";
 import { SelectionModal } from "@/app/_components/shared/SelectionModal";
-import type { SearchFieldDef } from "@/app/_components/shared/SearchForm";
 import type { VariationDTO } from "@subdomains/estimate/application/queries/dto/EstimateDetailDTO";
+import { inputClass } from "../_shared/formStyles";
+import { productSearchFields } from "../_shared/productSearch";
 import {
   expandSetComponents,
   getProductLineSnapshot,
@@ -44,14 +45,6 @@ type Props = {
   taxRoundingType: string;
   onCancel: () => void;
 };
-
-const productSearchFields: SearchFieldDef[] = [
-  { type: "text", key: "code", label: "商品コード", placeholder: "部分一致" },
-  { type: "text", key: "name", label: "商品名", placeholder: "部分一致" },
-];
-
-const inputClass =
-  "shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline";
 
 /**
  * バリ内容編集フォーム（S4/S5・C4）。明細はモーダル選択・インライン編集・D&D で client state が

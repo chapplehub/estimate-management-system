@@ -6,7 +6,9 @@ import { useServerForm } from "@/app/_hooks/useServerForm";
 import { SelectionModal } from "@/app/_components/shared/SelectionModal";
 import type { SearchFieldDef } from "@/app/_components/shared/SearchForm";
 import { toDateInputValue } from "../_shared/date";
+import { inputClassDisabled } from "../_shared/formStyles";
 import { TAX_ROUNDING_TYPE_LABELS } from "../_shared/labels";
+import { productSearchFields } from "../_shared/productSearch";
 import {
   companySelectionColumns,
   productSelectionColumns,
@@ -70,14 +72,6 @@ const companySearchFields: SearchFieldDef[] = [
   { type: "text", key: "code", label: "コード", placeholder: "部分一致" },
   { type: "text", key: "name", label: "名称", placeholder: "部分一致" },
 ];
-
-const productSearchFields: SearchFieldDef[] = [
-  { type: "text", key: "code", label: "商品コード", placeholder: "部分一致" },
-  { type: "text", key: "name", label: "商品名", placeholder: "部分一致" },
-];
-
-const inputClass =
-  "shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100";
 
 export function EstimateHeaderForm({ estimate, departments, onCancel }: Props) {
   // 改訂が存在すると見積年月日・得意先・納品先・税端数は変更不可（§7.2）。最終強制は
@@ -234,7 +228,7 @@ export function EstimateHeaderForm({ estimate, departments, onCancel }: Props) {
               <select
                 {...getSelectProps(fields.departmentId)}
                 disabled={isPending}
-                className={inputClass}
+                className={inputClassDisabled}
               >
                 {departments.map((d) => (
                   <option key={d.id} value={d.id}>
@@ -266,7 +260,7 @@ export function EstimateHeaderForm({ estimate, departments, onCancel }: Props) {
                 value={estimateDate}
                 onChange={(e) => setEstimateDate(e.target.value)}
                 disabled={locked || isPending}
-                className={inputClass}
+                className={inputClassDisabled}
               />
               {fields.estimateDate.errors && (
                 <p className="text-red-500 text-xs mt-1">{fields.estimateDate.errors[0]}</p>
@@ -284,7 +278,7 @@ export function EstimateHeaderForm({ estimate, departments, onCancel }: Props) {
               <input
                 {...getInputProps(fields.deadline, { type: "date" })}
                 disabled={isPending}
-                className={inputClass}
+                className={inputClassDisabled}
               />
               {fields.deadline.errors && (
                 <p className="text-red-500 text-xs mt-1">{fields.deadline.errors[0]}</p>
@@ -311,7 +305,7 @@ export function EstimateHeaderForm({ estimate, departments, onCancel }: Props) {
                 value={taxRoundingType}
                 onChange={(e) => setTaxRoundingType(e.target.value)}
                 disabled={locked || isPending}
-                className={inputClass}
+                className={inputClassDisabled}
               >
                 {Object.entries(TAX_ROUNDING_TYPE_LABELS).map(([value, label]) => (
                   <option key={value} value={value}>
@@ -363,7 +357,7 @@ export function EstimateHeaderForm({ estimate, departments, onCancel }: Props) {
                 <input
                   {...getInputProps(fields.repairScheduledRepairDate, { type: "date" })}
                   disabled={isPending}
-                  className={inputClass}
+                  className={inputClassDisabled}
                 />
                 {fields.repairScheduledRepairDate.errors && (
                   <p className="text-red-500 text-xs mt-1">
@@ -382,7 +376,7 @@ export function EstimateHeaderForm({ estimate, departments, onCancel }: Props) {
                   {...getTextareaProps(fields.repairFaultDescription)}
                   disabled={isPending}
                   rows={3}
-                  className={inputClass}
+                  className={inputClassDisabled}
                 />
                 {fields.repairFaultDescription.errors && (
                   <p className="text-red-500 text-xs mt-1">
@@ -431,7 +425,7 @@ export function EstimateHeaderForm({ estimate, departments, onCancel }: Props) {
                 <input
                   {...getInputProps(fields.afterRepairActualRepairDate, { type: "date" })}
                   disabled={isPending}
-                  className={inputClass}
+                  className={inputClassDisabled}
                 />
                 {fields.afterRepairActualRepairDate.errors && (
                   <p className="text-red-500 text-xs mt-1">
@@ -450,7 +444,7 @@ export function EstimateHeaderForm({ estimate, departments, onCancel }: Props) {
                   {...getTextareaProps(fields.afterRepairEmergencyReason)}
                   disabled={isPending}
                   rows={2}
-                  className={inputClass}
+                  className={inputClassDisabled}
                 />
                 {fields.afterRepairEmergencyReason.errors && (
                   <p className="text-red-500 text-xs mt-1">
@@ -469,7 +463,7 @@ export function EstimateHeaderForm({ estimate, departments, onCancel }: Props) {
                   {...getTextareaProps(fields.afterRepairFaultDescription)}
                   disabled={isPending}
                   rows={3}
-                  className={inputClass}
+                  className={inputClassDisabled}
                 />
                 {fields.afterRepairFaultDescription.errors && (
                   <p className="text-red-500 text-xs mt-1">
