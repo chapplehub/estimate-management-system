@@ -1,4 +1,5 @@
 export { createEstimateCommandFactory } from "./createEstimateCommandFactory";
+export { checkTaxRateThenCreateDepsFactory } from "./checkTaxRateThenCreateDepsFactory";
 export { updateEstimateCommandFactory } from "./updateEstimateCommandFactory";
 export { addVariationCommandFactory } from "./addVariationCommandFactory";
 export { updateVariationCommandFactory } from "./updateVariationCommandFactory";
