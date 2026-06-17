@@ -1,8 +1,8 @@
 "use client";
 
-import { getFormProps, getInputProps, getSelectProps, type FieldMetadata } from "@conform-to/react";
+import { getFormProps, getInputProps } from "@conform-to/react";
 import { useServerForm } from "@/app/_hooks/useServerForm";
-import { SUBMISSION_TYPE_LABELS } from "../_shared/labels";
+import { SubmissionTypeField } from "../_shared/SubmissionTypeField";
 import { VariationLineEditor, VariationLineEditorOverlays } from "./components/VariationLineEditor";
 import { addVariation } from "./actions";
 import { useVariationLineEditor } from "./useVariationLineEditor";
@@ -116,53 +116,5 @@ export function VariationCreateForm(props: Props) {
 
       <VariationLineEditorOverlays editor={editor} />
     </>
-  );
-}
-
-/**
- * 提出区分フィールド。新規追加は選択式（白紙だから）、複製は引き継ぎ固定（変更不可・ADR-0045）。
- *
- * 値の保持は単一: 選択式は uncontrolled な select（conform 管理）、固定は hidden 1 つ。複製時は
- * disabled な select だと FormData に乗らないため、固定ラベル表示＋ hidden で値を運ぶ（提出区分は
- * バリ単位の不変属性・宛先切替の業務操作は存在しない・ADR-0045）。
- */
-type SubmissionTypeFieldProps = {
-  field: FieldMetadata<string>;
-} & ({ mode: "select"; disabled?: boolean } | { mode: "fixed"; value: string });
-
-function SubmissionTypeField(props: SubmissionTypeFieldProps) {
-  const { field } = props;
-  const error = field.errors?.[0];
-  return (
-    <div className="mb-6">
-      {props.mode === "fixed" ? (
-        <>
-          <label className="block text-sm font-bold text-gray-700 mb-1">提出区分</label>
-          <p className="border rounded px-3 py-2 bg-gray-50 text-gray-700">
-            {SUBMISSION_TYPE_LABELS[props.value] ?? props.value}
-            <span className="ml-2 text-xs text-gray-500">（複製元から引き継ぎ・変更不可）</span>
-          </p>
-          <input type="hidden" name={field.name} value={props.value} />
-        </>
-      ) : (
-        <>
-          <label htmlFor={field.id} className="block text-sm font-bold text-gray-700 mb-1">
-            提出区分
-          </label>
-          <select
-            {...getSelectProps(field)}
-            disabled={props.disabled}
-            className="border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-400"
-          >
-            {Object.entries(SUBMISSION_TYPE_LABELS).map(([code, label]) => (
-              <option key={code} value={code}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </>
-      )}
-      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
-    </div>
   );
 }
