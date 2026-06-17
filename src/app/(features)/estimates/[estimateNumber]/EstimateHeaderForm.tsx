@@ -1,12 +1,15 @@
 "use client";
 
-import { getFormProps, getInputProps, getSelectProps, getTextareaProps } from "@conform-to/react";
+import { getFormProps, getInputProps, getSelectProps } from "@conform-to/react";
 import { useState } from "react";
 import { useServerForm } from "@/app/_hooks/useServerForm";
 import { SelectionModal } from "@/app/_components/shared/SelectionModal";
 import type { SearchFieldDef } from "@/app/_components/shared/SearchForm";
 import { toDateInputValue } from "../_shared/date";
 import { inputClassDisabled } from "../_shared/formStyles";
+import { FkSelectionField } from "../_shared/FkSelectionField";
+import { RepairDetailFields } from "../_shared/RepairDetailFields";
+import { AfterRepairDetailFields } from "../_shared/AfterRepairDetailFields";
 import { TAX_ROUNDING_TYPE_LABELS } from "../_shared/labels";
 import { productSearchFields } from "../_shared/productSearch";
 import {
@@ -172,50 +175,26 @@ export function EstimateHeaderForm({ estimate, departments, onCancel }: Props) {
           <h2 className="text-xl font-semibold mb-4 text-gray-500">基本情報</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* 得意先（SelectionModal・改訂時ロック） */}
-            <div>
-              <span className="block text-gray-700 text-sm font-bold mb-2">得意先</span>
-              <div className="flex items-center gap-2">
-                <span className="flex-1 text-gray-900">
-                  {customer.id ? `${customer.name}（${customer.code}）` : "未選択"}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setCustomerModalOpen(true)}
-                  disabled={locked || isPending}
-                  aria-label="得意先を選択"
-                  className="bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm font-bold py-1 px-3 rounded disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-                >
-                  選択
-                </button>
-              </div>
-              {fields.customerId.errors && (
-                <p className="text-red-500 text-xs mt-1">{fields.customerId.errors[0]}</p>
-              )}
-            </div>
+            <FkSelectionField
+              label="得意先"
+              selectedLabel={customer.id ? `${customer.name}（${customer.code}）` : null}
+              onSelect={() => setCustomerModalOpen(true)}
+              disabled={locked || isPending}
+              selectAriaLabel="得意先を選択"
+              error={fields.customerId.errors?.[0]}
+            />
 
             {/* 納品先（SelectionModal・選択中得意先で絞り込み・改訂時ロック） */}
-            <div>
-              <span className="block text-gray-700 text-sm font-bold mb-2">納品先</span>
-              <div className="flex items-center gap-2">
-                <span className="flex-1 text-gray-900">
-                  {deliveryLocation.id
-                    ? `${deliveryLocation.name}（${deliveryLocation.code}）`
-                    : "未選択"}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setDeliveryModalOpen(true)}
-                  disabled={locked || isPending || !customer.id}
-                  aria-label="納品先を選択"
-                  className="bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm font-bold py-1 px-3 rounded disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-                >
-                  選択
-                </button>
-              </div>
-              {fields.deliveryLocationId.errors && (
-                <p className="text-red-500 text-xs mt-1">{fields.deliveryLocationId.errors[0]}</p>
-              )}
-            </div>
+            <FkSelectionField
+              label="納品先"
+              selectedLabel={
+                deliveryLocation.id ? `${deliveryLocation.name}（${deliveryLocation.code}）` : null
+              }
+              onSelect={() => setDeliveryModalOpen(true)}
+              disabled={locked || isPending || !customer.id}
+              selectAriaLabel="納品先を選択"
+              error={fields.deliveryLocationId.errors?.[0]}
+            />
 
             {/* 部署（select・改訂後も変更可） */}
             <div>
@@ -322,157 +301,33 @@ export function EstimateHeaderForm({ estimate, departments, onCancel }: Props) {
 
         {/* 修理情報（REPAIR・改訂後も編集可） */}
         {isRepair && (
-          <section className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-8">
-            <h2 className="text-xl font-semibold mb-4 text-gray-500">修理情報</h2>
-            <input
-              type="hidden"
-              name={fields.repairTargetProductId.name}
-              value={targetProduct.id}
-            />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <span className="block text-gray-700 text-sm font-bold mb-2">修理対象機器</span>
-                <div className="flex items-center gap-2">
-                  <span className="flex-1 text-gray-900">
-                    {targetProduct.id ? `${targetProduct.name}（${targetProduct.code}）` : "未選択"}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setProductModalOpen(true)}
-                    disabled={isPending}
-                    aria-label="修理対象機器を選択"
-                    className="bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm font-bold py-1 px-3 rounded disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-                  >
-                    選択
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label
-                  htmlFor={fields.repairScheduledRepairDate.id}
-                  className="block text-gray-700 text-sm font-bold mb-2"
-                >
-                  修理予定日
-                </label>
-                <input
-                  {...getInputProps(fields.repairScheduledRepairDate, { type: "date" })}
-                  disabled={isPending}
-                  className={inputClassDisabled}
-                />
-                {fields.repairScheduledRepairDate.errors && (
-                  <p className="text-red-500 text-xs mt-1">
-                    {fields.repairScheduledRepairDate.errors[0]}
-                  </p>
-                )}
-              </div>
-              <div className="md:col-span-2">
-                <label
-                  htmlFor={fields.repairFaultDescription.id}
-                  className="block text-gray-700 text-sm font-bold mb-2"
-                >
-                  故障内容
-                </label>
-                <textarea
-                  {...getTextareaProps(fields.repairFaultDescription)}
-                  disabled={isPending}
-                  rows={3}
-                  className={inputClassDisabled}
-                />
-                {fields.repairFaultDescription.errors && (
-                  <p className="text-red-500 text-xs mt-1">
-                    {fields.repairFaultDescription.errors[0]}
-                  </p>
-                )}
-              </div>
-            </div>
-          </section>
+          <RepairDetailFields
+            targetProductIdName={fields.repairTargetProductId.name}
+            targetProductId={targetProduct.id}
+            targetProductLabel={
+              targetProduct.id ? `${targetProduct.name}（${targetProduct.code}）` : null
+            }
+            onSelectProduct={() => setProductModalOpen(true)}
+            scheduledRepairDateField={fields.repairScheduledRepairDate}
+            faultDescriptionField={fields.repairFaultDescription}
+            disabled={isPending}
+          />
         )}
 
         {/* 事後修理情報（AFTER_REPAIR・改訂後も編集可） */}
         {isAfterRepair && (
-          <section className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-8">
-            <h2 className="text-xl font-semibold mb-4 text-gray-500">事後修理情報</h2>
-            <input
-              type="hidden"
-              name={fields.afterRepairTargetProductId.name}
-              value={targetProduct.id}
-            />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <span className="block text-gray-700 text-sm font-bold mb-2">修理対象機器</span>
-                <div className="flex items-center gap-2">
-                  <span className="flex-1 text-gray-900">
-                    {targetProduct.id ? `${targetProduct.name}（${targetProduct.code}）` : "未選択"}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setProductModalOpen(true)}
-                    disabled={isPending}
-                    aria-label="修理対象機器を選択"
-                    className="bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm font-bold py-1 px-3 rounded disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-                  >
-                    選択
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label
-                  htmlFor={fields.afterRepairActualRepairDate.id}
-                  className="block text-gray-700 text-sm font-bold mb-2"
-                >
-                  修理実施日
-                </label>
-                <input
-                  {...getInputProps(fields.afterRepairActualRepairDate, { type: "date" })}
-                  disabled={isPending}
-                  className={inputClassDisabled}
-                />
-                {fields.afterRepairActualRepairDate.errors && (
-                  <p className="text-red-500 text-xs mt-1">
-                    {fields.afterRepairActualRepairDate.errors[0]}
-                  </p>
-                )}
-              </div>
-              <div className="md:col-span-2">
-                <label
-                  htmlFor={fields.afterRepairEmergencyReason.id}
-                  className="block text-gray-700 text-sm font-bold mb-2"
-                >
-                  緊急対応理由
-                </label>
-                <textarea
-                  {...getTextareaProps(fields.afterRepairEmergencyReason)}
-                  disabled={isPending}
-                  rows={2}
-                  className={inputClassDisabled}
-                />
-                {fields.afterRepairEmergencyReason.errors && (
-                  <p className="text-red-500 text-xs mt-1">
-                    {fields.afterRepairEmergencyReason.errors[0]}
-                  </p>
-                )}
-              </div>
-              <div className="md:col-span-2">
-                <label
-                  htmlFor={fields.afterRepairFaultDescription.id}
-                  className="block text-gray-700 text-sm font-bold mb-2"
-                >
-                  故障内容
-                </label>
-                <textarea
-                  {...getTextareaProps(fields.afterRepairFaultDescription)}
-                  disabled={isPending}
-                  rows={3}
-                  className={inputClassDisabled}
-                />
-                {fields.afterRepairFaultDescription.errors && (
-                  <p className="text-red-500 text-xs mt-1">
-                    {fields.afterRepairFaultDescription.errors[0]}
-                  </p>
-                )}
-              </div>
-            </div>
-          </section>
+          <AfterRepairDetailFields
+            targetProductIdName={fields.afterRepairTargetProductId.name}
+            targetProductId={targetProduct.id}
+            targetProductLabel={
+              targetProduct.id ? `${targetProduct.name}（${targetProduct.code}）` : null
+            }
+            onSelectProduct={() => setProductModalOpen(true)}
+            actualRepairDateField={fields.afterRepairActualRepairDate}
+            emergencyReasonField={fields.afterRepairEmergencyReason}
+            faultDescriptionField={fields.afterRepairFaultDescription}
+            disabled={isPending}
+          />
         )}
 
         <div className="flex gap-4">
