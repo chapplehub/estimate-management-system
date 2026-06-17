@@ -5,8 +5,13 @@ import { Badge } from "@/app/_components/shadcnui/badge";
 import type { VariationDTO } from "@subdomains/estimate/application/queries/dto/EstimateDetailDTO";
 import { SUBMISSION_TYPE_LABELS, formatYen } from "../_shared/labels";
 import { LineTable } from "./components/LineTable";
-import { isVariationEditable } from "./variationEditable";
+import { isVariationDuplicatable, isVariationEditable } from "./variationEditable";
 import { VariationEditForm } from "./VariationEditForm";
+import { VariationCreateForm } from "./VariationCreateForm";
+import {
+  toCreateInitialValuesFromVariation,
+  type VariationCreateInitialValues,
+} from "./variationDuplication";
 
 type Props = {
   estimateNumber: string;
@@ -39,19 +44,38 @@ export function VariationPanel({
   const [activeIndex, setActiveIndex] = useState(firstActive >= 0 ? firstActive : 0);
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  // 作成モード（C3）。null=非作成、initialValues 未指定=新規追加（白紙）、指定=複製プリフィル。
+  // 編集（C4）とは排他で、第 3 モードとして独立に開閉する（計画§起点とフォーム構造）。
+  const [creating, setCreating] = useState<{ initialValues?: VariationCreateInitialValues } | null>(
+    null
+  );
 
   const allInactive = variations.every((v) => v.status !== "ACTIVE");
   const active = variations[activeIndex];
 
   function selectVariation(index: number): void {
     if (index === activeIndex) return;
-    // 編集中のタブ切替は作業コピーが消えるため破棄確認（計画§2）。
-    if (isEditing && !window.confirm("編集中の内容は破棄されます。タブを切り替えますか？")) {
+    // 編集・作成中のタブ切替は未保存の作業コピーが消えるため破棄確認（計画§2）。
+    if (
+      (isEditing || creating) &&
+      !window.confirm("編集中の内容は破棄されます。タブを切り替えますか？")
+    ) {
       return;
     }
     setIsEditing(false);
+    setCreating(null);
     setActiveIndex(index);
     setActiveRowId(null); // タブ切替で行アクティブをリセット
+  }
+
+  function startDuplicate(): void {
+    setActiveRowId(null);
+    setCreating({ initialValues: toCreateInitialValuesFromVariation(active) });
+  }
+
+  function startNew(): void {
+    setActiveRowId(null);
+    setCreating({ initialValues: undefined });
   }
 
   return (
@@ -94,7 +118,7 @@ export function VariationPanel({
 
       {active && (
         <div>
-          {/* ⑤ 操作行（提出区分バッジ・状態インジケータ・編集トグル） */}
+          {/* ⑤ 操作行（提出区分バッジ・状態インジケータ・編集／複製／追加トグル） */}
           <div className="flex items-center gap-3 mb-4">
             <Badge variant="outline">
               {SUBMISSION_TYPE_LABELS[active.submissionType] ?? active.submissionType}
@@ -102,21 +126,51 @@ export function VariationPanel({
             <span className="text-sm text-gray-600">
               {active.status === "ACTIVE" ? "● 有効" : "○ 無効"}
             </span>
-            {!isEditing && isVariationEditable(active) && (
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveRowId(null);
-                  setIsEditing(true);
-                }}
-                className="ml-auto bg-blue-500 hover:bg-blue-700 text-white text-sm font-bold py-1 px-4 rounded"
-              >
-                内容を編集
-              </button>
+            {!isEditing && !creating && (
+              <div className="ml-auto flex gap-2">
+                {isVariationEditable(active) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveRowId(null);
+                      setIsEditing(true);
+                    }}
+                    className="bg-blue-500 hover:bg-blue-700 text-white text-sm font-bold py-1 px-4 rounded"
+                  >
+                    内容を編集
+                  </button>
+                )}
+                {/* 複製は「改訂明細を含まない」バリのみ（状態不問・改訂先タブでは非表示）。 */}
+                {isVariationDuplicatable(active) && (
+                  <button
+                    type="button"
+                    onClick={startDuplicate}
+                    className="bg-indigo-500 hover:bg-indigo-700 text-white text-sm font-bold py-1 px-4 rounded"
+                  >
+                    複製
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={startNew}
+                  className="bg-green-600 hover:bg-green-700 text-white text-sm font-bold py-1 px-4 rounded"
+                >
+                  ＋バリエーション追加
+                </button>
+              </div>
             )}
           </div>
 
-          {isEditing ? (
+          {creating ? (
+            <VariationCreateForm
+              estimateNumber={estimateNumber}
+              version={version}
+              taxRate={taxRate}
+              taxRoundingType={taxRoundingType}
+              initialValues={creating.initialValues}
+              onCancel={() => setCreating(null)}
+            />
+          ) : isEditing ? (
             <VariationEditForm
               estimateNumber={estimateNumber}
               version={version}

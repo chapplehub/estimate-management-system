@@ -74,19 +74,42 @@ const nodesField = z
   .pipe(z.array(nodeSchema));
 
 /**
- * バリ内容編集スキーマ（S5・セット群対応）。明細フィールドは判別子 union のノード配列。
- * version・全体値引・メモはスカラー（S3 ヘッダー編集と同型）。メモは optional（conform は空
- * フィールドを undefined 化するため・lineSchema 同様。required に戻さないこと）。
+ * バリ内容の共通フィールド（C3 追加・C4 更新で共有）。version は集約ルートの楽観ロックトークン
+ * （ADR-0039）、明細は判別子 union のノード配列、全体値引・メモはスカラー（S3 ヘッダー編集と同型）。
+ * メモは optional（conform は空フィールドを undefined 化するため・lineSchema 同様。required に戻さないこと）。
+ * C3/C4 は identity（variationId）か submissionType だけが異なるため、内容形状をここへ集約する。
  */
-export const updateVariationContentNodeSchema = z.object({
+const variationContentFields = {
   /** 楽観ロックトークン（ADR-0039・集約ルート）。hidden で往復。 */
   version: z.coerce.number().int(),
-  /** 編集対象バリエーション。estimateId は estimateNumber から DTO 解決する。 */
-  variationId: z.string().min(1, "バリエーションが特定できません"),
   overallDiscount: z.coerce.number().min(0, "全体値引は0以上で入力してください"),
   customerMemo: z.string().optional(),
   internalMemo: z.string().optional(),
   nodes: nodesField,
+} as const;
+
+/**
+ * バリ内容編集スキーマ（C4・S5 セット群対応）。共通フィールドに編集対象 `variationId` を加える。
+ */
+export const updateVariationContentNodeSchema = z.object({
+  ...variationContentFields,
+  /** 編集対象バリエーション。estimateId は estimateNumber から DTO 解決する。 */
+  variationId: z.string().min(1, "バリエーションが特定できません"),
 });
 
 export type UpdateVariationContentNodeFormInput = z.infer<typeof updateVariationContentNodeSchema>;
+
+/**
+ * バリエーション追加スキーマ（C3・新規追加／複製プリフィル）。共通フィールドに、作成時に確定する
+ * 不変属性（ADR-0045）の **`submissionType` を加える**（更新の `variationId` は持たない＝新規採番のため）。
+ * `version` は追加型でも親集約の楽観ロックトークンとして必須（ADR-0039）。最終ガードはドメイン
+ * `SubmissionType.from()`（二重防御の外側）。
+ */
+export const addVariationNodeSchema = z.object({
+  ...variationContentFields,
+  submissionType: z.enum(["CUSTOMER", "DELIVERY_LOCATION"], {
+    message: "提出区分を選択してください",
+  }),
+});
+
+export type AddVariationNodeFormInput = z.infer<typeof addVariationNodeSchema>;

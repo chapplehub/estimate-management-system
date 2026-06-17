@@ -6,14 +6,16 @@ import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
 import { getEstimateDetailQueryFactory } from "@subdomains/estimate/application/factories/estimateQueryFactory";
 import { updateEstimateCommandFactory } from "@subdomains/estimate/application/factories/updateEstimateCommandFactory";
 import { updateVariationCommandFactory } from "@subdomains/estimate/application/factories/updateVariationCommandFactory";
+import { addVariationCommandFactory } from "@subdomains/estimate/application/factories/addVariationCommandFactory";
 import type { UpdateEstimateInput } from "@subdomains/estimate/application/commands/UpdateEstimateCommand";
 import type { UpdateVariationInput } from "@subdomains/estimate/application/commands/UpdateVariationCommand";
+import type { AddVariationInput } from "@subdomains/estimate/application/commands/AddVariationCommand";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { handleCommandError } from "../../_shared/error-handler";
 import { fromDateInputValue } from "../_shared/date";
 import { updateEstimateHeaderSchema } from "./schema";
-import { updateVariationContentNodeSchema } from "./variationSchema";
+import { addVariationNodeSchema, updateVariationContentNodeSchema } from "./variationSchema";
 import { toVariationContentInputFromNodes } from "./variationContentMapping";
 
 /**
@@ -73,6 +75,65 @@ export async function updateEstimateHeader(
   let result;
   try {
     result = await updateEstimateCommandFactory().execute(input);
+  } catch (error) {
+    const errorResult = handleCommandError(error);
+    const errorMessage = !errorResult.success && errorResult.error ? errorResult.error : undefined;
+    return submission.reply({ formErrors: errorMessage ? [errorMessage] : [] });
+  }
+
+  // 税率不一致（§8.7）は保存されない。両税率を提示して編集を維持する。
+  if (result.kind === "taxRateMismatch") {
+    const estimateDatePct = Math.round(result.estimateDateRate.value * 100);
+    const deadlinePct = Math.round(result.deadlineRate.value * 100);
+    return submission.reply({
+      formErrors: [
+        `見積年月日（${estimateDatePct}%）と締切日（${deadlinePct}%）で税率が異なります。日付を確認してください（§8.7）。`,
+      ],
+    });
+  }
+
+  revalidatePath(`/estimates/${estimateNumber}`);
+  redirect(`/estimates/${estimateNumber}?reason=${REDIRECT_REASON.ESTIMATE_UPDATED}`);
+}
+
+/**
+ * バリエーション追加（C3・新規追加／複製プリフィル）の Server Action。
+ *
+ * estimateId は estimateNumber から DTO 解決し、`submissionType` は作成時に確定する不変属性
+ * （ADR-0045）として content と別に渡す。明細は `addVariationNodeSchema`（C4 と内容形状を共有）で
+ * 検証し、sortOrder を配列順から導出して `VariationContentInput` へ写す。バリエーション番号は
+ * 集約が max+1 で自動採番する（§A.2）ため入力に含めない。version はフォーム由来の楽観ロック
+ * トークン（ADR-0039・追加型でも必須）。税率不一致（§8.7）は例外でなく Result のためフォーム
+ * エラーで提示し編集を維持する。競合・その他例外は handleCommandError 経由。成功時のみ redirect。
+ */
+export async function addVariation(
+  estimateNumber: string,
+  _prevState: unknown,
+  formData: FormData
+) {
+  await verifySession();
+
+  const submission = parseWithZod(formData, { schema: addVariationNodeSchema });
+  if (submission.status !== "success") {
+    return submission.reply();
+  }
+  const value = submission.value;
+
+  const dto = await getEstimateDetailQueryFactory().execute({ estimateNumber });
+  if (!dto) {
+    return submission.reply({ formErrors: ["見積が見つかりません"] });
+  }
+
+  const input: AddVariationInput = {
+    estimateId: dto.estimateId,
+    version: value.version,
+    submissionType: value.submissionType,
+    content: toVariationContentInputFromNodes(value),
+  };
+
+  let result;
+  try {
+    result = await addVariationCommandFactory().execute(input);
   } catch (error) {
     const errorResult = handleCommandError(error);
     const errorMessage = !errorResult.success && errorResult.error ? errorResult.error : undefined;

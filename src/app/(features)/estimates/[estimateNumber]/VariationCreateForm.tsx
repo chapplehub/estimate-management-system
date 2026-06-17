@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useServerForm } from "@/app/_hooks/useServerForm";
 import { SelectionModal } from "@/app/_components/shared/SelectionModal";
 import type { SearchFieldDef } from "@/app/_components/shared/SearchForm";
-import type { VariationDTO } from "@subdomains/estimate/application/queries/dto/EstimateDetailDTO";
+import { SUBMISSION_TYPE_LABELS } from "../_shared/labels";
 import {
   expandSetComponents,
   getProductLineSnapshot,
@@ -18,14 +18,14 @@ import { LineEditTable } from "./components/LineEditTable";
 import { ProductSuggestDialog } from "./components/ProductSuggestDialog";
 import { PreviewRow } from "./components/PreviewRow";
 import { previewVariationTotals } from "./previewAmounts";
-import { updateVariationContent } from "./actions";
-import { updateVariationContentNodeSchema } from "./variationSchema";
+import { addVariation } from "./actions";
+import { addVariationNodeSchema } from "./variationSchema";
+import type { VariationCreateInitialValues } from "./variationDuplication";
 import {
   changeNodeLine,
   createWorkingLine,
   createWorkingSetGroup,
   flattenPricedLines,
-  fromVariationLines,
   insertNodesBelow,
   removeNode,
   reorderComponents,
@@ -39,9 +39,13 @@ type Props = {
   estimateNumber: string;
   /** 集約ルートの楽観ロックトークン（ADR-0039）。 */
   version: number;
-  variation: VariationDTO;
   taxRate: number;
   taxRoundingType: string;
+  /**
+   * 複製元から引き継ぐ初期値（提出区分・明細スナップショット・全体値引・メモ）。
+   * 新規追加（白紙）のときは undefined。
+   */
+  initialValues?: VariationCreateInitialValues;
   onCancel: () => void;
 };
 
@@ -54,46 +58,48 @@ const inputClass =
   "shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline";
 
 /**
- * バリ内容編集フォーム（S4/S5・C4）。明細はモーダル選択・インライン編集・D&D で client state が
- * 真実になるため作業コピー（nodes＝通常明細／セット群の union・overallDiscount）を React state で
- * 保持し、submit 時に単一の hidden へ JSON 化して往復する（往復形状 A・ADR-0047/0050）。version は
- * hidden で往復（ADR-0039）。全体値引はプレビューに効くため controlled state。バリメモは conform
- * フィールド。確定金額はドメインが唯一の真実（ADR-0033）で保存後 DTO で上書きされ、ここでは簡易
- * ライブプレビューのみ表示する。セット商品選択時は構成を自動展開して群ノードを挿入する（ADR-0047）。
+ * バリエーション作成フォーム（C3・新規追加／複製プリフィル）。C4 編集フォームと同じ作業コピー
+ * パイプライン（nodes＝通常明細／セット群 union を client state で保持し submit 時に単一 hidden へ
+ * JSON 化・ADR-0047/0050）と共有部品（LineEditTable / previewAmounts / 商品選択・周辺サジェスト）を
+ * 再利用する。差分は (1) variationId を持たず提出区分を入力する点、(2) 初期値が複製元 DTO 由来
+ * （新規追加は白紙）の 2 点。提出区分は複製＝引き継ぎ固定、新規追加＝選択（SubmissionTypeField）。
+ * version はフォーム由来の楽観ロックトークン（ADR-0039・追加型でも必須）。
  */
-export function VariationEditForm({
+export function VariationCreateForm({
   estimateNumber,
   version,
-  variation,
   taxRate,
   taxRoundingType,
+  initialValues,
   onCancel,
 }: Props) {
-  const action = updateVariationContent.bind(null, estimateNumber);
+  const isDuplicate = initialValues !== undefined;
+  const action = addVariation.bind(null, estimateNumber);
   const { form, fields, isPending } = useServerForm({
     action,
-    schema: updateVariationContentNodeSchema,
+    schema: addVariationNodeSchema,
     defaultValue: {
       version: String(version),
-      variationId: variation.variationId,
-      customerMemo: variation.customerMemo,
-      internalMemo: variation.internalMemo,
+      customerMemo: initialValues?.customerMemo ?? "",
+      internalMemo: initialValues?.internalMemo ?? "",
     },
   });
 
-  // 作業コピー: 閲覧 DTO の行配列（通常明細 ＋ セット群）をノード union へ写す（往復形状 A・ADR-0047）。
-  const [nodes, setNodes] = useState<WorkingNode[]>(() => fromVariationLines(variation.lines));
-  const [overallDiscount, setOverallDiscount] = useState(variation.overallDiscount);
+  // 作業コピー: 複製は複製元の作業ノード（改訂列ドロップ済み・セット群スナップショット保持）、
+  // 新規追加は空配列で開始する。overallDiscount も同様。
+  const [submissionType, setSubmissionType] = useState<string>(
+    initialValues?.submissionType ?? "CUSTOMER"
+  );
+  const [nodes, setNodes] = useState<WorkingNode[]>(() => initialValues?.nodes ?? []);
+  const [overallDiscount, setOverallDiscount] = useState(initialValues?.overallDiscount ?? 0);
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
   const [productModalOpen, setProductModalOpen] = useState(false);
-  // 本体追加直後の周辺商品サジェスト（提案あり時のみ）。挿入は本体行（mainRowId）の直下。
   const [suggestState, setSuggestState] = useState<{
     mainRowId: string;
     mainName: string;
     suggestions: SuggestedProduct[];
   } | null>(null);
 
-  // 金額プレビューは価格付き末端行（通常明細＋全構成）のフラット列で計算する（群は価格を持たない）。
   const totals = previewVariationTotals({
     lines: flattenPricedLines(nodes),
     overallDiscount,
@@ -118,8 +124,7 @@ export function VariationEditForm({
     setNodes((prev) => reorderComponents(prev, groupRowId, from, to));
   };
 
-  // 商品選択: セット商品なら構成を自動展開して群ノードを挿入、通常商品ならスナップショット解決して
-  // 通常行を挿入する。挿入位置はアクティブノード直下（構成/群がアクティブなら群の直後＝トップレベル）。
+  // 商品選択（C4 編集フォームと同一）。セット商品は構成展開して群挿入、通常商品はスナップショット挿入。
   const handleProductSelect = async (rows: ProductSelectionRow[]) => {
     const picked = rows[0];
     if (!picked) return;
@@ -131,7 +136,6 @@ export function VariationEditForm({
       const group = createWorkingSetGroup(groupRowId, expanded, () => crypto.randomUUID());
       setNodes((prev) => insertNodesBelow(prev, activeRowId, [group]));
       setActiveRowId(groupRowId);
-      // セット商品は周辺商品サジェストの対象外（構成は自動展開で確定）。
       return;
     }
 
@@ -147,7 +151,6 @@ export function VariationEditForm({
     }
   };
 
-  // 提案された周辺商品（選択分）を本体直下に通常行として挿入する（数量＝relation・他は新規行既定）。
   const confirmSuggestions = (selected: SuggestedProduct[]) => {
     if (!suggestState) return;
     const peripheralLines = selected.map((s) =>
@@ -172,15 +175,23 @@ export function VariationEditForm({
       )}
 
       <form {...getFormProps(form)} noValidate>
-        {/* 楽観ロックトークン・対象バリ・明細 JSON・全体値引（state を hidden で送る）。 */}
+        {/* 楽観ロックトークン・明細 JSON・全体値引（state を hidden で送る）。variationId は持たない。 */}
         <input {...getInputProps(fields.version, { type: "hidden" })} />
-        <input type="hidden" name={fields.variationId.name} value={variation.variationId} />
         <input
           type="hidden"
           name={fields.nodes.name}
           value={JSON.stringify(toNodePayload(nodes))}
         />
         <input type="hidden" name={fields.overallDiscount.name} value={String(overallDiscount)} />
+
+        <SubmissionTypeField
+          fieldName={fields.submissionType.name}
+          isDuplicate={isDuplicate}
+          value={submissionType}
+          onChange={setSubmissionType}
+          error={fields.submissionType.errors?.[0]}
+          disabled={isPending}
+        />
 
         <div className="flex justify-between items-center mb-3">
           <h3 className="text-lg font-semibold text-gray-700">明細</h3>
@@ -300,5 +311,58 @@ export function VariationEditForm({
         />
       )}
     </>
+  );
+}
+
+/**
+ * 提出区分フィールド。新規追加は選択（白紙だから）、複製は引き継ぎ固定（変更不可）。
+ *
+ * 複製時は disabled な select だと FormData に乗らないため、固定ラベル表示＋ hidden で値を運ぶ
+ * （提出区分はバリ単位の不変属性・宛先切替の業務操作は存在しない・ADR-0045）。
+ */
+function SubmissionTypeField({
+  fieldName,
+  isDuplicate,
+  value,
+  onChange,
+  error,
+  disabled,
+}: {
+  fieldName: string;
+  isDuplicate: boolean;
+  value: string;
+  onChange: (value: string) => void;
+  error?: string;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="mb-6">
+      <label className="block text-sm font-bold text-gray-700 mb-1">提出区分</label>
+      {isDuplicate ? (
+        <>
+          <p className="border rounded px-3 py-2 bg-gray-50 text-gray-700">
+            {SUBMISSION_TYPE_LABELS[value] ?? value}
+            <span className="ml-2 text-xs text-gray-500">（複製元から引き継ぎ・変更不可）</span>
+          </p>
+          <input type="hidden" name={fieldName} value={value} />
+        </>
+      ) : (
+        <select
+          name={fieldName}
+          aria-label="提出区分"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={disabled}
+          className="border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-400"
+        >
+          {Object.entries(SUBMISSION_TYPE_LABELS).map(([code, label]) => (
+            <option key={code} value={code}>
+              {label}
+            </option>
+          ))}
+        </select>
+      )}
+      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+    </div>
   );
 }
