@@ -32,7 +32,7 @@ issue #361 で見積申請の詳細設計に着手するにあたり、この前
 
 ## 決定
 
-**C を採用する。** 見積申請を `estimate_applications` ＋ `estimate_approval_steps` の見積専用テーブルで表現し、対象（バリエーション）への参照は `variation_id` の DB外部キーで担保する。承認の進行ロジックはドメインサービス／ポリシー（`ApprovalChainBuilder` / `ApprovalRequirementPolicy` など）として実装し、将来の価格申請と共有できる中立な位置に置く。
+**C を採用する。** 見積申請を `estimate_applications` ＋ `estimate_approval_steps` の見積専用テーブルで表現し、対象（バリエーション）への参照は `variation_id` の DB外部キーで担保する。承認の進行ロジックはドメインサービス／ポリシー（`ApprovalChainBuilder` / `ApprovalRequirementPolicy` など）として実装する。当面は見積申請を担う `estimate` サブドメイン内に置き、価格申請が追加された時点で共通部分を `shared` へ抽出して共有する（YAGNI）。
 
 本 ADR により **ADR-0001 を差替** とする。
 
