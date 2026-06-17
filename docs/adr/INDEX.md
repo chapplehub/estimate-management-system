@@ -10,11 +10,14 @@
 
 | # | タイトル | ステータス | 起票日 |
 |---|---------|-----------|--------|
-| [0001](0001-shared-application-table.md) | 申請テーブルを見積・価格で共通化する | 採用 | 2026-03-30 |
+| [0001](0001-shared-application-table.md) | 申請テーブルを見積・価格で共通化する | 差替（→ 0053） | 2026-03-30 |
 | [0002](0002-pre-generate-approval-steps.md) | 承認ステップを申請時に全ステップ事前生成する | 採用 | 2026-03-30 |
 | [0003](0003-always-require-superior-approval.md) | 高位役職者の申請でも常に上位役割に承認を求める | 採用 | 2026-03-30 |
 | [0004](0004-consumables-skip-approval.md) | 消耗品のみの見積は金額に関係なく承認不要とする | 採用 | 2026-03-30 |
 | [0005](0005-restart-approval-after-rejection.md) | 差戻後の再申請は承認フローを最初からやり直す | 採用 | 2026-03-30 |
+| [0053](0053-separate-estimate-application-table-from-shared.md) | 申請テーブルを見積・価格共通から見積専用に分離する | 採用 | 2026-06-17 |
+| [0054](0054-approval-exemption-as-dedicated-table.md) | 承認免除を申請テーブルに含めず専用テーブルで表現する | 採用 | 2026-06-17 |
+| [0055](0055-approval-goal-uses-tax-included-final-total.md) | 見積承認のゴール判定に税込合計金額（finalTotal）を用いる | 採用 | 2026-06-17 |
 
 ## インフラストラクチャ（データベース・ID）
 
