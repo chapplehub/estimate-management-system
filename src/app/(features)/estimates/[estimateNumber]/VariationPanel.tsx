@@ -25,6 +25,18 @@ type Props = {
 };
 
 /**
+ * パネルのモード（閲覧／編集／新規追加／複製）。`isEditing` と `creating` の 2 state を 1 つの
+ * 判別共用体へ統合し、排他性を型で担保する（複製と新規追加は initialValues の有無ではなくタグで
+ * 区別）。判別子は既存の作業ノード（{@link variationLines} の `kind`）・スキーマと語彙を揃え `kind`。
+ * `activeIndex`／`activeRowId`（どのタブ・どの行か）はモードと直交する関心事なので含めない。
+ */
+type PanelMode =
+  | { kind: "view" }
+  | { kind: "edit" }
+  | { kind: "create-new" }
+  | { kind: "create-duplicate"; initialValues: VariationCreateInitialValues };
+
+/**
  * バリエーションパネル（④〜⑨・クライアントアイランド）。
  *
  * 閲覧（S2）と内容編集（S4 / C4）をタブ単位で切り替える。編集はアクティブなバリ1件のみ・
@@ -43,12 +55,8 @@ export function VariationPanel({
   const firstActive = variations.findIndex((v) => v.status === "ACTIVE");
   const [activeIndex, setActiveIndex] = useState(firstActive >= 0 ? firstActive : 0);
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  // 作成モード（C3）。null=非作成、initialValues 未指定=新規追加（白紙）、指定=複製プリフィル。
-  // 編集（C4）とは排他で、第 3 モードとして独立に開閉する（計画§起点とフォーム構造）。
-  const [creating, setCreating] = useState<{ initialValues?: VariationCreateInitialValues } | null>(
-    null
-  );
+  // 閲覧／編集（C4）／新規追加・複製（C3）を 1 つの判別共用体で排他管理する（計画§起点）。
+  const [mode, setMode] = useState<PanelMode>({ kind: "view" });
 
   const allInactive = variations.every((v) => v.status !== "ACTIVE");
   const active = variations[activeIndex];
@@ -57,25 +65,27 @@ export function VariationPanel({
     if (index === activeIndex) return;
     // 編集・作成中のタブ切替は未保存の作業コピーが消えるため破棄確認（計画§2）。
     if (
-      (isEditing || creating) &&
+      mode.kind !== "view" &&
       !window.confirm("編集中の内容は破棄されます。タブを切り替えますか？")
     ) {
       return;
     }
-    setIsEditing(false);
-    setCreating(null);
+    setMode({ kind: "view" });
     setActiveIndex(index);
     setActiveRowId(null); // タブ切替で行アクティブをリセット
   }
 
   function startDuplicate(): void {
     setActiveRowId(null);
-    setCreating({ initialValues: toCreateInitialValuesFromVariation(active) });
+    setMode({
+      kind: "create-duplicate",
+      initialValues: toCreateInitialValuesFromVariation(active),
+    });
   }
 
   function startNew(): void {
     setActiveRowId(null);
-    setCreating({ initialValues: undefined });
+    setMode({ kind: "create-new" });
   }
 
   return (
@@ -126,14 +136,14 @@ export function VariationPanel({
             <span className="text-sm text-gray-600">
               {active.status === "ACTIVE" ? "● 有効" : "○ 無効"}
             </span>
-            {!isEditing && !creating && (
+            {mode.kind === "view" && (
               <div className="ml-auto flex gap-2">
                 {isVariationEditable(active) && (
                   <button
                     type="button"
                     onClick={() => {
                       setActiveRowId(null);
-                      setIsEditing(true);
+                      setMode({ kind: "edit" });
                     }}
                     className="bg-blue-500 hover:bg-blue-700 text-white text-sm font-bold py-1 px-4 rounded"
                   >
@@ -161,23 +171,25 @@ export function VariationPanel({
             )}
           </div>
 
-          {creating ? (
+          {mode.kind === "create-new" || mode.kind === "create-duplicate" ? (
             <VariationCreateForm
+              {...(mode.kind === "create-duplicate"
+                ? { kind: "duplicate" as const, initialValues: mode.initialValues }
+                : { kind: "new" as const })}
               estimateNumber={estimateNumber}
               version={version}
               taxRate={taxRate}
               taxRoundingType={taxRoundingType}
-              initialValues={creating.initialValues}
-              onCancel={() => setCreating(null)}
+              onCancel={() => setMode({ kind: "view" })}
             />
-          ) : isEditing ? (
+          ) : mode.kind === "edit" ? (
             <VariationEditForm
               estimateNumber={estimateNumber}
               version={version}
               variation={active}
               taxRate={taxRate}
               taxRoundingType={taxRoundingType}
-              onCancel={() => setIsEditing(false)}
+              onCancel={() => setMode({ kind: "view" })}
             />
           ) : (
             <ReadOnlyVariationBody

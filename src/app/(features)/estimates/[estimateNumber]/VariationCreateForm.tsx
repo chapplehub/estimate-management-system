@@ -1,7 +1,6 @@
 "use client";
 
-import { getFormProps, getInputProps } from "@conform-to/react";
-import { useState } from "react";
+import { getFormProps, getInputProps, getSelectProps, type FieldMetadata } from "@conform-to/react";
 import { useServerForm } from "@/app/_hooks/useServerForm";
 import { SUBMISSION_TYPE_LABELS } from "../_shared/labels";
 import { VariationLineEditor, VariationLineEditorOverlays } from "./components/VariationLineEditor";
@@ -16,13 +15,15 @@ type Props = {
   version: number;
   taxRate: number;
   taxRoundingType: string;
-  /**
-   * 複製元から引き継ぐ初期値（提出区分・明細スナップショット・全体値引・メモ）。
-   * 新規追加（白紙）のときは undefined。
-   */
-  initialValues?: VariationCreateInitialValues;
   onCancel: () => void;
-};
+} & (
+  | { kind: "new" }
+  | {
+      kind: "duplicate";
+      /** 複製元から引き継ぐ初期値（提出区分・明細スナップショット・全体値引・メモ）。 */
+      initialValues: VariationCreateInitialValues;
+    }
+);
 
 /**
  * バリエーション作成フォーム（C3・新規追加／複製プリフィル）。明細編集の作業コピーパイプライン
@@ -32,30 +33,24 @@ type Props = {
  * (2) 初期値が複製元 DTO 由来（新規追加は白紙）の 2 点。提出区分は複製＝引き継ぎ固定、新規追加＝
  * 選択（SubmissionTypeField）。version はフォーム由来の楽観ロックトークン（ADR-0039・追加型でも必須）。
  */
-export function VariationCreateForm({
-  estimateNumber,
-  version,
-  taxRate,
-  taxRoundingType,
-  initialValues,
-  onCancel,
-}: Props) {
-  const isDuplicate = initialValues !== undefined;
+export function VariationCreateForm(props: Props) {
+  const { estimateNumber, version, taxRate, taxRoundingType, onCancel } = props;
+  // 複製は提出区分・明細等を複製元から引き継ぎ、新規追加は白紙で始める。複製/新規は initialValues の
+  // 有無ではなくタグ（props.kind）で区別する。
+  const initialValues = props.kind === "duplicate" ? props.initialValues : undefined;
+
   const action = addVariation.bind(null, estimateNumber);
   const { form, fields, isPending } = useServerForm({
     action,
     schema: addVariationNodeSchema,
     defaultValue: {
       version: String(version),
+      // 新規＝得意先向け既定／複製＝複製元の値。select(uncontrolled)・hidden いずれの初期値もここを源泉に。
+      submissionType: initialValues?.submissionType ?? "CUSTOMER",
       customerMemo: initialValues?.customerMemo ?? "",
       internalMemo: initialValues?.internalMemo ?? "",
     },
   });
-
-  // 提出区分は複製＝引き継ぎ固定／新規追加＝選択。明細以外の差分なのでラッパが state を持つ。
-  const [submissionType, setSubmissionType] = useState<string>(
-    initialValues?.submissionType ?? "CUSTOMER"
-  );
 
   // 作業コピー: 複製は複製元の作業ノード（改訂列ドロップ済み・セット群スナップショット保持）、
   // 新規追加は空配列で開始する。overallDiscount も同様。
@@ -85,12 +80,10 @@ export function VariationCreateForm({
         <input {...getInputProps(fields.version, { type: "hidden" })} />
 
         <SubmissionTypeField
-          fieldName={fields.submissionType.name}
-          isDuplicate={isDuplicate}
-          value={submissionType}
-          onChange={setSubmissionType}
-          error={fields.submissionType.errors?.[0]}
-          disabled={isPending}
+          field={fields.submissionType}
+          {...(props.kind === "duplicate"
+            ? { mode: "fixed" as const, value: props.initialValues.submissionType }
+            : { mode: "select" as const, disabled: isPending })}
         />
 
         <VariationLineEditor
@@ -127,52 +120,47 @@ export function VariationCreateForm({
 }
 
 /**
- * 提出区分フィールド。新規追加は選択（白紙だから）、複製は引き継ぎ固定（変更不可）。
+ * 提出区分フィールド。新規追加は選択式（白紙だから）、複製は引き継ぎ固定（変更不可・ADR-0045）。
  *
- * 複製時は disabled な select だと FormData に乗らないため、固定ラベル表示＋ hidden で値を運ぶ
- * （提出区分はバリ単位の不変属性・宛先切替の業務操作は存在しない・ADR-0045）。
+ * 値の保持は単一: 選択式は uncontrolled な select（conform 管理）、固定は hidden 1 つ。複製時は
+ * disabled な select だと FormData に乗らないため、固定ラベル表示＋ hidden で値を運ぶ（提出区分は
+ * バリ単位の不変属性・宛先切替の業務操作は存在しない・ADR-0045）。
  */
-function SubmissionTypeField({
-  fieldName,
-  isDuplicate,
-  value,
-  onChange,
-  error,
-  disabled,
-}: {
-  fieldName: string;
-  isDuplicate: boolean;
-  value: string;
-  onChange: (value: string) => void;
-  error?: string;
-  disabled?: boolean;
-}) {
+type SubmissionTypeFieldProps = {
+  field: FieldMetadata<string>;
+} & ({ mode: "select"; disabled?: boolean } | { mode: "fixed"; value: string });
+
+function SubmissionTypeField(props: SubmissionTypeFieldProps) {
+  const { field } = props;
+  const error = field.errors?.[0];
   return (
     <div className="mb-6">
-      <label className="block text-sm font-bold text-gray-700 mb-1">提出区分</label>
-      {isDuplicate ? (
+      {props.mode === "fixed" ? (
         <>
+          <label className="block text-sm font-bold text-gray-700 mb-1">提出区分</label>
           <p className="border rounded px-3 py-2 bg-gray-50 text-gray-700">
-            {SUBMISSION_TYPE_LABELS[value] ?? value}
+            {SUBMISSION_TYPE_LABELS[props.value] ?? props.value}
             <span className="ml-2 text-xs text-gray-500">（複製元から引き継ぎ・変更不可）</span>
           </p>
-          <input type="hidden" name={fieldName} value={value} />
+          <input type="hidden" name={field.name} value={props.value} />
         </>
       ) : (
-        <select
-          name={fieldName}
-          aria-label="提出区分"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          disabled={disabled}
-          className="border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-400"
-        >
-          {Object.entries(SUBMISSION_TYPE_LABELS).map(([code, label]) => (
-            <option key={code} value={code}>
-              {label}
-            </option>
-          ))}
-        </select>
+        <>
+          <label htmlFor={field.id} className="block text-sm font-bold text-gray-700 mb-1">
+            提出区分
+          </label>
+          <select
+            {...getSelectProps(field)}
+            disabled={props.disabled}
+            className="border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-400"
+          >
+            {Object.entries(SUBMISSION_TYPE_LABELS).map(([code, label]) => (
+              <option key={code} value={code}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </>
       )}
       {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
     </div>
