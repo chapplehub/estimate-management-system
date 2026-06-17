@@ -6,7 +6,6 @@ import { useServerForm } from "@/app/_hooks/useServerForm";
 import { SelectionModal } from "@/app/_components/shared/SelectionModal";
 import type { SearchFieldDef } from "@/app/_components/shared/SearchForm";
 import type { VariationDTO } from "@subdomains/estimate/application/queries/dto/EstimateDetailDTO";
-import { formatYen } from "../_shared/labels";
 import {
   expandSetComponents,
   getProductLineSnapshot,
@@ -17,6 +16,7 @@ import {
 import { productSelectionColumns, type ProductSelectionRow } from "../_shared/selectionColumns";
 import { LineEditTable } from "./components/LineEditTable";
 import { ProductSuggestDialog } from "./components/ProductSuggestDialog";
+import { PreviewRow } from "./components/PreviewRow";
 import { previewVariationTotals } from "./previewAmounts";
 import { updateVariationContent } from "./actions";
 import { updateVariationContentNodeSchema } from "./variationSchema";
@@ -300,27 +300,5 @@ export function VariationEditForm({
         />
       )}
     </>
-  );
-}
-
-function PreviewRow({
-  label,
-  value,
-  emphasize = false,
-}: {
-  label: string;
-  value: number;
-  emphasize?: boolean;
-}) {
-  return (
-    <div
-      className={[
-        "flex justify-between py-1",
-        emphasize ? "border-t pt-2 text-lg font-bold text-gray-900" : "text-gray-700",
-      ].join(" ")}
-    >
-      <dt>{label}</dt>
-      <dd>{formatYen(value)}</dd>
-    </div>
   );
 }
