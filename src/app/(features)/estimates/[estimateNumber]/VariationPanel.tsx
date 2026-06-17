@@ -173,11 +173,13 @@ export function VariationPanel({
 
           {mode.kind === "create-new" || mode.kind === "create-duplicate" ? (
             <VariationCreateForm
+              {...(mode.kind === "create-duplicate"
+                ? { kind: "duplicate" as const, initialValues: mode.initialValues }
+                : { kind: "new" as const })}
               estimateNumber={estimateNumber}
               version={version}
               taxRate={taxRate}
               taxRoundingType={taxRoundingType}
-              initialValues={mode.kind === "create-duplicate" ? mode.initialValues : undefined}
               onCancel={() => setMode({ kind: "view" })}
             />
           ) : mode.kind === "edit" ? (
