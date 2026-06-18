@@ -30,15 +30,16 @@ export default async function EstimateDetailPage({
     notFound();
   }
 
-  // 部署プルダウン（編集フォーム・複製モーダル用）。有効な部署のみ（GetActiveDepartmentsQuery・Q6）。
-  const departments = await getActiveDepartmentsQueryFactory().execute({});
-  const departmentOptions = departments.map((d) => ({ id: d.id, name: d.name }));
-
-  // 複製モーダルの既定日付は今日（JST・新規見積のため）。既定日付の有効税率を read-only 初期値とする。
+  // 複製モーダルの既定日付は今日（JST・新規見積のため）。
   const today = toDateInputValue(new Date());
-  const initialTaxRate = await resolveEffectiveTaxRateQueryFactory().execute({
-    date: fromDateInputValue(today),
-  });
+  // 部署プルダウン（編集フォーム・複製モーダル用・有効な部署のみ Q6）と既定日付の有効税率
+  // （複製モーダルの read-only 初期値）は互いに独立なため並列解決する（詳細はホットパスで
+  // 逐次 I/O を避ける）。
+  const [departments, initialTaxRate] = await Promise.all([
+    getActiveDepartmentsQueryFactory().execute({}),
+    resolveEffectiveTaxRateQueryFactory().execute({ date: fromDateInputValue(today) }),
+  ]);
+  const departmentOptions = departments.map((d) => ({ id: d.id, name: d.name }));
 
   return (
     <div className="container mx-auto p-8">
