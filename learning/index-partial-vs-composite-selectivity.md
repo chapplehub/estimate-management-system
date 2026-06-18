@@ -2,6 +2,8 @@
 
 作成日: 2026-06-18
 
+> **追記（2026-06-18・同日）**: 本稿の実例だった「`estimate_approval_steps` に `status='AWAITING'` の部分インデックスを張る」案は、その後のグリルで**承認ステップの構造をごっそり変え、status を保存カラムではなく行の存在から導出する**方針に転換したため**前提が覆った**（→ `derive-status-from-event-rows-not-mutable-column.md`）。status カラム自体が無くなったので `WHERE status='AWAITING'` の部分インデックスは張れず、Inboxは反結合（NOT EXISTS）で引く。**ただし本稿の一般論（選択性 vs カーディナリティ、部分 vs 複合、使われないインデックスは負債）はそのまま有効**。具体例が陳腐化しただけで教訓は生きている。
+
 ## 概要
 
 DBインデックスを張るかどうか・どう張るかの判断軸を整理した。きっかけは見積申請の承認ステップテーブル（`estimate_approval_steps`）の承認Inboxクエリ（`status='AWAITING'` かつ `role_id ∈ 自分の役割` のステップを引く）のインデックス設計。
