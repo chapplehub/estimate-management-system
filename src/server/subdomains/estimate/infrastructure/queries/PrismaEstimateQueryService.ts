@@ -199,6 +199,12 @@ export class PrismaEstimateQueryService implements EstimateQueryService {
   }
 
   private static toDTO(e: EstimateDetailRow): EstimateDetailDTO {
+    // 改訂元の集合（兄弟バリの revisionTarget.sourceVariationId）。各バリの改訂役割導出に使う。
+    const sourceVariationIds = new Set(
+      e.variations
+        .map((v) => v.revisionTarget?.sourceVariationId)
+        .filter((id): id is string => id != null)
+    );
     return {
       estimateId: e.id,
       estimateNumber: e.estimateNumber,
@@ -241,15 +247,34 @@ export class PrismaEstimateQueryService implements EstimateQueryService {
             afterServiceWarningAcknowledged: e.afterRepairDetail.afterServiceWarningAcknowledged,
           }
         : null,
-      variations: e.variations.map((v) => PrismaEstimateQueryService.variationToDTO(v)),
+      variations: e.variations.map((v) =>
+        PrismaEstimateQueryService.variationToDTO(v, sourceVariationIds)
+      ),
     };
   }
 
-  private static variationToDTO(v: VariationRow): VariationDTO {
+  /**
+   * 改訂役割（ADR-0044/0059）を read 側で導出する。TARGET 優先で相互排他に判定する。
+   *
+   * - REVISION_TARGET: 自身が出自（revisionTarget = revisedFrom 相当）を持つ。
+   * - REVISION_SOURCE: 兄弟バリの誰かが自分を改訂元に持つ（sourceVariationIds に自分の id）。
+   * - NONE: いずれでもない。
+   */
+  private static deriveRevisionRole(v: VariationRow, sourceVariationIds: ReadonlySet<string>) {
+    if (v.revisionTarget !== null) return "REVISION_TARGET" as const;
+    if (sourceVariationIds.has(v.id)) return "REVISION_SOURCE" as const;
+    return "NONE" as const;
+  }
+
+  private static variationToDTO(
+    v: VariationRow,
+    sourceVariationIds: ReadonlySet<string>
+  ): VariationDTO {
     return {
       variationId: v.id,
       variationNumber: v.variationNumber,
       status: v.status,
+      revisionRole: PrismaEstimateQueryService.deriveRevisionRole(v, sourceVariationIds),
       submissionType: v.submissionType,
       overallDiscount: Number(v.overallDiscount),
       customerMemo: v.customerMemo,

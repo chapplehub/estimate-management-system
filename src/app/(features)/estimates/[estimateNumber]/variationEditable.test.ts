@@ -58,6 +58,7 @@ function variation(overrides: Partial<VariationDTO> = {}): VariationDTO {
     variationId: "v-1",
     variationNumber: 1,
     status: "ACTIVE",
+    revisionRole: "NONE",
     submissionType: "CUSTOMER",
     overallDiscount: 0,
     customerMemo: "",

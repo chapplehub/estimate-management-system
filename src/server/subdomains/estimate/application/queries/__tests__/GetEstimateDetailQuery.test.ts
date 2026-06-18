@@ -221,6 +221,39 @@ describe("GetEstimateDetailQuery", () => {
     });
   });
 
+  describe("改訂役割（revisionRole・ADR-0059/0044）", () => {
+    it("改訂前の見積は全バリエーションが revisionRole=NONE", async () => {
+      await repository.insert(buildNewEstimate(ids, EN.basic));
+
+      const dto = await query.execute({ estimateNumber: EN.basic });
+      expect(dto).not.toBeNull();
+      if (!dto) return;
+
+      expect(dto.variations.every((v) => v.revisionRole === "NONE")).toBe(true);
+    });
+
+    it("得意先改訂後は改訂元=REVISION_SOURCE・改訂先=REVISION_TARGET を返す", async () => {
+      const estimate = buildNewEstimate(ids, EN.revised, {
+        submissionType: SubmissionType.DELIVERY_LOCATION,
+      });
+      await repository.insert(estimate);
+      const loaded = await repository.findById(estimate.id);
+      if (!loaded) return;
+      const sourceId = loaded.variations[0].id.value;
+      loaded.reviseForCustomer(loaded.variations[0].id);
+      await repository.update(loaded, 1);
+
+      const dto = await query.execute({ estimateNumber: EN.revised });
+      expect(dto).not.toBeNull();
+      if (!dto) return;
+
+      const source = dto.variations.find((v) => v.variationId === sourceId);
+      const target = dto.variations.find((v) => v.variationId !== sourceId);
+      expect(source?.revisionRole).toBe("REVISION_SOURCE");
+      expect(target?.revisionRole).toBe("REVISION_TARGET");
+    });
+  });
+
   describe("修理情報（③・Q10）", () => {
     it("REPAIR: repairDetail（対象商品 read-through・故障内容）を載せ afterRepair は null", async () => {
       await repository.insert(buildRepairEstimate(ids, EN.repair));
