@@ -48,6 +48,8 @@ export const SEED_ESTIMATE_NUMBERS = {
   revised: "N9905004",
   /** S5 セット群編集の E2E 用（セット群1＋通常明細1・非改訂 ACTIVE＝編集対象）。 */
   setGroup: "N9905005",
+  /** C7 得意先改訂の E2E 用（改訂前・hasRevision=false の起点。納品先宛 V1＝改訂元適格）。 */
+  reviseSource: "N9905006",
 } as const;
 
 /** 見積が参照する FK マスタ（呼び出し側 seed の作成済みデータから解決した ID）。 */
@@ -195,6 +197,31 @@ function buildRevisedEstimate(fk: EstimateSeedFk) {
   return estimate;
 }
 
+/**
+ * C7 得意先改訂 E2E 用の見積（改訂前・hasRevision=false）。改訂操作の起点。
+ * V1 は納品先宛・ACTIVE（改訂元適格＝得意先改訂ボタンが出る）、V2 は得意先宛・ACTIVE
+ * （適格外＝ボタンが出ない）。系譜は張らず、改訂操作そのもので改訂先 V3 を生成させ
+ * 初回改訂→ヘッダーロック発火の遷移を観測できるようにする。
+ */
+function buildReviseSourceEstimate(fk: EstimateSeedFk) {
+  return EstimateFactory.create({
+    ...header(fk),
+    estimateNumber: EstimateNumber.parse(SEED_ESTIMATE_NUMBERS.reviseSource),
+    variations: [
+      {
+        variationNumber: 1,
+        submissionType: SubmissionType.DELIVERY_LOCATION,
+        items: [mkItem(fk.productAId, 1, "改訂元明細(納品先)", 1, 5000)],
+      },
+      {
+        variationNumber: 2,
+        submissionType: SubmissionType.CUSTOMER,
+        items: [mkItem(fk.productBId, 1, "得意先明細", 1, 6000)],
+      },
+    ],
+  });
+}
+
 /** 全バリエーション無効の見積（全無効警告の確認用）。 */
 function buildAllInactiveEstimate(fk: EstimateSeedFk) {
   const estimate = EstimateFactory.create({
@@ -288,6 +315,7 @@ export async function seedEstimates(prisma: PrismaClient): Promise<number> {
     buildAllInactiveEstimate(fk),
     buildEditableEstimate(fk),
     buildRepairSeedEstimate(fk),
+    buildReviseSourceEstimate(fk),
   ];
   for (const estimate of estimates) {
     // 上記はセット群なし → 所属交差表の createMany は不要。
@@ -314,6 +342,6 @@ export async function seedEstimates(prisma: PrismaClient): Promise<number> {
     });
   }
 
-  // estimates（4）＋ セット群付き（1）＋ 改訂済み（1）。
+  // estimates（5）＋ セット群付き（1）＋ 改訂済み（1）。
   return estimates.length + 2;
 }
