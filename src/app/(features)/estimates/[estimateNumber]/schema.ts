@@ -9,7 +9,8 @@ import { z } from "zod";
  * 修理情報は REPAIR / AFTER_REPAIR のときだけフォームに現れるため optional とし、必須性は
  * estimateType を知る Server Action 側で担保する（単一フォーム・条件表示）。
  */
-const dateInput = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付を入力してください");
+/** input[type=date] の "yyyy-mm-dd"。C1 作成フォーム（new/schema.ts）でも共有するため export する。 */
+export const dateInput = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付を入力してください");
 
 export const updateEstimateHeaderSchema = z.object({
   /** 楽観ロックトークン（ADR-0039）。編集画面表示時の値を hidden で往復させる。 */

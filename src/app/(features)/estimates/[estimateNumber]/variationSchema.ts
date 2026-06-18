@@ -60,8 +60,11 @@ const nodeSchema = z.discriminatedUnion("kind", [lineNodeSchema, setGroupNodeSch
 export type VariationNodeInput = z.infer<typeof nodeSchema>;
 export type VariationSetGroupNodeInput = z.infer<typeof setGroupNodeSchema>;
 
-/** ノード配列フィールド: JSON 文字列をパースして判別子 union 配列へ pipe する（ADR-0050）。空配列許可。 */
-const nodesField = z
+/**
+ * ノード配列フィールド: JSON 文字列をパースして判別子 union 配列へ pipe する（ADR-0050）。空配列許可。
+ * C1 作成フォーム（new/schema.ts）でも同じ往復契約を共有するため export する。
+ */
+export const nodesField = z
   .string()
   .transform((s, ctx) => {
     try {
