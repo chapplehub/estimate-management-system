@@ -9,9 +9,11 @@ import { updateVariationCommandFactory } from "@subdomains/estimate/application/
 import { addVariationCommandFactory } from "@subdomains/estimate/application/factories/addVariationCommandFactory";
 import { checkTaxRateThenDuplicateDepsFactory } from "@subdomains/estimate/application/factories/checkTaxRateThenDuplicateDepsFactory";
 import { checkTaxRateThenDuplicate } from "@subdomains/estimate/application/shared/checkTaxRateThenDuplicate";
+import { reviseForCustomerCommandFactory } from "@subdomains/estimate/application/factories/reviseForCustomerCommandFactory";
 import type { UpdateEstimateInput } from "@subdomains/estimate/application/commands/UpdateEstimateCommand";
 import type { UpdateVariationInput } from "@subdomains/estimate/application/commands/UpdateVariationCommand";
 import type { AddVariationInput } from "@subdomains/estimate/application/commands/AddVariationCommand";
+import type { ReviseForCustomerInput } from "@subdomains/estimate/application/commands/ReviseForCustomerCommand";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { handleCommandError } from "../../_shared/error-handler";
@@ -20,6 +22,7 @@ import { taxRateMismatchFormErrors } from "../_shared/tax-rate-format";
 import { duplicateEstimateSchema } from "./duplicateSchema";
 import { updateEstimateHeaderSchema } from "./schema";
 import { addVariationNodeSchema, updateVariationContentNodeSchema } from "./variationSchema";
+import { reviseForCustomerSchema } from "./reviseForCustomerSchema";
 import { toVariationContentInputFromNodes } from "./variationContentMapping";
 
 /**
@@ -157,6 +160,63 @@ export async function addVariation(
 
   revalidatePath(`/estimates/${estimateNumber}`);
   redirect(`/estimates/${estimateNumber}?reason=${REDIRECT_REASON.ESTIMATE_UPDATED}`);
+}
+
+/**
+ * 得意先改訂（C7・集約内の縦スライス）の Server Action。
+ *
+ * 改訂先の内容は改訂元からの全複写でドメインが決定するため、入力は改訂元の sourceVariationId と
+ * 楽観ロックトークン version のみ（reviseForCustomerSchema）。estimateId は estimateNumber から DTO
+ * 解決する。明細・金額の写像は不要（C4 と異なり content を組み立てない）。税率不一致（§8.7）は
+ * 例外でなく Result のためフォームエラーで提示しモーダルを維持する（文言は作成・複製と共有）。
+ * 競合・その他例外は handleCommandError 経由でフォームエラー化する。成功時は同一見積の詳細へ
+ * 改訂先タブ出現済みで戻り、専用フラッシュで結果を伝える（ESTIMATE_REVISED）。
+ */
+export async function reviseForCustomer(
+  estimateNumber: string,
+  _prevState: unknown,
+  formData: FormData
+) {
+  await verifySession();
+
+  const submission = parseWithZod(formData, { schema: reviseForCustomerSchema });
+  if (submission.status !== "success") {
+    return submission.reply();
+  }
+  const value = submission.value;
+
+  const dto = await getEstimateDetailQueryFactory().execute({ estimateNumber });
+  if (!dto) {
+    return submission.reply({ formErrors: ["見積が見つかりません"] });
+  }
+
+  const input: ReviseForCustomerInput = {
+    estimateId: dto.estimateId,
+    sourceVariationId: value.sourceVariationId,
+    version: value.version,
+  };
+
+  let result;
+  try {
+    result = await reviseForCustomerCommandFactory().execute(input);
+  } catch (error) {
+    const errorResult = handleCommandError(error);
+    const errorMessage = !errorResult.success && errorResult.error ? errorResult.error : undefined;
+    return submission.reply({ formErrors: errorMessage ? [errorMessage] : [] });
+  }
+
+  // 税率不一致（§8.7）は改訂されない。両税率を提示してモーダルを維持する（文言は作成・複製と共有）。
+  if (result.kind === "taxRateMismatch") {
+    return submission.reply({
+      formErrors: taxRateMismatchFormErrors(
+        result.estimateDateRate.value,
+        result.deadlineRate.value
+      ),
+    });
+  }
+
+  revalidatePath(`/estimates/${estimateNumber}`);
+  redirect(`/estimates/${estimateNumber}?reason=${REDIRECT_REASON.ESTIMATE_REVISED}`);
 }
 
 /**

@@ -70,6 +70,7 @@ function renderPanel(variations: VariationDTO[]) {
       variations={variations}
       taxRate={0.1}
       taxRoundingType="ROUND_DOWN"
+      hasRevision={false}
     />
   );
 }

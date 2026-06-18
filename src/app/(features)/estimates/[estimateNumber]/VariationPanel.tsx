@@ -5,9 +5,14 @@ import { Badge } from "@/app/_components/shadcnui/badge";
 import type { VariationDTO } from "@subdomains/estimate/application/queries/dto/EstimateDetailDTO";
 import { SUBMISSION_TYPE_LABELS, formatYen } from "../_shared/labels";
 import { LineTable } from "./components/LineTable";
-import { isVariationDuplicatable, isVariationEditable } from "./variationEditable";
+import {
+  isVariationDuplicatable,
+  isVariationEditable,
+  isVariationRevisableForCustomer,
+} from "./variationEditable";
 import { VariationEditForm } from "./VariationEditForm";
 import { VariationCreateForm } from "./VariationCreateForm";
+import { ReviseForCustomerDialog } from "./ReviseForCustomerDialog";
 import {
   toCreateInitialValuesFromVariation,
   type VariationCreateInitialValues,
@@ -22,6 +27,11 @@ type Props = {
   taxRate: number;
   /** 税端数区分（金額プレビュー用）。 */
   taxRoundingType: string;
+  /**
+   * この見積に既に改訂系譜が存在するか（top-level・ADR-0049）。得意先改訂の確認モーダルが
+   * 初回改訂か（＝ヘッダーロック告知の要否）を判断するために引き回す。
+   */
+  hasRevision: boolean;
 };
 
 /**
@@ -50,6 +60,7 @@ export function VariationPanel({
   variations,
   taxRate,
   taxRoundingType,
+  hasRevision,
 }: Props) {
   // 既定タブ＝最小番号の ACTIVE バリ（全 INACTIVE なら最小番号）。variations は番号昇順。
   const firstActive = variations.findIndex((v) => v.status === "ACTIVE");
@@ -159,6 +170,17 @@ export function VariationPanel({
                   >
                     複製
                   </button>
+                )}
+                {/* 得意先改訂は「納品先宛・有効」バリのみ（C7・ドメイン2ガードの写し）。確認モーダルは
+                    PanelMode と直交した自己完結コンポーネント（開閉 state はダイアログ内に閉じる）。 */}
+                {isVariationRevisableForCustomer(active) && (
+                  <ReviseForCustomerDialog
+                    estimateNumber={estimateNumber}
+                    version={version}
+                    sourceVariationId={active.variationId}
+                    sourceVariationNumber={active.variationNumber}
+                    hasRevision={hasRevision}
+                  />
                 )}
                 <button
                   type="button"
