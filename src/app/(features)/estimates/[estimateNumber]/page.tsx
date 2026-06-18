@@ -67,6 +67,7 @@ export default async function EstimateDetailPage({
         variations={estimate.variations}
         taxRate={estimate.taxRate}
         taxRoundingType={estimate.taxRoundingType}
+        hasRevision={estimate.hasRevision}
       />
     </div>
   );

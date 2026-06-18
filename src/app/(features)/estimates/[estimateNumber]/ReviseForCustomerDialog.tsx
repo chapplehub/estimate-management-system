@@ -54,7 +54,7 @@ export function ReviseForCustomerDialog({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="bg-white hover:bg-gray-100 text-gray-700 font-bold py-2 px-4 rounded border border-gray-300 focus:outline-none focus:shadow-outline"
+        className="bg-orange-500 hover:bg-orange-700 text-white text-sm font-bold py-1 px-4 rounded focus:outline-none focus:shadow-outline"
       >
         得意先改訂
       </button>
