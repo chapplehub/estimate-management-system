@@ -32,6 +32,7 @@ export const REDIRECT_REASON = {
   ESTIMATE_CREATED: "estimate_created",
   ESTIMATE_UPDATED: "estimate_updated",
   ESTIMATE_DUPLICATED: "estimate_duplicated",
+  ESTIMATE_REVISED: "estimate_revised",
 } as const;
 
 export type RedirectReason = (typeof REDIRECT_REASON)[keyof typeof REDIRECT_REASON];
