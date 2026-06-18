@@ -44,6 +44,7 @@
 | [0015](0015-selection-modal-self-contained-state.md) | SelectionModalが内部でデータ・選択状態を一括管理する | 採用 | 2026-04-13 |
 | [0016](0016-exclude-filtering-on-client-side.md) | 選択モーダルの除外フィルタリングをクライアント側で行う | 採用 | 2026-04-13 |
 | [0050](0050-serialize-dynamic-line-array-as-json-hidden-field.md) | 動的明細配列は conform field-array でなく単一 JSON hidden field で往復する | 採用 | 2026-06-15 |
+| [0057](0057-estimate-duplication-ui-as-detail-modal-driving-duplicate-command.md) | 見積複製(C6)の UI は作成画面統合ではなく詳細画面モーダル＋DuplicateEstimate 経路で実装する | 採用 | 2026-06-18 |
 
 ## ドメイン（設計パターン）
 
