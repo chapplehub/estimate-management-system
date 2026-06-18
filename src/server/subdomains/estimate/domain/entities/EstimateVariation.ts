@@ -242,6 +242,19 @@ export class EstimateVariation {
     this.recalculate(tax);
   }
 
+  /**
+   * 明細単位の顧客/社内メモを更新する（メモのみ・ADR-0059）。
+   *
+   * メモは金額に効かないため TaxContext を受け取らず再計算もしない。
+   * 凍結中（改訂元）の貫通可否はルート側の経路選択（findVariationOrThrow）で担保する。
+   */
+  changeItemMemos(itemId: EstimateItemId, customerMemo: Memo, internalMemo: Memo): void {
+    const item = this.findItemOrThrow(itemId);
+    item.changeCustomerMemo(customerMemo);
+    item.changeInternalMemo(internalMemo);
+    this.touch();
+  }
+
   // ========================================
   // 集計に関わる変更
   // ========================================

@@ -13,6 +13,7 @@ import type { EstimateItemId } from "../values/EstimateItemId";
 import { EstimateNumber } from "../values/EstimateNumber";
 import { EstimateType } from "../values/EstimateType";
 import type { EstimateVariationId } from "../values/EstimateVariationId";
+import type { Memo } from "../values/Memo";
 import type { Money } from "../values/Money";
 import type { Quantity } from "../values/Quantity";
 import { SubmissionType } from "../values/SubmissionType";
@@ -293,6 +294,42 @@ export class Estimate {
 
   deactivateVariation(variationId: EstimateVariationId): void {
     this.findVariationOrThrow(variationId).deactivate();
+    this.touch();
+  }
+
+  // ========================================
+  // メモのみ更新（凍結を貫通する唯一の編集経路・ADR-0059）
+  // ========================================
+
+  /**
+   * バリエーション単位の顧客/社内メモを更新する。
+   *
+   * 凍結（改訂元）でも許可されるため editableVariationOrThrow ではなく
+   * findVariationOrThrow を使う。メモは金額に効かないため再計算（ADR-0028）は呼ばない。
+   */
+  changeVariationMemos(
+    variationId: EstimateVariationId,
+    customerMemo: Memo,
+    internalMemo: Memo
+  ): void {
+    const v = this.findVariationOrThrow(variationId);
+    v.changeCustomerMemo(customerMemo);
+    v.changeInternalMemo(internalMemo);
+    this.touch();
+  }
+
+  /**
+   * 明細単位の顧客/社内メモを更新する。
+   *
+   * バリ単位メモと同じく凍結を貫通する（findVariationOrThrow 経由）。再計算は呼ばない。
+   */
+  changeItemMemos(
+    variationId: EstimateVariationId,
+    itemId: EstimateItemId,
+    customerMemo: Memo,
+    internalMemo: Memo
+  ): void {
+    this.findVariationOrThrow(variationId).changeItemMemos(itemId, customerMemo, internalMemo);
     this.touch();
   }
 
