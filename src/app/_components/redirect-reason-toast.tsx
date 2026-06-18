@@ -125,6 +125,11 @@ const FLASH_MESSAGES: Record<RedirectReason, FlashMessage> = {
     type: FLASH_MESSAGE_TYPE.SUCCESS,
     message: "見積を更新しました。",
   },
+  [REDIRECT_REASON.ESTIMATE_DUPLICATED]: {
+    type: FLASH_MESSAGE_TYPE.SUCCESS,
+    message:
+      "見積を複製しました。複製先の見積単価はクリアされています。各バリエーションで再入力してください。",
+  },
 };
 
 function RedirectReasonToastInner() {
