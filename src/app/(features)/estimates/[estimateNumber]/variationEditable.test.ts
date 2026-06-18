@@ -4,7 +4,11 @@ import type {
   SetGroupDTO,
   VariationDTO,
 } from "@subdomains/estimate/application/queries/dto/EstimateDetailDTO";
-import { isVariationDuplicatable, isVariationEditable } from "./variationEditable";
+import {
+  isVariationDuplicatable,
+  isVariationEditable,
+  isVariationRevisableForCustomer,
+} from "./variationEditable";
 
 /** テスト用の最小 LineDTO（必要なフィールドのみ上書き）。 */
 function line(overrides: Partial<LineDTO> = {}): LineDTO {
@@ -112,5 +116,31 @@ describe("isVariationDuplicatable（複製元の適格性・C3）", () => {
 
   it("無効(INACTIVE)でも改訂明細を含まなければ複製元にできる（状態を問わない・編集可否との差）", () => {
     expect(isVariationDuplicatable(variation({ status: "INACTIVE", lines: [line()] }))).toBe(true);
+  });
+});
+
+describe("isVariationRevisableForCustomer（改訂元の適格性・C7）", () => {
+  it("納品先宛(DELIVERY_LOCATION)かつ ACTIVE のバリは改訂元にできる（tracer bullet）", () => {
+    const v = variation({ submissionType: "DELIVERY_LOCATION", status: "ACTIVE" });
+    expect(isVariationRevisableForCustomer(v)).toBe(true);
+  });
+
+  it("得意先宛(CUSTOMER)のバリは改訂元にできない（ドメイン isDeliveryLocation ガードの写し）", () => {
+    const v = variation({ submissionType: "CUSTOMER", status: "ACTIVE" });
+    expect(isVariationRevisableForCustomer(v)).toBe(false);
+  });
+
+  it("無効(INACTIVE)の納品先宛バリは改訂元にできない（ドメイン isActive ガードの写し）", () => {
+    const v = variation({ submissionType: "DELIVERY_LOCATION", status: "INACTIVE" });
+    expect(isVariationRevisableForCustomer(v)).toBe(false);
+  });
+
+  it("既に改訂明細を含む納品先宛 ACTIVE バリも改訂元にできる（再改訂許可・凍結判定は持たない）", () => {
+    const v = variation({
+      submissionType: "DELIVERY_LOCATION",
+      status: "ACTIVE",
+      lines: [line({ revisedDeliveryPrice: 800 })],
+    });
+    expect(isVariationRevisableForCustomer(v)).toBe(true);
   });
 });
