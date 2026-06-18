@@ -7,7 +7,7 @@ import { type Page, expect, test } from "@playwright/test";
  * 検証範囲（ADR-0017/0020・UI 観測可能な範囲）:
  * - (1) バリ選択→複製→新採番見積へ遷移＋単価クリア注記フラッシュ／複製元は不変
  * - (2) 0 件選択は確定不可（≥1 必須・ADR-0042）
- * - (3) 改訂明細を含むバリはチェック不可（状態不問・isVariationDuplicatable）
+ * - (3) 改訂先はチェック不可・改訂元は選択可（複製可否は revisionRole 駆動・#388・ADR-0059）
  * - (4) §8.7 税率不一致（8%/10% 境界）でモーダル内フォーム警告・複製されない
  *
  * 「系譜記録」「単価が 0 にクリアされた DB 状態」は Prisma 直接参照なしでは観測できず ADR-0012 に
@@ -15,7 +15,9 @@ import { type Page, expect, test } from "@playwright/test";
  * 不変・単価クリア注記フラッシュなど UI 観測可能な結果のみを検証する。
  */
 const SOURCE = "N9905003"; // 単一 ACTIVE・非改訂バリ（複製可）
-const MIXED = "N9905001"; // V1=改訂明細(複製不可)・V2/V3=複製可
+// 系譜あり改訂済み（seed が reviseForCustomer 実行済み）。V1=改訂元(SOURCE・複製可)、
+// V2=改訂先(TARGET・複製不可)。改訂先の複製不可は revisionRole 駆動（#388・ADR-0059）。
+const REVISED = "N9905004";
 
 async function waitForDetailReady(page: Page, estimateNumber: string) {
   await expect(page.getByRole("heading", { level: 1, name: estimateNumber })).toBeVisible();
@@ -66,14 +68,16 @@ test.describe("見積複製（バリデーション・適格性・税率）", ()
     await expect(page).toHaveURL(new RegExp(`/estimates/${SOURCE}`));
   });
 
-  test("改訂明細を含むバリはチェック不可（状態不問・複製元にできない）", async ({ page }) => {
-    await page.goto(`/estimates/${MIXED}`);
-    await waitForDetailReady(page, MIXED);
+  test("改訂先はチェック不可・改訂元は選択可（複製可否は revisionRole 駆動・#388）", async ({
+    page,
+  }) => {
+    await page.goto(`/estimates/${REVISED}`);
+    await waitForDetailReady(page, REVISED);
 
     await openDuplicateModal(page);
-    // 第1案は改訂価格明細を含むためチェック不可。第2案（複製可）は選択可能。
-    await expect(page.getByRole("checkbox", { name: /第1案/ })).toBeDisabled();
-    await expect(page.getByRole("checkbox", { name: /第2案/ })).toBeEnabled();
+    // 第1案＝改訂元(SOURCE)は素の土台として複製可。第2案＝改訂先(TARGET)は系譜と不可分で複製不可。
+    await expect(page.getByRole("checkbox", { name: /第1案/ })).toBeEnabled();
+    await expect(page.getByRole("checkbox", { name: /第2案/ })).toBeDisabled();
   });
 
   test("見積日と締切日で税率が異なると §8.7 警告が出て複製されない", async ({ page }) => {

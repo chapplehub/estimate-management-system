@@ -9,7 +9,8 @@ import { expect, test } from "@playwright/test";
  * ロジックは reorderNodes のユニットテストで担保する（ヘッダー編集 E2E が税率不一致を除外するのと同方針）。
  */
 const EDITABLE = "N9905003"; // 単一 ACTIVE バリ・1明細・セット群なし・非改訂（編集対象）
-const HAS_REVISED_LINE = "N9905001"; // 既定タブ V1 に改訂価格明細を含む（編集不可）
+// 系譜あり改訂済み（seed が reviseForCustomer 実行済み）。V2=改訂先(TARGET・内容編集不可)。
+const REVISED = "N9905004";
 
 test.describe("バリ内容編集（編集可否ゲート）", () => {
   test("編集可能バリでは『内容を編集』が表示される", async ({ page }) => {
@@ -17,9 +18,12 @@ test.describe("バリ内容編集（編集可否ゲート）", () => {
     await expect(page.getByRole("button", { name: "内容を編集" })).toBeVisible();
   });
 
-  test("改訂価格明細を含むバリでは『内容を編集』が表示されない", async ({ page }) => {
-    await page.goto(`/estimates/${HAS_REVISED_LINE}`);
-    // 既定タブ＝V1（改訂価格明細あり）。UI 抑止（最終強制はドメイン replaceContent）。
+  test("改訂先（系譜あり）では『内容を編集』が表示されない（revisionRole 駆動・#388）", async ({
+    page,
+  }) => {
+    await page.goto(`/estimates/${REVISED}`);
+    // 改訂先 V2（REVISION_TARGET）は行構成固定で内容編集不可。UI 抑止（最終強制はドメイン）。
+    await page.getByRole("tab", { name: "バリエーション2" }).click();
     await expect(page.getByRole("button", { name: "内容を編集" })).toHaveCount(0);
   });
 });
