@@ -18,6 +18,7 @@
 | [0053](0053-separate-estimate-application-table-from-shared.md) | 申請テーブルを見積・価格共通から見積専用に分離する | 採用 | 2026-06-17 |
 | [0054](0054-approval-exemption-as-dedicated-table.md) | 承認免除を申請テーブルに含めず専用テーブルで表現する | 採用 | 2026-06-17 |
 | [0055](0055-approval-goal-uses-tax-included-final-total.md) | 見積承認のゴール判定に税込合計金額（finalTotal）を用いる | 採用 | 2026-06-17 |
+| [0058](0058-derive-application-and-step-status-from-event-rows.md) | 見積申請・承認ステップの状態を行の存在で導出し、単一テーブルのDBバックストップを手放す | 採用 | 2026-06-18 |
 
 ## インフラストラクチャ（データベース・ID）
 

@@ -31,6 +31,9 @@ model Position {
   // 逆参照
   roles Role[]
 
+  // 見積承認のゴール役職としての逆参照（ADR-0055）
+  finalApprovalApplications EstimateApplication[]
+
   // タイムスタンプ
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -55,6 +58,9 @@ model Role {
   // 逆参照
   employeeRoles       EmployeeRole[]
   employeesAsSuperior Employee[]     @relation("EmployeeSuperiorRole")
+
+  // 見積承認ステップの承認対象役割としての逆参照
+  approvalSteps EstimateApprovalStep[]
 
   // 楽観ロックトークン（ADR-0039）。更新ごとに +1
   version Int @default(1)
@@ -111,6 +117,13 @@ model Employee {
   createdOrders   Order[]             @relation("OrderCreator")
   confirmedOrders OrderConfirmation[] @relation("OrderConfirmer")
   cancelledOrders OrderCancellation[] @relation("OrderCanceller")
+
+  // 見積申請関連の逆参照（申請者・承認者・差戻者・取下者・免除者の5役）
+  estimateApplications   EstimateApplication[]           @relation("ApplicationApplicant")
+  estimateStepApprovals  EstimateStepApproval[]          @relation("StepApprover")
+  estimateStepRejections EstimateStepRejection[]         @relation("StepRejecter")
+  estimateWithdrawals    EstimateApplicationWithdrawal[] @relation("ApplicationWithdrawer")
+  estimateExemptions     EstimateApprovalExemption[]     @relation("ExemptionExemptor")
 
   // 楽観ロックトークン（ADR-0039）。更新ごとに +1
   version Int @default(1)
@@ -598,7 +611,10 @@ model EstimateVariation {
   taxAmount        Decimal @map("tax_amount") @db.Decimal(12, 2) // 消費税額
   finalTotal       Decimal @map("final_total") @db.Decimal(12, 2) // 最終合計金額
 
-  // 申請・承認情報は本モデルに持たない（共通申請テーブル ADR-0001 が別 issue で参照）
+  // 見積申請（ADR-0053/0058）。差戻→再申請で attempt 違いの行が増えるため複数
+  applications EstimateApplication[]
+  // 承認免除（ADR-0054）。1バリエーション高々1件
+  exemption EstimateApprovalExemption?
 
   // 受注（1:1。Order.variationId が @unique のため Optional 単数）
   order Order? @relation("VariationOrder")
@@ -873,4 +889,151 @@ model EstimateVariationRevision {
 
   @@index([sourceVariationId])
   @@map("estimate_variation_revisions")
+}
+
+// ========================================
+// 見積申請・承認関連（ADR-0053/0054/0055/0058）
+// ========================================
+//
+// 申請・承認ステップの状態（PENDING/APPROVED/REJECTED/WITHDRAWN 等）は保存せず、
+// 終端イベント行（承認/差戻/取下）の存在＋ステップ順序から導出する（ADR-0058・設計書 §3.6）。
+// 「1見積1前進バリエーション」のDBバックストップは持たず、見積アグリゲートの楽観ロックで
+// アプリ層に一元化する（ADR-0058）。冗長 estimate_id は持たず見積へは variation 経由で辿る。
+
+// 承認免除の理由
+enum EstimateExemptionReason {
+  CONSUMABLE_ONLY // 消耗品のみ（金額無関係・ADR-0004）
+  BELOW_THRESHOLD // 10万円未満
+  AFTER_REPAIR // 事後見積（作業済みのため・§6.3）
+}
+
+// 見積申請。状態は保存せず §3.6 で導出する。申請行自体は生成後ほぼ不変だが、
+// version は子イベント挿入を含むアグリゲート全体の変更を直列化する楽観ロック（ADR-0039/0058）
+model EstimateApplication {
+  id String @id @db.Uuid // ドメイン層で UUIDv7 生成
+
+  // 対象バリエーション（見積専用なので FK を張れる。ADR-0053）
+  variationId String            @map("variation_id") @db.Uuid
+  variation   EstimateVariation @relation(fields: [variationId], references: [id])
+
+  // 申請回数（同一バリエーションへの通番。差戻→再申請で +1。ADR-0005）
+  // 自然キー・業務可視値として保存（導出可能だが残す。ADR-0028/0033 流儀）
+  attempt Int @default(1) // CHECK (attempt >= 1) を手書きSQLで付与
+
+  // 申請者
+  applicantEmployeeId String   @map("applicant_employee_id") @db.Uuid
+  applicant           Employee @relation("ApplicationApplicant", fields: [applicantEmployeeId], references: [id])
+
+  // 承認フローのゴール役職（金額から算出。NOT NULL ＝ 承認を通る申請は必ずゴールを持つ。ADR-0055）
+  finalApprovalPositionId String   @map("final_approval_position_id") @db.Uuid
+  finalApprovalPosition   Position @relation(fields: [finalApprovalPositionId], references: [id])
+
+  steps      EstimateApprovalStep[]
+  withdrawal EstimateApplicationWithdrawal? // 取下イベント（行の存在＝取下）
+
+  // 楽観ロック（ADR-0039・ADR-0058: アグリゲート変更の直列化）
+  version Int @default(1)
+
+  // 申請日時 = createdAt（業務日時 submittedAt は冗長なため持たない）
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@unique([variationId, attempt]) // ADR-0005 を見積専用で簡約。自然キー
+  @@index([variationId])
+  @@map("estimate_applications")
+}
+
+// 承認ステップ。申請時に全ステップ事前生成（ADR-0002）。骨格のみ・完全不変・nullable ゼロ。
+// 承認/差戻の結果はイベント表に分離し、ステップ状態は §3.6 で導出する
+model EstimateApprovalStep {
+  id String @id @db.Uuid
+
+  applicationId String              @map("application_id") @db.Uuid
+  application   EstimateApplication @relation(fields: [applicationId], references: [id]) // onDelete 既定(Restrict)
+
+  stepOrder Int @map("step_order") // 1, 2, 3...  CHECK (step_order >= 1)
+
+  // 承認対象役割（この役割に属する従業員が承認する）
+  roleId String @map("role_id") @db.Uuid
+  role   Role   @relation(fields: [roleId], references: [id])
+
+  // 結果イベント（行の存在＝決定）
+  approval  EstimateStepApproval?
+  rejection EstimateStepRejection?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@unique([applicationId, stepOrder])
+  @@index([roleId]) // 承認Inboxは反結合で引く（§3.6: AWAITING部分インデックスは張れない）
+  @@map("estimate_approval_steps")
+}
+
+// 承認イベント（行の存在＝このステップは承認済）。stepId を自然キー(@id)とする（ADR-0041 と同型）
+model EstimateStepApproval {
+  stepId String               @id @map("step_id") @db.Uuid
+  step   EstimateApprovalStep @relation(fields: [stepId], references: [id]) // 既定(Restrict)
+
+  approverEmployeeId String   @map("approver_employee_id") @db.Uuid
+  approver           Employee @relation("StepApprover", fields: [approverEmployeeId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([approverEmployeeId])
+  @@map("estimate_step_approvals")
+}
+
+// 差戻イベント（行の存在＝このステップは差戻）。stepId を自然キー(@id)とする
+model EstimateStepRejection {
+  stepId String               @id @map("step_id") @db.Uuid
+  step   EstimateApprovalStep @relation(fields: [stepId], references: [id]) // 既定(Restrict)
+
+  rejectedByEmployeeId String   @map("rejected_by_employee_id") @db.Uuid
+  rejectedBy           Employee @relation("StepRejecter", fields: [rejectedByEmployeeId], references: [id])
+
+  // 差戻理由は必須（NOT NULL・default なし）。意味を持つ表にだけ comment を置く
+  comment String @db.VarChar(2000)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([rejectedByEmployeeId])
+  @@map("estimate_step_rejections")
+}
+
+// 取下イベント（行の存在＝この申請は取下）。applicationId を自然キー(@id)とする
+model EstimateApplicationWithdrawal {
+  applicationId String              @id @map("application_id") @db.Uuid
+  application   EstimateApplication @relation(fields: [applicationId], references: [id]) // 既定(Restrict)
+
+  withdrawnByEmployeeId String   @map("withdrawn_by_employee_id") @db.Uuid
+  withdrawnBy           Employee @relation("ApplicationWithdrawer", fields: [withdrawnByEmployeeId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([withdrawnByEmployeeId])
+  @@map("estimate_application_withdrawals")
+}
+
+// 承認免除（ADR-0054）。1バリエーション1免除（単純ユニーク）。冗長 estimate_id は持たない
+model EstimateApprovalExemption {
+  id String @id @db.Uuid
+
+  // 1バリエーション 1免除（ADR-0054・単純ユニーク）
+  variationId String            @unique @map("variation_id") @db.Uuid
+  variation   EstimateVariation @relation(fields: [variationId], references: [id]) // 既定(Restrict)
+
+  reason EstimateExemptionReason
+
+  exemptedByEmployeeId String   @map("exempted_by_employee_id") @db.Uuid
+  exemptedBy           Employee @relation("ExemptionExemptor", fields: [exemptedByEmployeeId], references: [id])
+
+  // 免除日時 = createdAt（業務日時 exemptedAt は冗長なため持たない）
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([exemptedByEmployeeId])
+  @@map("estimate_approval_exemptions")
 }
