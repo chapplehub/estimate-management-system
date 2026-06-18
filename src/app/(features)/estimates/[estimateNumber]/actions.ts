@@ -7,6 +7,8 @@ import { getEstimateDetailQueryFactory } from "@subdomains/estimate/application/
 import { updateEstimateCommandFactory } from "@subdomains/estimate/application/factories/updateEstimateCommandFactory";
 import { updateVariationCommandFactory } from "@subdomains/estimate/application/factories/updateVariationCommandFactory";
 import { addVariationCommandFactory } from "@subdomains/estimate/application/factories/addVariationCommandFactory";
+import { checkTaxRateThenDuplicateDepsFactory } from "@subdomains/estimate/application/factories/checkTaxRateThenDuplicateDepsFactory";
+import { checkTaxRateThenDuplicate } from "@subdomains/estimate/application/shared/checkTaxRateThenDuplicate";
 import type { UpdateEstimateInput } from "@subdomains/estimate/application/commands/UpdateEstimateCommand";
 import type { UpdateVariationInput } from "@subdomains/estimate/application/commands/UpdateVariationCommand";
 import type { AddVariationInput } from "@subdomains/estimate/application/commands/AddVariationCommand";
@@ -14,6 +16,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { handleCommandError } from "../../_shared/error-handler";
 import { fromDateInputValue } from "../_shared/date";
+import { taxRateMismatchFormErrors } from "../_shared/tax-rate-format";
+import { duplicateEstimateSchema } from "./duplicateSchema";
 import { updateEstimateHeaderSchema } from "./schema";
 import { addVariationNodeSchema, updateVariationContentNodeSchema } from "./variationSchema";
 import { toVariationContentInputFromNodes } from "./variationContentMapping";
@@ -153,6 +157,79 @@ export async function addVariation(
 
   revalidatePath(`/estimates/${estimateNumber}`);
   redirect(`/estimates/${estimateNumber}?reason=${REDIRECT_REASON.ESTIMATE_UPDATED}`);
+}
+
+/**
+ * 見積複製（C6・集約またぎ）の Server Action（ADR-0057）。
+ *
+ * 複製元は estimateNumber から DTO 解決して sourceEstimateId を得る。作成者は認証セッションの
+ * employeeId（null は複製不可）。日付は JST 固定パース。税率は見積年月日からマスタ導出し、§8.7
+ * 整合チェックと複製を app-shared `checkTaxRateThenDuplicate` に委譲する（コマンドは taxRate を
+ * 生値で受けるのみで §8.7 を保証しないため・ADR-0056）。不一致（taxRateMismatch）は例外でなく
+ * Result のためフォームエラーで提示しモーダルを維持する。成功時は新採番の見積詳細へ閲覧モードで
+ * redirect し、単価クリアをフラッシュで促す（ESTIMATE_DUPLICATED）。redirect は try の外で行う
+ * （redirect は例外送出で制御するため・既存アクションと同型）。
+ */
+export async function duplicateEstimate(
+  estimateNumber: string,
+  _prevState: unknown,
+  formData: FormData
+) {
+  const session = await verifySession();
+
+  const submission = parseWithZod(formData, { schema: duplicateEstimateSchema });
+  if (submission.status !== "success") {
+    return submission.reply();
+  }
+  const value = submission.value;
+
+  const createdBy = session.user.employeeId;
+  if (!createdBy) {
+    return submission.reply({
+      formErrors: [
+        "作成者の従業員情報が取得できないため、複製できません。管理者にお問い合わせください。",
+      ],
+    });
+  }
+
+  const dto = await getEstimateDetailQueryFactory().execute({ estimateNumber });
+  if (!dto) {
+    return submission.reply({ formErrors: ["複製元の見積が見つかりません"] });
+  }
+
+  let result;
+  try {
+    result = await checkTaxRateThenDuplicate(
+      {
+        sourceEstimateId: dto.estimateId,
+        selectedVariationIds: value.selectedVariationIds,
+        estimateDate: fromDateInputValue(value.estimateDate),
+        deadline: fromDateInputValue(value.deadline),
+        createdBy,
+        departmentId: value.departmentId,
+      },
+      checkTaxRateThenDuplicateDepsFactory()
+    );
+  } catch (error) {
+    const errorResult = handleCommandError(error);
+    const errorMessage = !errorResult.success && errorResult.error ? errorResult.error : undefined;
+    return submission.reply({ formErrors: errorMessage ? [errorMessage] : [] });
+  }
+
+  // 税率不一致（§8.7）は複製されない。両税率を提示してモーダルを維持する（文言は作成と共有）。
+  if (result.kind === "taxRateMismatch") {
+    return submission.reply({
+      formErrors: taxRateMismatchFormErrors(
+        result.estimateDateRate.value,
+        result.deadlineRate.value
+      ),
+    });
+  }
+
+  // 成功: 複製元は不変。新採番の見積詳細へ閲覧モードで遷移し、単価クリアをフラッシュで促す。
+  const newEstimateNumber = result.estimate.estimateNumber.value;
+  revalidatePath(`/estimates/${newEstimateNumber}`);
+  redirect(`/estimates/${newEstimateNumber}?reason=${REDIRECT_REASON.ESTIMATE_DUPLICATED}`);
 }
 
 /**

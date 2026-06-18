@@ -9,6 +9,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { handleCommandError } from "../../_shared/error-handler";
 import { fromDateInputValue } from "../_shared/date";
+import { taxRateMismatchFormErrors } from "../_shared/tax-rate-format";
 import { toVariationContentInputFromNodes } from "../[estimateNumber]/variationContentMapping";
 import { createEstimateSchema } from "./schema";
 
@@ -90,14 +91,13 @@ export async function createEstimate(_prevState: unknown, formData: FormData) {
     return submission.reply({ formErrors: errorMessage ? [errorMessage] : [] });
   }
 
-  // 税率不一致（§8.7）は作成されない。両税率を提示して入力を維持する。
+  // 税率不一致（§8.7）は作成されない。両税率を提示して入力を維持する（文言は複製と共有）。
   if (result.kind === "taxRateMismatch") {
-    const estimateDatePct = Math.round(result.estimateDateRate.value * 100);
-    const deadlinePct = Math.round(result.deadlineRate.value * 100);
     return submission.reply({
-      formErrors: [
-        `見積年月日（${estimateDatePct}%）と締切日（${deadlinePct}%）で税率が異なります。日付を確認してください（§8.7）。`,
-      ],
+      formErrors: taxRateMismatchFormErrors(
+        result.estimateDateRate.value,
+        result.deadlineRate.value
+      ),
     });
   }
 

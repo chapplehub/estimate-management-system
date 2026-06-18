@@ -10,6 +10,12 @@ type DepartmentOption = { id: string; name: string };
 type Props = {
   estimate: EstimateHeaderData;
   departments: DepartmentOption[];
+  /**
+   * ヘッダー操作エリアの追加アクション（見積複製モーダルのトリガー等・C6/ADR-0057）。
+   * 閲覧モードでのみ「編集」と並べて表示する（編集中は複製させない）。本島は中身を関知せず
+   * 不透明な ReactNode として受け取り、データ依存（バリ一覧・部署）は page 側で解決する。
+   */
+  headerActions?: ReactNode;
 };
 
 /**
@@ -19,7 +25,7 @@ type Props = {
  * まま page 側に残し、本島はヘッダー領域のみを担う。保存成功時は Server Action が
  * redirect するため、再描画で閲覧モードへ戻る（isEditing は新規マウントで false）。
  */
-export function EstimateHeaderSection({ estimate, departments }: Props) {
+export function EstimateHeaderSection({ estimate, departments, headerActions }: Props) {
   const [isEditing, setIsEditing] = useState(false);
 
   return (
@@ -38,13 +44,16 @@ export function EstimateHeaderSection({ estimate, departments }: Props) {
           {estimate.hasRevision && <Badge variant="outline">改訂あり</Badge>}
         </div>
         {!isEditing && (
-          <button
-            type="button"
-            onClick={() => setIsEditing(true)}
-            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-          >
-            編集
-          </button>
+          <div className="flex items-center gap-2">
+            {headerActions}
+            <button
+              type="button"
+              onClick={() => setIsEditing(true)}
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+            >
+              編集
+            </button>
+          </div>
         )}
       </div>
 

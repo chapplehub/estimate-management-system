@@ -25,6 +25,7 @@ import {
 } from "../_shared/selection-actions";
 import { SubmissionTypeField } from "../_shared/SubmissionTypeField";
 import { resolveEffectiveTaxRate } from "../_shared/tax-rate-actions";
+import { formatTaxRatePercent } from "../_shared/tax-rate-format";
 import {
   VariationLineEditor,
   VariationLineEditorOverlays,
@@ -292,7 +293,7 @@ export function CreateEstimateForm({
             <div>
               <span className="block text-gray-700 text-sm font-bold mb-2">消費税率</span>
               <p className="text-gray-900 py-2">
-                {taxRate != null ? `${Math.round(taxRate * 100)}%` : "未設定"}
+                {taxRate != null ? formatTaxRatePercent(taxRate) : "未設定"}
               </p>
               <p className="text-gray-600 text-xs mt-1">税率は見積年月日から自動決定されます</p>
             </div>
