@@ -73,13 +73,13 @@ function variation(overrides: Partial<VariationDTO> = {}): VariationDTO {
   };
 }
 
-describe("isVariationEditable", () => {
-  it("通常明細のみの ACTIVE バリは編集可能", () => {
-    expect(isVariationEditable(variation({ lines: [line()] }))).toBe(true);
+describe("isVariationEditable（revisionRole 駆動・ADR-0059）", () => {
+  it("改訂に関与しない(NONE) ACTIVE バリは編集可能", () => {
+    expect(isVariationEditable(variation({ revisionRole: "NONE", lines: [line()] }))).toBe(true);
   });
 
-  it("セット群を含む ACTIVE バリも編集可能（S5・C4 がセット書き込みに対応）", () => {
-    const v = variation({ lines: [setGroup([line(), line()]), line()] });
+  it("セット群を含む NONE・ACTIVE バリも編集可能（編集可否は明細内容に依存しない）", () => {
+    const v = variation({ revisionRole: "NONE", lines: [setGroup([line(), line()]), line()] });
     expect(isVariationEditable(v)).toBe(true);
   });
 
@@ -87,36 +87,34 @@ describe("isVariationEditable", () => {
     expect(isVariationEditable(variation({ status: "INACTIVE" }))).toBe(false);
   });
 
-  it("改訂明細（revisedDeliveryPrice あり）を含むバリは編集不可", () => {
-    const v = variation({ lines: [line({ revisedDeliveryPrice: 800 })] });
+  it("改訂元(REVISION_SOURCE・凍結)は ACTIVE でも編集不可（本 issue のバグ修正核心）", () => {
+    const v = variation({ revisionRole: "REVISION_SOURCE", status: "ACTIVE" });
     expect(isVariationEditable(v)).toBe(false);
   });
 
-  it("セット構成内に改訂明細があるバリも編集不可（構成内まで走査）", () => {
-    const v = variation({
-      lines: [setGroup([line(), line({ revisedDeliveryPrice: 800 })])],
-    });
+  it("改訂先(REVISION_TARGET)は編集不可（粒度別編集は #390 で別途）", () => {
+    const v = variation({ revisionRole: "REVISION_TARGET", status: "ACTIVE" });
     expect(isVariationEditable(v)).toBe(false);
   });
 });
 
 describe("isVariationDuplicatable（複製元の適格性・C3）", () => {
-  it("改訂明細を含まないバリは複製元にできる", () => {
-    expect(isVariationDuplicatable(variation({ lines: [line()] }))).toBe(true);
+  it("改訂に関与しない(NONE)バリは複製元にできる", () => {
+    expect(isVariationDuplicatable(variation({ revisionRole: "NONE" }))).toBe(true);
   });
 
-  it("改訂明細（revisedDeliveryPrice あり）を含むバリは複製元にできない", () => {
-    const v = variation({ lines: [line({ revisedDeliveryPrice: 800 })] });
-    expect(isVariationDuplicatable(v)).toBe(false);
+  it("改訂元(REVISION_SOURCE)は複製元にできる（凍結スナップショットを含まない素の土台）", () => {
+    expect(isVariationDuplicatable(variation({ revisionRole: "REVISION_SOURCE" }))).toBe(true);
   });
 
-  it("セット構成内に改訂明細があるバリも複製元にできない（構成内まで走査）", () => {
-    const v = variation({ lines: [setGroup([line(), line({ revisedDeliveryPrice: 800 })])] });
-    expect(isVariationDuplicatable(v)).toBe(false);
+  it("改訂先(REVISION_TARGET)は複製元にできない（改訂スナップショットは系譜と不可分）", () => {
+    expect(isVariationDuplicatable(variation({ revisionRole: "REVISION_TARGET" }))).toBe(false);
   });
 
-  it("無効(INACTIVE)でも改訂明細を含まなければ複製元にできる（状態を問わない・編集可否との差）", () => {
-    expect(isVariationDuplicatable(variation({ status: "INACTIVE", lines: [line()] }))).toBe(true);
+  it("無効(INACTIVE)でも NONE なら複製元にできる（状態を問わない・編集可否との差）", () => {
+    expect(isVariationDuplicatable(variation({ status: "INACTIVE", revisionRole: "NONE" }))).toBe(
+      true
+    );
   });
 });
 
@@ -136,11 +134,11 @@ describe("isVariationRevisableForCustomer（改訂元の適格性・C7）", () =
     expect(isVariationRevisableForCustomer(v)).toBe(false);
   });
 
-  it("既に改訂明細を含む納品先宛 ACTIVE バリも改訂元にできる（再改訂許可・凍結判定は持たない）", () => {
+  it("既に改訂元(REVISION_SOURCE)の納品先宛 ACTIVE バリも改訂元にできる（再改訂許可・凍結判定は持たない）", () => {
     const v = variation({
       submissionType: "DELIVERY_LOCATION",
       status: "ACTIVE",
-      lines: [line({ revisedDeliveryPrice: 800 })],
+      revisionRole: "REVISION_SOURCE",
     });
     expect(isVariationRevisableForCustomer(v)).toBe(true);
   });
