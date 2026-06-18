@@ -72,6 +72,20 @@ export type AfterRepairDetailDTO = {
 };
 
 /**
+ * バリエーション単位の改訂役割（C7 得意先改訂・ADR-0044/0059）。
+ *
+ * - `NONE`: 改訂に関与しない（通常編集・複製の対象）。
+ * - `REVISION_SOURCE`: 改訂元（兄弟バリの誰かが自分を改訂元 revisedFrom に持つ）。凍結され
+ *   メモ以外編集不可。SOURCE/TARGET は相互排他（改訂先は再改訂できない）。
+ * - `REVISION_TARGET`: 改訂先（自身が出自 revisedFrom を持つ）。行構成固定（ADR-0046）。
+ *
+ * 値は複製系譜のロール（Source/Copied）との衝突を避けるため改訂接頭辞を付ける。
+ * これは ADR-0044 の凍結導出を read model に写したもので、presentation の編集可否判定
+ * （isVariationEditable / isVariationDuplicatable）を駆動する。最終強制はドメイン（二重防御）。
+ */
+export type RevisionRole = "NONE" | "REVISION_SOURCE" | "REVISION_TARGET";
+
+/**
  * バリエーション単位の表示 DTO。集計 5 種は永続化済みの保存値（ADR-0033）。
  * 系譜ラベル（改訂元/複製元）は S6 へ先送り（Q10）のため本 DTO には含めない。
  */
@@ -80,6 +94,8 @@ export type VariationDTO = {
   variationNumber: number;
   /** バリエーション状態（"ACTIVE" | "INACTIVE"）。全無効警告は presentation 側で導出（Q7）。 */
   status: string;
+  /** 改訂役割（C7・ADR-0044/0059）。編集可否・複製可否の出し分けを駆動する。 */
+  revisionRole: RevisionRole;
   /** 提出区分（"CUSTOMER" | "DELIVERY_LOCATION"・ADR-0045 不変属性）。 */
   submissionType: string;
   overallDiscount: number;

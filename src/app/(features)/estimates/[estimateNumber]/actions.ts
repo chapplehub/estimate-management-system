@@ -6,12 +6,14 @@ import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
 import { getEstimateDetailQueryFactory } from "@subdomains/estimate/application/factories/estimateQueryFactory";
 import { updateEstimateCommandFactory } from "@subdomains/estimate/application/factories/updateEstimateCommandFactory";
 import { updateVariationCommandFactory } from "@subdomains/estimate/application/factories/updateVariationCommandFactory";
+import { updateVariationMemosCommandFactory } from "@subdomains/estimate/application/factories/updateVariationMemosCommandFactory";
 import { addVariationCommandFactory } from "@subdomains/estimate/application/factories/addVariationCommandFactory";
 import { checkTaxRateThenDuplicateDepsFactory } from "@subdomains/estimate/application/factories/checkTaxRateThenDuplicateDepsFactory";
 import { checkTaxRateThenDuplicate } from "@subdomains/estimate/application/shared/checkTaxRateThenDuplicate";
 import { reviseForCustomerCommandFactory } from "@subdomains/estimate/application/factories/reviseForCustomerCommandFactory";
 import type { UpdateEstimateInput } from "@subdomains/estimate/application/commands/UpdateEstimateCommand";
 import type { UpdateVariationInput } from "@subdomains/estimate/application/commands/UpdateVariationCommand";
+import type { UpdateVariationMemosInput } from "@subdomains/estimate/application/commands/UpdateVariationMemosCommand";
 import type { AddVariationInput } from "@subdomains/estimate/application/commands/AddVariationCommand";
 import type { ReviseForCustomerInput } from "@subdomains/estimate/application/commands/ReviseForCustomerCommand";
 import { revalidatePath } from "next/cache";
@@ -22,6 +24,7 @@ import { taxRateMismatchFormErrors } from "../_shared/tax-rate-format";
 import { duplicateEstimateSchema } from "./duplicateSchema";
 import { updateEstimateHeaderSchema } from "./schema";
 import { addVariationNodeSchema, updateVariationContentNodeSchema } from "./variationSchema";
+import { updateVariationMemosSchema } from "./variationMemoSchema";
 import { reviseForCustomerSchema } from "./reviseForCustomerSchema";
 import { toVariationContentInputFromNodes } from "./variationContentMapping";
 
@@ -346,6 +349,55 @@ export async function updateVariationContent(
         `見積年月日（${estimateDatePct}%）と締切日（${deadlinePct}%）で税率が異なります。日付を確認してください（§8.7）。`,
       ],
     });
+  }
+
+  revalidatePath(`/estimates/${estimateNumber}`);
+  redirect(`/estimates/${estimateNumber}?reason=${REDIRECT_REASON.ESTIMATE_UPDATED}`);
+}
+
+/**
+ * 改訂元のメモのみ更新（C7・凍結貫通・ADR-0059）の Server Action。
+ *
+ * 凍結された改訂元はメモ以外編集不可のため、本 Action はバリ単位メモ＋明細単位メモだけを
+ * 送る。明細メモは単一 hidden の JSON（itemId キーのフラット配列・ADR-0050）を schema で検証。
+ * estimateId は estimateNumber から DTO 解決、version はフォーム由来の楽観ロックトークン
+ * （ADR-0039）。メモは税額に影響しないためコマンドは税率整合チェックを通さず（戻り値も Result でなく
+ * 保存済み集約）、税率不一致分岐は無い。競合・その他例外は handleCommandError 経由でフォーム
+ * エラー化する。成功時のみ閲覧へ redirect（C4 と同型）。
+ */
+export async function updateVariationMemos(
+  estimateNumber: string,
+  _prevState: unknown,
+  formData: FormData
+) {
+  await verifySession();
+
+  const submission = parseWithZod(formData, { schema: updateVariationMemosSchema });
+  if (submission.status !== "success") {
+    return submission.reply();
+  }
+  const value = submission.value;
+
+  const dto = await getEstimateDetailQueryFactory().execute({ estimateNumber });
+  if (!dto) {
+    return submission.reply({ formErrors: ["見積が見つかりません"] });
+  }
+
+  const input: UpdateVariationMemosInput = {
+    estimateId: dto.estimateId,
+    variationId: value.variationId,
+    version: value.version,
+    customerMemo: value.customerMemo,
+    internalMemo: value.internalMemo,
+    itemMemos: value.itemMemos,
+  };
+
+  try {
+    await updateVariationMemosCommandFactory().execute(input);
+  } catch (error) {
+    const errorResult = handleCommandError(error);
+    const errorMessage = !errorResult.success && errorResult.error ? errorResult.error : undefined;
+    return submission.reply({ formErrors: errorMessage ? [errorMessage] : [] });
   }
 
   revalidatePath(`/estimates/${estimateNumber}`);

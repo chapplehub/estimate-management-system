@@ -10,6 +10,7 @@ import { EstimateNumber } from "../../values/EstimateNumber";
 import { EstimateVariationId } from "../../values/EstimateVariationId";
 import { FaultDescription } from "../../values/FaultDescription";
 import { ItemName } from "../../values/ItemName";
+import { Memo } from "../../values/Memo";
 import { Money } from "../../values/Money";
 import { Quantity } from "../../values/Quantity";
 import { SubmissionType } from "../../values/SubmissionType";
@@ -840,6 +841,44 @@ describe("Estimate", () => {
       // 系譜（出自を持つ改訂先）が消えたので凍結は導出されなくなる
       estimate.changeOverallDiscount(source.id, Money.fromMajorUnits(100));
       expect(estimate.variations[0]!.overallDiscount.equals(Money.fromMajorUnits(100))).toBe(true);
+    });
+
+    describe("改訂元のメモのみ更新（凍結を貫通・ADR-0059）", () => {
+      it("凍結された改訂元でもバリ単位の顧客/社内メモは更新できる", () => {
+        const { estimate, source } = buildRevisedEstimate();
+
+        estimate.changeVariationMemos(
+          source.id,
+          Memo.create("顧客向けメモ"),
+          Memo.create("社内向けメモ")
+        );
+
+        expect(estimate.variations[0]!.customerMemo.value).toBe("顧客向けメモ");
+        expect(estimate.variations[0]!.internalMemo.value).toBe("社内向けメモ");
+      });
+
+      it("凍結された改訂元でも明細単位の顧客/社内メモは更新できる", () => {
+        const { estimate, source, sourceItem } = buildRevisedEstimate();
+
+        estimate.changeItemMemos(
+          source.id,
+          sourceItem.id,
+          Memo.create("明細の顧客メモ"),
+          Memo.create("明細の社内メモ")
+        );
+
+        expect(sourceItem.customerMemo.value).toBe("明細の顧客メモ");
+        expect(sourceItem.internalMemo.value).toBe("明細の社内メモ");
+      });
+
+      it("メモ更新では金額（合計）が変化しない", () => {
+        const { estimate, source } = buildRevisedEstimate();
+        const before = estimate.variations[0]!.finalTotal;
+
+        estimate.changeVariationMemos(source.id, Memo.create("x"), Memo.empty());
+
+        expect(estimate.variations[0]!.finalTotal.equals(before)).toBe(true);
+      });
     });
   });
 });

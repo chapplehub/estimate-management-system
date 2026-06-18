@@ -12,6 +12,7 @@ import { addVariation } from "./actions";
 vi.mock("./actions", () => ({
   addVariation: vi.fn(),
   updateVariationContent: vi.fn(),
+  updateVariationMemos: vi.fn(),
 }));
 
 const mockAddVariation = addVariation as unknown as Mock;
@@ -47,6 +48,7 @@ function variation(overrides: Partial<VariationDTO> = {}): VariationDTO {
     variationId: "v1",
     variationNumber: 1,
     status: "ACTIVE",
+    revisionRole: "NONE",
     submissionType: "CUSTOMER",
     overallDiscount: 0,
     customerMemo: "",
@@ -129,5 +131,40 @@ describe("VariationPanel（モード切替と提出区分の振る舞い・C3）
 
     const formData = mockAddVariation.mock.calls[0][2] as FormData;
     expect(formData.get("submissionType")).toBe("DELIVERY_LOCATION");
+  });
+});
+
+describe("VariationPanel（改訂元のメモのみ編集・ADR-0059）", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("改訂元(REVISION_SOURCE)では『メモを編集』が出て『内容を編集』は出ない", () => {
+    renderPanel([
+      variation({ revisionRole: "REVISION_SOURCE", submissionType: "DELIVERY_LOCATION" }),
+    ]);
+
+    expect(screen.getByRole("button", { name: "メモを編集" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "内容を編集" })).toBeNull();
+  });
+
+  test("通常(NONE)では『内容を編集』が出て『メモを編集』は出ない", () => {
+    renderPanel([variation({ revisionRole: "NONE" })]);
+
+    expect(screen.getByRole("button", { name: "内容を編集" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "メモを編集" })).toBeNull();
+  });
+
+  test("『メモを編集』クリックでメモ編集フォーム（明細・価格 read-only）に切り替わる", async () => {
+    const user = userEvent.setup();
+    renderPanel([
+      variation({ revisionRole: "REVISION_SOURCE", submissionType: "DELIVERY_LOCATION" }),
+    ]);
+
+    await user.click(screen.getByRole("button", { name: "メモを編集" }));
+
+    expect(screen.getByRole("button", { name: "メモを保存" })).toBeInTheDocument();
+    // 明細メモの編集 textarea が出る（明細・価格自体は read-only）。
+    expect(screen.getByLabelText("顧客メモ（通常明細）")).toBeInTheDocument();
   });
 });

@@ -11,6 +11,7 @@ import {
   isVariationRevisableForCustomer,
 } from "./variationEditable";
 import { VariationEditForm } from "./VariationEditForm";
+import { VariationMemoEditForm } from "./VariationMemoEditForm";
 import { VariationCreateForm } from "./VariationCreateForm";
 import { ReviseForCustomerDialog } from "./ReviseForCustomerDialog";
 import {
@@ -43,6 +44,7 @@ type Props = {
 type PanelMode =
   | { kind: "view" }
   | { kind: "edit" }
+  | { kind: "edit-memo" }
   | { kind: "create-new" }
   | { kind: "create-duplicate"; initialValues: VariationCreateInitialValues };
 
@@ -161,6 +163,19 @@ export function VariationPanel({
                     内容を編集
                   </button>
                 )}
+                {/* 改訂元（凍結）はメモ以外編集不可。メモのみ編集を専用ボタンで出す（ADR-0059）。 */}
+                {active.revisionRole === "REVISION_SOURCE" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveRowId(null);
+                      setMode({ kind: "edit-memo" });
+                    }}
+                    className="bg-blue-500 hover:bg-blue-700 text-white text-sm font-bold py-1 px-4 rounded"
+                  >
+                    メモを編集
+                  </button>
+                )}
                 {/* 複製は「改訂明細を含まない」バリのみ（状態不問・改訂先タブでは非表示）。 */}
                 {isVariationDuplicatable(active) && (
                   <button
@@ -211,6 +226,13 @@ export function VariationPanel({
               variation={active}
               taxRate={taxRate}
               taxRoundingType={taxRoundingType}
+              onCancel={() => setMode({ kind: "view" })}
+            />
+          ) : mode.kind === "edit-memo" ? (
+            <VariationMemoEditForm
+              estimateNumber={estimateNumber}
+              version={version}
+              variation={active}
               onCancel={() => setMode({ kind: "view" })}
             />
           ) : (
