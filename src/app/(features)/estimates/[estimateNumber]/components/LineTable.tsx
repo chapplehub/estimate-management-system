@@ -7,10 +7,23 @@ import type {
 } from "@subdomains/estimate/application/queries/dto/EstimateDetailDTO";
 import { PRODUCT_CATEGORY_LABELS, formatYen } from "../../_shared/labels";
 
+/** 明細メモの編集パッチ（顧客/社内のいずれか一方ずつ）。 */
+export type MemoPatch = { customerMemo?: string; internalMemo?: string };
+
+const memoInputClass =
+  "mt-1 w-full border rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400";
+
 type Props = {
   lines: (LineDTO | SetGroupDTO)[];
   activeRowId: string | null;
   onSelectRow: (id: string) => void;
+  /**
+   * メモ列を編集モードにする（改訂元のメモのみ編集・ADR-0059）。既定 false=read-only テキスト表示。
+   * read-only でも明細メモを必ず表示する（従来 LineTable はメモ列が無く未表示だったバグの修正）。
+   */
+  memoEdit?: boolean;
+  /** 編集モード時の明細メモ変更ハンドラ（通常明細・構成明細が対象。セット群自身は対象外）。 */
+  onChangeMemo?: (itemId: string, patch: MemoPatch) => void;
 };
 
 /**
@@ -18,8 +31,15 @@ type Props = {
  *
  * 行は通常明細（LineRow）とセット群（SetGroupRows = 群ヘッダ＋構成行）の 2 種。導出金額・
  * 表示位置は DTO で確定済みなので再計算しない（ADR-0047）。行アクティブ化はハイライトのみ。
+ * メモ列は read-only 表示が既定で、`memoEdit` 時のみ構成明細・通常明細を編集可能にする。
  */
-export function LineTable({ lines, activeRowId, onSelectRow }: Props) {
+export function LineTable({
+  lines,
+  activeRowId,
+  onSelectRow,
+  memoEdit = false,
+  onChangeMemo,
+}: Props) {
   return (
     <div className="overflow-x-auto border rounded">
       <table className="w-full text-sm text-left whitespace-nowrap">
@@ -36,6 +56,7 @@ export function LineTable({ lines, activeRowId, onSelectRow }: Props) {
             <th className="px-3 py-2 font-bold text-gray-700 text-right">掛率</th>
             <th className="px-3 py-2 font-bold text-gray-700 text-right">明細値引</th>
             <th className="px-3 py-2 font-bold text-gray-700 text-right">改訂価格</th>
+            <th className="px-3 py-2 font-bold text-gray-700">メモ</th>
             <th className="sticky right-0 z-10 bg-gray-50 px-3 py-2 font-bold text-gray-700 text-right">
               金額
             </th>
@@ -49,6 +70,8 @@ export function LineTable({ lines, activeRowId, onSelectRow }: Props) {
                 group={line}
                 activeRowId={activeRowId}
                 onSelectRow={onSelectRow}
+                memoEdit={memoEdit}
+                onChangeMemo={onChangeMemo}
               />
             ) : (
               <LineRow
@@ -56,6 +79,8 @@ export function LineTable({ lines, activeRowId, onSelectRow }: Props) {
                 line={line}
                 activeRowId={activeRowId}
                 onSelectRow={onSelectRow}
+                memoEdit={memoEdit}
+                onChangeMemo={onChangeMemo}
               />
             )
           )}
@@ -65,16 +90,73 @@ export function LineTable({ lines, activeRowId, onSelectRow }: Props) {
   );
 }
 
+/**
+ * メモセル。read-only は顧客/社内メモをテキスト表示（未入力は「—」）。
+ * editable 時は LineEditTable と同じ rows=2 の textarea 2 本（class・aria-label 規約を流用）。
+ */
+function MemoCell({
+  customerMemo,
+  internalMemo,
+  label,
+  editable,
+  onChange,
+}: {
+  customerMemo: string;
+  internalMemo: string;
+  label: string;
+  editable: boolean;
+  onChange?: (patch: MemoPatch) => void;
+}) {
+  if (editable) {
+    return (
+      <td className="px-3 py-2 align-top w-72" onClick={(e) => e.stopPropagation()}>
+        <textarea
+          aria-label={`顧客メモ（${label}）`}
+          rows={2}
+          placeholder="顧客メモ"
+          value={customerMemo}
+          onChange={(e) => onChange?.({ customerMemo: e.target.value })}
+          className={memoInputClass}
+        />
+        <textarea
+          aria-label={`社内メモ（${label}）`}
+          rows={2}
+          placeholder="社内メモ"
+          value={internalMemo}
+          onChange={(e) => onChange?.({ internalMemo: e.target.value })}
+          className={memoInputClass}
+        />
+      </td>
+    );
+  }
+  return (
+    <td className="px-3 py-2 align-top text-gray-600 whitespace-pre-wrap">
+      {customerMemo || internalMemo ? (
+        <div className="space-y-1">
+          {customerMemo && <div>{customerMemo}</div>}
+          {internalMemo && <div className="text-gray-400">{internalMemo}</div>}
+        </div>
+      ) : (
+        "—"
+      )}
+    </td>
+  );
+}
+
 /** 通常明細・構成明細の 1 行。`indent` で構成明細をインデント表示。 */
 function LineRow({
   line,
   activeRowId,
   onSelectRow,
+  memoEdit,
+  onChangeMemo,
   indent = false,
 }: {
   line: LineDTO;
   activeRowId: string | null;
   onSelectRow: (id: string) => void;
+  memoEdit: boolean;
+  onChangeMemo?: (itemId: string, patch: MemoPatch) => void;
   indent?: boolean;
 }) {
   const isActive = activeRowId === line.itemId;
@@ -101,6 +183,13 @@ function LineRow({
       <td className="px-3 py-2 text-right text-gray-400">
         {line.revisedDeliveryPrice !== null ? formatYen(line.revisedDeliveryPrice) : "—"}
       </td>
+      <MemoCell
+        customerMemo={line.customerMemo}
+        internalMemo={line.internalMemo}
+        label={line.itemName}
+        editable={memoEdit}
+        onChange={(patch) => onChangeMemo?.(line.itemId, patch)}
+      />
       <td className={`sticky right-0 px-3 py-2 text-right font-medium ${stickyBg}`}>
         {formatYen(line.finalAmount)}
       </td>
@@ -113,10 +202,14 @@ function SetGroupRows({
   group,
   activeRowId,
   onSelectRow,
+  memoEdit,
+  onChangeMemo,
 }: {
   group: SetGroupDTO;
   activeRowId: string | null;
   onSelectRow: (id: string) => void;
+  memoEdit: boolean;
+  onChangeMemo?: (itemId: string, patch: MemoPatch) => void;
 }) {
   return (
     <>
@@ -135,6 +228,13 @@ function SetGroupRows({
         <td className="px-3 py-2" />
         <td className="px-3 py-2" />
         <td className="px-3 py-2" />
+        {/* 群自身のメモは編集対象外（本 issue スコープ外）。read-only 表示のみ。 */}
+        <MemoCell
+          customerMemo={group.customerMemo}
+          internalMemo={group.internalMemo}
+          label={group.itemName}
+          editable={false}
+        />
         {/* 導出金額（＝構成明細 finalAmount 合計） */}
         <td className="sticky right-0 z-10 bg-amber-50 px-3 py-2 text-right font-semibold">
           {formatYen(group.amount)}
@@ -146,6 +246,8 @@ function SetGroupRows({
           line={c}
           activeRowId={activeRowId}
           onSelectRow={onSelectRow}
+          memoEdit={memoEdit}
+          onChangeMemo={onChangeMemo}
           indent
         />
       ))}
