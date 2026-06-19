@@ -33,5 +33,6 @@ export {
   type EstimateDuplicateInput,
 } from "./EstimateFactory";
 // VariationContent は appendVariation / updateVariation の引数型（集約ルートの公開 API）。
+// ItemPriceAdjustment は adjustVariationPricing の引数型（#390）。いずれも中身は VO のみで
 // 子エンティティ EstimateVariation 自体は露出しないため境界規約を損なわない。
-export type { VariationContent } from "./EstimateVariation";
+export type { ItemPriceAdjustment, VariationContent } from "./EstimateVariation";

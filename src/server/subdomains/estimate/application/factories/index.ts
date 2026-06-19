@@ -6,4 +6,5 @@ export { updateVariationCommandFactory } from "./updateVariationCommandFactory";
 export { duplicateEstimateCommandFactory } from "./duplicateEstimateCommandFactory";
 export { checkTaxRateThenDuplicateDepsFactory } from "./checkTaxRateThenDuplicateDepsFactory";
 export { reviseForCustomerCommandFactory } from "./reviseForCustomerCommandFactory";
+export { adjustRevisedVariationCommandFactory } from "./adjustRevisedVariationCommandFactory";
 export { getEstimateDetailQueryFactory } from "./estimateQueryFactory";
