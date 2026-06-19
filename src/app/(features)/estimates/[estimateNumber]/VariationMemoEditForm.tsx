@@ -4,6 +4,7 @@ import { getFormProps, getInputProps } from "@conform-to/react";
 import { useState } from "react";
 import { useServerForm } from "@/app/_hooks/useServerForm";
 import type { VariationDTO } from "@subdomains/estimate/application/queries/dto/EstimateDetailDTO";
+import { memoInputClass } from "../_shared/formStyles";
 import { LineTable, type MemoPatch } from "./components/LineTable";
 import { updateVariationMemos } from "./actions";
 import { updateVariationMemosSchema } from "./variationMemoSchema";
@@ -144,7 +145,7 @@ export function VariationMemoEditForm({ estimateNumber, version, variation, onCa
               name={fields.customerMemo.name}
               defaultValue={variation.customerMemo}
               rows={3}
-              className="mt-1 w-full border rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+              className={memoInputClass}
             />
           </div>
           <div>
@@ -156,7 +157,7 @@ export function VariationMemoEditForm({ estimateNumber, version, variation, onCa
               name={fields.internalMemo.name}
               defaultValue={variation.internalMemo}
               rows={3}
-              className="mt-1 w-full border rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+              className={memoInputClass}
             />
           </div>
         </div>
