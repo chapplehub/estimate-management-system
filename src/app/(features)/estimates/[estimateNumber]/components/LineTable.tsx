@@ -7,7 +7,7 @@ import type {
 } from "@subdomains/estimate/application/queries/dto/EstimateDetailDTO";
 import { cellInputClass, memoInputClass } from "../../_shared/formStyles";
 import { PRODUCT_CATEGORY_LABELS, formatYen } from "../../_shared/labels";
-import { previewLineAmount } from "../previewAmounts";
+import { lineGross, previewLineAmount } from "../previewAmounts";
 
 /** 明細メモの編集パッチ（顧客/社内のいずれか一方ずつ）。 */
 export type MemoPatch = { customerMemo?: string; internalMemo?: string };
@@ -191,8 +191,8 @@ function LineRow({
   const stickyBg = isActive ? "bg-blue-50" : "bg-white";
   // priceEdit 中は編集中の値（line の各数値）から行金額をライブ近似する。read-only では DTO 確定値。
   const lineAmount = priceEdit ? previewLineAmount(line) : line.finalAmount;
-  const grossProfit =
-    line.revisedDeliveryPrice !== null ? line.revisedDeliveryPrice - lineAmount : null;
+  // 粗利列は priceEdit 時のみ表示。改訂価格 − 行金額のライブ近似（§8.4・lineGross と同一定義）。
+  const grossProfit = priceEdit ? lineGross(line) : null;
   return (
     <tr
       data-active={isActive}

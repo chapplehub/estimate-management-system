@@ -25,6 +25,18 @@ export function previewLineAmount(line: PreviewLine): number {
 }
 
 /**
+ * 明細単位の粗利（円）＝改訂価格 − 行金額（§8.4・改訂明細のみ）。改訂価格を持たない明細は
+ * null（粗利を計算できない）。改訂先の価格調整で行ごと・合計の粗利表示に共用する純関数。
+ */
+export function lineGross(
+  line: PreviewLine & { revisedDeliveryPrice: number | null }
+): number | null {
+  return line.revisedDeliveryPrice !== null
+    ? line.revisedDeliveryPrice - previewLineAmount(line)
+    : null;
+}
+
+/**
  * セット群の表示金額（円）＝構成明細の最終金額の合計（ADR-0047 導出）。
  * 群自身は価格を持たないため、ヘッダ行はこの導出値を表示する。
  */

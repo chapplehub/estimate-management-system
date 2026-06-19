@@ -10,7 +10,7 @@ import type {
 import { inputClass, memoInputClass } from "../_shared/formStyles";
 import { formatYen } from "../_shared/labels";
 import { LineTable, type MemoPatch, type PricePatch } from "./components/LineTable";
-import { previewLineAmount, previewVariationTotals, type PreviewLine } from "./previewAmounts";
+import { lineGross, previewVariationTotals, type PreviewLine } from "./previewAmounts";
 import { updateVariationAdjustment } from "./actions";
 import { updateVariationAdjustmentSchema } from "./variationAdjustSchema";
 
@@ -130,12 +130,8 @@ export function VariationAdjustForm({
     discountRate: l.discountRate,
     itemDiscount: l.itemDiscount,
   }));
-  // 合計粗利＝Σ(改訂価格 − 行金額)（改訂明細のみ・§8.4）。
-  const totalGross = flatLines.reduce(
-    (acc, l) =>
-      l.revisedDeliveryPrice !== null ? acc + (l.revisedDeliveryPrice - previewLineAmount(l)) : acc,
-    0
-  );
+  // 合計粗利＝Σ行粗利（改訂明細のみ・§8.4・LineTable の粗利列と同一定義 lineGross）。
+  const totalGross = flatLines.reduce((acc, l) => acc + (lineGross(l) ?? 0), 0);
   const totals = previewVariationTotals({
     lines: previewLines,
     overallDiscount,
