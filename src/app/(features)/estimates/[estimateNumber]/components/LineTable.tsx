@@ -7,9 +7,23 @@ import type {
 } from "@subdomains/estimate/application/queries/dto/EstimateDetailDTO";
 import { memoInputClass } from "../../_shared/formStyles";
 import { PRODUCT_CATEGORY_LABELS, formatYen } from "../../_shared/labels";
+import { previewLineAmount } from "../previewAmounts";
 
 /** 明細メモの編集パッチ（顧客/社内のいずれか一方ずつ）。 */
 export type MemoPatch = { customerMemo?: string; internalMemo?: string };
+
+/** 価格調整の編集パッチ（単価・掛率・明細値引のいずれか一つずつ・#390）。 */
+export type PricePatch = { unitPrice?: number; discountRate?: number; itemDiscount?: number };
+
+/** 数値入力セルの共通クラス（LineEditTable の cellInputClass と同型・右寄せ）。 */
+const cellInputClass =
+  "w-full border rounded px-2 py-1 text-right focus:outline-none focus:ring-1 focus:ring-blue-400";
+
+/** input の生文字列を数値へ。空・非数は 0 に倒す（プレビュー用の緩い変換）。 */
+function num(value: string): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
 
 type Props = {
   lines: (LineDTO | SetGroupDTO)[];
@@ -22,6 +36,14 @@ type Props = {
   memoEdit?: boolean;
   /** 編集モード時の明細メモ変更ハンドラ（通常明細・構成明細が対象。セット群自身は対象外）。 */
   onChangeMemo?: (itemId: string, patch: MemoPatch) => void;
+  /**
+   * 価格列（単価・掛率・明細値引）を編集モードにする（改訂先の部分編集・#390）。既定 false。
+   * 数量・商品・単位は read-only のまま（改訂先は数量固定・行構成固定・ADR-0060）。priceEdit 時のみ
+   * 粗利列（改訂価格 − 行金額のライブ近似）を追加し、逆ザヤを赤字で示す。memoEdit と併用できる。
+   */
+  priceEdit?: boolean;
+  /** 価格編集モード時の明細価格変更ハンドラ（通常明細・構成明細が対象。セット群自身は対象外）。 */
+  onChangePrice?: (itemId: string, patch: PricePatch) => void;
 };
 
 /**
@@ -37,6 +59,8 @@ export function LineTable({
   onSelectRow,
   memoEdit = false,
   onChangeMemo,
+  priceEdit = false,
+  onChangePrice,
 }: Props) {
   return (
     <div className="overflow-x-auto border rounded">
@@ -54,6 +78,8 @@ export function LineTable({
             <th className="px-3 py-2 font-bold text-gray-700 text-right">掛率</th>
             <th className="px-3 py-2 font-bold text-gray-700 text-right">明細値引</th>
             <th className="px-3 py-2 font-bold text-gray-700 text-right">改訂価格</th>
+            {/* 粗利列は価格調整時のみ（改訂価格 − 行金額・§8.4） */}
+            {priceEdit && <th className="px-3 py-2 font-bold text-gray-700 text-right">粗利</th>}
             <th className="px-3 py-2 font-bold text-gray-700">メモ</th>
             <th className="sticky right-0 z-10 bg-gray-50 px-3 py-2 font-bold text-gray-700 text-right">
               金額
@@ -70,6 +96,8 @@ export function LineTable({
                 onSelectRow={onSelectRow}
                 memoEdit={memoEdit}
                 onChangeMemo={onChangeMemo}
+                priceEdit={priceEdit}
+                onChangePrice={onChangePrice}
               />
             ) : (
               <LineRow
@@ -79,6 +107,8 @@ export function LineTable({
                 onSelectRow={onSelectRow}
                 memoEdit={memoEdit}
                 onChangeMemo={onChangeMemo}
+                priceEdit={priceEdit}
+                onChangePrice={onChangePrice}
               />
             )
           )}
@@ -148,6 +178,8 @@ function LineRow({
   onSelectRow,
   memoEdit,
   onChangeMemo,
+  priceEdit = false,
+  onChangePrice,
   indent = false,
 }: {
   line: LineDTO;
@@ -155,10 +187,16 @@ function LineRow({
   onSelectRow: (id: string) => void;
   memoEdit: boolean;
   onChangeMemo?: (itemId: string, patch: MemoPatch) => void;
+  priceEdit?: boolean;
+  onChangePrice?: (itemId: string, patch: PricePatch) => void;
   indent?: boolean;
 }) {
   const isActive = activeRowId === line.itemId;
   const stickyBg = isActive ? "bg-blue-50" : "bg-white";
+  // priceEdit 中は編集中の値（line の各数値）から行金額をライブ近似する。read-only では DTO 確定値。
+  const lineAmount = priceEdit ? previewLineAmount(line) : line.finalAmount;
+  const grossProfit =
+    line.revisedDeliveryPrice !== null ? line.revisedDeliveryPrice - lineAmount : null;
   return (
     <tr
       data-active={isActive}
@@ -170,17 +208,67 @@ function LineRow({
       <td className="px-3 py-2">
         {PRODUCT_CATEGORY_LABELS[line.productCategory] ?? line.productCategory}
       </td>
+      {/* 数量は改訂先で固定（ADR-0060）。priceEdit でも常に read-only テキスト。 */}
       <td className="px-3 py-2 text-right">{line.quantity}</td>
       <td className="px-3 py-2">{line.unit}</td>
-      <td className="px-3 py-2 text-right">{formatYen(line.unitPrice)}</td>
-      <td className="px-3 py-2 text-right">{line.discountRate.toFixed(2)}</td>
-      <td className="px-3 py-2 text-right">
-        {line.itemDiscount > 0 ? `-${formatYen(line.itemDiscount)}` : "—"}
-      </td>
+      {priceEdit ? (
+        <>
+          <td className="px-3 py-2 align-top" onClick={(e) => e.stopPropagation()}>
+            <input
+              type="number"
+              min={0}
+              step={1}
+              aria-label={`単価（${line.itemName}）`}
+              value={line.unitPrice}
+              onChange={(e) => onChangePrice?.(line.itemId, { unitPrice: num(e.target.value) })}
+              className={`${cellInputClass} w-28`}
+            />
+          </td>
+          <td className="px-3 py-2 align-top" onClick={(e) => e.stopPropagation()}>
+            <input
+              type="number"
+              min={0}
+              step={0.0001}
+              aria-label={`掛率（${line.itemName}）`}
+              value={line.discountRate}
+              onChange={(e) => onChangePrice?.(line.itemId, { discountRate: num(e.target.value) })}
+              className={`${cellInputClass} w-24`}
+            />
+          </td>
+          <td className="px-3 py-2 align-top" onClick={(e) => e.stopPropagation()}>
+            <input
+              type="number"
+              min={0}
+              step={1}
+              aria-label={`明細値引（${line.itemName}）`}
+              value={line.itemDiscount}
+              onChange={(e) => onChangePrice?.(line.itemId, { itemDiscount: num(e.target.value) })}
+              className={`${cellInputClass} w-28`}
+            />
+          </td>
+        </>
+      ) : (
+        <>
+          <td className="px-3 py-2 text-right">{formatYen(line.unitPrice)}</td>
+          <td className="px-3 py-2 text-right">{line.discountRate.toFixed(2)}</td>
+          <td className="px-3 py-2 text-right">
+            {line.itemDiscount > 0 ? `-${formatYen(line.itemDiscount)}` : "—"}
+          </td>
+        </>
+      )}
       {/* 改訂価格は薄字（§8.4 改訂明細のみ） */}
       <td className="px-3 py-2 text-right text-gray-400">
         {line.revisedDeliveryPrice !== null ? formatYen(line.revisedDeliveryPrice) : "—"}
       </td>
+      {priceEdit && (
+        <td
+          className={`px-3 py-2 text-right font-medium ${
+            grossProfit !== null && grossProfit < 0 ? "text-red-600" : "text-gray-700"
+          }`}
+        >
+          {grossProfit !== null ? formatYen(grossProfit) : "—"}
+        </td>
+      )}
       <MemoCell
         customerMemo={line.customerMemo}
         internalMemo={line.internalMemo}
@@ -189,7 +277,7 @@ function LineRow({
         onChange={(patch) => onChangeMemo?.(line.itemId, patch)}
       />
       <td className={`sticky right-0 px-3 py-2 text-right font-medium ${stickyBg}`}>
-        {formatYen(line.finalAmount)}
+        {formatYen(lineAmount)}
       </td>
     </tr>
   );
@@ -202,12 +290,16 @@ function SetGroupRows({
   onSelectRow,
   memoEdit,
   onChangeMemo,
+  priceEdit = false,
+  onChangePrice,
 }: {
   group: SetGroupDTO;
   activeRowId: string | null;
   onSelectRow: (id: string) => void;
   memoEdit: boolean;
   onChangeMemo?: (itemId: string, patch: MemoPatch) => void;
+  priceEdit?: boolean;
+  onChangePrice?: (itemId: string, patch: PricePatch) => void;
 }) {
   return (
     <>
@@ -226,6 +318,8 @@ function SetGroupRows({
         <td className="px-3 py-2" />
         <td className="px-3 py-2" />
         <td className="px-3 py-2" />
+        {/* 粗利列（priceEdit 時のみ）。群自身は粗利を持たない（構成明細側に表示）ため空 */}
+        {priceEdit && <td className="px-3 py-2" />}
         {/* 群自身のメモは編集対象外（本 issue スコープ外）。read-only 表示のみ。 */}
         <MemoCell
           customerMemo={group.customerMemo}
@@ -246,6 +340,8 @@ function SetGroupRows({
           onSelectRow={onSelectRow}
           memoEdit={memoEdit}
           onChangeMemo={onChangeMemo}
+          priceEdit={priceEdit}
+          onChangePrice={onChangePrice}
           indent
         />
       ))}
