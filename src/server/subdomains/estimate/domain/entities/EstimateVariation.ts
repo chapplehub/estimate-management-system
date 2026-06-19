@@ -35,6 +35,17 @@ export type TaxContext = {
 };
 
 /**
+ * 明細単位の価格調整（#390・改訂先の部分編集）。1 明細の価格系フィールドの新値を表す。
+ * 数量・商品は対象外（改訂先では固定・ADR-0060）。{@link EstimateVariation.adjustPricing} が消費する。
+ */
+export type ItemPriceAdjustment = {
+  itemId: EstimateItemId;
+  unitPrice: Money;
+  discountRate: DiscountRate;
+  itemDiscount: Money;
+};
+
+/**
  * バリエーション内容（番号・ステータスを除く編集対象）。C3 AddVariation の追加内容、
  * C4 UpdateVariation の全置換内容として共用する。明細は構築済み EstimateItem の配列で渡す。
  */
@@ -223,6 +234,7 @@ export class EstimateVariation {
   // ========================================
 
   changeItemQuantity(itemId: EstimateItemId, newQuantity: Quantity, tax: TaxContext): void {
+    this.assertQuantityImmutable();
     this.findItemOrThrow(itemId).changeQuantity(newQuantity);
     this.recalculate(tax);
   }
@@ -261,6 +273,33 @@ export class EstimateVariation {
 
   changeOverallDiscount(newDiscount: Money, tax: TaxContext): void {
     this._overallDiscount = newDiscount;
+    this.recalculate(tax);
+  }
+
+  /**
+   * 価格系（明細の単価・掛率・明細値引＋全体値引）を一括調整する（#390・改訂先の部分編集）。
+   *
+   * 各明細に setter を適用したあと末尾で **1 回だけ** 再計算する。粒度別メソッド
+   * （changeItemUnitPrice 等）を明細ごとに呼ぶと per-call 再計算が O(N^2) になるため、
+   * recalculate が最終状態からの純導出で冪等であることを使い、適用後に一括で再計算する
+   * （計画 設計判断 Q）。
+   *
+   * 数量・行構成は触らないため、改訂先（行構成固定・数量固定）にも一般の編集可能バリにも
+   * 安全。よって行構成固定/数量固定ガードは呼ばず、§3.4 の無効弾き（assertEditable）のみ通す。
+   */
+  adjustPricing(
+    itemAdjustments: ReadonlyArray<ItemPriceAdjustment>,
+    overallDiscount: Money,
+    tax: TaxContext
+  ): void {
+    this.assertEditable();
+    for (const adj of itemAdjustments) {
+      const item = this.findItemOrThrow(adj.itemId);
+      item.changeUnitPrice(adj.unitPrice);
+      item.changeDiscountRate(adj.discountRate);
+      item.changeItemDiscount(adj.itemDiscount);
+    }
+    this._overallDiscount = overallDiscount;
     this.recalculate(tax);
   }
 
@@ -416,12 +455,29 @@ export class EstimateVariation {
   /**
    * 行構成固定（§7.2）: 改訂で生まれたバリエーションは明細の追加・削除不可。
    * 改訂元との明細1:1対応を保全し、明細単位の粗利（deliveryPrice − 得意先価格・§8.4）を
-   * 常に計算可能に保つ。単価・掛率・値引・数量・メモの調整は許可される。
+   * 常に計算可能に保つ。単価・掛率・値引・メモの調整は許可される。
+   * 数量は別ガード {@link assertQuantityImmutable} で固定する（根拠が異なる・ADR-0060）。
    */
   private assertLineStructureMutable(): void {
     if (this._revisedFrom !== null) {
       throw new BusinessRuleViolationError(
         "改訂で生まれたバリエーションは明細の追加・削除ができません（行構成固定・§7.2）"
+      );
+    }
+  }
+
+  /**
+   * 数量固定（ADR-0060）: 改訂で生まれたバリエーションは明細の数量を変更不可。
+   *
+   * 改訂価格スナップショット `deliveryPrice` は改訂元の**行金額**（数量 × 単価 − 値引）を
+   * 凍結したもので、明細単位の粗利（§8.4）はこの行金額と得意先側の行金額の差として意味を持つ。
+   * 数量が動くと得意先側だけ新数量で再計算され、別物同士の引き算になって粗利の基準が崩れる。
+   * 行構成固定（行の増減＝1:1 行対応保全）とは根拠が異なるため、名前付きガードを分ける。
+   */
+  private assertQuantityImmutable(): void {
+    if (this._revisedFrom !== null) {
+      throw new BusinessRuleViolationError(
+        "改訂で生まれたバリエーションは数量を変更できません（数量固定・粗利スナップショット保全・ADR-0060）"
       );
     }
   }

@@ -76,6 +76,7 @@
 | [0049](0049-header-setters-noop-on-equal-to-allow-deadline-department-edit-under-revision-freeze.md) | 見積ヘッダーのセッターを同値 no-op 化し、改訂凍結下でも締切日・部署の編集を成立させる | 採用 | 2026-06-15 |
 | [0052](0052-set-component-cross-aggregate-validation-via-method-arguments.md) | セット構成の集約越え検証はドメインポートではなく ADR-0030（メソッド引数）で行う | 採用 | 2026-06-16 |
 | [0059](0059-revision-source-memo-only-update-bypasses-freeze-via-dedicated-command.md) | 改訂元のメモのみ更新は専用コマンドで凍結ガードを迂回する | 採用 | 2026-06-18 |
+| [0060](0060-revised-variation-fixes-quantity-to-preserve-gross-profit-snapshot.md) | 改訂先バリエーションは数量も固定する（粗利スナップショット保全） | 採用 | 2026-06-19 |
 
 ## アプリケーション（コマンド）
 

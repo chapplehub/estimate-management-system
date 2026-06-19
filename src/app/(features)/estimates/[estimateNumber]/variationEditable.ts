@@ -28,6 +28,20 @@ export function isVariationDuplicatable(variation: VariationDTO): boolean {
 }
 
 /**
+ * 改訂先バリの部分編集（価格調整）ができるか判定する（#390・UI 抑止・二重防御の外側）。
+ *
+ * 条件は「改訂先(REVISION_TARGET)」かつ「有効(ACTIVE)」。改訂先は行構成固定・数量固定
+ * （ADR-0060）で通常の「内容を編集」(isVariationEditable)・複製元(isVariationDuplicatable)
+ * からは外れる代わりに、単価・掛率・値引・メモだけを更新する専用経路を持つ。3 つの
+ * revisionRole は排他で、NONE は「内容を編集」、REVISION_SOURCE は「メモを編集」(ADR-0059)、
+ * REVISION_TARGET は本ボタンに割り当たる。最終強制はドメイン（adjustVariationPricing →
+ * editableVariationOrThrow ＋ assertEditable）が担う（二重防御）。
+ */
+export function isVariationAdjustable(variation: VariationDTO): boolean {
+  return variation.revisionRole === "REVISION_TARGET" && variation.status === "ACTIVE";
+}
+
+/**
  * 得意先改訂の改訂元にできるバリか判定する（C7・UI 抑止・二重防御の外側）。
  *
  * 条件はドメイン `Estimate.reviseForCustomer` の 2 ガード「納品先宛(DELIVERY_LOCATION)」かつ

@@ -10,7 +10,7 @@ import {
 } from "@dnd-kit/core";
 import { restrictToParentElement, restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { memoInputClass } from "../../_shared/formStyles";
+import { cellInputClass, memoInputClass } from "../../_shared/formStyles";
 import { PRODUCT_CATEGORY_LABELS, formatYen } from "../../_shared/labels";
 import { previewGroupAmount, previewLineAmount } from "../previewAmounts";
 import type { WorkingLine, WorkingNode, WorkingSetGroup } from "../variationLines";
@@ -27,9 +27,6 @@ type Props = {
   /** 指定セット群内の構成明細の D&D 並べ替え（群内のみ）。 */
   onReorderComponents: (groupRowId: string, from: number, to: number) => void;
 };
-
-const cellInputClass =
-  "w-full border rounded px-2 py-1 text-right focus:outline-none focus:ring-1 focus:ring-blue-400";
 
 const COLUMN_COUNT = 12;
 

@@ -5,6 +5,7 @@ import type {
   VariationDTO,
 } from "@subdomains/estimate/application/queries/dto/EstimateDetailDTO";
 import {
+  isVariationAdjustable,
   isVariationDuplicatable,
   isVariationEditable,
   isVariationRevisableForCustomer,
@@ -115,6 +116,31 @@ describe("isVariationDuplicatable（複製元の適格性・C3）", () => {
     expect(isVariationDuplicatable(variation({ status: "INACTIVE", revisionRole: "NONE" }))).toBe(
       true
     );
+  });
+});
+
+describe("isVariationAdjustable（改訂先の部分編集ボタンの適格性・#390）", () => {
+  it("改訂先(REVISION_TARGET)かつ ACTIVE のバリは価格調整できる", () => {
+    const v = variation({ revisionRole: "REVISION_TARGET", status: "ACTIVE" });
+    expect(isVariationAdjustable(v)).toBe(true);
+  });
+
+  it("改訂に関与しない(NONE)バリは価格調整ボタンの対象外（通常の「内容を編集」を使う）", () => {
+    expect(isVariationAdjustable(variation({ revisionRole: "NONE", status: "ACTIVE" }))).toBe(
+      false
+    );
+  });
+
+  it("改訂元(REVISION_SOURCE)は価格調整できない（凍結・メモのみ可）", () => {
+    expect(
+      isVariationAdjustable(variation({ revisionRole: "REVISION_SOURCE", status: "ACTIVE" }))
+    ).toBe(false);
+  });
+
+  it("無効(INACTIVE)の改訂先は価格調整できない（§3.4 無効は編集不可）", () => {
+    expect(
+      isVariationAdjustable(variation({ revisionRole: "REVISION_TARGET", status: "INACTIVE" }))
+    ).toBe(false);
   });
 });
 
