@@ -6,12 +6,14 @@ import type { VariationDTO } from "@subdomains/estimate/application/queries/dto/
 import { SUBMISSION_TYPE_LABELS, formatYen } from "../_shared/labels";
 import { LineTable } from "./components/LineTable";
 import {
+  isVariationAdjustable,
   isVariationDuplicatable,
   isVariationEditable,
   isVariationRevisableForCustomer,
 } from "./variationEditable";
 import { VariationEditForm } from "./VariationEditForm";
 import { VariationMemoEditForm } from "./VariationMemoEditForm";
+import { VariationAdjustForm } from "./VariationAdjustForm";
 import { VariationCreateForm } from "./VariationCreateForm";
 import { ReviseForCustomerDialog } from "./ReviseForCustomerDialog";
 import {
@@ -45,6 +47,7 @@ type PanelMode =
   | { kind: "view" }
   | { kind: "edit" }
   | { kind: "edit-memo" }
+  | { kind: "edit-adjust" }
   | { kind: "create-new" }
   | { kind: "create-duplicate"; initialValues: VariationCreateInitialValues };
 
@@ -176,6 +179,19 @@ export function VariationPanel({
                     メモを編集
                   </button>
                 )}
+                {/* 改訂先は商品・数量・行構成が固定。単価・掛率・値引・メモのみ調整できる（#390・ADR-0060）。 */}
+                {isVariationAdjustable(active) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveRowId(null);
+                      setMode({ kind: "edit-adjust" });
+                    }}
+                    className="bg-blue-500 hover:bg-blue-700 text-white text-sm font-bold py-1 px-4 rounded"
+                  >
+                    価格を調整
+                  </button>
+                )}
                 {/* 複製は「改訂明細を含まない」バリのみ（状態不問・改訂先タブでは非表示）。 */}
                 {isVariationDuplicatable(active) && (
                   <button
@@ -233,6 +249,15 @@ export function VariationPanel({
               estimateNumber={estimateNumber}
               version={version}
               variation={active}
+              onCancel={() => setMode({ kind: "view" })}
+            />
+          ) : mode.kind === "edit-adjust" ? (
+            <VariationAdjustForm
+              estimateNumber={estimateNumber}
+              version={version}
+              variation={active}
+              taxRate={taxRate}
+              taxRoundingType={taxRoundingType}
               onCancel={() => setMode({ kind: "view" })}
             />
           ) : (

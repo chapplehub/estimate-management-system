@@ -13,6 +13,7 @@ vi.mock("./actions", () => ({
   addVariation: vi.fn(),
   updateVariationContent: vi.fn(),
   updateVariationMemos: vi.fn(),
+  updateVariationAdjustment: vi.fn(),
 }));
 
 const mockAddVariation = addVariation as unknown as Mock;
@@ -166,5 +167,51 @@ describe("VariationPanel（改訂元のメモのみ編集・ADR-0059）", () => 
     expect(screen.getByRole("button", { name: "メモを保存" })).toBeInTheDocument();
     // 明細メモの編集 textarea が出る（明細・価格自体は read-only）。
     expect(screen.getByLabelText("顧客メモ（通常明細）")).toBeInTheDocument();
+  });
+});
+
+describe("VariationPanel（改訂先の部分編集・#390）", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("改訂先(REVISION_TARGET)では『価格を調整』が出て『内容を編集』『メモを編集』は出ない", () => {
+    renderPanel([variation({ revisionRole: "REVISION_TARGET", submissionType: "CUSTOMER" })]);
+
+    expect(screen.getByRole("button", { name: "価格を調整" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "内容を編集" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "メモを編集" })).toBeNull();
+  });
+
+  test("通常(NONE)・改訂元(REVISION_SOURCE)では『価格を調整』は出ない", () => {
+    const { rerender } = renderPanel([variation({ revisionRole: "NONE" })]);
+    expect(screen.queryByRole("button", { name: "価格を調整" })).toBeNull();
+
+    rerender(
+      <VariationPanel
+        estimateNumber="EST-0001"
+        version={1}
+        variations={[
+          variation({ revisionRole: "REVISION_SOURCE", submissionType: "DELIVERY_LOCATION" }),
+        ]}
+        taxRate={0.1}
+        taxRoundingType="ROUND_DOWN"
+        hasRevision={false}
+      />
+    );
+    expect(screen.queryByRole("button", { name: "価格を調整" })).toBeNull();
+  });
+
+  test("『価格を調整』クリックで価格調整フォーム（単価編集セル・粗利表示）に切り替わる", async () => {
+    const user = userEvent.setup();
+    renderPanel([variation({ revisionRole: "REVISION_TARGET", submissionType: "CUSTOMER" })]);
+
+    await user.click(screen.getByRole("button", { name: "価格を調整" }));
+
+    expect(screen.getByRole("button", { name: "価格を保存" })).toBeInTheDocument();
+    // 単価の編集セルが出る（数量・商品は read-only）。
+    expect(screen.getByLabelText("単価（通常明細）")).toBeInTheDocument();
+    // 合計粗利が表示される。
+    expect(screen.getByLabelText("合計粗利")).toBeInTheDocument();
   });
 });

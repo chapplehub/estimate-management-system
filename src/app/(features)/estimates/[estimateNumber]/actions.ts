@@ -11,11 +11,13 @@ import { addVariationCommandFactory } from "@subdomains/estimate/application/fac
 import { checkTaxRateThenDuplicateDepsFactory } from "@subdomains/estimate/application/factories/checkTaxRateThenDuplicateDepsFactory";
 import { checkTaxRateThenDuplicate } from "@subdomains/estimate/application/shared/checkTaxRateThenDuplicate";
 import { reviseForCustomerCommandFactory } from "@subdomains/estimate/application/factories/reviseForCustomerCommandFactory";
+import { adjustRevisedVariationCommandFactory } from "@subdomains/estimate/application/factories/adjustRevisedVariationCommandFactory";
 import type { UpdateEstimateInput } from "@subdomains/estimate/application/commands/UpdateEstimateCommand";
 import type { UpdateVariationInput } from "@subdomains/estimate/application/commands/UpdateVariationCommand";
 import type { UpdateVariationMemosInput } from "@subdomains/estimate/application/commands/UpdateVariationMemosCommand";
 import type { AddVariationInput } from "@subdomains/estimate/application/commands/AddVariationCommand";
 import type { ReviseForCustomerInput } from "@subdomains/estimate/application/commands/ReviseForCustomerCommand";
+import type { AdjustRevisedVariationInput } from "@subdomains/estimate/application/commands/AdjustRevisedVariationCommand";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { handleCommandError } from "../../_shared/error-handler";
@@ -25,6 +27,7 @@ import { duplicateEstimateSchema } from "./duplicateSchema";
 import { updateEstimateHeaderSchema } from "./schema";
 import { addVariationNodeSchema, updateVariationContentNodeSchema } from "./variationSchema";
 import { updateVariationMemosSchema } from "./variationMemoSchema";
+import { updateVariationAdjustmentSchema } from "./variationAdjustSchema";
 import { reviseForCustomerSchema } from "./reviseForCustomerSchema";
 import { toVariationContentInputFromNodes } from "./variationContentMapping";
 
@@ -398,6 +401,74 @@ export async function updateVariationMemos(
     const errorResult = handleCommandError(error);
     const errorMessage = !errorResult.success && errorResult.error ? errorResult.error : undefined;
     return submission.reply({ formErrors: errorMessage ? [errorMessage] : [] });
+  }
+
+  revalidatePath(`/estimates/${estimateNumber}`);
+  redirect(`/estimates/${estimateNumber}?reason=${REDIRECT_REASON.ESTIMATE_UPDATED}`);
+}
+
+/**
+ * 改訂先バリエーションの部分編集（#390）の Server Action。
+ *
+ * 改訂先は商品・数量・改訂価格・行構成が固定（ADR-0060）で、単価・掛率・明細値引・全体値引・
+ * メモだけを送る。明細調整は単一 hidden の JSON（itemId キーのフラット配列・ADR-0050）を schema で
+ * 検証。estimateId は estimateNumber から DTO 解決、version はフォーム由来の楽観ロックトークン
+ * （ADR-0039）。価格変更で税額が動くためコマンドは税率整合チェックを通す（§8.7）。不一致は例外でなく
+ * Result のためフォームエラーで提示し編集を維持する（C4 と同型）。競合・その他例外は
+ * handleCommandError 経由。成功時のみ閲覧へ redirect。
+ */
+export async function updateVariationAdjustment(
+  estimateNumber: string,
+  _prevState: unknown,
+  formData: FormData
+) {
+  await verifySession();
+
+  const submission = parseWithZod(formData, { schema: updateVariationAdjustmentSchema });
+  if (submission.status !== "success") {
+    return submission.reply();
+  }
+  const value = submission.value;
+
+  const dto = await getEstimateDetailQueryFactory().execute({ estimateNumber });
+  if (!dto) {
+    return submission.reply({ formErrors: ["見積が見つかりません"] });
+  }
+
+  const input: AdjustRevisedVariationInput = {
+    estimateId: dto.estimateId,
+    variationId: value.variationId,
+    version: value.version,
+    overallDiscount: value.overallDiscount,
+    customerMemo: value.customerMemo,
+    internalMemo: value.internalMemo,
+    items: value.items.map((item) => ({
+      itemId: item.itemId,
+      unitPrice: item.unitPrice,
+      discountRate: item.discountRate,
+      itemDiscount: item.itemDiscount,
+      customerMemo: item.customerMemo,
+      internalMemo: item.internalMemo,
+    })),
+  };
+
+  let result;
+  try {
+    result = await adjustRevisedVariationCommandFactory().execute(input);
+  } catch (error) {
+    const errorResult = handleCommandError(error);
+    const errorMessage = !errorResult.success && errorResult.error ? errorResult.error : undefined;
+    return submission.reply({ formErrors: errorMessage ? [errorMessage] : [] });
+  }
+
+  // 税率不一致（§8.7）は保存されない。両税率を提示して編集を維持する。
+  if (result.kind === "taxRateMismatch") {
+    return submission.reply({
+      formErrors: taxRateMismatchFormErrors(
+        result.estimateDateRate.value,
+        result.deadlineRate.value
+      ),
+    });
   }
 
   revalidatePath(`/estimates/${estimateNumber}`);
