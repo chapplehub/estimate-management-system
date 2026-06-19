@@ -12,6 +12,8 @@ import { checkTaxRateThenDuplicateDepsFactory } from "@subdomains/estimate/appli
 import { checkTaxRateThenDuplicate } from "@subdomains/estimate/application/shared/checkTaxRateThenDuplicate";
 import { reviseForCustomerCommandFactory } from "@subdomains/estimate/application/factories/reviseForCustomerCommandFactory";
 import { adjustRevisedVariationCommandFactory } from "@subdomains/estimate/application/factories/adjustRevisedVariationCommandFactory";
+import { activateVariationCommandFactory } from "@subdomains/estimate/application/factories/activateVariationCommandFactory";
+import { deactivateVariationCommandFactory } from "@subdomains/estimate/application/factories/deactivateVariationCommandFactory";
 import type { UpdateEstimateInput } from "@subdomains/estimate/application/commands/UpdateEstimateCommand";
 import type { UpdateVariationInput } from "@subdomains/estimate/application/commands/UpdateVariationCommand";
 import type { UpdateVariationMemosInput } from "@subdomains/estimate/application/commands/UpdateVariationMemosCommand";
@@ -29,6 +31,7 @@ import { addVariationNodeSchema, updateVariationContentNodeSchema } from "./vari
 import { updateVariationMemosSchema } from "./variationMemoSchema";
 import { updateVariationAdjustmentSchema } from "./variationAdjustSchema";
 import { reviseForCustomerSchema } from "./reviseForCustomerSchema";
+import { variationStatusSchema } from "./variationStatusSchema";
 import { toVariationContentInputFromNodes } from "./variationContentMapping";
 
 /**
@@ -405,6 +408,90 @@ export async function updateVariationMemos(
 
   revalidatePath(`/estimates/${estimateNumber}`);
   redirect(`/estimates/${estimateNumber}?reason=${REDIRECT_REASON.ESTIMATE_UPDATED}`);
+}
+
+/**
+ * バリエーション有効化（S7 / C5）の Server Action（ADR-0018 で無効化と分離）。
+ *
+ * 状態変更は内容入力を取らないため form は variationId と version のみ（variationStatusSchema）。
+ * estimateId は estimateNumber から DTO 解決。有効化は税額に影響せず進行ロックのガードも持たない
+ * （ADR-0061）ため、税率不一致分岐は無く戻り値も保存済み集約（メモ更新と同型）。競合・その他例外は
+ * handleCommandError 経由でフォームエラー化。成功時のみ閲覧へ redirect し専用フラッシュで伝える。
+ */
+export async function activateVariation(
+  estimateNumber: string,
+  _prevState: unknown,
+  formData: FormData
+) {
+  await verifySession();
+
+  const submission = parseWithZod(formData, { schema: variationStatusSchema });
+  if (submission.status !== "success") {
+    return submission.reply();
+  }
+  const value = submission.value;
+
+  const dto = await getEstimateDetailQueryFactory().execute({ estimateNumber });
+  if (!dto) {
+    return submission.reply({ formErrors: ["見積が見つかりません"] });
+  }
+
+  try {
+    await activateVariationCommandFactory().execute({
+      estimateId: dto.estimateId,
+      variationId: value.variationId,
+      expectedVersion: value.version,
+    });
+  } catch (error) {
+    const errorResult = handleCommandError(error);
+    const errorMessage = !errorResult.success && errorResult.error ? errorResult.error : undefined;
+    return submission.reply({ formErrors: errorMessage ? [errorMessage] : [] });
+  }
+
+  revalidatePath(`/estimates/${estimateNumber}`);
+  redirect(`/estimates/${estimateNumber}?reason=${REDIRECT_REASON.ESTIMATE_VARIATION_ACTIVATED}`);
+}
+
+/**
+ * バリエーション無効化（S7 / C5）の Server Action（ADR-0018 で有効化と分離）。
+ *
+ * form は variationId と version のみ（variationStatusSchema）。estimateId は estimateNumber から DTO
+ * 解決。無効化は税額に影響しない素の version 保存のため税率不一致分岐は無く戻り値も保存済み集約。
+ * 進行ロック（申請以降は無効化不可・ADR-0061）はコマンド内の拡張点に閉じており現状 no-op。競合・
+ * その他例外は handleCommandError 経由。成功時のみ閲覧へ redirect し専用フラッシュで伝える。
+ */
+export async function deactivateVariation(
+  estimateNumber: string,
+  _prevState: unknown,
+  formData: FormData
+) {
+  await verifySession();
+
+  const submission = parseWithZod(formData, { schema: variationStatusSchema });
+  if (submission.status !== "success") {
+    return submission.reply();
+  }
+  const value = submission.value;
+
+  const dto = await getEstimateDetailQueryFactory().execute({ estimateNumber });
+  if (!dto) {
+    return submission.reply({ formErrors: ["見積が見つかりません"] });
+  }
+
+  try {
+    await deactivateVariationCommandFactory().execute({
+      estimateId: dto.estimateId,
+      variationId: value.variationId,
+      expectedVersion: value.version,
+    });
+  } catch (error) {
+    const errorResult = handleCommandError(error);
+    const errorMessage = !errorResult.success && errorResult.error ? errorResult.error : undefined;
+    return submission.reply({ formErrors: errorMessage ? [errorMessage] : [] });
+  }
+
+  revalidatePath(`/estimates/${estimateNumber}`);
+  redirect(`/estimates/${estimateNumber}?reason=${REDIRECT_REASON.ESTIMATE_VARIATION_DEACTIVATED}`);
 }
 
 /**

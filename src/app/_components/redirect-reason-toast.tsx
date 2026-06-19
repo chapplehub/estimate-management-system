@@ -134,6 +134,14 @@ const FLASH_MESSAGES: Record<RedirectReason, FlashMessage> = {
     type: FLASH_MESSAGE_TYPE.SUCCESS,
     message: "得意先改訂しました。",
   },
+  [REDIRECT_REASON.ESTIMATE_VARIATION_ACTIVATED]: {
+    type: FLASH_MESSAGE_TYPE.SUCCESS,
+    message: "バリエーションを有効化しました。",
+  },
+  [REDIRECT_REASON.ESTIMATE_VARIATION_DEACTIVATED]: {
+    type: FLASH_MESSAGE_TYPE.SUCCESS,
+    message: "バリエーションを無効化しました。",
+  },
 };
 
 function RedirectReasonToastInner() {
