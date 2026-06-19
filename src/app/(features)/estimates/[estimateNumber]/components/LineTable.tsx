@@ -5,13 +5,11 @@ import type {
   LineDTO,
   SetGroupDTO,
 } from "@subdomains/estimate/application/queries/dto/EstimateDetailDTO";
+import { memoInputClass } from "../../_shared/formStyles";
 import { PRODUCT_CATEGORY_LABELS, formatYen } from "../../_shared/labels";
 
 /** 明細メモの編集パッチ（顧客/社内のいずれか一方ずつ）。 */
 export type MemoPatch = { customerMemo?: string; internalMemo?: string };
-
-const memoInputClass =
-  "mt-1 w-full border rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400";
 
 type Props = {
   lines: (LineDTO | SetGroupDTO)[];

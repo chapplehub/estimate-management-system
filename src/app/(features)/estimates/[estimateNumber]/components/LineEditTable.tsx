@@ -10,6 +10,7 @@ import {
 } from "@dnd-kit/core";
 import { restrictToParentElement, restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { memoInputClass } from "../../_shared/formStyles";
 import { PRODUCT_CATEGORY_LABELS, formatYen } from "../../_shared/labels";
 import { previewGroupAmount, previewLineAmount } from "../previewAmounts";
 import type { WorkingLine, WorkingNode, WorkingSetGroup } from "../variationLines";
@@ -29,8 +30,6 @@ type Props = {
 
 const cellInputClass =
   "w-full border rounded px-2 py-1 text-right focus:outline-none focus:ring-1 focus:ring-blue-400";
-const memoInputClass =
-  "mt-1 w-full border rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400";
 
 const COLUMN_COUNT = 12;
 

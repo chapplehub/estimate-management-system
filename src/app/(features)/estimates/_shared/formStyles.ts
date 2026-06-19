@@ -11,3 +11,10 @@ export const inputClass =
   "shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline";
 
 export const inputClassDisabled = `${inputClass} disabled:bg-gray-100`;
+
+/**
+ * メモ textarea 共通クラス（明細メモセル・バリ単位メモ共用）。rows と aria-label は呼び出し側で付与する。
+ * 数量・単価などの数値入力用（text-right 系）とは用途が異なるため統合しない。
+ */
+export const memoInputClass =
+  "mt-1 w-full border rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400";
