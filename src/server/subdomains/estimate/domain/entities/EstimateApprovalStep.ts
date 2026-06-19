@@ -1,3 +1,4 @@
+import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
 import { RoleId } from "@subdomains/role/domain/values/RoleId";
 import { EstimateApprovalStepId } from "../values/EstimateApprovalStepId";
 import { StepApproval } from "../values/StepApproval";
@@ -78,6 +79,33 @@ export class EstimateApprovalStep {
   /** 差戻イベント（未差戻なら null）。 */
   get rejection(): StepRejection | null {
     return this._rejection;
+  }
+
+  /**
+   * 承認イベントを付与する（集約ルートの approve から呼ばれる）。1ステップ1決定の
+   * 構造的不変条件として、既に決定済みのステップへの再付与は拒否する。承認待ち（AWAITING）
+   * かどうかの順序ガードは集約ルートが §3.6 導出で行う。
+   */
+  recordApproval(approval: StepApproval): void {
+    if (this.isDecided()) {
+      throw new BusinessRuleViolationError(
+        "既に決定済みの承認ステップに決定を付与することはできません"
+      );
+    }
+    this._approval = approval;
+  }
+
+  /**
+   * 差戻イベントを付与する（集約ルートの reject から呼ばれる）。既に決定済みのステップへの
+   * 再付与は拒否する（1ステップ1決定）。
+   */
+  recordRejection(rejection: StepRejection): void {
+    if (this.isDecided()) {
+      throw new BusinessRuleViolationError(
+        "既に決定済みの承認ステップに決定を付与することはできません"
+      );
+    }
+    this._rejection = rejection;
   }
 
   /** このステップが承認済か（ローカル判定）。 */

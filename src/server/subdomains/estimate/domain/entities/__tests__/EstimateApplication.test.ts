@@ -1,13 +1,26 @@
+import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
 import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
 import { PositionId } from "@subdomains/position/domain/values/PositionId";
 import { RoleId } from "@subdomains/role/domain/values/RoleId";
 import { describe, expect, it } from "vitest";
 import { EstimateApplication } from "../EstimateApplication";
+import { ApplicationStatus } from "../../values/ApplicationStatus";
 import { ApprovalChainPlan } from "../../values/ApprovalChainPlan";
+import { ApprovalStepStatus } from "../../values/ApprovalStepStatus";
+import { EstimateApprovalStepId } from "../../values/EstimateApprovalStepId";
 import { EstimateVariationId } from "../../values/EstimateVariationId";
+import { RejectionComment } from "../../values/RejectionComment";
 
 const buildPlan = (roleIds = [RoleId.generate()], goal = PositionId.generate()) =>
   ApprovalChainPlan.create(goal, roleIds);
+
+const buildApp = (stepCount: number) =>
+  EstimateApplication.create({
+    variationId: EstimateVariationId.generate(),
+    attempt: 1,
+    applicantEmployeeId: EmployeeId.generate(),
+    plan: buildPlan(Array.from({ length: stepCount }, () => RoleId.generate())),
+  });
 
 describe("EstimateApplication", () => {
   describe("create() - 申請の事前生成（§6.3 / §12）", () => {
@@ -87,6 +100,134 @@ describe("EstimateApplication", () => {
       steps.pop();
 
       expect(application.steps).toHaveLength(1);
+    });
+  });
+
+  describe("状態導出（§3.6）- 初期状態", () => {
+    it("申請は PENDING、先頭ステップのみ AWAITING・残りは NOT_STARTED", () => {
+      const app = buildApp(3);
+
+      expect(app.applicationStatus.equals(ApplicationStatus.PENDING)).toBe(true);
+      expect(app.stepStatus(app.steps[0].id).equals(ApprovalStepStatus.AWAITING)).toBe(true);
+      expect(app.stepStatus(app.steps[1].id).equals(ApprovalStepStatus.NOT_STARTED)).toBe(true);
+      expect(app.stepStatus(app.steps[2].id).equals(ApprovalStepStatus.NOT_STARTED)).toBe(true);
+    });
+  });
+
+  describe("approve()", () => {
+    it("先頭ステップを承認すると当該は APPROVED・次が AWAITING に前進する", () => {
+      const app = buildApp(3);
+
+      app.approve(app.steps[0].id, EmployeeId.generate());
+
+      expect(app.stepStatus(app.steps[0].id).equals(ApprovalStepStatus.APPROVED)).toBe(true);
+      expect(app.stepStatus(app.steps[1].id).equals(ApprovalStepStatus.AWAITING)).toBe(true);
+      expect(app.applicationStatus.equals(ApplicationStatus.PENDING)).toBe(true);
+    });
+
+    it("全ステップを順に承認すると申請が APPROVED になる", () => {
+      const app = buildApp(2);
+
+      app.approve(app.steps[0].id, EmployeeId.generate());
+      app.approve(app.steps[1].id, EmployeeId.generate());
+
+      expect(app.applicationStatus.equals(ApplicationStatus.APPROVED)).toBe(true);
+      expect(app.steps.every((s) => s.isApproved())).toBe(true);
+    });
+
+    it("1ステップ申請は先頭承認だけで APPROVED（常に最低1段・ADR-0003）", () => {
+      const app = buildApp(1);
+
+      app.approve(app.steps[0].id, EmployeeId.generate());
+
+      expect(app.applicationStatus.equals(ApplicationStatus.APPROVED)).toBe(true);
+    });
+
+    it("AWAITING でないステップ（後続）の承認は拒否する", () => {
+      const app = buildApp(2);
+
+      expect(() => app.approve(app.steps[1].id, EmployeeId.generate())).toThrow(
+        BusinessRuleViolationError
+      );
+    });
+
+    it("既に承認済みのステップの再承認は拒否する", () => {
+      const app = buildApp(2);
+      app.approve(app.steps[0].id, EmployeeId.generate());
+
+      expect(() => app.approve(app.steps[0].id, EmployeeId.generate())).toThrow(
+        BusinessRuleViolationError
+      );
+    });
+
+    it("この申請に属さない stepId は拒否する", () => {
+      const app = buildApp(1);
+
+      expect(() => app.approve(EstimateApprovalStepId.generate(), EmployeeId.generate())).toThrow(
+        BusinessRuleViolationError
+      );
+    });
+  });
+
+  describe("reject()", () => {
+    it("差戻すと当該ステップは REJECTED・申請は REJECTED になる", () => {
+      const app = buildApp(2);
+
+      app.reject(app.steps[0].id, EmployeeId.generate(), new RejectionComment("金額の根拠不明"));
+
+      expect(app.stepStatus(app.steps[0].id).equals(ApprovalStepStatus.REJECTED)).toBe(true);
+      expect(app.applicationStatus.equals(ApplicationStatus.REJECTED)).toBe(true);
+    });
+
+    it("AWAITING でないステップの差戻は拒否する", () => {
+      const app = buildApp(2);
+
+      expect(() =>
+        app.reject(app.steps[1].id, EmployeeId.generate(), new RejectionComment("不可"))
+      ).toThrow(BusinessRuleViolationError);
+    });
+
+    it("差戻後は後続ステップを承認できない（申請が PENDING でないため）", () => {
+      const app = buildApp(2);
+      app.reject(app.steps[0].id, EmployeeId.generate(), new RejectionComment("差戻"));
+
+      expect(() => app.approve(app.steps[1].id, EmployeeId.generate())).toThrow(
+        BusinessRuleViolationError
+      );
+    });
+  });
+
+  describe("withdraw()", () => {
+    it("取下げると申請は WITHDRAWN になる（最優先）", () => {
+      const app = buildApp(2);
+
+      app.withdraw(EmployeeId.generate());
+
+      expect(app.applicationStatus.equals(ApplicationStatus.WITHDRAWN)).toBe(true);
+      expect(app.withdrawal).not.toBeNull();
+    });
+
+    it("一部承認済みでも取下できる（PENDING の間）", () => {
+      const app = buildApp(2);
+      app.approve(app.steps[0].id, EmployeeId.generate());
+
+      app.withdraw(EmployeeId.generate());
+
+      expect(app.applicationStatus.equals(ApplicationStatus.WITHDRAWN)).toBe(true);
+    });
+
+    it("既に取下済みの申請の再取下は拒否する", () => {
+      const app = buildApp(1);
+      app.withdraw(EmployeeId.generate());
+
+      expect(() => app.withdraw(EmployeeId.generate())).toThrow(BusinessRuleViolationError);
+    });
+
+    it("承認完了済み（PENDING でない）の取下は拒否する", () => {
+      const app = buildApp(1);
+      app.approve(app.steps[0].id, EmployeeId.generate());
+
+      expect(() => app.withdraw(EmployeeId.generate())).toThrow(BusinessRuleViolationError);
     });
   });
 });
