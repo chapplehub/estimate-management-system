@@ -50,6 +50,8 @@ export const SEED_ESTIMATE_NUMBERS = {
   setGroup: "N9905005",
   /** C7 得意先改訂の E2E 用（改訂前・hasRevision=false の起点。納品先宛 V1＝改訂元適格）。 */
   reviseSource: "N9905006",
+  /** S7 無効化/有効化（C5）の E2E 用（V1・V2 とも ACTIVE。トグルで状態を往復させる）。 */
+  s7Toggle: "N9905007",
 } as const;
 
 /** 見積が参照する FK マスタ（呼び出し側 seed の作成済みデータから解決した ID）。 */
@@ -247,6 +249,30 @@ function buildAllInactiveEstimate(fk: EstimateSeedFk) {
 }
 
 /**
+ * S7 無効化/有効化（C5）E2E 用の見積。V1・V2 とも ACTIVE で起点とし、トグルで状態を往復させる
+ * （無効化→○無効・タブ取消線、全無効→警告、再有効化→●有効）。他ファイルと共有しない専用データ
+ * のため serial chain 内で状態を書き換えても干渉しない（ADR-0020・状態変更は独立 chain）。
+ */
+function buildS7ToggleEstimate(fk: EstimateSeedFk) {
+  return EstimateFactory.create({
+    ...header(fk),
+    estimateNumber: EstimateNumber.parse(SEED_ESTIMATE_NUMBERS.s7Toggle),
+    variations: [
+      {
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        items: [mkItem(fk.productAId, 1, "S7トグル明細1", 1, 1000)],
+      },
+      {
+        variationNumber: 2,
+        submissionType: SubmissionType.DELIVERY_LOCATION,
+        items: [mkItem(fk.productBId, 1, "S7トグル明細2", 1, 2000)],
+      },
+    ],
+  });
+}
+
+/**
  * S5 セット群編集 E2E 用の NEW 見積（ADR-0047）。構成2件のセット群1つ＋通常明細1件。非改訂 ACTIVE。
  * 群ヘッダは SET 商品、構成は個別商品（productA/B）。表示位置・金額は構成から導出される。
  */
@@ -316,6 +342,7 @@ export async function seedEstimates(prisma: PrismaClient): Promise<number> {
     buildEditableEstimate(fk),
     buildRepairSeedEstimate(fk),
     buildReviseSourceEstimate(fk),
+    buildS7ToggleEstimate(fk),
   ];
   for (const estimate of estimates) {
     // 上記はセット群なし → 所属交差表の createMany は不要。
