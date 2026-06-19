@@ -16,6 +16,7 @@ import { VariationMemoEditForm } from "./VariationMemoEditForm";
 import { VariationAdjustForm } from "./VariationAdjustForm";
 import { VariationCreateForm } from "./VariationCreateForm";
 import { ReviseForCustomerDialog } from "./ReviseForCustomerDialog";
+import { VariationStatusToggle } from "./VariationStatusToggle";
 import {
   toCreateInitialValuesFromVariation,
   type VariationCreateInitialValues,
@@ -220,6 +221,13 @@ export function VariationPanel({
                 >
                   ＋バリエーション追加
                 </button>
+                {/* 有効化/無効化（C5）。状態は編集可否・凍結と直交するため全バリに無条件表示（ADR-0061）。 */}
+                <VariationStatusToggle
+                  estimateNumber={estimateNumber}
+                  variationId={active.variationId}
+                  isActive={active.status === "ACTIVE"}
+                  version={version}
+                />
               </div>
             )}
           </div>
