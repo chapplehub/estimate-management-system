@@ -10,6 +10,8 @@ import { type Page, expect, test } from "@playwright/test";
  * - (2) ボタン → 確認モーダル → 実行で、同一見積内に得意先宛の改訂先バリが出現する＋専用フラッシュ
  * - (3) 初回改訂後、ヘッダー編集（C2）の見積日・税端数・得意先が disabled になる（ヘッダーロック）
  * - (4) 改訂元（凍結）は「内容を編集」が消え「メモを編集」だけ出る。メモのみ編集→保存できる（#388）
+ * - (5) 改訂先（V3）は「価格を調整」だけ出る。単価・掛率・値引・全体値引・メモを編集でき、粗利が
+ *       ライブ反映され、保存後に閲覧へ反映される。数量・商品は read-only で行追加削除 UI は無い（#390）
  *
  * #388 以前は「改訂元の凍結」は UI 観測できなかった（VariationDTO に per-variation の凍結情報が
  * 無く、改訂元にも誤って「内容を編集」が出ていた＝#359 deviations ⑤）。#388 で VariationDTO に
@@ -119,6 +121,54 @@ test.describe.serial("得意先改訂（C7 / N9905006）", () => {
 
     // 保存後の閲覧（既定タブ＝V1）にバリ顧客メモが反映される。
     await selectVariationTab(page, 1);
+    await expect(page.getByText(stamp, { exact: true })).toBeVisible();
+  });
+
+  test("改訂先（V3）は『価格を調整』だけ出て『内容を編集』『メモを編集』は出ない（#390）", async ({
+    page,
+  }) => {
+    await page.goto(`/estimates/${SOURCE}`);
+    await waitForDetailReady(page, SOURCE);
+
+    await selectVariationTab(page, 3);
+    await expect(page.getByRole("button", { name: "価格を調整" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "内容を編集" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "メモを編集" })).toHaveCount(0);
+  });
+
+  test("改訂先の価格調整フォームは数量・商品 read-only・行追加削除 UI 無しで、価格と全体値引・メモを編集して保存できる（#390）", async ({
+    page,
+  }) => {
+    await page.goto(`/estimates/${SOURCE}`);
+    await waitForDetailReady(page, SOURCE);
+
+    await selectVariationTab(page, 3);
+    await page.getByRole("button", { name: "価格を調整" }).click();
+
+    // 数量は read-only（数量の編集入力が無い）。行追加・行削除の UI も無い（行構成固定）。
+    await expect(page.getByLabel(/^数量（/)).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /明細を追加|行を追加/ })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /行を削除|明細を削除/ })).toHaveCount(0);
+
+    // 単価を引き上げると合計粗利がライブで変わる（保存前）。改訂先は単価=改訂価格で粗利0が初期値、
+    // 単価を上げると逆ザヤ（粗利が負）になる一方、総額は正のままで保存できる。
+    const grossBefore = await page.getByLabel("合計粗利").textContent();
+    const unitPrice = page.getByLabel(/^単価（/).first();
+    const currentUnitPrice = Number(await unitPrice.inputValue());
+    await unitPrice.fill(String(currentUnitPrice + 5000));
+    await expect.poll(async () => page.getByLabel("合計粗利").textContent()).not.toBe(grossBefore);
+
+    // 全体値引・バリ顧客メモを編集して保存（値引後がマイナスにならない範囲）。
+    const stamp = `adjust-${Date.now()}`;
+    await page.getByLabel("全体値引（円）").fill("123");
+    await page.getByLabel("顧客メモ", { exact: true }).fill(stamp);
+    await page.getByRole("button", { name: "価格を保存" }).click();
+
+    await expect(page.getByText("見積を更新しました。")).toBeVisible({ timeout: 10000 });
+
+    // 保存後の閲覧（V3）に全体値引とバリ顧客メモが反映される。
+    await selectVariationTab(page, 3);
+    await expect(page.getByText("全体値引: -123円")).toBeVisible();
     await expect(page.getByText(stamp, { exact: true })).toBeVisible();
   });
 });
