@@ -93,11 +93,15 @@ export function VariationAdjustForm({
   // 全体値引は粗利・合計プレビューに効くため controlled で持つ。
   const [overallDiscount, setOverallDiscount] = useState<number>(variation.overallDiscount);
 
-  function patchPrice(itemId: string, patch: PricePatch): void {
-    setItems((prev) => ({ ...prev, [itemId]: { ...prev[itemId]!, ...patch } }));
-  }
-  function patchMemo(itemId: string, patch: MemoPatch): void {
-    setItems((prev) => ({ ...prev, [itemId]: { ...prev[itemId]!, ...patch } }));
+  // 価格・メモ編集を 1 つの setter で受け、LineTable の onChangePrice/onChangeMemo 双方に渡す。
+  // 明細は buildInitialItemAdjust で網羅済みのため未登録 itemId は来ない想定だが、来た場合は
+  // no-op で弾いて non-null 断言（クラッシュ源）を避ける。
+  function patchItem(itemId: string, patch: PricePatch | MemoPatch): void {
+    setItems((prev) => {
+      const current = prev[itemId];
+      if (!current) return prev;
+      return { ...prev, [itemId]: { ...current, ...patch } };
+    });
   }
 
   // LineTable の入力値（line.*）に作業 state を写し込んだ派生 lines。
@@ -172,9 +176,9 @@ export function VariationAdjustForm({
           activeRowId={null}
           onSelectRow={() => {}}
           priceEdit
-          onChangePrice={patchPrice}
+          onChangePrice={patchItem}
           memoEdit
-          onChangeMemo={patchMemo}
+          onChangeMemo={patchItem}
         />
 
         {/* ⑦ 全体値引（controlled・プレビュー反映）。 */}
