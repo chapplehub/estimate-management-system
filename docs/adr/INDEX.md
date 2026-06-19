@@ -77,6 +77,7 @@
 | [0052](0052-set-component-cross-aggregate-validation-via-method-arguments.md) | セット構成の集約越え検証はドメインポートではなく ADR-0030（メソッド引数）で行う | 採用 | 2026-06-16 |
 | [0059](0059-revision-source-memo-only-update-bypasses-freeze-via-dedicated-command.md) | 改訂元のメモのみ更新は専用コマンドで凍結ガードを迂回する | 採用 | 2026-06-18 |
 | [0060](0060-revised-variation-fixes-quantity-to-preserve-gross-profit-snapshot.md) | 改訂先バリエーションは数量も固定する（粗利スナップショット保全） | 採用 | 2026-06-19 |
+| [0061](0061-unify-variation-operation-guard-as-display-status-progress-lock-passing-through-memo.md) | バリエーション操作ガードを表示ステータス由来の進行ロックに統一しメモを貫通させる | 採用 | 2026-06-19 |
 
 ## アプリケーション（コマンド）
 

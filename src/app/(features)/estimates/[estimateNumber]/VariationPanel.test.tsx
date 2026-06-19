@@ -14,6 +14,8 @@ vi.mock("./actions", () => ({
   updateVariationContent: vi.fn(),
   updateVariationMemos: vi.fn(),
   updateVariationAdjustment: vi.fn(),
+  activateVariation: vi.fn(),
+  deactivateVariation: vi.fn(),
 }));
 
 const mockAddVariation = addVariation as unknown as Mock;
