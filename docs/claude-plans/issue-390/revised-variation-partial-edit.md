@@ -39,7 +39,7 @@ TDD（RED→GREEN→REFACTOR）で、ドメイン→アプリ→プレゼン→E
 - **判断不要（変更なし）**。`revisionRole`（#388）と `revisedDeliveryPrice`（既存 LineDTO）で足りる。
 
 ### 孤児ミューテータの撤去
-- **決定: #390 には含めない（別 draft issue・#390 マージ依存）**。#390 後に production 利用者ゼロになるルート/バリの粒度別価格ミューテータ＋冗長テストの撤去。`changeItemQuantity`（数量ガードの置き場）・`EstimateItem` setter（`adjustPricing` が使用）・メモ系は除外。
+- **決定: #390 には含めない（別 issue #394・#390 マージ依存）**。#390 後に production 利用者ゼロになるルート/バリの粒度別価格ミューテータ＋冗長テストの撤去。`changeItemQuantity`（数量ガードの置き場）・`EstimateItem` setter（`adjustPricing` が使用）・メモ系は除外。起票済み: https://github.com/chapplehub/estimate-management-system/issues/394
 
 ## ステップ
 
