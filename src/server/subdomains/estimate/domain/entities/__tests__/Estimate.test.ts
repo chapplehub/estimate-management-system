@@ -5,6 +5,7 @@ import { DepartmentId } from "@subdomains/department/domain/values/DepartmentId"
 import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
 import { ProductId } from "@subdomains/product/domain/values/ProductId";
 import { describe, expect, it } from "vitest";
+import { DiscountRate } from "../../values/DiscountRate";
 import { EmergencyReason } from "../../values/EmergencyReason";
 import { EstimateNumber } from "../../values/EstimateNumber";
 import { EstimateVariationId } from "../../values/EstimateVariationId";
@@ -840,6 +841,47 @@ describe("Estimate", () => {
         estimate.changeItemQuantity(revised.id, revisedItem.id, new Quantity(5))
       ).toThrow(BusinessRuleViolationError);
       expect(revisedItem.quantity.value).toBe(1);
+    });
+
+    it("改訂先（得意先宛）への価格バッチ調整は集約ルート経由でできる（数量は不変）", () => {
+      const { estimate, revised, revisedItem } = buildRevisedEstimate();
+
+      estimate.adjustVariationPricing(
+        revised.id,
+        [
+          {
+            itemId: revisedItem.id,
+            unitPrice: Money.fromMajorUnits(1000),
+            discountRate: new DiscountRate(1.0),
+            itemDiscount: Money.fromMajorUnits(100),
+          },
+        ],
+        Money.fromMajorUnits(50)
+      );
+
+      expect(revisedItem.unitPrice.equals(Money.fromMajorUnits(1000))).toBe(true);
+      expect(revisedItem.finalAmount.equals(Money.fromMajorUnits(900))).toBe(true);
+      expect(revised.overallDiscount.equals(Money.fromMajorUnits(50))).toBe(true);
+      expect(revisedItem.quantity.value).toBe(1);
+    });
+
+    it("凍結改訂元への価格バッチ調整は拒否される", () => {
+      const { estimate, source, sourceItem } = buildRevisedEstimate();
+
+      expect(() =>
+        estimate.adjustVariationPricing(
+          source.id,
+          [
+            {
+              itemId: sourceItem.id,
+              unitPrice: Money.fromMajorUnits(900),
+              discountRate: new DiscountRate(1.0),
+              itemDiscount: Money.zero(),
+            },
+          ],
+          Money.zero()
+        )
+      ).toThrow(BusinessRuleViolationError);
     });
 
     it("改訂先を削除すると凍結が自動的に解け、改訂元が編集可能に戻る", () => {

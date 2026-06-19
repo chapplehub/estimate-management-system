@@ -35,6 +35,17 @@ export type TaxContext = {
 };
 
 /**
+ * 明細単位の価格調整（#390・改訂先の部分編集）。1 明細の価格系フィールドの新値を表す。
+ * 数量・商品は対象外（改訂先では固定・ADR-0060）。{@link EstimateVariation.adjustPricing} が消費する。
+ */
+export type ItemPriceAdjustment = {
+  itemId: EstimateItemId;
+  unitPrice: Money;
+  discountRate: DiscountRate;
+  itemDiscount: Money;
+};
+
+/**
  * バリエーション内容（番号・ステータスを除く編集対象）。C3 AddVariation の追加内容、
  * C4 UpdateVariation の全置換内容として共用する。明細は構築済み EstimateItem の配列で渡す。
  */
@@ -262,6 +273,33 @@ export class EstimateVariation {
 
   changeOverallDiscount(newDiscount: Money, tax: TaxContext): void {
     this._overallDiscount = newDiscount;
+    this.recalculate(tax);
+  }
+
+  /**
+   * 価格系（明細の単価・掛率・明細値引＋全体値引）を一括調整する（#390・改訂先の部分編集）。
+   *
+   * 各明細に setter を適用したあと末尾で **1 回だけ** 再計算する。粒度別メソッド
+   * （changeItemUnitPrice 等）を明細ごとに呼ぶと per-call 再計算が O(N^2) になるため、
+   * recalculate が最終状態からの純導出で冪等であることを使い、適用後に一括で再計算する
+   * （計画 設計判断 Q）。
+   *
+   * 数量・行構成は触らないため、改訂先（行構成固定・数量固定）にも一般の編集可能バリにも
+   * 安全。よって行構成固定/数量固定ガードは呼ばず、§3.4 の無効弾き（assertEditable）のみ通す。
+   */
+  adjustPricing(
+    itemAdjustments: ReadonlyArray<ItemPriceAdjustment>,
+    overallDiscount: Money,
+    tax: TaxContext
+  ): void {
+    this.assertEditable();
+    for (const adj of itemAdjustments) {
+      const item = this.findItemOrThrow(adj.itemId);
+      item.changeUnitPrice(adj.unitPrice);
+      item.changeDiscountRate(adj.discountRate);
+      item.changeItemDiscount(adj.itemDiscount);
+    }
+    this._overallDiscount = overallDiscount;
     this.recalculate(tax);
   }
 

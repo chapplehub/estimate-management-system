@@ -1,6 +1,7 @@
 import { BusinessRuleViolationError, ValidationError } from "@server/shared/errors/DomainError";
 import { ProductId } from "@subdomains/product/domain/values/ProductId";
 import { describe, expect, it } from "vitest";
+import { DiscountRate } from "../../values/DiscountRate";
 import { ItemName } from "../../values/ItemName";
 import { Memo } from "../../values/Memo";
 import { Money } from "../../values/Money";
@@ -287,6 +288,126 @@ describe("EstimateVariation", () => {
       expect(v.finalSubtotal.equals(Money.fromMajorUnits(800))).toBe(true);
       expect(v.taxAmount.equals(Money.fromMajorUnits(80))).toBe(true);
       expect(v.finalTotal.equals(Money.fromMajorUnits(880))).toBe(true);
+    });
+  });
+
+  describe("adjustPricing - 価格バッチ調整（単価・掛率・明細値引・全体値引）", () => {
+    it("複数明細の単価・掛率・明細値引と全体値引を一括適用し集計が再計算される", () => {
+      const item1 = makeItem({ quantity: 2, unitPrice: 1000 });
+      const item2 = makeItem({ quantity: 1, unitPrice: 500, sortOrder: 2 });
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items: [item1, item2],
+      });
+
+      v.adjustPricing(
+        [
+          {
+            itemId: item1.id,
+            unitPrice: Money.fromMajorUnits(1500),
+            discountRate: new DiscountRate(1.0),
+            itemDiscount: Money.fromMajorUnits(100),
+          },
+          {
+            itemId: item2.id,
+            unitPrice: Money.fromMajorUnits(800),
+            discountRate: new DiscountRate(0.5),
+            itemDiscount: Money.zero(),
+          },
+        ],
+        Money.fromMajorUnits(300),
+        TAX
+      );
+
+      // item1: base 3000, 掛率1.0, 値引100 → final 2900
+      // item2: base 800, 掛率0.5 → 400, 値引0 → final 400
+      expect(item1.finalAmount.equals(Money.fromMajorUnits(2900))).toBe(true);
+      expect(item2.finalAmount.equals(Money.fromMajorUnits(400))).toBe(true);
+      expect(v.subtotal.equals(Money.fromMajorUnits(3300))).toBe(true);
+      expect(v.overallDiscount.equals(Money.fromMajorUnits(300))).toBe(true);
+      expect(v.finalSubtotal.equals(Money.fromMajorUnits(3000))).toBe(true);
+      expect(v.taxAmount.equals(Money.fromMajorUnits(300))).toBe(true);
+      expect(v.finalTotal.equals(Money.fromMajorUnits(3300))).toBe(true);
+    });
+
+    it("数量は adjustPricing の対象外で据え置かれる（粗利スナップショット保全）", () => {
+      const item = makeItem({ quantity: 2, unitPrice: 1000 });
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items: [item],
+      });
+
+      v.adjustPricing(
+        [
+          {
+            itemId: item.id,
+            unitPrice: Money.fromMajorUnits(1500),
+            discountRate: new DiscountRate(1.0),
+            itemDiscount: Money.zero(),
+          },
+        ],
+        Money.zero(),
+        TAX
+      );
+
+      expect(item.quantity.value).toBe(2);
+      expect(item.unitPrice.equals(Money.fromMajorUnits(1500))).toBe(true);
+    });
+
+    it("無効状態のバリエーションでは弾かれる（assertEditable）", () => {
+      const item = makeItem({ unitPrice: 1000 });
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items: [item],
+        status: VariationStatus.INACTIVE,
+      });
+
+      expect(() =>
+        v.adjustPricing(
+          [
+            {
+              itemId: item.id,
+              unitPrice: Money.fromMajorUnits(1500),
+              discountRate: new DiscountRate(1.0),
+              itemDiscount: Money.zero(),
+            },
+          ],
+          Money.zero(),
+          TAX
+        )
+      ).toThrow(BusinessRuleViolationError);
+    });
+
+    it("存在しない明細を指定するとエラー", () => {
+      const item = makeItem({ unitPrice: 1000 });
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items: [item],
+      });
+      const ghost = makeItem();
+
+      expect(() =>
+        v.adjustPricing(
+          [
+            {
+              itemId: ghost.id,
+              unitPrice: Money.fromMajorUnits(1500),
+              discountRate: new DiscountRate(1.0),
+              itemDiscount: Money.zero(),
+            },
+          ],
+          Money.zero(),
+          TAX
+        )
+      ).toThrow(BusinessRuleViolationError);
     });
   });
 

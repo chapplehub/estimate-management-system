@@ -21,7 +21,12 @@ import { TaxRate } from "../values/TaxRate";
 import { TaxRoundingType } from "../values/TaxRoundingType";
 import type { AfterRepairEstimateDetail } from "./AfterRepairEstimateDetail";
 import { EstimateItem } from "./EstimateItem";
-import { EstimateVariation, type TaxContext, type VariationContent } from "./EstimateVariation";
+import {
+  EstimateVariation,
+  type ItemPriceAdjustment,
+  type TaxContext,
+  type VariationContent,
+} from "./EstimateVariation";
 import type { RepairEstimateDetail } from "./RepairEstimateDetail";
 import { RevisedEstimateItemDetail } from "./RevisedEstimateItemDetail";
 
@@ -402,6 +407,24 @@ export class Estimate {
   changeOverallDiscount(variationId: EstimateVariationId, newDiscount: Money): void {
     this.editableVariationOrThrow(variationId).changeOverallDiscount(
       newDiscount,
+      this.taxContext()
+    );
+    this.touch();
+  }
+
+  /**
+   * バリエーションの価格系（明細の単価・掛率・明細値引＋全体値引）を一括調整する
+   * （#390・改訂先の部分編集）。editableVariationOrThrow 経由なので凍結改訂元は拒否し、
+   * 改訂先は通る。数量・行構成は変えないため改訂先でも安全（数量固定・ADR-0060）。
+   */
+  adjustVariationPricing(
+    variationId: EstimateVariationId,
+    itemAdjustments: ReadonlyArray<ItemPriceAdjustment>,
+    overallDiscount: Money
+  ): void {
+    this.editableVariationOrThrow(variationId).adjustPricing(
+      itemAdjustments,
+      overallDiscount,
       this.taxContext()
     );
     this.touch();
