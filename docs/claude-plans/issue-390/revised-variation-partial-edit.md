@@ -94,6 +94,3 @@ TDD（RED→GREEN→REFACTOR）で、ドメイン→アプリ→プレゼン→E
   - 数量・商品が read-only であること、行追加削除 UI が無いことを検証
   - `pnpm e2e` で estimate 系全緑を確認
 - コミットメッセージ: `test: 改訂先の部分編集 E2E を追加する`
-
-### Step 8（#390 完了後・別 issue）: 孤児ミューテータ撤去の draft issue 起票
-- 本 issue のスコープ外。`/draft-issue` で「#390 マージ依存・孤児化したルート/バリ粒度別価格ミューテータと冗長テストの撤去（`changeItemQuantity`・`EstimateItem` setter・メモ系は除外）」を起票。
