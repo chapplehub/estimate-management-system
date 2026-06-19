@@ -833,6 +833,15 @@ describe("Estimate", () => {
       expect(revisedItem.unitPrice.equals(Money.fromMajorUnits(1000))).toBe(true);
     });
 
+    it("改訂先（得意先宛）の数量変更は集約ルート経由でも拒否される（数量固定・ADR-0060）", () => {
+      const { estimate, revised, revisedItem } = buildRevisedEstimate();
+
+      expect(() =>
+        estimate.changeItemQuantity(revised.id, revisedItem.id, new Quantity(5))
+      ).toThrow(BusinessRuleViolationError);
+      expect(revisedItem.quantity.value).toBe(1);
+    });
+
     it("改訂先を削除すると凍結が自動的に解け、改訂元が編集可能に戻る", () => {
       const { estimate, source, revised } = buildRevisedEstimate();
 

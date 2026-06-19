@@ -223,6 +223,7 @@ export class EstimateVariation {
   // ========================================
 
   changeItemQuantity(itemId: EstimateItemId, newQuantity: Quantity, tax: TaxContext): void {
+    this.assertQuantityImmutable();
     this.findItemOrThrow(itemId).changeQuantity(newQuantity);
     this.recalculate(tax);
   }
@@ -416,12 +417,29 @@ export class EstimateVariation {
   /**
    * 行構成固定（§7.2）: 改訂で生まれたバリエーションは明細の追加・削除不可。
    * 改訂元との明細1:1対応を保全し、明細単位の粗利（deliveryPrice − 得意先価格・§8.4）を
-   * 常に計算可能に保つ。単価・掛率・値引・数量・メモの調整は許可される。
+   * 常に計算可能に保つ。単価・掛率・値引・メモの調整は許可される。
+   * 数量は別ガード {@link assertQuantityImmutable} で固定する（根拠が異なる・ADR-0060）。
    */
   private assertLineStructureMutable(): void {
     if (this._revisedFrom !== null) {
       throw new BusinessRuleViolationError(
         "改訂で生まれたバリエーションは明細の追加・削除ができません（行構成固定・§7.2）"
+      );
+    }
+  }
+
+  /**
+   * 数量固定（ADR-0060）: 改訂で生まれたバリエーションは明細の数量を変更不可。
+   *
+   * 改訂価格スナップショット `deliveryPrice` は改訂元の**行金額**（数量 × 単価 − 値引）を
+   * 凍結したもので、明細単位の粗利（§8.4）はこの行金額と得意先側の行金額の差として意味を持つ。
+   * 数量が動くと得意先側だけ新数量で再計算され、別物同士の引き算になって粗利の基準が崩れる。
+   * 行構成固定（行の増減＝1:1 行対応保全）とは根拠が異なるため、名前付きガードを分ける。
+   */
+  private assertQuantityImmutable(): void {
+    if (this._revisedFrom !== null) {
+      throw new BusinessRuleViolationError(
+        "改訂で生まれたバリエーションは数量を変更できません（数量固定・粗利スナップショット保全・ADR-0060）"
       );
     }
   }

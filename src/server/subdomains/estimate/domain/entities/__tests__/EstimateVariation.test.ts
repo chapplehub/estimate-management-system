@@ -467,18 +467,44 @@ describe("EstimateVariation", () => {
       );
     });
 
-    it("改訂で生まれたバリエーションでも単価・数量・値引・メモの調整はできる", () => {
-      const item = makeItem({ unitPrice: 1200 });
+    it("改訂で生まれたバリエーションでも単価・値引・メモの調整はできる", () => {
+      const item = makeItem({ quantity: 2, unitPrice: 1200 });
       const v = makeRevisedVariation([item]);
 
       v.changeItemUnitPrice(item.id, Money.fromMajorUnits(1000), TAX);
-      v.changeItemQuantity(item.id, new Quantity(3), TAX);
       v.changeOverallDiscount(Money.fromMajorUnits(100), TAX);
       v.changeCustomerMemo(Memo.create("得意先向けに調整"));
 
       expect(item.unitPrice.equals(Money.fromMajorUnits(1000))).toBe(true);
-      expect(v.subtotal.equals(Money.fromMajorUnits(3000))).toBe(true);
+      expect(v.subtotal.equals(Money.fromMajorUnits(2000))).toBe(true);
       expect(v.customerMemo.value).toBe("得意先向けに調整");
+    });
+
+    it("改訂で生まれたバリエーションは数量を変更できない（数量固定・粗利スナップショット保全・ADR-0060）", () => {
+      const item = makeItem({ quantity: 2, unitPrice: 1000 });
+      const v = makeRevisedVariation([item]);
+
+      expect(() => v.changeItemQuantity(item.id, new Quantity(3), TAX)).toThrow(
+        BusinessRuleViolationError
+      );
+      // 数量は据え置かれ集計も動かない
+      expect(item.quantity.value).toBe(2);
+      expect(v.subtotal.equals(Money.fromMajorUnits(2000))).toBe(true);
+    });
+
+    it("通常バリエーションでは従来どおり数量を変更できる", () => {
+      const item = makeItem({ quantity: 1, unitPrice: 1000 });
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items: [item],
+      });
+
+      v.changeItemQuantity(item.id, new Quantity(3), TAX);
+
+      expect(item.quantity.value).toBe(3);
+      expect(v.subtotal.equals(Money.fromMajorUnits(3000))).toBe(true);
     });
   });
 
