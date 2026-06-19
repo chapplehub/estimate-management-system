@@ -5,7 +5,7 @@ import type {
   LineDTO,
   SetGroupDTO,
 } from "@subdomains/estimate/application/queries/dto/EstimateDetailDTO";
-import { memoInputClass } from "../../_shared/formStyles";
+import { cellInputClass, memoInputClass } from "../../_shared/formStyles";
 import { PRODUCT_CATEGORY_LABELS, formatYen } from "../../_shared/labels";
 import { previewLineAmount } from "../previewAmounts";
 
@@ -14,10 +14,6 @@ export type MemoPatch = { customerMemo?: string; internalMemo?: string };
 
 /** 価格調整の編集パッチ（単価・掛率・明細値引のいずれか一つずつ・#390）。 */
 export type PricePatch = { unitPrice?: number; discountRate?: number; itemDiscount?: number };
-
-/** 数値入力セルの共通クラス（LineEditTable の cellInputClass と同型・右寄せ）。 */
-const cellInputClass =
-  "w-full border rounded px-2 py-1 text-right focus:outline-none focus:ring-1 focus:ring-blue-400";
 
 /** input の生文字列を数値へ。空・非数は 0 に倒す（プレビュー用の緩い変換）。 */
 function num(value: string): number {

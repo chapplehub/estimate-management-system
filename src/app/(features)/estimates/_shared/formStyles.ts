@@ -18,3 +18,11 @@ export const inputClassDisabled = `${inputClass} disabled:bg-gray-100`;
  */
 export const memoInputClass =
   "mt-1 w-full border rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400";
+
+/**
+ * 数値入力セル共通クラス（右寄せ）。明細テーブルの単価・掛率・数量などのセル内 input 用。
+ * 幅（w-20/w-24/w-28 等）は列ごとに呼び出し側で付与する。LineTable（改訂先の価格調整）と
+ * LineEditTable（C4 編集）の両テーブルで共用する。
+ */
+export const cellInputClass =
+  "w-full border rounded px-2 py-1 text-right focus:outline-none focus:ring-1 focus:ring-blue-400";
