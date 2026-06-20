@@ -15,9 +15,13 @@ export const inputClassDisabled = `${inputClass} disabled:bg-gray-100`;
 /**
  * メモ textarea 共通クラス（明細メモセル・バリ単位メモ共用）。rows と aria-label は呼び出し側で付与する。
  * 数量・単価などの数値入力用（text-right 系）とは用途が異なるため統合しない。
+ *
+ * `block` 必須: textarea のデフォルト display は inline-block。明細テーブル（LineEditTable /
+ * LineTable）は `whitespace-nowrap` 配下にあり、顧客メモ・社内メモの 2 つの textarea が改行されず
+ * 横並びになってセル幅(w-72)を溢れ、操作列の削除ボタンにオーバーレイする（#368）。block で縦積みを保証する。
  */
 export const memoInputClass =
-  "mt-1 w-full border rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400";
+  "mt-1 block w-full border rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400";
 
 /**
  * 数値入力セル共通クラス（右寄せ）。明細テーブルの単価・掛率・数量などのセル内 input 用。
