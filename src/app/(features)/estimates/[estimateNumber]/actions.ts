@@ -168,7 +168,9 @@ export async function addVariation(
   }
 
   revalidatePath(`/estimates/${estimateNumber}`);
-  redirect(`/estimates/${estimateNumber}?reason=${REDIRECT_REASON.ESTIMATE_UPDATED}`);
+  // 追加成功は専用reasonで戻す。詳細ページ再描画時に末尾（新規）バリのタブを選択させる
+  // シグナルを兼ねる（#370）。
+  redirect(`/estimates/${estimateNumber}?reason=${REDIRECT_REASON.ESTIMATE_VARIATION_ADDED}`);
 }
 
 /**

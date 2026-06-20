@@ -21,6 +21,7 @@ import {
   toCreateInitialValuesFromVariation,
   type VariationCreateInitialValues,
 } from "./variationDuplication";
+import { resolveInitialActiveIndex } from "./resolveInitialActiveIndex";
 
 type Props = {
   estimateNumber: string;
@@ -36,6 +37,11 @@ type Props = {
    * 初回改訂か（＝ヘッダーロック告知の要否）を判断するために引き回す。
    */
   hasRevision: boolean;
+  /**
+   * 追加/複製直後の再描画か（#370）。true のとき初期選択タブを末尾（＝新規バリ）にする。
+   * 専用 redirect reason `estimate_variation_added` から page.tsx 経由で伝播される。
+   */
+  focusLastVariation?: boolean;
 };
 
 /**
@@ -67,10 +73,14 @@ export function VariationPanel({
   taxRate,
   taxRoundingType,
   hasRevision,
+  focusLastVariation = false,
 }: Props) {
-  // 既定タブ＝最小番号の ACTIVE バリ（全 INACTIVE なら最小番号）。variations は番号昇順。
-  const firstActive = variations.findIndex((v) => v.status === "ACTIVE");
-  const [activeIndex, setActiveIndex] = useState(firstActive >= 0 ? firstActive : 0);
+  // 既定タブ＝最小番号の ACTIVE バリ（全 INACTIVE なら先頭）。variations は番号昇順。
+  // 追加/複製直後（focusLastVariation）は末尾（＝新規バリ）を選ぶ（#370）。
+  // 初期 index の決定は resolveInitialActiveIndex に集約（ユニットテスト済み）。
+  const [activeIndex, setActiveIndex] = useState(() =>
+    resolveInitialActiveIndex(variations, { focusLast: focusLastVariation })
+  );
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
   // 閲覧／編集（C4）／新規追加・複製（C3）を 1 つの判別共用体で排他管理する（計画§起点）。
   const [mode, setMode] = useState<PanelMode>({ kind: "view" });

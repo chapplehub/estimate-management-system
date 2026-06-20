@@ -1,4 +1,5 @@
 import { verifySession } from "@/app/_lib/verifyAuthentication";
+import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
 import { getActiveDepartmentsQueryFactory } from "@subdomains/department/application/factories/departmentQueryFactory";
 import {
   getEstimateDetailQueryFactory,
@@ -19,11 +20,18 @@ import { VariationPanel } from "./VariationPanel";
  */
 export default async function EstimateDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ estimateNumber: string }>;
+  searchParams: Promise<{ reason?: string }>;
 }) {
   const { estimateNumber } = await params;
+  const { reason } = await searchParams;
   await verifySession();
+
+  // 追加/複製成功の専用 reason が付いて戻ってきた再描画では、新規（末尾）バリのタブを
+  // 初期選択させる（#370）。reason 自体が「追加直後」のシグナルを兼ねる。
+  const focusLastVariation = reason === REDIRECT_REASON.ESTIMATE_VARIATION_ADDED;
 
   const estimate = await getEstimateDetailQueryFactory().execute({ estimateNumber });
   if (!estimate) {
@@ -73,6 +81,7 @@ export default async function EstimateDetailPage({
         taxRate={estimate.taxRate}
         taxRoundingType={estimate.taxRoundingType}
         hasRevision={estimate.hasRevision}
+        focusLastVariation={focusLastVariation}
       />
     </div>
   );
