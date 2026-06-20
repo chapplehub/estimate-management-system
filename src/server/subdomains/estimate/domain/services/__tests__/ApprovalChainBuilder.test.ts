@@ -1,4 +1,7 @@
-import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
+import {
+  BusinessRuleViolationError,
+  InvalidArgumentError,
+} from "@server/shared/errors/DomainError";
 import { PositionId } from "@subdomains/position/domain/values/PositionId";
 import { RoleId } from "@subdomains/role/domain/values/RoleId";
 import { describe, expect, it } from "vitest";
@@ -109,6 +112,50 @@ describe("ApprovalChainBuilder", () => {
           snapshot: { applicantSuperiorRoleId: roles[0].roleId, roles },
         })
       ).toThrow(BusinessRuleViolationError);
+    });
+  });
+
+  describe("入力不備（呼び出し側のバグ・InvalidArgumentError）", () => {
+    it("自己ループ（役割の上位が自分自身）なら循環として例外", () => {
+      const roles = buildRoleChain([ApprovalGoalTier.SECTION_MANAGER]);
+      // 起点の上位を自分自身に向ける。ゴールは1段上にして起点で止まらないようにする。
+      roles[0] = { ...roles[0], superiorRoleId: roles[0].roleId };
+
+      expect(() =>
+        ApprovalChainBuilder.build({
+          goalTier: ApprovalGoalTier.DEPARTMENT_MANAGER,
+          snapshot: { applicantSuperiorRoleId: roles[0].roleId, roles },
+        })
+      ).toThrow(InvalidArgumentError);
+    });
+
+    it("多重循環（0→1→2→0）なら循環として例外", () => {
+      const roles = buildRoleChain([
+        ApprovalGoalTier.SECTION_MANAGER,
+        ApprovalGoalTier.SECTION_MANAGER,
+        ApprovalGoalTier.SECTION_MANAGER,
+      ]);
+      // 末尾の上位を起点に戻して閉路を作る。全段ゴール未満なので辿り続けて循環に当たる。
+      roles[2] = { ...roles[2], superiorRoleId: roles[0].roleId };
+
+      expect(() =>
+        ApprovalChainBuilder.build({
+          goalTier: ApprovalGoalTier.DEPARTMENT_MANAGER,
+          snapshot: { applicantSuperiorRoleId: roles[0].roleId, roles },
+        })
+      ).toThrow(InvalidArgumentError);
+    });
+
+    it("起点役割がスナップショットに含まれていなければ例外", () => {
+      const roles = buildRoleChain([ApprovalGoalTier.SECTION_MANAGER]);
+
+      expect(() =>
+        ApprovalChainBuilder.build({
+          goalTier: ApprovalGoalTier.SECTION_MANAGER,
+          // roles に存在しない役割を起点に指定する（入力組み立て不備）。
+          snapshot: { applicantSuperiorRoleId: RoleId.generate(), roles },
+        })
+      ).toThrow(InvalidArgumentError);
     });
   });
 });
