@@ -74,32 +74,36 @@ export function LineEditTable({
     }
   };
 
+  // DndContext / SortableContext は <table> の外側に置く（#369）。dnd-kit はアクセシビリティ用の
+  // <div>（HiddenText）を自身の直下に描画するため、<table> 直下に置くと <table> の直接の子に
+  // <div> が混入し HTML 構造違反 → hydration エラーになる。コンテキストは描画位置非依存なので
+  // テーブル外へ出しても並べ替え機能は変わらない。
   return (
     <div className="overflow-x-auto border rounded">
-      <table className="w-full text-sm text-left whitespace-nowrap">
-        <thead className="bg-gray-50 border-b">
-          <tr>
-            <th className="px-2 py-2" aria-label="並べ替え" />
-            <th className="px-3 py-2 font-bold text-gray-700">コード</th>
-            <th className="px-3 py-2 font-bold text-gray-700">商品名</th>
-            <th className="px-3 py-2 font-bold text-gray-700">区分</th>
-            <th className="px-3 py-2 font-bold text-gray-700 text-right">数量</th>
-            <th className="px-3 py-2 font-bold text-gray-700">単位</th>
-            <th className="px-3 py-2 font-bold text-gray-700 text-right">単価</th>
-            <th className="px-3 py-2 font-bold text-gray-700 text-right">掛率</th>
-            <th className="px-3 py-2 font-bold text-gray-700 text-right">明細値引</th>
-            <th className="px-3 py-2 font-bold text-gray-700 text-right">金額</th>
-            <th className="px-3 py-2 font-bold text-gray-700">メモ</th>
-            <th className="px-3 py-2 font-bold text-gray-700 text-center">操作</th>
-          </tr>
-        </thead>
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          modifiers={[restrictToVerticalAxis, restrictToParentElement]}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext items={nodes.map((n) => n.rowId)} strategy={verticalListSortingStrategy}>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={nodes.map((n) => n.rowId)} strategy={verticalListSortingStrategy}>
+          <table className="w-full text-sm text-left whitespace-nowrap">
+            <thead className="bg-gray-50 border-b">
+              <tr>
+                <th className="px-2 py-2" aria-label="並べ替え" />
+                <th className="px-3 py-2 font-bold text-gray-700">コード</th>
+                <th className="px-3 py-2 font-bold text-gray-700">商品名</th>
+                <th className="px-3 py-2 font-bold text-gray-700">区分</th>
+                <th className="px-3 py-2 font-bold text-gray-700 text-right">数量</th>
+                <th className="px-3 py-2 font-bold text-gray-700">単位</th>
+                <th className="px-3 py-2 font-bold text-gray-700 text-right">単価</th>
+                <th className="px-3 py-2 font-bold text-gray-700 text-right">掛率</th>
+                <th className="px-3 py-2 font-bold text-gray-700 text-right">明細値引</th>
+                <th className="px-3 py-2 font-bold text-gray-700 text-right">金額</th>
+                <th className="px-3 py-2 font-bold text-gray-700">メモ</th>
+                <th className="px-3 py-2 font-bold text-gray-700 text-center">操作</th>
+              </tr>
+            </thead>
             <tbody>
               {nodes.length === 0 && (
                 <tr>
@@ -130,9 +134,9 @@ export function LineEditTable({
                 )
               )}
             </tbody>
-          </SortableContext>
-        </DndContext>
-      </table>
+          </table>
+        </SortableContext>
+      </DndContext>
     </div>
   );
 }
