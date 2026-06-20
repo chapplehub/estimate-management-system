@@ -48,7 +48,12 @@ export default async function EstimateDetailPage({
         estimate={estimate}
         departments={departmentOptions}
         headerActions={
+          // この要素は RSC（本ページ）→ Client island（EstimateHeaderSection）境界を越えて
+          // 渡され、操作エリアで「編集」ボタンと兄弟リストに並ぶ。RSC ペイロード由来の要素は
+          // _store.validated を持たず React の key 検証に掛かるため、生成箇所で安定 key を付与し
+          // unique key prop 警告を抑止する（#410）。
           <DuplicateEstimateModal
+            key="header-action-duplicate"
             sourceEstimateNumber={estimate.estimateNumber}
             variations={estimate.variations}
             sourceDepartmentId={estimate.departmentId}
