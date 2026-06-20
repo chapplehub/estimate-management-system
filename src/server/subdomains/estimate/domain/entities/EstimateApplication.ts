@@ -61,12 +61,6 @@ export class EstimateApplication {
     const steps = input.plan.roleIds.map((roleId, index) =>
       EstimateApprovalStep.create(roleId, index + 1)
     );
-    if (steps.length === 0) {
-      // ApprovalChainPlan が最低1役割を保証するため通常到達しない構造的バックストップ。
-      throw new BusinessRuleViolationError(
-        "申請は最低1つの承認ステップを持つ必要があります（§12・ADR-0003）"
-      );
-    }
     return new EstimateApplication(
       EstimateApplicationId.generate(),
       input.variationId,
