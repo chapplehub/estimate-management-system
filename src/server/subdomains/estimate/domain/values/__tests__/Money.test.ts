@@ -82,6 +82,42 @@ describe("Money", () => {
       expect(Money.fromMajorUnits(100.4).roundToMajorUnit().majorUnits).toBe(100);
       expect(Money.fromMajorUnits(100.5).roundToMajorUnit().majorUnits).toBe(101);
     });
+
+    it("compareTo は小なら負・等しいなら0・大なら正を返す", () => {
+      const small = Money.fromMajorUnits(1000);
+      const large = Money.fromMajorUnits(3000);
+      expect(small.compareTo(large)).toBe(-1);
+      expect(large.compareTo(small)).toBe(1);
+      expect(small.compareTo(Money.fromMinorUnits(100_000))).toBe(0);
+    });
+
+    it("isGreaterThan は厳密に大きいときのみ true（境界は false）", () => {
+      const base = Money.fromMajorUnits(1000);
+      expect(Money.fromMajorUnits(1001).isGreaterThan(base)).toBe(true);
+      expect(base.isGreaterThan(base)).toBe(false);
+      expect(Money.fromMajorUnits(999).isGreaterThan(base)).toBe(false);
+    });
+
+    it("isAtLeast は以上のとき true（境界の等値を含む）", () => {
+      const threshold = Money.fromMajorUnits(1000);
+      expect(Money.fromMajorUnits(1001).isAtLeast(threshold)).toBe(true);
+      expect(threshold.isAtLeast(threshold)).toBe(true);
+      expect(Money.fromMajorUnits(999).isAtLeast(threshold)).toBe(false);
+    });
+
+    it("isLessThan は厳密に小さいときのみ true（境界は false）", () => {
+      const base = Money.fromMajorUnits(1000);
+      expect(Money.fromMajorUnits(999).isLessThan(base)).toBe(true);
+      expect(base.isLessThan(base)).toBe(false);
+      expect(Money.fromMajorUnits(1001).isLessThan(base)).toBe(false);
+    });
+
+    it("isAtMost は以下のとき true（境界の等値を含む）", () => {
+      const threshold = Money.fromMajorUnits(1000);
+      expect(Money.fromMajorUnits(999).isAtMost(threshold)).toBe(true);
+      expect(threshold.isAtMost(threshold)).toBe(true);
+      expect(Money.fromMajorUnits(1001).isAtMost(threshold)).toBe(false);
+    });
   });
 
   describe("異常系", () => {
@@ -106,7 +142,8 @@ describe("Money", () => {
       );
     });
 
-    // 異種通貨演算の防止（assertSameCurrency）は Money パターンの不変条件だが、
-    // 現状の通貨レジストリは JPY のみのため到達不能。第2の通貨を追加した時点でテストを足す。
+    // 異種通貨の演算・比較の防止（assertSameCurrency / assertComparableCurrency）は Money
+    // パターンの不変条件だが、現状の通貨レジストリは JPY のみのため到達不能。
+    // 第2の通貨を追加した時点で、演算（add/subtract）と比較（compareTo 等）の両方にテストを足す。
   });
 });
