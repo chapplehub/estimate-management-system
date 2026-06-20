@@ -1,4 +1,3 @@
-import { ValidationError } from "@server/shared/errors/DomainError";
 import { describe, expect, it } from "vitest";
 import { ApprovalStepStatus } from "../ApprovalStepStatus";
 
@@ -21,17 +20,6 @@ describe("ApprovalStepStatus", () => {
     });
   });
 
-  describe("from()", () => {
-    it("'AWAITING' から同一インスタンスが返る", () => {
-      expect(ApprovalStepStatus.from("AWAITING")).toBe(ApprovalStepStatus.AWAITING);
-    });
-
-    it("不正な値はエラー", () => {
-      expect(() => ApprovalStepStatus.from("INVALID")).toThrow(ValidationError);
-      expect(() => ApprovalStepStatus.from("INVALID")).toThrow("不正な承認ステップ状態です");
-    });
-  });
-
   describe("label アクセサ", () => {
     it("各状態の業務表示名を返す", () => {
       expect(ApprovalStepStatus.NOT_STARTED.label).toBe("未着手");
@@ -49,8 +37,8 @@ describe("ApprovalStepStatus", () => {
   });
 
   describe("equals", () => {
-    it("from で取得しても同一インスタンスのため等価", () => {
-      expect(ApprovalStepStatus.from("APPROVED").equals(ApprovalStepStatus.APPROVED)).toBe(true);
+    it("同一状態は等価", () => {
+      expect(ApprovalStepStatus.APPROVED.equals(ApprovalStepStatus.APPROVED)).toBe(true);
     });
 
     it("異なる状態は非等価", () => {

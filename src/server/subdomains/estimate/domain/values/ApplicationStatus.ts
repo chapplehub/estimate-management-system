@@ -49,24 +49,6 @@ export class ApplicationStatus extends ValueObject<string, "ApplicationStatus"> 
     return this === ApplicationStatus.PENDING;
   }
 
-  /** 導出結果文字列から生成する（読み取りモデル用。永続化列ではない）。 */
-  static from(value: string): ApplicationStatus {
-    switch (value) {
-      case "PENDING":
-        return ApplicationStatus.PENDING;
-      case "APPROVED":
-        return ApplicationStatus.APPROVED;
-      case "REJECTED":
-        return ApplicationStatus.REJECTED;
-      case "WITHDRAWN":
-        return ApplicationStatus.WITHDRAWN;
-      default:
-        throw new ValidationError(
-          `不正な申請状態です: ${value}（有効値: ${VALID_VALUES.join(", ")}）`
-        );
-    }
-  }
-
   protected validate(value: string): void {
     if (!VALID_VALUES.includes(value as ApplicationStatusValue)) {
       throw new ValidationError(

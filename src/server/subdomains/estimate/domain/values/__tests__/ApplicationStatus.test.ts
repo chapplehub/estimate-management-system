@@ -1,4 +1,3 @@
-import { ValidationError } from "@server/shared/errors/DomainError";
 import { describe, expect, it } from "vitest";
 import { ApplicationStatus } from "../ApplicationStatus";
 
@@ -21,17 +20,6 @@ describe("ApplicationStatus", () => {
     });
   });
 
-  describe("from()", () => {
-    it("'PENDING' から同一インスタンスが返る", () => {
-      expect(ApplicationStatus.from("PENDING")).toBe(ApplicationStatus.PENDING);
-    });
-
-    it("不正な値はエラー", () => {
-      expect(() => ApplicationStatus.from("INVALID")).toThrow(ValidationError);
-      expect(() => ApplicationStatus.from("INVALID")).toThrow("不正な申請状態です");
-    });
-  });
-
   describe("label アクセサ", () => {
     it("各状態の業務表示名を返す", () => {
       expect(ApplicationStatus.PENDING.label).toBe("申請中");
@@ -49,8 +37,8 @@ describe("ApplicationStatus", () => {
   });
 
   describe("equals", () => {
-    it("from で取得しても同一インスタンスのため等価", () => {
-      expect(ApplicationStatus.from("APPROVED").equals(ApplicationStatus.APPROVED)).toBe(true);
+    it("同一状態は等価", () => {
+      expect(ApplicationStatus.APPROVED.equals(ApplicationStatus.APPROVED)).toBe(true);
     });
 
     it("異なる状態は非等価", () => {

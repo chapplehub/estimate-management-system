@@ -49,24 +49,6 @@ export class ApprovalStepStatus extends ValueObject<string, "ApprovalStepStatus"
     return this === ApprovalStepStatus.AWAITING;
   }
 
-  /** 導出結果文字列から生成する（読み取りモデル用。永続化列ではない）。 */
-  static from(value: string): ApprovalStepStatus {
-    switch (value) {
-      case "NOT_STARTED":
-        return ApprovalStepStatus.NOT_STARTED;
-      case "AWAITING":
-        return ApprovalStepStatus.AWAITING;
-      case "APPROVED":
-        return ApprovalStepStatus.APPROVED;
-      case "REJECTED":
-        return ApprovalStepStatus.REJECTED;
-      default:
-        throw new ValidationError(
-          `不正な承認ステップ状態です: ${value}（有効値: ${VALID_VALUES.join(", ")}）`
-        );
-    }
-  }
-
   protected validate(value: string): void {
     if (!VALID_VALUES.includes(value as ApprovalStepStatusValue)) {
       throw new ValidationError(
