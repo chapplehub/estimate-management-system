@@ -81,7 +81,8 @@ export class ApprovalRequirementPolicy {
 
   /**
    * 金額が閾値（円）以上か。Money に大小比較がないため、差が非負（subtract が負でない）で
-   * 表現する。通貨は finalTotal に合わせる（既定 JPY）。
+   * 表現する。閾値は常に既定 JPY で生成する（本ドメインは税込 JPY の finalTotal のみを扱う）。
+   * finalTotal が非 JPY の場合は subtract の assertSameCurrency で例外になる（多通貨は別スコープ）。
    */
   private static isAtLeastYen(amount: Money, thresholdYen: number): boolean {
     return !amount.subtract(Money.fromMajorUnits(thresholdYen)).isNegative();
