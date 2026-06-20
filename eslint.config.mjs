@@ -66,9 +66,10 @@ const eslintConfig = defineConfig([
                 "@subdomains/estimate/domain/entities/RepairEstimateDetail",
                 "@subdomains/estimate/domain/entities/AfterRepairEstimateDetail",
                 "@subdomains/estimate/domain/entities/RevisedEstimateItemDetail",
+                "@subdomains/estimate/domain/entities/EstimateApprovalStep",
               ],
               message:
-                "Estimate 集約の子エンティティは集約外から直接 import できません。集約ルート Estimate（@subdomains/estimate/domain/entities）経由で操作してください。",
+                "Estimate / EstimateApplication 集約の子エンティティは集約外から直接 import できません。集約ルート（@subdomains/estimate/domain/entities）経由で操作してください。",
             },
           ],
         },
