@@ -16,14 +16,6 @@ const LABEL_MAP: Record<ApprovalGoalTierValue, string> = {
   PRESIDENT: "社長",
 };
 
-// 承認権限の昇順（課長 < 部長 < 本部長 < 社長）。段階比較の唯一の根拠。
-const RANK_MAP: Record<ApprovalGoalTierValue, number> = {
-  SECTION_MANAGER: 1,
-  DEPARTMENT_MANAGER: 2,
-  DIVISION_MANAGER: 3,
-  PRESIDENT: 4,
-};
-
 /**
  * 承認ゴール段階の値オブジェクト（estimate ドメインの抽象段階・ADR-0062）
  *
@@ -55,9 +47,13 @@ export class ApprovalGoalTier extends ValueObject<string, "ApprovalGoalTier"> {
     return LABEL_MAP[this._value as ApprovalGoalTierValue];
   }
 
-  /** 承認権限の段階順位（課長=1 〜 社長=4）。段階比較の根拠。 */
+  /**
+   * 承認権限の段階順位（課長=1 〜 社長=4）。段階比較の根拠。
+   * VALID_VALUES の昇順（課長 < 部長 < 本部長 < 社長）の添字+1 を順位とする
+   * （順位は配列順を唯一の根拠とし、別表での二重管理を避ける）。
+   */
   get rank(): number {
-    return RANK_MAP[this._value as ApprovalGoalTierValue];
+    return VALID_VALUES.indexOf(this._value as ApprovalGoalTierValue) + 1;
   }
 
   /** この段階が指定段階以上（同段含む）に到達しているか。 */
