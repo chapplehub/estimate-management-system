@@ -141,6 +141,35 @@ export class Money {
     return this._currency.equals(other._currency) && this._minorUnits === other._minorUnits;
   }
 
+  /**
+   * 大小を比較する。`this` が小さければ負、等しければ 0、大きければ正を返す。
+   * 異種通貨の比較は実行時に禁止する（ADR-0022）。
+   */
+  compareTo(other: Money): number {
+    this.assertComparableCurrency(other);
+    return Math.sign(this._minorUnits - other._minorUnits);
+  }
+
+  /** `this > other` か。 */
+  isGreaterThan(other: Money): boolean {
+    return this.compareTo(other) > 0;
+  }
+
+  /** `this >= other` か（以上）。 */
+  isAtLeast(other: Money): boolean {
+    return this.compareTo(other) >= 0;
+  }
+
+  /** `this < other` か。 */
+  isLessThan(other: Money): boolean {
+    return this.compareTo(other) < 0;
+  }
+
+  /** `this <= other` か（以下）。 */
+  isAtMost(other: Money): boolean {
+    return this.compareTo(other) <= 0;
+  }
+
   toString(): string {
     return `${this.majorUnits} ${this._currency.code}`;
   }
@@ -149,6 +178,14 @@ export class Money {
     if (!this._currency.equals(other._currency)) {
       throw new InvalidArgumentError(
         `異なる通貨同士は演算できません（${this._currency.code} と ${other._currency.code}）`
+      );
+    }
+  }
+
+  private assertComparableCurrency(other: Money): void {
+    if (!this._currency.equals(other._currency)) {
+      throw new InvalidArgumentError(
+        `異なる通貨同士は比較できません（${this._currency.code} と ${other._currency.code}）`
       );
     }
   }

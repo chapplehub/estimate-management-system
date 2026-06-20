@@ -48,7 +48,7 @@ export class ApprovalRequirementPolicy {
     if (ApprovalRequirementPolicy.isConsumableOnly(input.leafCategories)) {
       return { kind: "EXEMPT", reason: EstimateExemptionReason.CONSUMABLE_ONLY };
     }
-    if (!ApprovalRequirementPolicy.isAtLeastYen(input.finalTotal, 100_000)) {
+    if (!input.finalTotal.isAtLeast(Money.fromMajorUnits(100_000))) {
       return { kind: "EXEMPT", reason: EstimateExemptionReason.BELOW_THRESHOLD };
     }
     return { kind: "REQUIRED", goalTier: ApprovalRequirementPolicy.goalTierOf(input.finalTotal) };
@@ -67,24 +67,15 @@ export class ApprovalRequirementPolicy {
 
   /** 金額段階からゴール段階を決定する（§4.2・税込・ADR-0055）。 */
   private static goalTierOf(finalTotal: Money): ApprovalGoalTier {
-    if (ApprovalRequirementPolicy.isAtLeastYen(finalTotal, 30_000_000)) {
+    if (finalTotal.isAtLeast(Money.fromMajorUnits(30_000_000))) {
       return ApprovalGoalTier.PRESIDENT;
     }
-    if (ApprovalRequirementPolicy.isAtLeastYen(finalTotal, 10_000_000)) {
+    if (finalTotal.isAtLeast(Money.fromMajorUnits(10_000_000))) {
       return ApprovalGoalTier.DIVISION_MANAGER;
     }
-    if (ApprovalRequirementPolicy.isAtLeastYen(finalTotal, 1_000_000)) {
+    if (finalTotal.isAtLeast(Money.fromMajorUnits(1_000_000))) {
       return ApprovalGoalTier.DEPARTMENT_MANAGER;
     }
     return ApprovalGoalTier.SECTION_MANAGER;
-  }
-
-  /**
-   * 金額が閾値（円）以上か。Money に大小比較がないため、差が非負（subtract が負でない）で
-   * 表現する。閾値は常に既定 JPY で生成する（本ドメインは税込 JPY の finalTotal のみを扱う）。
-   * finalTotal が非 JPY の場合は subtract の assertSameCurrency で例外になる（多通貨は別スコープ）。
-   */
-  private static isAtLeastYen(amount: Money, thresholdYen: number): boolean {
-    return !amount.subtract(Money.fromMajorUnits(thresholdYen)).isNegative();
   }
 }
