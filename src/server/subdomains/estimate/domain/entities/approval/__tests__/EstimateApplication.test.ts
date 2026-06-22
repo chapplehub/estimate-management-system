@@ -4,12 +4,12 @@ import { PositionId } from "@subdomains/position/domain/values/PositionId";
 import { RoleId } from "@subdomains/role/domain/values/RoleId";
 import { describe, expect, it } from "vitest";
 import { EstimateApplication } from "../EstimateApplication";
-import { ApplicationStatus } from "../../values/approval/ApplicationStatus";
-import { ApprovalChainPlan } from "../../values/approval/ApprovalChainPlan";
-import { ApprovalStepStatus } from "../../values/approval/ApprovalStepStatus";
-import { EstimateApprovalStepId } from "../../values/approval/EstimateApprovalStepId";
-import { EstimateVariationId } from "../../values/EstimateVariationId";
-import { RejectionComment } from "../../values/approval/RejectionComment";
+import { ApplicationStatus } from "../../../values/approval/ApplicationStatus";
+import { ApprovalChainPlan } from "../../../values/approval/ApprovalChainPlan";
+import { ApprovalStepStatus } from "../../../values/approval/ApprovalStepStatus";
+import { EstimateApprovalStepId } from "../../../values/approval/EstimateApprovalStepId";
+import { EstimateVariationId } from "../../../values/EstimateVariationId";
+import { RejectionComment } from "../../../values/approval/RejectionComment";
 
 const buildPlan = (roleIds = [RoleId.generate()], goal = PositionId.generate()) =>
   ApprovalChainPlan.create(goal, roleIds);

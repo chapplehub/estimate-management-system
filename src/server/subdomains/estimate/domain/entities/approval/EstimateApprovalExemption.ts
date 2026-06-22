@@ -1,7 +1,7 @@
 import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
-import { EstimateApprovalExemptionId } from "../values/approval/EstimateApprovalExemptionId";
-import { EstimateExemptionReason } from "../values/approval/EstimateExemptionReason";
-import { EstimateVariationId } from "../values/EstimateVariationId";
+import { EstimateApprovalExemptionId } from "../../values/approval/EstimateApprovalExemptionId";
+import { EstimateExemptionReason } from "../../values/approval/EstimateExemptionReason";
+import { EstimateVariationId } from "../../values/EstimateVariationId";
 
 /**
  * 承認免除集約ルート（§3.5 / §8・ADR-0054）
