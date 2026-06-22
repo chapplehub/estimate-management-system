@@ -4,8 +4,8 @@ import {
 } from "@server/shared/errors/DomainError";
 import { PositionId } from "@subdomains/position/domain/values/PositionId";
 import { RoleId } from "@subdomains/role/domain/values/RoleId";
-import { ApprovalChainPlan } from "../values/approval/ApprovalChainPlan";
-import { ApprovalGoalTier } from "../values/approval/ApprovalGoalTier";
+import { ApprovalChainPlan } from "../../values/approval/ApprovalChainPlan";
+import { ApprovalGoalTier } from "../../values/approval/ApprovalGoalTier";
 
 /**
  * 承認チェーン構築に渡す組織スナップショットの役割ノード（§5.1・ADR-0062）。
