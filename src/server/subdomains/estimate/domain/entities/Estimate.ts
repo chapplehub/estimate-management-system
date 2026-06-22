@@ -6,7 +6,7 @@ import { DepartmentId } from "@subdomains/department/domain/values/DepartmentId"
 import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
 import type { ProductId } from "@subdomains/product/domain/values/ProductId";
 import type { DiscountRate } from "../values/DiscountRate";
-import type { EmergencyReason } from "../values/EmergencyReason";
+import type { EmergencyReason } from "../values/approval/EmergencyReason";
 import type { FaultDescription } from "../values/FaultDescription";
 import { EstimateId } from "../values/EstimateId";
 import type { EstimateItemId } from "../values/EstimateItemId";

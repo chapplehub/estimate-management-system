@@ -1,8 +1,8 @@
 import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
 import { RoleId } from "@subdomains/role/domain/values/RoleId";
-import { EstimateApprovalStepId } from "../values/EstimateApprovalStepId";
-import { StepApproval } from "../values/StepApproval";
-import { StepRejection } from "../values/StepRejection";
+import { EstimateApprovalStepId } from "../../values/approval/EstimateApprovalStepId";
+import { StepApproval } from "../../values/approval/StepApproval";
+import { StepRejection } from "../../values/approval/StepRejection";
 
 /**
  * 承認ステップ子エンティティ（§3.3・ADR-0002）

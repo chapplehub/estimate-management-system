@@ -3,10 +3,10 @@ import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
 import { RoleId } from "@subdomains/role/domain/values/RoleId";
 import { describe, expect, it } from "vitest";
 import { EstimateApprovalStep } from "../EstimateApprovalStep";
-import { EstimateApprovalStepId } from "../../values/EstimateApprovalStepId";
-import { RejectionComment } from "../../values/RejectionComment";
-import { StepApproval } from "../../values/StepApproval";
-import { StepRejection } from "../../values/StepRejection";
+import { EstimateApprovalStepId } from "../../../values/approval/EstimateApprovalStepId";
+import { RejectionComment } from "../../../values/approval/RejectionComment";
+import { StepApproval } from "../../../values/approval/StepApproval";
+import { StepRejection } from "../../../values/approval/StepRejection";
 
 describe("EstimateApprovalStep", () => {
   describe("create() - 生成骨格", () => {

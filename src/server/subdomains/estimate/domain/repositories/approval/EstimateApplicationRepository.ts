@@ -1,6 +1,6 @@
 import { EstimateApplication } from "@subdomains/estimate/domain/entities";
-import { EstimateApplicationId } from "@subdomains/estimate/domain/values/EstimateApplicationId";
-import { EstimateApprovalStepId } from "@subdomains/estimate/domain/values/EstimateApprovalStepId";
+import { EstimateApplicationId } from "@subdomains/estimate/domain/values/approval/EstimateApplicationId";
+import { EstimateApprovalStepId } from "@subdomains/estimate/domain/values/approval/EstimateApprovalStepId";
 import { EstimateVariationId } from "@subdomains/estimate/domain/values/EstimateVariationId";
 
 /**

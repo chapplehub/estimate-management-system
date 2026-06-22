@@ -1,5 +1,5 @@
 import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
-import { ApprovalGoalTier } from "@subdomains/estimate/domain/values/ApprovalGoalTier";
+import { ApprovalGoalTier } from "@subdomains/estimate/domain/values/approval/ApprovalGoalTier";
 import { PositionId } from "@subdomains/position/domain/values/PositionId";
 
 /**

@@ -1,6 +1,6 @@
 import { ProductId } from "@subdomains/product/domain/values/ProductId";
 import { AfterRepairEstimateDetailId } from "../values/AfterRepairEstimateDetailId";
-import { EmergencyReason } from "../values/EmergencyReason";
+import { EmergencyReason } from "../values/approval/EmergencyReason";
 import { FaultDescription } from "../values/FaultDescription";
 
 /**
