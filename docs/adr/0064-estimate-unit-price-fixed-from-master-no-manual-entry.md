@@ -10,7 +10,7 @@
 
 #422 で見積の価格決定機構の輪郭を定めるにあたり、「商品を選択したときに見積単価をどう定めるか」が論点になった。現状、見積単価は手入力・編集可能である。
 
-- `EstimateItem.changeUnitPrice` / `EstimateItem` 生成時の `unitPrice` 受け取り（通常明細・C4 編集経路）
+- 単価変更の委譲鎖 `Estimate.changeItemUnitPrice` → `EstimateVariation.changeItemUnitPrice` → `EstimateItem.changeUnitPrice`（および改訂先一括調整の `EstimateVariation` bulk 経路）／ `EstimateItem` 生成時の `unitPrice` 受け取り（通常明細・C4 編集経路）
 - 改訂先バリエーションの粒度別調整 `AdjustRevisedVariationCommand`（#390）。ADR-0046/0060 は編集可能集合に「単価」を含めている
 
 一方 #422 は、販売単価マスタ（共通／得意先別／納品先別の3レイヤー）から見積年月日・宛先で売単価を解決する**価格決定**機構を導入する。ここで「価格決定が出した売単価は上書き可能な初期値か、固定される確定値か」を決める必要があり、既存の「単価は手入力で動かせる」設計と正面から衝突する。
@@ -38,7 +38,7 @@
 
 ## 影響
 
-- `EstimateItem.changeUnitPrice`、通常編集（C4）の単価入力、`AdjustRevisedVariationCommand`（#390）の単価入力を撤去する（出荷済みコードの差し替え。#351 に前例あり）。
+- 単価変更の委譲鎖を一括で撤去する: `Estimate.changeItemUnitPrice` → `EstimateVariation.changeItemUnitPrice` → `EstimateItem.changeUnitPrice`（および改訂先一括調整の bulk 経路）、`EstimateItem` 生成時の `unitPrice` 手入力、通常編集（C4）の単価入力、`AdjustRevisedVariationCommand`（#390）の単価入力。委譲元・委譲先のどちらかだけ消し残さないよう鎖全体を対象とする（出荷済みコードの差し替え。#351 に前例あり）。
 - ADR-0046/0060 の改訂先編集可能集合は「掛率・明細値引・全体値引・メモ」に縮小（単価を除外）。両 ADR には本決定への改訂注記を付す。
 - 価格決定が走る契機は「明細追加／見積複製先生成／得意先改訂先生成／見積年月日・宛先変更」。いずれも単価を（再）解決し、見積年月日に有効な販売単価が無く解決不能なら操作を拒否する（暫定値・0 円明細を作らない）。
 - 改訂先の単価は改訂元から引き継がず、改訂先の提出区分で価格決定を再解決する（得意先別販売単価→共通）。数量固定（ADR-0060）と併せ、改訂先は単価・数量とも固定、調整は掛率・値引のみ。
