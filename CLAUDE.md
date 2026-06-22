@@ -29,10 +29,6 @@ pnpm db:migrate / db:generate / db:studio
 - **Record deviations from plan**: 実装中に計画と異なる対応をした場合、作業完了時に `docs/claude-plans/issue-{number}/deviations.md` に{元の計画内容}、{実際の実装内容}、{逸脱の理由}を記録すること。
 - Commit types: `.claude/references/commit-types.md` を参照
 
-## PR Creation
-
-PRを作成する際は必ず `/create-pr` スキルを使用すること。`gh pr create` を直接実行しない。
-
 ## Critical: DDD Layering Rules
 
 **NEVER violate these rules:**
