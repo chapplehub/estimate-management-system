@@ -1,7 +1,7 @@
 # Commit Type リファレンス
 
 commit type, GitHub label, branch prefix の対応関係を定義するマスターテーブル。
-各スキル（draft-issue, finalize-issue, auto-dev, create-pr 等）はこのファイルを参照すること。
+各スキル（draft-issue, auto-dev, create-pr 等）はこのファイルを参照すること。
 
 ## マッピングテーブル
 

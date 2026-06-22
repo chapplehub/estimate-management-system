@@ -1,6 +1,6 @@
 ---
 name: draft-issue
-description: GitHub の仮イシュー（Status: draft）を作成する。設計を詰める前の起票用。Use when issueの作成、issueの起票、仮issueの作成を依頼されたとき。
+description: GitHub の仮イシューを作成する。設計を詰める前の起票用。Use when issueの作成、issueの起票、仮issueの作成を依頼されたとき。
 context: fork
 ---
 
@@ -14,14 +14,14 @@ context: fork
 このスキルは**まだ設計を詰め切っていない段階**で起票するためのものです。
 
 - **やること**: 「何を・なぜ・何が課題か・何を決める必要があるか」を残す
-- **やらないこと**: 実装タスク・受け入れ条件を**書かない**。これらは設計後に `/finalize-issue` で本文へ追記する
+- **やらないこと**: 実装タスク・受け入れ条件を**書かない**。これらはブランチ内での設計後に PR で扱う
 
 理由: 起票時点で「設計済みのフリ」をした実装タスク・受け入れ条件を書くと、ブランチを切って実際に設計したときの結論とズレ、混乱の原因になる。仮イシューは設計の「入力」であって「成果物」ではない。
 
 設計の流れ:
-1. `/draft-issue` … 仮イシュー作成（このスキル）→ `Status: draft`
+1. `/draft-issue` … 仮イシュー作成（このスキル）
 2. `/plan-issue` → `/save-plan` … ブランチ内で設計し `docs/claude-plans/issue-{N}/` に計画を結晶化
-3. `/finalize-issue` … 計画を正として仮イシューを本化 → `Status: ready`
+3. 実装し、仮イシューに対して PR を作成する
 
 ## ステップ 1: タイプ自動判定
 
@@ -34,10 +34,7 @@ context: fork
 
 ## ステップ 2: ラベル存在チェック
 
-`gh label list` で以下のラベルの存在を確認する:
-
-- タイプラベル（`Type: xxx`）
-- `Status: draft`（仮イシューの目印。原則存在するが、無ければ確認不要で作成: `gh label create "Status: draft" --color ededed`）
+`gh label list` でタイプラベル（`Type: xxx`）の存在を確認する。
 
 タイプラベルが存在しない場合はそのラベルなしで作成する（確認不要）。
 
@@ -84,7 +81,7 @@ context: fork
 
 ### bug（fix）テンプレート
 
-バグは観測事実が中心なので症状・再現手順は具体的に書く。ただし**原因と解決策は設計（調査）後**に `/finalize-issue` で追記する。
+バグは観測事実が中心なので症状・再現手順は具体的に書く。ただし**原因と解決策は設計（調査）後**にブランチ内で扱う。
 
 ```markdown
 ## 症状
@@ -142,11 +139,9 @@ context: fork
 gh issue create \
   --title "{prefix}: タイトル" \
   --label "Type: xxx" \
-  --label "Status: draft" \
   --body "本文"
 ```
 
-- `Status: draft` は**必ず付与する**（仮イシューの目印）
 - 優先度ラベルがある場合は `--label "Priority: xxx"` も追加
 - `$ARGUMENTS` の内容を分析してテンプレートの各セクションを埋める
 - **実装タスク・受け入れ条件は書かない**。判断に迷ったら「未決事項 / 要設計」へ回す
@@ -155,4 +150,4 @@ gh issue create \
 ## ステップ 6: 結果を返す
 
 作成した issue の番号と URL を簡潔に返す。
-設計に進む際は `/plan-issue` → `/save-plan`、本化は `/finalize-issue` を使う旨を一言添える。
+設計に進む際は `/plan-issue` → `/save-plan` を使う旨を一言添える。
