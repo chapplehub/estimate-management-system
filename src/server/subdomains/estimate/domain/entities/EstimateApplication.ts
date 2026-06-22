@@ -1,16 +1,16 @@
 import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
 import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
 import { PositionId } from "@subdomains/position/domain/values/PositionId";
-import { ApplicationStatus } from "../values/ApplicationStatus";
-import { ApprovalChainPlan } from "../values/ApprovalChainPlan";
-import { ApprovalStepStatus } from "../values/ApprovalStepStatus";
-import { ApplicationWithdrawal } from "../values/ApplicationWithdrawal";
-import { EstimateApplicationId } from "../values/EstimateApplicationId";
-import { EstimateApprovalStepId } from "../values/EstimateApprovalStepId";
+import { ApplicationStatus } from "../values/approval/ApplicationStatus";
+import { ApprovalChainPlan } from "../values/approval/ApprovalChainPlan";
+import { ApprovalStepStatus } from "../values/approval/ApprovalStepStatus";
+import { ApplicationWithdrawal } from "../values/approval/ApplicationWithdrawal";
+import { EstimateApplicationId } from "../values/approval/EstimateApplicationId";
+import { EstimateApprovalStepId } from "../values/approval/EstimateApprovalStepId";
 import { EstimateVariationId } from "../values/EstimateVariationId";
-import { RejectionComment } from "../values/RejectionComment";
-import { StepApproval } from "../values/StepApproval";
-import { StepRejection } from "../values/StepRejection";
+import { RejectionComment } from "../values/approval/RejectionComment";
+import { StepApproval } from "../values/approval/StepApproval";
+import { StepRejection } from "../values/approval/StepRejection";
 import { EstimateApprovalStep } from "./EstimateApprovalStep";
 
 /**

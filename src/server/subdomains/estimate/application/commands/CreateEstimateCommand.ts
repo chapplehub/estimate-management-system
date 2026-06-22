@@ -17,7 +17,7 @@ import { EstimateNumberIssuer } from "@subdomains/estimate/domain/repositories/E
 import { EstimateRepository } from "@subdomains/estimate/domain/repositories/EstimateRepository";
 import { ProductQueryService } from "@subdomains/product/application/queries/ProductQueryService";
 import { assertSetComponentsValid } from "../shared/assertSetComponentsValid";
-import { EmergencyReason } from "@subdomains/estimate/domain/values/EmergencyReason";
+import { EmergencyReason } from "@subdomains/estimate/domain/values/approval/EmergencyReason";
 import { EstimateType } from "@subdomains/estimate/domain/values/EstimateType";
 import { FaultDescription } from "@subdomains/estimate/domain/values/FaultDescription";
 import { ItemName } from "@subdomains/estimate/domain/values/ItemName";

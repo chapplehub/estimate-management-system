@@ -16,7 +16,7 @@ import { RevisedEstimateItemDetail } from "@subdomains/estimate/domain/entities/
 
 import { AfterRepairEstimateDetailId } from "@subdomains/estimate/domain/values/AfterRepairEstimateDetailId";
 import { DiscountRate } from "@subdomains/estimate/domain/values/DiscountRate";
-import { EmergencyReason } from "@subdomains/estimate/domain/values/EmergencyReason";
+import { EmergencyReason } from "@subdomains/estimate/domain/values/approval/EmergencyReason";
 import { EstimateId } from "@subdomains/estimate/domain/values/EstimateId";
 import { EstimateItemId } from "@subdomains/estimate/domain/values/EstimateItemId";
 import { EstimateNumber } from "@subdomains/estimate/domain/values/EstimateNumber";

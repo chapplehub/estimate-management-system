@@ -6,7 +6,7 @@ import { ProductId } from "@subdomains/product/domain/values/ProductId";
 import { Estimate } from "@subdomains/estimate/domain/entities";
 import { EstimateRepository } from "@subdomains/estimate/domain/repositories/EstimateRepository";
 import { TaxRateConsistencyCheckDomainService } from "@subdomains/estimate/domain/services/TaxRateConsistencyCheckDomainService";
-import { EmergencyReason } from "@subdomains/estimate/domain/values/EmergencyReason";
+import { EmergencyReason } from "@subdomains/estimate/domain/values/approval/EmergencyReason";
 import { EstimateId } from "@subdomains/estimate/domain/values/EstimateId";
 import { FaultDescription } from "@subdomains/estimate/domain/values/FaultDescription";
 import { TaxRoundingType } from "@subdomains/estimate/domain/values/TaxRoundingType";

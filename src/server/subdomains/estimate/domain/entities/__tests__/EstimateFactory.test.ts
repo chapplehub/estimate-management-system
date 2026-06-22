@@ -6,7 +6,7 @@ import { ProductId } from "@subdomains/product/domain/values/ProductId";
 import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
 import { describe, expect, it } from "vitest";
 
-import { EmergencyReason } from "../../values/EmergencyReason";
+import { EmergencyReason } from "../../values/approval/EmergencyReason";
 import { EstimateNumber } from "../../values/EstimateNumber";
 import { FaultDescription } from "../../values/FaultDescription";
 import { ItemName } from "../../values/ItemName";

@@ -6,7 +6,7 @@ import { PositionId } from "@subdomains/position/domain/values/PositionId";
 import { RoleId } from "@subdomains/role/domain/values/RoleId";
 import { describe, expect, it } from "vitest";
 import { ApprovalChainBuilder, type ApprovalChainOrgRole } from "../ApprovalChainBuilder";
-import { ApprovalGoalTier } from "../../values/ApprovalGoalTier";
+import { ApprovalGoalTier } from "../../values/approval/ApprovalGoalTier";
 
 /** 上位リンクで連なる役割ノード列を作る（index 昇順で下位→上位）。tiers の順に役職段階を割り当てる。 */
 const buildRoleChain = (tiers: ApprovalGoalTier[]): ApprovalChainOrgRole[] => {

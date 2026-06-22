@@ -4,7 +4,7 @@ import { DepartmentId } from "@subdomains/department/domain/values/DepartmentId"
 import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
 import { ProductId } from "@subdomains/product/domain/values/ProductId";
 
-import { EmergencyReason } from "../../values/EmergencyReason";
+import { EmergencyReason } from "../../values/approval/EmergencyReason";
 import { EstimateNumber } from "../../values/EstimateNumber";
 import { FaultDescription } from "../../values/FaultDescription";
 import { ItemName } from "../../values/ItemName";

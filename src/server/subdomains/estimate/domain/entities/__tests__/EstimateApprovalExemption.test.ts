@@ -1,8 +1,8 @@
 import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
 import { describe, expect, it } from "vitest";
 import { EstimateApprovalExemption } from "../EstimateApprovalExemption";
-import { EstimateApprovalExemptionId } from "../../values/EstimateApprovalExemptionId";
-import { EstimateExemptionReason } from "../../values/EstimateExemptionReason";
+import { EstimateApprovalExemptionId } from "../../values/approval/EstimateApprovalExemptionId";
+import { EstimateExemptionReason } from "../../values/approval/EstimateExemptionReason";
 import { EstimateVariationId } from "../../values/EstimateVariationId";
 
 describe("EstimateApprovalExemption", () => {

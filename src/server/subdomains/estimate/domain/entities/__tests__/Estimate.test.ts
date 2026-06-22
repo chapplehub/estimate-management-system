@@ -6,7 +6,7 @@ import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
 import { ProductId } from "@subdomains/product/domain/values/ProductId";
 import { describe, expect, it } from "vitest";
 import { DiscountRate } from "../../values/DiscountRate";
-import { EmergencyReason } from "../../values/EmergencyReason";
+import { EmergencyReason } from "../../values/approval/EmergencyReason";
 import { EstimateNumber } from "../../values/EstimateNumber";
 import { EstimateVariationId } from "../../values/EstimateVariationId";
 import { FaultDescription } from "../../values/FaultDescription";

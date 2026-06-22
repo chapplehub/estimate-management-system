@@ -1,8 +1,8 @@
 import { ProductCategory } from "@subdomains/product/domain/values/ProductCategory";
 import { describe, expect, it } from "vitest";
 import { ApprovalRequirementPolicy } from "../ApprovalRequirementPolicy";
-import { ApprovalGoalTier } from "../../values/ApprovalGoalTier";
-import { EstimateExemptionReason } from "../../values/EstimateExemptionReason";
+import { ApprovalGoalTier } from "../../values/approval/ApprovalGoalTier";
+import { EstimateExemptionReason } from "../../values/approval/EstimateExemptionReason";
 import { EstimateType } from "../../values/EstimateType";
 import { Money } from "../../values/Money";
 
