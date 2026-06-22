@@ -21,6 +21,7 @@
 | [0058](0058-derive-application-and-step-status-from-event-rows.md) | 見積申請・承認ステップの状態を行の存在で導出し、単一テーブルのDBバックストップを手放す | 採用 | 2026-06-18 |
 | [0062](0062-approval-policy-returns-abstract-goal-tier-builder-resolves-position.md) | 承認要否ポリシーは抽象ゴール段階を返し、具体役職はチェーンビルダーが組織スナップショットで解決する | 採用 | 2026-06-19 |
 | [0063](0063-resolve-approval-tier-by-hierarchy-depth-with-four-level-failfast.md) | 役職の承認段階は最上位役職からの階層深さで算出し、4 段不変条件を申請時に fail-fast で守る | 採用 | 2026-06-20 |
+| [0066](0066-submit-application-serializes-single-advancing-via-estimate-version-gate-before-insert.md) | 見積申請の「1見積1前進」は見積 version 関門を申請挿入の前段に置いて直列化し、集約またぎトランザクションを張らない | 採用 | 2026-06-23 |
 
 ## インフラストラクチャ（データベース・ID）
 
