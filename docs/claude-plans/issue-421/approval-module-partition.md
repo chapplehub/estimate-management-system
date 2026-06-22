@@ -42,7 +42,9 @@ Issue は「`EstimateMapper` は承認系**子エンティティ**を未 import 
 > - ファイル移動は履歴保持のため `git mv` を使う（ソース → `{layer}/approval/`、テスト → `{layer}/approval/__tests__/`）。
 > - 移動したファイル内の**相対 import を再計算**する: ①深さが 1 段深くなる（`../` → `../../`）、②移動先が approval/ の対象なら `approval/` セグメントを挿入、③共移動の兄弟（同一 approval/ 内）への相対 import は不変。
 > - 移動対象を参照する**非移動ファイル**の import を新パスへ付け替える。
-> - `tsc`（`pnpm build`）と `pnpm lint` が漏れを捕捉し、既存テストが挙動不変を保証する安全網。各ステップ末で `pnpm build && pnpm lint && pnpm test` が green を確認。
+> - `tsc`（`pnpm build`）と eslint が漏れを捕捉し、既存テストが挙動不変を保証する安全網。
+> - **lint は部分実行**（全体 `pnpm lint` は低速）。ブラスト半径が estimate サブドメインに閉じる（外部参照ゼロ）ため、各ステップ末は `pnpm exec eslint src/server/subdomains/estimate`（約 11 秒）で網羅できる。`no-restricted-imports`（ADR-0027 境界）もこの範囲で評価される。Step 2 で `eslint.config.mjs` を編集する回のみ対象に同ファイルを追加。
+> - 各ステップ末で `pnpm build && pnpm exec eslint src/server/subdomains/estimate && pnpm test` が green を確認（Step 7 のみ全体 `pnpm lint`）。
 
 ### Step 1: values 層を approval/ へ区画化
 - 対象ファイル:
@@ -111,10 +113,14 @@ Issue は「`EstimateMapper` は承認系**子エンティティ**を未 import 
 ## 検証方法（Verification）
 
 ```bash
-# 各ステップ末・最終
-pnpm build   # tsc が import 漏れを型エラーで捕捉
-pnpm lint    # no-restricted-imports（ADR-0027 境界）と新パスの整合を検証
-pnpm test    # 既存テストが挙動不変を保証（移動で壊れれば即検知）
+# 各ステップ末（部分 lint：約11秒。全体走査を避ける）
+pnpm build                                      # tsc が import 漏れを型エラーで捕捉
+pnpm exec eslint src/server/subdomains/estimate # no-restricted-imports（ADR-0027 境界）と新パスの整合を検証
+# ↑ Step 2 のみ末尾に eslint.config.mjs を追加
+pnpm test                                       # 既存テストが挙動不変を保証（移動で壊れれば即検知）
+
+# 最終（Step 7）のみ受け入れ条件の保証として全体 lint を一度
+pnpm lint
 
 # 平置き例外ゼロの確認（承認系名が approval/ 外に無いこと）
 cd src/server/subdomains/estimate
