@@ -49,14 +49,39 @@ estimate サブドメインの **application 層**に、見積申請の「未接
 - INACTIVE バリエーションは申請不可（§3.4/§12）。
 - 新射影2つの Prisma 実装は **#417 の責務**（#407 は申請・免除リポジトリ専用）。
 
+## テスト戦略
+
+`/tdd`（vertical slice・1テスト→1実装・公開 IF 越しのふるまい検証）と `testing-backend` 規約に従う。**horizontal slicing 禁止**（全テスト先書き→全実装はしない）。各 Step 内で behavior 単位の red→green を回す。
+
+### レイヤー別の方式（testing-backend §1）
+- **純粋関数・純粋ドメインサービス（DB 非依存）＝ インメモリ単体テスト**。`ApprovalChainBuilder` と本 issue の純粋アセンブラは引数のみ（ADR-0030/0052）なので統合ではなく単体。既存 `ApprovalChainBuilder.test.ts`・`resolveApprovalGoalTiersByDepth.test.ts` と同形（スナップショット/DTO をインメモリ生成して assert）。
+- **Application 層（Query/Command）＝ 実 Prisma の統合テスト・モック禁止**。実 DB に組織階層（社長→本部長→部長→課長の単一鎖・役割チェーン・`EmployeeRole` メンバー）＋対象見積（バリエーション・末端明細・商品区分）を seed し、公開 IF 越しに検証。
+- **Infrastructure・ローダー（内部協調者）＝ 個別テストを書かない**。ローダーは Preview/Submit の統合テストが間接カバー（公開 IF 経由で検証する /tdd の方針）。
+
+### 規約（testing-backend §2）
+- `it()`・`describe()` 第一引数はクラス/関数名・記述は日本語・AAA。
+- エラーは**発生源で型＋ハードコード文字列**を検証（バブルアップは検証不要）。
+- DB を叩くテストは**ユニーク制約列にファイル別プレフィックス**（並列実行の P2002 回避・#327）。FK 依存は `upsert` 冪等・`beforeEach`/`afterEach` の両方で cleanup。
+- 組織階層の seed は重いので、テスト用の**組織階層ビルダー helper**（4役職単一鎖＋役割チェーン＋メンバー）を用意する。見積側は既存 `estimateAggregateBuilder` を活用。
+
+### 要確認（/tdd 計画フェーズで優先度を決定）
+- **ケース2（bump成功・insert失敗）**: 実 Prisma で insert 失敗を決定的に起こすのが困難。`EstimateApplicationPersistError` への変換を検証するか／するなら失敗注入の Fake リポジトリを許容するか（規約はモック禁止だが Fake は外部依存に許容）を決める。
+- **同時実行の真のレース**（同瞬間2申請）は決定的に統合テストしづらい。version 関門は楽観ロック基盤（ADR-0039・既存実績）に委ね、**逐次で検証可能なふるまい**（兄弟前進→拒否／stale version→ConflictError）に絞る。
+
 ## ステップ
 
+> 各 Step は vertical slice。テストは「ふるまい」を列挙（実装手順ではない）。Step 内で1ふるまいずつ red→green。
+
 ### Step 1: ApprovalChainBuilder を BLOCKED union 返却へ改修（ドメイン）
-- 対象ファイル: `src/server/subdomains/estimate/domain/services/approval/ApprovalChainBuilder.ts`、同 `__tests__`
+- 対象ファイル: `src/server/subdomains/estimate/domain/services/approval/ApprovalChainBuilder.ts`、同 `__tests__/ApprovalChainBuilder.test.ts`
 - 作業内容:
   - `build()` の戻り値を `{ kind: "BUILT"; plan } | { kind: "BLOCKED"; reason: "NO_SUPERIOR_ROLE" | "NO_APPROVER" }` に変更。
   - 上位役割未設定→`NO_SUPERIOR_ROLE`、承認者不在→`NO_APPROVER` を union で返す。循環・スナップショット欠落は `InvalidArgumentError` のまま（バグ）。
-  - テストを union 検証へ更新。
+- テスト（**単体・インメモリ**、既存テストを改修）:
+  - 起点〜ゴールの役割列で `BUILT`（plan の goalPositionId・roleIds 順序）を返す。
+  - 上位役割未設定 → `BLOCKED(NO_SUPERIOR_ROLE)`（旧 throw 期待を union 期待へ変更）。
+  - チェーン上に承認者不在の役割 → `BLOCKED(NO_APPROVER)`。
+  - 循環・スナップショット欠落 → `InvalidArgumentError`（型＋メッセージ据え置き）。
 - コミットメッセージ: `refactor: ApprovalChainBuilder は BLOCKED を union で返す（Preview と共有するため）`
 
 ### Step 2: 組織データの汎用射影2つを各本拠に追加（employee / role）
@@ -64,6 +89,9 @@ estimate サブドメインの **application 層**に、見積申請の「未接
 - 作業内容:
   - `EmployeeQueryService.findSuperiorRoleId(employeeId): Promise<string | null>` を追加・実装。
   - `RoleQueryService.findRoleIdsWithMembers(roleIds): Promise<Set<string>>`（メンバー有無＝`EmployeeRole` 存在）を追加・実装。
+- テスト（**統合・実 PrismaQueryService**）:
+  - `findSuperiorRoleId`: 上位役割を持つ従業員→その roleId／持たない従業員→null。
+  - `findRoleIdsWithMembers`: メンバーのいる役割 ID だけを集合で返す／メンバー不在・空入力→空集合。
 - コミットメッセージ: `feat: 承認チェーン組立て用に上位役割ID・役割メンバー有無の射影を追加する`
 
 ### Step 3: 純粋アセンブラ（judge＋resolve＋snapshot＋build）
@@ -71,25 +99,37 @@ estimate サブドメインの **application 層**に、見積申請の「未接
 - 作業内容:
   - 引数（バリエーション属性・positions/roles/membership の素データ・申請者上位役割）のみを受け、`judge` → `resolveApprovalGoalTiersByDepth` → `ApprovalChainOrgSnapshot` 組立て → `ApprovalChainBuilder.build` を実行。
   - 結果を `EXEMPT(reason) | REQUIRED(plan) | BLOCKED(reason)` で返す純関数（DB 非依存・ADR-0030/0052）。
+- テスト（**単体・インメモリ**、resolver テストと同形）:
+  - 事後/消耗品のみ/10万未満 → `EXEMPT(reason)`。
+  - 金額段階に応じてゴールへ到達する `REQUIRED(plan)`（goalPositionId・roleIds 順序）。
+  - builder の `BLOCKED` を透過する。
+  - 役職が4段単一鎖でない → `BusinessRuleViolationError`（resolver 由来・型＋メッセージ）。
 - コミットメッセージ: `feat: 承認チェーン組立ての純粋アセンブラを追加する`
 
 ### Step 4: 越境読取りローダー（QueryService/Repository 集約）
-- 対象ファイル: `estimate/application/shared/approval/loadApprovalChainInputs.ts`（新規）、`__tests__`
+- 対象ファイル: `estimate/application/shared/approval/loadApprovalChainInputs.ts`（新規）
 - 作業内容:
   - `EstimateRepository`（finalTotal・estimateType・variation 有効性）、`ProductQueryService`（leafCategories・read-through/ADR-0048）、`EmployeeQueryService`/`PositionQueryService`/`RoleQueryService`（上位役割・全役職・役割群・メンバー有無）を集約し、アセンブラ入力を組み立てる。
   - 役割チェーンは申請者上位役割から根まで walk-up（≤4）。
+- テスト: **個別テストは書かない**（内部協調者。Step 5/7 の統合テストが公開 IF 経由で間接カバー）。
 - コミットメッセージ: `feat: 組織スナップショット入力の越境ローダーを追加する`
 
 ### Step 5: PreviewApplication クエリ
 - 対象ファイル: `estimate/application/queries/PreviewApplicationQuery.ts`（新規）、`dto/PreviewResultDTO.ts`、factory、`__tests__`
 - 作業内容:
   - ローダー＋アセンブラを呼び、`{ EXEMPT(reason) | REQUIRED(goalPosition, steps[{order, roleName, positionName}]) | BLOCKED(reason) }` を返す（§6.2）。副作用なし。
+- テスト（**統合・実 Prisma**、組織階層＋見積を seed）:
+  - 免除見積（消耗品のみ等） → `EXEMPT(reason)`。
+  - 承認要見積 → `REQUIRED(goalPosition, steps の roleName/positionName が起点→ゴール順)`。
+  - 上位役割未設定 → `BLOCKED(NO_SUPERIOR_ROLE)`／承認者不在役割 → `BLOCKED(NO_APPROVER)`。
+  - 呼び出し後に申請行・免除行が増えない（副作用なし）。
 - コミットメッセージ: `feat: 申請プレビュー（確認モーダル用）クエリを追加する`
 
 ### Step 6: EstimateApplicationPersistError とエラー写像
-- 対象ファイル: `estimate/application/.../errors`（新規 or 既存 errors）、`src/app/(features)/_shared/error-handler.ts` のラップ（presentation 接続は別 issue なら型のみ #417）
+- 対象ファイル: `estimate/application/.../errors`（新規 or 既存 errors）、（presentation 接続は別 issue のため #417 では型のみ）
 - 作業内容:
   - `EstimateApplicationPersistError`（アプリ層例外）を新設。
+- テスト（**単体**）: 所定メッセージと `cause` を保持する。
 - コミットメッセージ: `feat: 申請保存失敗を表す EstimateApplicationPersistError を追加する`
 
 ### Step 7: SubmitApplication コマンド（version 関門→挿入・ADR-0066）
@@ -97,9 +137,19 @@ estimate サブドメインの **application 層**に、見積申請の「未接
 - 作業内容:
   - 入力 `{ variationId, operatorEmployeeId, version }`。Estimate ロード→INACTIVE/兄弟チェック→`judge` 再評価→`EstimateRepository.update(expectedVersion=version)` で関門→通過後に分岐（EXEMPT=`Exemption.insert` / REQUIRED=`EstimateApplication.create`(`attempt`採番)+`insert` / BLOCKED=`BusinessRuleViolationError`）。
   - 関門後 insert 失敗は `EstimateApplicationPersistError` で包んで再送出（ケース2）。
+- テスト（**統合・実 Prisma**、組織階層＋見積を seed）:
+  - REQUIRED: 申請＋ステップ列が永続化（`finalApprovalPositionId`・stepOrder 連番・`attempt=1`）。
+  - EXEMPT: 免除1件が永続化し、申請行は作られない。
+  - BLOCKED（承認者不在）: `BusinessRuleViolationError`（型＋メッセージ）。
+  - INACTIVE バリエーション: 拒否（型＋メッセージ）。
+  - 兄弟が前進中: 拒否（1見積1前進・型＋メッセージ）。
+  - stale version（取得後に他更新）: `ConflictError`（関門・型）。
+  - 差戻後の再申請: `attempt=2`。
+  - （要確認）ケース2: `EstimateApplicationPersistError`（テスト要否は /tdd 計画で決定）。
 - コミットメッセージ: `feat: 見積申請コマンド（version関門で1見積1前進を直列化）を追加する`
 
 ### Step 8: 結線（factories / index バレル）
 - 対象ファイル: `estimate/application/factories/`、関連 barrel
 - 作業内容: Preview/Submit のファクトリ配線、必要な公開エクスポート整理。
+- テスト: 個別テスト不要（Step 5/7 の統合テストが間接カバー）。
 - コミットメッセージ: `chore: 申請プレビュー・申請コマンドのファクトリを結線する`
