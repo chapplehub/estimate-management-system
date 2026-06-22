@@ -113,7 +113,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/stop-notify-completion.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/stop-notify-completion.sh"
           }
         ]
       }
@@ -124,7 +124,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/pre-enter-plan-mode-reminder.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pre-enter-plan-mode-reminder.sh"
           }
         ]
       },
@@ -133,7 +133,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/pre-ask-notify-question.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pre-ask-notify-question.sh"
           }
         ]
       },
@@ -142,7 +142,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/pre-bash-branch-safety.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pre-bash-branch-safety.sh"
           }
         ]
       },
@@ -151,7 +151,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/pre-bash-plan-reminder.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pre-bash-plan-reminder.sh"
           }
         ]
       },
@@ -160,7 +160,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/pre-bash-plan-file-check.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pre-bash-plan-file-check.sh"
           }
         ]
       },
@@ -169,7 +169,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/pipe-stage-permissions.sh",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pipe-stage-permissions.sh",
             "timeout": 5
           }
         ]
@@ -181,7 +181,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/notify-permission-prompt.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/notify-permission-prompt.sh"
           }
         ]
       }
@@ -192,7 +192,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/post-bash-commit-fail-check.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/post-bash-commit-fail-check.sh"
           }
         ]
       },
@@ -201,7 +201,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/post-exit-plan-mode-reminder.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/post-exit-plan-mode-reminder.sh"
           }
         ]
       }
