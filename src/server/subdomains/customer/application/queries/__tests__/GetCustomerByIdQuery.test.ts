@@ -10,7 +10,7 @@ describe("GetCustomerByIdQuery", () => {
 
   const TEST_CODES = ["CUST999923"];
 
-  async function createTestCustomer(data: { code: string; name: string; marginRate?: number }) {
+  async function createTestCustomer(data: { code: string; name: string }) {
     const customerId = generateId();
 
     await prisma.customer.create({
@@ -19,7 +19,6 @@ describe("GetCustomerByIdQuery", () => {
         code: data.code,
         name: data.name,
         isActive: true,
-        marginRate: data.marginRate ?? null,
       },
     });
 

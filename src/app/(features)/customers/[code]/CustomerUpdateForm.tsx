@@ -15,7 +15,6 @@ type Customer = {
   phoneNumber: string | null;
   faxNumber: string | null;
   contactPerson: string | null;
-  marginRate: number | null;
   version: number;
 };
 
@@ -37,7 +36,6 @@ export function CustomerUpdateForm({ customer }: Props) {
       phoneNumber: customer.phoneNumber ?? "",
       faxNumber: customer.faxNumber ?? "",
       contactPerson: customer.contactPerson ?? "",
-      marginRate: customer.marginRate !== null ? String(customer.marginRate) : "",
       version: String(customer.version),
     },
   });
@@ -216,28 +214,6 @@ export function CustomerUpdateForm({ customer }: Props) {
               <p className="text-red-500 text-xs mt-1" id={fields.contactPerson.errorId}>
                 {fields.contactPerson.errors[0]}
               </p>
-            )}
-          </div>
-
-          <div>
-            <label
-              htmlFor={fields.marginRate.id}
-              className="block text-gray-700 text-sm font-bold mb-2"
-            >
-              マージン率
-            </label>
-            <input
-              {...getInputProps(fields.marginRate, { type: "text" })}
-              disabled={isPending}
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
-              placeholder="10.00"
-            />
-            {fields.marginRate.errors ? (
-              <p className="text-red-500 text-xs mt-1" id={fields.marginRate.errorId}>
-                {fields.marginRate.errors[0]}
-              </p>
-            ) : (
-              <p className="text-gray-600 text-xs mt-1">0〜100%の範囲</p>
             )}
           </div>
         </div>

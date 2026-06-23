@@ -30,17 +30,8 @@ export async function updateCustomer(code: string, prevState: unknown, formData:
     return submission.reply();
   }
 
-  const {
-    name,
-    postalCode,
-    prefecture,
-    address,
-    phoneNumber,
-    faxNumber,
-    contactPerson,
-    marginRate,
-    version,
-  } = submission.value;
+  const { name, postalCode, prefecture, address, phoneNumber, faxNumber, contactPerson, version } =
+    submission.value;
 
   // codeからidを取得（version は再取得値ではなくフォーム由来の値を使う。
   // 編集ウィンドウのトークンを守るため。ADR-0039）
@@ -64,7 +55,6 @@ export async function updateCustomer(code: string, prevState: unknown, formData:
       phoneNumber: phoneNumber || null,
       faxNumber: faxNumber || null,
       contactPerson: contactPerson || null,
-      marginRate: marginRate,
     });
 
     revalidatePath("/customers");

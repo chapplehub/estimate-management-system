@@ -9,7 +9,6 @@ import { ValidationError } from "@server/shared/errors/DomainError";
 import { Customer } from "@subdomains/customer/domain/entities/Customer";
 import { CustomerRepository } from "@subdomains/customer/domain/repositories/CustomerRepository";
 import { CustomerCodeDuplicationCheckDomainService } from "@subdomains/customer/domain/services/CustomerCodeDuplicationCheckDomainService";
-import { MarginRate } from "@subdomains/customer/domain/values/MarginRate";
 
 export type CreateCustomerInput = {
   code: string;
@@ -20,7 +19,6 @@ export type CreateCustomerInput = {
   phoneNumber?: string;
   faxNumber?: string;
   contactPerson?: string;
-  marginRate?: number;
 };
 
 /**
@@ -47,7 +45,6 @@ export class CreateCustomerCommand {
       phoneNumber: input.phoneNumber ? new PhoneNumber(input.phoneNumber) : undefined,
       faxNumber: input.faxNumber ? new FaxNumber(input.faxNumber) : undefined,
       contactPerson: input.contactPerson,
-      marginRate: input.marginRate !== undefined ? new MarginRate(input.marginRate) : undefined,
     });
 
     await this.customerRepository.insert(customer);

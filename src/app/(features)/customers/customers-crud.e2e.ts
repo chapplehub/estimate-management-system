@@ -34,7 +34,6 @@ test.describe("得意先CRUD（管理者）", () => {
       await page.getByLabel("電話番号").fill("0312345000");
       await page.getByLabel("FAX番号").fill("0312345001");
       await page.getByLabel("担当者").fill("テスト担当");
-      await page.getByLabel("マージン率").fill("15.50");
 
       // 登録実行
       await page.getByRole("button", { name: "登録" }).click();
@@ -73,7 +72,6 @@ test.describe("得意先CRUD（管理者）", () => {
       await expect(page.getByLabel("電話番号")).toHaveValue("0312345000");
       await expect(page.getByLabel("FAX番号")).toHaveValue("0312345001");
       await expect(page.getByLabel("担当者")).toHaveValue("テスト担当");
-      await expect(page.getByLabel("マージン率")).toHaveValue("15.5");
 
       // 配下の納品先セクション
       await expect(page.getByRole("heading", { name: "配下の納品先" })).toBeVisible();
@@ -100,10 +98,6 @@ test.describe("得意先CRUD（管理者）", () => {
       const contactField = page.getByLabel("担当者");
       await contactField.clear();
       await contactField.fill("更新担当");
-
-      const marginField = page.getByLabel("マージン率");
-      await marginField.clear();
-      await marginField.fill("20.00");
 
       // 更新実行
       await page.getByRole("button", { name: "更新" }).click();

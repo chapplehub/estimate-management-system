@@ -6,7 +6,6 @@ import { PhoneNumber } from "@server/shared/domain/values/PhoneNumber";
 import { PostalCode } from "@server/shared/domain/values/PostalCode";
 import { Prefecture } from "@server/shared/domain/values/Prefecture";
 import { CustomerId } from "@subdomains/customer/domain/values/CustomerId";
-import { MarginRate } from "@subdomains/customer/domain/values/MarginRate";
 
 export type CustomerCreateOptions = {
   postalCode?: PostalCode;
@@ -15,14 +14,12 @@ export type CustomerCreateOptions = {
   phoneNumber?: PhoneNumber;
   faxNumber?: FaxNumber;
   contactPerson?: string;
-  marginRate?: MarginRate;
 };
 
 /**
  * 得意先エンティティ
  *
  * 取引先共通属性（コード・名称・住所・連絡先・有効フラグ）を自テーブルに持つ集約ルート（ADR-0043）。
- * 得意先固有の属性として標準マージン率を持つ。
  */
 export class Customer {
   static readonly ENTITY_NAME = "得意先";
@@ -38,7 +35,6 @@ export class Customer {
     private _faxNumber: FaxNumber | null,
     private _contactPerson: string | null,
     private _isActive: boolean,
-    private _marginRate: MarginRate | null,
     private readonly _createdAt: Date,
     private _updatedAt: Date
   ) {}
@@ -60,7 +56,6 @@ export class Customer {
       options?.faxNumber ?? null,
       options?.contactPerson ?? null,
       true,
-      options?.marginRate ?? null,
       now,
       now
     );
@@ -80,7 +75,6 @@ export class Customer {
     faxNumber: FaxNumber | null,
     contactPerson: string | null,
     isActive: boolean,
-    marginRate: MarginRate | null,
     createdAt: Date,
     updatedAt: Date
   ): Customer {
@@ -95,7 +89,6 @@ export class Customer {
       faxNumber,
       contactPerson,
       isActive,
-      marginRate,
       createdAt,
       updatedAt
     );
@@ -129,11 +122,6 @@ export class Customer {
     this._phoneNumber = phoneNumber;
     this._faxNumber = faxNumber;
     this._contactPerson = contactPerson;
-    this._updatedAt = new Date();
-  }
-
-  changeMarginRate(newRate: MarginRate | null): void {
-    this._marginRate = newRate;
     this._updatedAt = new Date();
   }
 
@@ -189,10 +177,6 @@ export class Customer {
 
   get isActive(): boolean {
     return this._isActive;
-  }
-
-  get marginRate(): MarginRate | null {
-    return this._marginRate;
   }
 
   get createdAt(): Date {

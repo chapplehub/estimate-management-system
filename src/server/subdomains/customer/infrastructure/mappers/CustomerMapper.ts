@@ -7,9 +7,7 @@ import { PostalCode } from "@server/shared/domain/values/PostalCode";
 import { Prefecture } from "@server/shared/domain/values/Prefecture";
 import { Customer } from "@subdomains/customer/domain/entities/Customer";
 import { CustomerId } from "@subdomains/customer/domain/values/CustomerId";
-import { MarginRate } from "@subdomains/customer/domain/values/MarginRate";
 import type { Customer as PrismaCustomer } from "@generated/prisma/client";
-import { Prisma } from "@generated/prisma/client";
 
 /**
  * CustomerMapper
@@ -30,7 +28,6 @@ export class CustomerMapper {
       data.faxNumber ? new FaxNumber(data.faxNumber) : null,
       data.contactPerson,
       data.isActive,
-      data.marginRate !== null ? new MarginRate(Number(data.marginRate)) : null,
       data.createdAt,
       data.updatedAt
     );
@@ -48,8 +45,6 @@ export class CustomerMapper {
       faxNumber: customer.faxNumber?.value ?? null,
       contactPerson: customer.contactPerson,
       isActive: customer.isActive,
-      marginRate:
-        customer.marginRate !== null ? new Prisma.Decimal(customer.marginRate.value) : null,
     };
   }
 
@@ -63,8 +58,6 @@ export class CustomerMapper {
       faxNumber: customer.faxNumber?.value ?? null,
       contactPerson: customer.contactPerson,
       isActive: customer.isActive,
-      marginRate:
-        customer.marginRate !== null ? new Prisma.Decimal(customer.marginRate.value) : null,
       updatedAt: customer.updatedAt,
     };
   }

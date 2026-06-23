@@ -252,7 +252,6 @@ const CUSTOMERS = [
     phoneNumber: "0312345678",
     faxNumber: "0312345679",
     contactPerson: "山田 太郎",
-    marginRate: 10,
     deliveryLocations: [
       {
         code: "D001",
@@ -283,7 +282,6 @@ const CUSTOMERS = [
     phoneNumber: "0333456789",
     faxNumber: "0333456780",
     contactPerson: "鈴木 一郎",
-    marginRate: 15,
     deliveryLocations: [
       {
         code: "D003",
@@ -323,7 +321,6 @@ const CUSTOMERS = [
     phoneNumber: "0661234567",
     faxNumber: "0661234568",
     contactPerson: "田中 健太",
-    marginRate: 12,
     deliveryLocations: [
       {
         code: "D006",
@@ -354,7 +351,6 @@ const CUSTOMERS = [
     phoneNumber: "0521234567",
     faxNumber: null,
     contactPerson: "伊藤 直樹",
-    marginRate: 8,
     deliveryLocations: [
       {
         code: "D008",
@@ -394,7 +390,6 @@ const CUSTOMERS = [
     phoneNumber: "0921234567",
     faxNumber: "0921234568",
     contactPerson: "渡辺 修",
-    marginRate: 20,
     deliveryLocations: [
       {
         code: "D011",
@@ -425,7 +420,6 @@ const CUSTOMERS = [
     phoneNumber: "0112345678",
     faxNumber: "0112345679",
     contactPerson: "佐藤 花子",
-    marginRate: 18,
     deliveryLocations: [
       {
         code: "D013",
@@ -465,7 +459,6 @@ const CUSTOMERS = [
     phoneNumber: "0222345678",
     faxNumber: null,
     contactPerson: "高橋 誠",
-    marginRate: 15,
     deliveryLocations: [
       {
         code: "D016",
@@ -496,7 +489,6 @@ const CUSTOMERS = [
     phoneNumber: "0752345678",
     faxNumber: "0752345679",
     contactPerson: "中村 美咲",
-    marginRate: 22,
     deliveryLocations: [
       {
         code: "D018",
@@ -527,7 +519,6 @@ const CUSTOMERS = [
     phoneNumber: "0878345678",
     faxNumber: "0878345679",
     contactPerson: "小林 拓也",
-    marginRate: 7,
     deliveryLocations: [
       {
         code: "D020",
@@ -558,7 +549,6 @@ const CUSTOMERS = [
     phoneNumber: "0262345678",
     faxNumber: null,
     contactPerson: "加藤 大輝",
-    marginRate: 13,
     deliveryLocations: [
       {
         code: "D022",
@@ -598,7 +588,6 @@ const CUSTOMERS = [
     phoneNumber: "0822345678",
     faxNumber: "0822345679",
     contactPerson: "山本 和也",
-    marginRate: 25,
     deliveryLocations: [
       {
         code: "D025",
@@ -629,7 +618,6 @@ const CUSTOMERS = [
     phoneNumber: "0988345678",
     faxNumber: null,
     contactPerson: "島袋 陽子",
-    marginRate: 5,
     deliveryLocations: [
       {
         code: "D027",
@@ -660,7 +648,6 @@ const CUSTOMERS = [
     phoneNumber: "0762345678",
     faxNumber: "0762345679",
     contactPerson: "前田 恵子",
-    marginRate: 11,
     deliveryLocations: [
       {
         code: "D029",
@@ -700,7 +687,6 @@ const CUSTOMERS = [
     phoneNumber: "0852345678",
     faxNumber: "0852345679",
     contactPerson: "松本 翔太",
-    marginRate: 9,
     deliveryLocations: [
       {
         code: "D032",
@@ -731,7 +717,6 @@ const CUSTOMERS = [
     phoneNumber: "0992345678",
     faxNumber: null,
     contactPerson: "黒田 剛",
-    marginRate: 16,
     deliveryLocations: [
       {
         code: "D034",
@@ -1117,7 +1102,6 @@ async function seedCustomersAndDeliveryLocations() {
         faxNumber: customerData.faxNumber,
         contactPerson: customerData.contactPerson,
         isActive: true,
-        marginRate: customerData.marginRate,
       },
     });
 

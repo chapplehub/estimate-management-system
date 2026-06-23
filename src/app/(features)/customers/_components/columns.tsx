@@ -56,14 +56,6 @@ export const columns: ColumnDef<CustomerDTO, unknown>[] = [
     cell: ({ row }) => row.original.contactPerson ?? "-",
   },
   {
-    accessorKey: "marginRate",
-    header: "マージン率",
-    cell: ({ row }) => {
-      const rate = row.original.marginRate;
-      return rate !== null ? `${rate.toFixed(2)}%` : "-";
-    },
-  },
-  {
     accessorKey: "isActive",
     header: "状態",
     cell: ({ row }) => (

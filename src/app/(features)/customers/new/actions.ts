@@ -20,17 +20,8 @@ export async function createCustomer(prevState: unknown, formData: FormData) {
     return submission.reply();
   }
 
-  const {
-    code,
-    name,
-    postalCode,
-    prefecture,
-    address,
-    phoneNumber,
-    faxNumber,
-    contactPerson,
-    marginRate,
-  } = submission.value;
+  const { code, name, postalCode, prefecture, address, phoneNumber, faxNumber, contactPerson } =
+    submission.value;
 
   try {
     const command = createCustomerCommandFactory();
@@ -43,7 +34,6 @@ export async function createCustomer(prevState: unknown, formData: FormData) {
       phoneNumber: phoneNumber || undefined,
       faxNumber: faxNumber || undefined,
       contactPerson: contactPerson || undefined,
-      marginRate: marginRate ?? undefined,
     });
 
     revalidatePath("/customers");

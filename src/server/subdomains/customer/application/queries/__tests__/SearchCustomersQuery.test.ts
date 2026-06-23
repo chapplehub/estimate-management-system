@@ -10,12 +10,7 @@ describe("SearchCustomersQuery", () => {
 
   const TEST_CODES = ["CUST999924", "CUST999925", "CUST999926", "CUST999927"];
 
-  async function createTestCustomer(data: {
-    code: string;
-    name: string;
-    marginRate?: number;
-    isActive?: boolean;
-  }) {
+  async function createTestCustomer(data: { code: string; name: string; isActive?: boolean }) {
     const customerId = generateId();
 
     await prisma.customer.create({
@@ -24,7 +19,6 @@ describe("SearchCustomersQuery", () => {
         code: data.code,
         name: data.name,
         isActive: data.isActive ?? true,
-        marginRate: data.marginRate ?? null,
       },
     });
 
