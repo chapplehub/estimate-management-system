@@ -34,6 +34,16 @@ describe("ApplicationStatus", () => {
       expect(ApplicationStatus.PENDING.isPending()).toBe(true);
       expect(ApplicationStatus.APPROVED.isPending()).toBe(false);
     });
+
+    it("isAdvancing() は PENDING・APPROVED が前進（true）", () => {
+      expect(ApplicationStatus.PENDING.isAdvancing()).toBe(true);
+      expect(ApplicationStatus.APPROVED.isAdvancing()).toBe(true);
+    });
+
+    it("isAdvancing() は REJECTED・WITHDRAWN が非前進（false）", () => {
+      expect(ApplicationStatus.REJECTED.isAdvancing()).toBe(false);
+      expect(ApplicationStatus.WITHDRAWN.isAdvancing()).toBe(false);
+    });
   });
 
   describe("equals", () => {

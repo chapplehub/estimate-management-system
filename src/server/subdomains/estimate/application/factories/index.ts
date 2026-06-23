@@ -8,3 +8,5 @@ export { checkTaxRateThenDuplicateDepsFactory } from "./checkTaxRateThenDuplicat
 export { reviseForCustomerCommandFactory } from "./reviseForCustomerCommandFactory";
 export { adjustRevisedVariationCommandFactory } from "./adjustRevisedVariationCommandFactory";
 export { getEstimateDetailQueryFactory } from "./estimateQueryFactory";
+export { previewApplicationQueryFactory } from "./previewApplicationQueryFactory";
+export { submitApplicationCommandFactory } from "./submitApplicationCommandFactory";

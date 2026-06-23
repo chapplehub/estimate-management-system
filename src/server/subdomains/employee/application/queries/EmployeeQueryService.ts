@@ -33,4 +33,15 @@ export interface EmployeeQueryService {
    * @returns 従業員DTOの配列
    */
   search(criteria: EmployeeSearchCriteria, options?: ListOptions): Promise<EmployeeDTO[]>;
+
+  /**
+   * 従業員の上位役割ID（承認フローの起点・§5.1）を取得する射影（#417）。
+   *
+   * 承認チェーン組立ての起点解決に使う汎用事実であり、承認固有でないため employee 本拠に置く。
+   * DTO 全体ではなく ID だけを返す軽量射影。
+   *
+   * @param employeeId 従業員ID
+   * @returns 上位役割ID（未設定・従業員不在いずれも null）
+   */
+  findSuperiorRoleId(employeeId: string): Promise<string | null>;
 }

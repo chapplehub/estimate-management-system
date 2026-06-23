@@ -49,6 +49,16 @@ export class ApplicationStatus extends ValueObject<string, "ApplicationStatus"> 
     return this === ApplicationStatus.PENDING;
   }
 
+  /**
+   * 「前進」中か（申請中＝PENDING・承認済＝APPROVED）。差戻・取下は前進枠を空ける（非前進）。
+   *
+   * 「1見積1前進」（CONTEXT.md「前進バリエーション」）の中核述語。状態の生文字列で判定すると
+   * VO の語彙からドリフトし、状態追加時に型検査をすり抜けるため、ここに一元化する。
+   */
+  isAdvancing(): boolean {
+    return this === ApplicationStatus.PENDING || this === ApplicationStatus.APPROVED;
+  }
+
   protected validate(value: string): void {
     if (!VALID_VALUES.includes(value as ApplicationStatusValue)) {
       throw new ValidationError(
