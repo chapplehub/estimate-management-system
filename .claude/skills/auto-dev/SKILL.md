@@ -29,9 +29,9 @@ user-invocable: true
 
 ### 1.2 Issue 作成（説明文モードのみ）
 
-`Skill(draft-issue, args: "{$ARGUMENTS の内容}")` で Issue 作成を委譲する。
+`Skill(create-issue, args: "{$ARGUMENTS の内容}")` で Issue 作成を委譲する。
 
-- draft-issue は `context: fork` により自動的にサブエージェントとして実行される
+- create-issue は `context: fork` により自動的にサブエージェントとして実行される
 - 返却値から Issue 番号を抽出して処理を継続する
 
 ### 1.3 Issue 情報取得 & ブランチタイプ判定
