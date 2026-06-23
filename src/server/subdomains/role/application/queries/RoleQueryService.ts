@@ -32,4 +32,15 @@ export interface RoleQueryService {
    * 役割コードで役割を取得
    */
   findByRoleCd(roleCd: string): Promise<RoleDTO | null>;
+
+  /**
+   * 指定役割のうち承認者（メンバー＝`EmployeeRole`）が1人以上いる役割IDの集合を返す射影（#417）。
+   *
+   * 承認チェーン構築の「承認者不在（NO_APPROVER）」判定に使う汎用事実（メンバー有無）であり、
+   * 承認固有でないため role 本拠に置く。入力に無い役割や存在しない役割は結果に含めない。
+   *
+   * @param roleIds 判定対象の役割ID列
+   * @returns メンバーが存在する役割IDの集合（部分集合・空入力なら空集合）
+   */
+  findRoleIdsWithMembers(roleIds: string[]): Promise<Set<string>>;
 }

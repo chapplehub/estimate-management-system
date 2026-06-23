@@ -59,6 +59,21 @@ export class PrismaRoleQueryService implements RoleQueryService {
     return role ? this.toDTO(role) : null;
   }
 
+  async findRoleIdsWithMembers(roleIds: string[]): Promise<Set<string>> {
+    if (roleIds.length === 0) {
+      return new Set();
+    }
+
+    // メンバー（EmployeeRole）が1件でも存在する役割IDだけを distinct で拾う。
+    const rows = await prisma.employeeRole.findMany({
+      where: { roleId: { in: roleIds } },
+      distinct: ["roleId"],
+      select: { roleId: true },
+    });
+
+    return new Set(rows.map((row) => row.roleId));
+  }
+
   async findByPositionId(positionId: string, options?: RoleListOptions): Promise<RoleDTO[]> {
     const orderBy = this.buildOrderBy(options) ?? { roleCd: "asc" as const };
 

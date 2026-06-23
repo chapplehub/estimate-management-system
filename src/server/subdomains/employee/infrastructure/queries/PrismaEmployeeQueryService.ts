@@ -48,6 +48,15 @@ export class PrismaEmployeeQueryService implements EmployeeQueryService {
     return employees.map((e) => this.toDTO(e));
   }
 
+  async findSuperiorRoleId(employeeId: string): Promise<string | null> {
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      select: { superiorRoleId: true },
+    });
+
+    return employee?.superiorRoleId ?? null;
+  }
+
   /**
    * 検索条件からPrismaのWHERE句を構築
    */
