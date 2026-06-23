@@ -18,6 +18,8 @@ export type ApprovalFixtureIds = {
   exempterEmployeeId: string;
   /** 申請者（予約コードで隔離）。 */
   applicantEmployeeId: string;
+  /** 承認・差戻を実施する従業員（予約コードで隔離）。 */
+  approverEmployeeId: string;
   /** 承認チェーンのゴール役職（部長 = POS002・シード再利用）。 */
   goalPositionId: string;
   /** 承認ステップの順序付き役割列（営業一課長 → 営業部長・シード再利用）。 */
@@ -26,6 +28,7 @@ export type ApprovalFixtureIds = {
 
 const EXEMPTER_EMPLOYEE_CD = "EMP999092";
 const APPLICANT_EMPLOYEE_CD = "EMP999093";
+const APPROVER_EMPLOYEE_CD = "EMP999094";
 
 // 承認チェーンに使うシードの正準組織（code 引きで再利用）。
 const GOAL_POSITION_CD = "POS002"; // 部長
@@ -58,6 +61,18 @@ export async function ensureApprovalFixtures(): Promise<ApprovalFixtureIds> {
     },
   });
 
+  const approver = await prisma.employee.upsert({
+    where: { employeeCd: APPROVER_EMPLOYEE_CD },
+    update: { name: "承認者" },
+    create: {
+      id: generateId(),
+      employeeCd: APPROVER_EMPLOYEE_CD,
+      email: "approval-approver@example.com",
+      name: "承認者",
+      departmentId: estimate.departmentId,
+    },
+  });
+
   // 役職・役割はシードの固定マスタを code 引きで再利用する（@unique がテスト専用生成を阻むため）。
   const goalPosition = await prisma.position.findUniqueOrThrow({
     where: { positionCd: GOAL_POSITION_CD },
@@ -70,6 +85,7 @@ export async function ensureApprovalFixtures(): Promise<ApprovalFixtureIds> {
     estimate,
     exempterEmployeeId: exempter.id,
     applicantEmployeeId: applicant.id,
+    approverEmployeeId: approver.id,
     goalPositionId: goalPosition.id,
     stepRoleIds: stepRoles.map((r) => r.id),
   };

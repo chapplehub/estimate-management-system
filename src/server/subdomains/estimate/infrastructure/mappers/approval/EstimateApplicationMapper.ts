@@ -113,4 +113,54 @@ export class EstimateApplicationMapper {
       },
     };
   }
+
+  // ========================================
+  // update パス（終端イベントの自然キー create-input。upsert の create 側に渡す）
+  // 各イベント行は stepId / applicationId を @id 自然キーに持つため idempotent upsert が安全。
+  // occurredAt は DB の created_at（@default(now())）に委ねるため含めない（ADR-0058）。
+  // ========================================
+
+  /** 承認イベントの create-input 群（承認済ステップのみ）。 */
+  static toStepApprovalCreateInputs(
+    application: EstimateApplication
+  ): Prisma.EstimateStepApprovalUncheckedCreateInput[] {
+    return application.steps.flatMap((step) => {
+      const approval = step.approval;
+      return approval
+        ? [{ stepId: step.id.value, approverEmployeeId: approval.approverEmployeeId.value }]
+        : [];
+    });
+  }
+
+  /** 差戻イベントの create-input 群（差戻済ステップのみ）。 */
+  static toStepRejectionCreateInputs(
+    application: EstimateApplication
+  ): Prisma.EstimateStepRejectionUncheckedCreateInput[] {
+    return application.steps.flatMap((step) => {
+      const rejection = step.rejection;
+      return rejection
+        ? [
+            {
+              stepId: step.id.value,
+              rejectedByEmployeeId: rejection.rejectedByEmployeeId.value,
+              comment: rejection.comment.value,
+            },
+          ]
+        : [];
+    });
+  }
+
+  /** 取下イベントの create-input（未取下なら null）。 */
+  static toWithdrawalCreateInput(
+    application: EstimateApplication
+  ): Prisma.EstimateApplicationWithdrawalUncheckedCreateInput | null {
+    const withdrawal = application.withdrawal;
+    if (!withdrawal) {
+      return null;
+    }
+    return {
+      applicationId: application.id.value,
+      withdrawnByEmployeeId: withdrawal.withdrawnByEmployeeId.value,
+    };
+  }
 }

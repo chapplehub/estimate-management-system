@@ -10,6 +10,7 @@ import { RoleId } from "@subdomains/role/domain/values/RoleId";
 import { EstimateApplication } from "@subdomains/estimate/domain/entities";
 import { buildNewEstimate } from "@subdomains/estimate/domain/entities/__tests__/estimateAggregateBuilder";
 import { ApprovalChainPlan } from "@subdomains/estimate/domain/values/approval/ApprovalChainPlan";
+import { RejectionComment } from "@subdomains/estimate/domain/values/approval/RejectionComment";
 import { EstimateVariationId } from "@subdomains/estimate/domain/values/EstimateVariationId";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
@@ -22,6 +23,10 @@ const EN = {
   byStep: "N9907011",
   history: "N9907012",
   conflict: "N9907013",
+  approve: "N9907014",
+  reject: "N9907015",
+  withdraw: "N9907016",
+  stale: "N9907017",
 } as const;
 const ALL_NUMBERS = Object.values(EN);
 
@@ -162,5 +167,74 @@ describe("PrismaEstimateApplicationRepository", () => {
     await expect(repository.insert(buildApplication(variationId, 1))).rejects.toBeInstanceOf(
       ConflictError
     );
+  });
+
+  describe("update（承認・差戻・取下＋楽観ロック）", () => {
+    it("approve 連鎖で順次 APPROVED になり、最終承認で申請 APPROVED（往復生存）", async () => {
+      const variationId = await createVariationId(EN.approve);
+      const saved = await repository.insert(buildApplication(variationId));
+      const approver = new EmployeeId(ids.approverEmployeeId);
+
+      // step1 承認 → version 1 で更新（成功後 DB version は 2）
+      saved.approve(saved.steps[0].id, approver);
+      const afterStep1 = await repository.update(saved, 1);
+
+      expect(afterStep1.applicationStatus.value).toBe("PENDING");
+      expect(afterStep1.stepStatus(afterStep1.steps[0].id).value).toBe("APPROVED");
+      expect(afterStep1.stepStatus(afterStep1.steps[1].id).value).toBe("AWAITING");
+      // occurredAt は DB の created_at で確定し、refetch 後に復元される（ADR-0058）
+      expect(afterStep1.steps[0].approval).not.toBeNull();
+      expect(afterStep1.steps[0].approval?.occurredAt).toBeInstanceOf(Date);
+
+      // step2 承認（最終）→ version 2 で更新
+      afterStep1.approve(afterStep1.steps[1].id, approver);
+      const afterStep2 = await repository.update(afterStep1, 2);
+
+      expect(afterStep2.applicationStatus.value).toBe("APPROVED");
+      expect(afterStep2.stepStatus(afterStep2.steps[1].id).value).toBe("APPROVED");
+    });
+
+    it("reject で申請 REJECTED（往復生存）", async () => {
+      const variationId = await createVariationId(EN.reject);
+      const saved = await repository.insert(buildApplication(variationId));
+
+      saved.reject(
+        saved.steps[0].id,
+        new EmployeeId(ids.approverEmployeeId),
+        new RejectionComment("金額の根拠が不足しています")
+      );
+      const updated = await repository.update(saved, 1);
+
+      expect(updated.applicationStatus.value).toBe("REJECTED");
+      expect(updated.stepStatus(updated.steps[0].id).value).toBe("REJECTED");
+      expect(updated.steps[0].rejection?.comment.value).toBe("金額の根拠が不足しています");
+      expect(updated.steps[0].rejection?.occurredAt).toBeInstanceOf(Date);
+    });
+
+    it("withdraw で申請 WITHDRAWN（往復生存）", async () => {
+      const variationId = await createVariationId(EN.withdraw);
+      const saved = await repository.insert(buildApplication(variationId));
+
+      saved.withdraw(new EmployeeId(ids.applicantEmployeeId));
+      const updated = await repository.update(saved, 1);
+
+      expect(updated.applicationStatus.value).toBe("WITHDRAWN");
+      expect(updated.withdrawal).not.toBeNull();
+      expect(updated.withdrawal?.occurredAt).toBeInstanceOf(Date);
+    });
+
+    it("stale な expectedVersion での update は ConflictError", async () => {
+      const variationId = await createVariationId(EN.stale);
+      const saved = await repository.insert(buildApplication(variationId));
+      const approver = new EmployeeId(ids.approverEmployeeId);
+
+      // 先行更新で DB version を 2 に進める
+      saved.approve(saved.steps[0].id, approver);
+      const advanced = await repository.update(saved, 1);
+
+      // 進んだアグリゲートに次の変更を載せ、古い version 1 で更新を試みる
+      advanced.approve(advanced.steps[1].id, approver);
+      await expect(repository.update(advanced, 1)).rejects.toBeInstanceOf(ConflictError);
+    });
   });
 });

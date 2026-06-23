@@ -37,14 +37,63 @@ export class PrismaEstimateApplicationRepository implements EstimateApplicationR
   }
 
   /**
-   * 申請アグリゲートを楽観ロック付きで更新する（承認・差戻・取下）。
-   * 本実装は Step 3 で追加する（現時点では未実装）。
+   * 申請アグリゲートを楽観ロック付きで更新する（承認・差戻・取下／方式 A・ADR-0039/0058）。
+   *
+   * ステップ骨格は不変なので一切触れず、終端イベント行のみを自然キー（stepId / applicationId =
+   * @id）で idempotent upsert する。並行性は version ガード（WHERE id AND version の条件付き
+   * UPDATE → count 0 で競合）が担い、冪等性は自然キーが担う。occurredAt はイベント行の
+   * created_at（@default(now())）で確定するため書き込まず、末尾の refetch で復元する。
    */
   async update(
-    _application: EstimateApplication,
-    _expectedVersion: number
+    application: EstimateApplication,
+    expectedVersion: number
   ): Promise<EstimateApplication> {
-    throw new Error("PrismaEstimateApplicationRepository.update は未実装です（Step 3 で実装）");
+    const applicationId = application.id.value;
+
+    await prisma.$transaction(async (tx) => {
+      // 1. ルートの version を条件付きインクリメント（楽観ロックのチェック地点）。
+      //    count 0 は version 不一致（先行更新）／行消失の両方を含むため競合として扱い、
+      //    throw で $transaction 全体（イベント upsert 含む）をロールバックする。
+      const rootUpdate = await tx.estimateApplication.updateMany({
+        where: { id: applicationId, version: expectedVersion },
+        data: { version: { increment: 1 } },
+      });
+      if (rootUpdate.count === 0) {
+        throw new ConflictError(
+          "他のユーザーによって更新されています。画面を再読み込みして最新の内容を確認してください。"
+        );
+      }
+
+      // 2. 承認イベントを自然キーで idempotent upsert（既存は update:{} で no-op = created_at 保持）。
+      for (const input of EstimateApplicationMapper.toStepApprovalCreateInputs(application)) {
+        await tx.estimateStepApproval.upsert({
+          where: { stepId: input.stepId },
+          create: input,
+          update: {},
+        });
+      }
+
+      // 3. 差戻イベントを自然キーで idempotent upsert。
+      for (const input of EstimateApplicationMapper.toStepRejectionCreateInputs(application)) {
+        await tx.estimateStepRejection.upsert({
+          where: { stepId: input.stepId },
+          create: input,
+          update: {},
+        });
+      }
+
+      // 4. 取下イベント（申請レベル・高々 1）を自然キーで idempotent upsert。
+      const withdrawal = EstimateApplicationMapper.toWithdrawalCreateInput(application);
+      if (withdrawal) {
+        await tx.estimateApplicationWithdrawal.upsert({
+          where: { applicationId: withdrawal.applicationId },
+          create: withdrawal,
+          update: {},
+        });
+      }
+    });
+
+    return this.refetch(applicationId);
   }
 
   async findById(id: EstimateApplicationId): Promise<EstimateApplication | null> {
