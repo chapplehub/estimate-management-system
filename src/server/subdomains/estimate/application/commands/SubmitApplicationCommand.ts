@@ -36,9 +36,6 @@ export type SubmitApplicationResult =
     }
   | { kind: "ApprovalExempted"; exemptionId: string; reason: string };
 
-/** 申請中・承認済・免除のいずれかに達したバリエーション＝前進中とみなす状態値。 */
-const ADVANCING_APPLICATION_STATUSES = ["PENDING", "APPROVED"];
-
 function blockedMessage(reason: ApprovalChainBlockedReason): string {
   switch (reason) {
     case "NO_SUPERIOR_ROLE":
@@ -145,7 +142,7 @@ export class SubmitApplicationCommand {
       }
       const applications = await this.applicationRepository.findByVariationId(variation.id);
       const hasAdvancing = applications.some((application) =>
-        ADVANCING_APPLICATION_STATUSES.includes(application.applicationStatus.value)
+        application.applicationStatus.isAdvancing()
       );
       if (hasAdvancing) {
         throw new BusinessRuleViolationError(
