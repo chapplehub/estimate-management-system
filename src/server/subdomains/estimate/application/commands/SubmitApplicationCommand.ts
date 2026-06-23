@@ -1,3 +1,4 @@
+import { ConflictError } from "@server/shared/errors/ApplicationError";
 import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
 import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
 import { EmployeeQueryService } from "@subdomains/employee/application/queries/EmployeeQueryService";
@@ -127,6 +128,12 @@ export class SubmitApplicationCommand {
         attempt: saved.attempt,
       };
     } catch (error) {
+      // ConflictError は insert リポジトリが P2002 を翻訳した「再試行可能な競合」（ケース1）。
+      // これを PersistError（ケース2＝「申請に失敗しました」）で包むと、UI の再読込誘導・409 相当の
+      // 扱いが崩れるため素通しする。それ以外の保存失敗だけを PersistError で包む（ADR-0066）。
+      if (error instanceof ConflictError) {
+        throw error;
+      }
       throw new EstimateApplicationPersistError(error);
     }
   }
