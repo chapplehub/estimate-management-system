@@ -162,6 +162,17 @@ const eslintConfig = defineConfig([
       "no-restricted-imports": "off",
     },
   },
+  // EstimateApplicationMapper も同様に永続化からの集約再構築のため、子エンティティ
+  // EstimateApprovalStep の reconstruct() を直接呼ぶ。承認免除（EstimateApprovalExemptionMapper）は
+  // 子を持たない薄い集約のため override 不要で、本ファイルのみに穴を限定する。
+  {
+    files: [
+      "src/server/subdomains/estimate/infrastructure/mappers/approval/EstimateApplicationMapper.ts",
+    ],
+    rules: {
+      "no-restricted-imports": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;
