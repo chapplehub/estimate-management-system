@@ -39,9 +39,10 @@ estimate サブドメインの **application 層**に、見積申請の「未接
 - 採用理由: ADR-0037/0038（失敗＝例外／複数の正常結末＝union）。リカバリは「申請ボタン再押下→再Preview」に乗る。
 
 ### BLOCKED の表現（共有 builder の契約）
-- ア. `ApprovalChainBuilder.build` を `BUILT | BLOCKED(NO_SUPERIOR_ROLE | NO_APPROVER)` の union 返却へ改修（#386 出荷済み改修）。cycle・スナップショット欠落は従来どおり例外（バグ）。
+- ア. `ApprovalChainBuilder.build` を `BUILT | BLOCKED(NO_SUPERIOR_ROLE | GOAL_UNREACHABLE | NO_APPROVER)` の union 返却へ改修（#386 出荷済み改修）。循環・スナップショット欠落（`superiorRoleId` が指す役割がスナップショットに無い）は従来どおり `InvalidArgumentError`（呼び出し側の組立て不備＝バグ）。
 - イ. throw のまま型付き例外を新設し Preview が型で catch。
 - **採用: ア**。理由: BLOCKED は Preview にとって正常結果（「申請できるか？」への正当な答え）。Preview は union を写像、Submit は境界で `BusinessRuleViolationError` へ昇格。検証ロジックは builder 1箇所のまま（ドリフト防止）。
+- **BLOCKED 理由は3値**。①上長未設定＝`NO_SUPERIOR_ROLE`／②ゴール段階到達前に上位役割が尽きる＝`GOAL_UNREACHABLE`／③チェーン上に承認者不在＝`NO_APPROVER`。②を業務状態（BLOCKED）とする根拠: `goalTier` は **judge＝金額由来**（最大で社長）だが、`resolveApprovalGoalTiersByDepth` が4段を強制するのは**役職**側だけ。walk-up するのは**役割チェーン**（`superiorRoleId`）という別グラフで、申請者の上長役割が4段に届かず途切れることは正当にあり得る（役職に本部長/社長が存在しても当該役割チェーンに配線されているとは限らない）。よって「金額が要求する承認段階に役割グラフが届かない」は①③と同じ家族の正当な業務回答であり、バグ（`InvalidArgumentError`）は循環・スナップショット欠落のみに限る。
 
 ### コマンド入力・採番・ガード（文書から確定）
 - 入力: `{ variationId, operatorEmployeeId, version }`（AC1＋§6.3）。組織文脈は入力せず employee から取得。
@@ -75,12 +76,13 @@ estimate サブドメインの **application 層**に、見積申請の「未接
 ### Step 1: ApprovalChainBuilder を BLOCKED union 返却へ改修（ドメイン）
 - 対象ファイル: `src/server/subdomains/estimate/domain/services/approval/ApprovalChainBuilder.ts`、同 `__tests__/ApprovalChainBuilder.test.ts`
 - 作業内容:
-  - `build()` の戻り値を `{ kind: "BUILT"; plan } | { kind: "BLOCKED"; reason: "NO_SUPERIOR_ROLE" | "NO_APPROVER" }` に変更。
-  - 上位役割未設定→`NO_SUPERIOR_ROLE`、承認者不在→`NO_APPROVER` を union で返す。循環・スナップショット欠落は `InvalidArgumentError` のまま（バグ）。
+  - `build()` の戻り値を `{ kind: "BUILT"; plan } | { kind: "BLOCKED"; reason: "NO_SUPERIOR_ROLE" | "GOAL_UNREACHABLE" | "NO_APPROVER" }` に変更。
+  - 申請者の上位役割未設定→`NO_SUPERIOR_ROLE`、walk-up 中にゴール段階到達前で上位役割が尽きる（`superiorRoleId === null`）→`GOAL_UNREACHABLE`、チェーン上の役割に承認者不在→`NO_APPROVER` を union で返す。循環・スナップショット欠落（`superiorRoleId` が指す役割がスナップショットに無い）は `InvalidArgumentError` のまま（呼び出し側の組立て不備＝バグ）。
 - テスト（**単体・インメモリ**、既存テストを改修）:
   - 起点〜ゴールの役割列で `BUILT`（plan の goalPositionId・roleIds 順序）を返す。
-  - 上位役割未設定 → `BLOCKED(NO_SUPERIOR_ROLE)`（旧 throw 期待を union 期待へ変更）。
-  - チェーン上に承認者不在の役割 → `BLOCKED(NO_APPROVER)`。
+  - 申請者の上位役割未設定 → `BLOCKED(NO_SUPERIOR_ROLE)`（旧 throw 期待を union 期待へ変更）。
+  - ゴール段階到達前に上位役割が尽きる → `BLOCKED(GOAL_UNREACHABLE)`（旧 throw 期待を union 期待へ変更）。
+  - チェーン上に承認者不在の役割 → `BLOCKED(NO_APPROVER)`（旧 throw 期待を union 期待へ変更）。
   - 循環・スナップショット欠落 → `InvalidArgumentError`（型＋メッセージ据え置き）。
 - コミットメッセージ: `refactor: ApprovalChainBuilder は BLOCKED を union で返す（Preview と共有するため）`
 
@@ -121,7 +123,7 @@ estimate サブドメインの **application 層**に、見積申請の「未接
 - テスト（**統合・実 Prisma**、組織階層＋見積を seed）:
   - 免除見積（消耗品のみ等） → `EXEMPT(reason)`。
   - 承認要見積 → `REQUIRED(goalPosition, steps の roleName/positionName が起点→ゴール順)`。
-  - 上位役割未設定 → `BLOCKED(NO_SUPERIOR_ROLE)`／承認者不在役割 → `BLOCKED(NO_APPROVER)`。
+  - 上位役割未設定 → `BLOCKED(NO_SUPERIOR_ROLE)`／役割チェーンがゴール段階に届かない → `BLOCKED(GOAL_UNREACHABLE)`／承認者不在役割 → `BLOCKED(NO_APPROVER)`。
   - 呼び出し後に申請行・免除行が増えない（副作用なし）。
 - コミットメッセージ: `feat: 申請プレビュー（確認モーダル用）クエリを追加する`
 
