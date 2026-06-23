@@ -79,6 +79,14 @@ export async function loadApprovalChainInputs(
   );
   const products =
     pricedProductIds.length === 0 ? [] : await deps.productQueryService.findByIds(pricedProductIds);
+  // 件数照合（多層防御）。findByIds は WHERE id IN (...) で欠落 ID を黙って落とすため、
+  // 一部欠落のまま leafCategories を組むと「消耗品＋通常品」が [CONSUMABLE] に縮退し、
+  // 本来 REQUIRED の見積が CONSUMABLE_ONLY 免除へすり抜けうる（ApprovalRequirementPolicy）。
+  // 現スキーマでは EstimateItem.productId が Product への FK（onDelete 既定=Restrict）で被参照中の
+  // 削除が禁じられ欠落は起き得ないが、その不変条件を read-through 境界で明示し回帰を防ぐ。
+  if (products.length !== pricedProductIds.length) {
+    throw new NotFoundError("見積明細の商品マスタが見つかりません");
+  }
   const leafCategories = products.map((product) => ProductCategory.from(product.category));
 
   // 役職階層グラフ（深度→段階の解決に使う・ADR-0063）。
