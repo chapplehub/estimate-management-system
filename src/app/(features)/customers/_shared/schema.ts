@@ -3,7 +3,7 @@ import { z } from "zod";
 
 /**
  * 得意先フォームの基盤スキーマ
- * 作成・編集で共通のフィールド（name, postalCode, prefecture, address, phoneNumber, faxNumber, contactPerson, marginRate）
+ * 作成・編集で共通のフィールド（name, postalCode, prefecture, address, phoneNumber, faxNumber, contactPerson）
  */
 export const customerBaseSchema = z.object({
   name: z
@@ -58,21 +58,6 @@ export const customerBaseSchema = z.object({
     )
     .optional(),
   contactPerson: z.string().trim().optional(),
-  marginRate: z
-    .string()
-    .trim()
-    .optional()
-    .transform((val) => {
-      if (!val || val === "") return null;
-      return Number(val);
-    })
-    .pipe(
-      z
-        .number({ error: "マージン率は数値で入力してください" })
-        .min(0, { error: "マージン率は0〜100%の範囲で指定してください" })
-        .max(100, { error: "マージン率は0〜100%の範囲で指定してください" })
-        .nullable()
-    ),
 });
 
 /**

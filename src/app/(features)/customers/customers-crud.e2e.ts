@@ -101,10 +101,6 @@ test.describe("得意先CRUD（管理者）", () => {
       await contactField.clear();
       await contactField.fill("更新担当");
 
-      const marginField = page.getByLabel("マージン率");
-      await marginField.clear();
-      await marginField.fill("20.00");
-
       // 更新実行
       await page.getByRole("button", { name: "更新" }).click();
 
