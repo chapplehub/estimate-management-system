@@ -1,0 +1,166 @@
+import {
+  ensureApprovalFixtures,
+  type ApprovalFixtureIds,
+} from "@server/__tests__/helpers/ensureApprovalFixtures";
+import prisma from "@server/prisma";
+import { ConflictError } from "@server/shared/errors/ApplicationError";
+import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
+import { PositionId } from "@subdomains/position/domain/values/PositionId";
+import { RoleId } from "@subdomains/role/domain/values/RoleId";
+import { EstimateApplication } from "@subdomains/estimate/domain/entities";
+import { buildNewEstimate } from "@subdomains/estimate/domain/entities/__tests__/estimateAggregateBuilder";
+import { ApprovalChainPlan } from "@subdomains/estimate/domain/values/approval/ApprovalChainPlan";
+import { EstimateVariationId } from "@subdomains/estimate/domain/values/EstimateVariationId";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+
+import { PrismaEstimateRepository } from "../../PrismaEstimateRepository";
+import { PrismaEstimateApplicationRepository } from "../PrismaEstimateApplicationRepository";
+
+// 承認系テスト見積番号（N9907xxx 帯。免除テストの 001/002 と分けて 01x を使う）。
+const EN = {
+  roundtrip: "N9907010",
+  byStep: "N9907011",
+  history: "N9907012",
+  conflict: "N9907013",
+} as const;
+const ALL_NUMBERS = Object.values(EN);
+
+async function cleanup(): Promise<void> {
+  const estimates = await prisma.estimate.findMany({
+    where: { estimateNumber: { in: [...ALL_NUMBERS] } },
+    select: { variations: { select: { id: true } } },
+  });
+  const variationIds = estimates.flatMap((e) => e.variations.map((v) => v.id));
+  if (variationIds.length > 0) {
+    // 申請（→ステップ→各イベント）を estimate 削除前に先に消す（variation FK は Restrict）。
+    const applications = await prisma.estimateApplication.findMany({
+      where: { variationId: { in: variationIds } },
+      select: { id: true, steps: { select: { id: true } } },
+    });
+    const applicationIds = applications.map((a) => a.id);
+    const stepIds = applications.flatMap((a) => a.steps.map((s) => s.id));
+    if (stepIds.length > 0) {
+      await prisma.estimateStepApproval.deleteMany({ where: { stepId: { in: stepIds } } });
+      await prisma.estimateStepRejection.deleteMany({ where: { stepId: { in: stepIds } } });
+    }
+    if (applicationIds.length > 0) {
+      await prisma.estimateApplicationWithdrawal.deleteMany({
+        where: { applicationId: { in: applicationIds } },
+      });
+      await prisma.estimateApprovalStep.deleteMany({
+        where: { applicationId: { in: applicationIds } },
+      });
+      await prisma.estimateApplication.deleteMany({ where: { id: { in: applicationIds } } });
+    }
+  }
+  await prisma.estimate.deleteMany({ where: { estimateNumber: { in: [...ALL_NUMBERS] } } });
+}
+
+describe("PrismaEstimateApplicationRepository", () => {
+  let repository: PrismaEstimateApplicationRepository;
+  let estimateRepository: PrismaEstimateRepository;
+  let ids: ApprovalFixtureIds;
+
+  beforeAll(async () => {
+    ids = await ensureApprovalFixtures();
+  });
+
+  beforeEach(async () => {
+    repository = new PrismaEstimateApplicationRepository();
+    estimateRepository = new PrismaEstimateRepository();
+    await cleanup();
+  });
+
+  afterAll(async () => {
+    await cleanup();
+  });
+
+  /** 実 estimate を insert して本物の FK を持つバリエーション ID を得る。 */
+  async function createVariationId(estimateNumber: string): Promise<EstimateVariationId> {
+    const estimate = await estimateRepository.insert(
+      buildNewEstimate(ids.estimate, estimateNumber)
+    );
+    return estimate.variations[0].id;
+  }
+
+  /** 部長ゴール・2段（営業一課長 → 営業部長）の手組みチェーン計画。 */
+  function buildPlan(): ApprovalChainPlan {
+    return ApprovalChainPlan.create(
+      new PositionId(ids.goalPositionId),
+      ids.stepRoleIds.map((id) => new RoleId(id))
+    );
+  }
+
+  /** PENDING な新規申請を組み立てる。 */
+  function buildApplication(variationId: EstimateVariationId, attempt = 1): EstimateApplication {
+    return EstimateApplication.create({
+      variationId,
+      attempt,
+      applicantEmployeeId: new EmployeeId(ids.applicantEmployeeId),
+      plan: buildPlan(),
+    });
+  }
+
+  it("insert → findById で PENDING 状態の導出が往復を生き残る", async () => {
+    const variationId = await createVariationId(EN.roundtrip);
+    const application = buildApplication(variationId);
+
+    const saved = await repository.insert(application);
+    const found = await repository.findById(saved.id);
+
+    expect(found).not.toBeNull();
+    if (!found) return;
+    expect(found.id.value).toBe(saved.id.value);
+    expect(found.variationId.value).toBe(variationId.value);
+    expect(found.attempt).toBe(1);
+    expect(found.applicantEmployeeId.value).toBe(ids.applicantEmployeeId);
+    expect(found.finalApprovalPositionId.value).toBe(ids.goalPositionId);
+
+    // 状態は保存せず行の存在から導出する（ADR-0058）。生成直後は申請 PENDING。
+    expect(found.applicationStatus.value).toBe("PENDING");
+
+    // ステップ骨格（順序・役割）が往復で保たれる。
+    expect(found.steps).toHaveLength(2);
+    expect(found.steps[0].stepOrder).toBe(1);
+    expect(found.steps[0].roleId.value).toBe(ids.stepRoleIds[0]);
+    expect(found.steps[1].stepOrder).toBe(2);
+    expect(found.steps[1].roleId.value).toBe(ids.stepRoleIds[1]);
+
+    // 先頭ステップが AWAITING、以降は NOT_STARTED（§3.6 導出）。
+    expect(found.stepStatus(found.steps[0].id).value).toBe("AWAITING");
+    expect(found.stepStatus(found.steps[1].id).value).toBe("NOT_STARTED");
+  });
+
+  it("findByStepId で当該ステップを含む申請ルートを取得できる", async () => {
+    const variationId = await createVariationId(EN.byStep);
+    const saved = await repository.insert(buildApplication(variationId));
+    const targetStepId = saved.steps[1].id;
+
+    const found = await repository.findByStepId(targetStepId);
+
+    expect(found).not.toBeNull();
+    if (!found) return;
+    expect(found.id.value).toBe(saved.id.value);
+    expect(found.steps.some((s) => s.id.value === targetStepId.value)).toBe(true);
+  });
+
+  it("findByVariationId は attempt 複数件の履歴を返す", async () => {
+    const variationId = await createVariationId(EN.history);
+    await repository.insert(buildApplication(variationId, 1));
+    await repository.insert(buildApplication(variationId, 2));
+
+    const found = await repository.findByVariationId(variationId);
+
+    expect(found).toHaveLength(2);
+    expect(found.map((a) => a.attempt).sort()).toEqual([1, 2]);
+  });
+
+  it("(variationId, attempt) の二重 insert は ConflictError", async () => {
+    const variationId = await createVariationId(EN.conflict);
+    await repository.insert(buildApplication(variationId, 1));
+
+    await expect(repository.insert(buildApplication(variationId, 1))).rejects.toBeInstanceOf(
+      ConflictError
+    );
+  });
+});
