@@ -1,7 +1,4 @@
-import {
-  BusinessRuleViolationError,
-  InvalidArgumentError,
-} from "@server/shared/errors/DomainError";
+import { InvalidArgumentError } from "@server/shared/errors/DomainError";
 import { PositionId } from "@subdomains/position/domain/values/PositionId";
 import { RoleId } from "@subdomains/role/domain/values/RoleId";
 import { ApprovalChainPlan } from "../../values/approval/ApprovalChainPlan";
@@ -42,17 +39,43 @@ export type ApprovalChainBuildInput = {
 };
 
 /**
+ * 承認チェーンを構築できない業務上の理由（§5.2）。
+ *
+ * いずれも「金額が要求する承認段階に**役割グラフ側が届かない**」正当な業務回答であり、
+ * 例外ではなく結果として返す（Preview にとっては「申請できるか？」への正当な答え）。
+ *
+ * - `NO_SUPERIOR_ROLE`: 申請者に上位役割が無く起点が立たない。
+ * - `GOAL_UNREACHABLE`: 起点から上位役割を辿ってもゴール段階の役職に届く前に役割チェーンが尽きる。
+ * - `NO_APPROVER`: チェーン上の役割に承認者（メンバー）が1人もいない。
+ */
+export type ApprovalChainBlockedReason = "NO_SUPERIOR_ROLE" | "GOAL_UNREACHABLE" | "NO_APPROVER";
+
+/**
+ * 承認チェーン構築の結果（判別共用体）。
+ *
+ * `BUILT` は構築済みの VO 計画を持ち、`BLOCKED` は構築不能の業務理由を持つ。組織グラフの
+ * 組立て不備（循環・スナップショット欠落）は呼び出し側のバグであり、本 union ではなく
+ * {@link InvalidArgumentError} で送出する。
+ */
+export type ApprovalChainBuildResult =
+  | { kind: "BUILT"; plan: ApprovalChainPlan }
+  | { kind: "BLOCKED"; reason: ApprovalChainBlockedReason };
+
+/**
  * 承認チェーン構築ドメインサービス（§5・ADR-0002/0003/0062）
  *
  * 申請者の上位役割（起点）から、役割の上位役割（`superiorRoleId`）を辿ってゴール段階の役職に
- * 到達するまでの承認対象役割列を組み立て、VO 計画 {@link ApprovalChainPlan} を返す。組織グラフは
+ * 到達するまでの承認対象役割列を組み立て、{@link ApprovalChainBuildResult} を返す。組織グラフは
  * 引数（スナップショット）で受け取り、ドメインにリポジトリポートを持たせない（ADR-0030/0052）。
  *
  * - 常に最低1段の承認を求める（ADR-0003）。起点の役職が既にゴール以上でも起点1段は生成する。
  * - 「上位役割の役職は役職の上位役職」という不変条件（§5.1）により、役割を1段上がると役職も
  *   ちょうど1段上がりゴールを飛び越さないため、到達役割の役職が一意に finalApprovalPositionId と
  *   なる（ADR-0062）。
- * - 起点未設定・ゴール到達不能・承認者不在は例外（ADR-0038）。
+ * - 起点未設定・ゴール到達不能・承認者不在は「金額が要求する承認段階に役割グラフが届かない」
+ *   正当な業務回答であり、例外ではなく `BLOCKED`（{@link ApprovalChainBlockedReason}）を返す。
+ *   Preview はこの union をそのまま写像し、Submit は境界で例外へ昇格する（#417）。一方、
+ *   循環・スナップショット欠落は呼び出し側の組立て不備として {@link InvalidArgumentError} を投げる。
  *
  * 子エンティティ（`EstimateApprovalStep`）は集約外（services）から生成できない（ADR-0027）ため、
  * 本サービスは VO 計画のみを返し、ステップ事前生成は集約内ファクトリ
@@ -61,13 +84,11 @@ export type ApprovalChainBuildInput = {
 export class ApprovalChainBuilder {
   private constructor() {}
 
-  static build(input: ApprovalChainBuildInput): ApprovalChainPlan {
+  static build(input: ApprovalChainBuildInput): ApprovalChainBuildResult {
     const { goalTier, snapshot } = input;
 
     if (snapshot.applicantSuperiorRoleId === null) {
-      throw new BusinessRuleViolationError(
-        "申請者の上位役割が未設定のため承認チェーンを構築できません（§5.2）"
-      );
+      return { kind: "BLOCKED", reason: "NO_SUPERIOR_ROLE" };
     }
 
     const roleById = new Map(snapshot.roles.map((role) => [role.roleId.value, role]));
@@ -98,9 +119,7 @@ export class ApprovalChainBuilder {
         break;
       }
       if (current.superiorRoleId === null) {
-        throw new BusinessRuleViolationError(
-          "ゴール役職に到達できません（承認チェーンが途切れています・§5.2）"
-        );
+        return { kind: "BLOCKED", reason: "GOAL_UNREACHABLE" };
       }
       current = lookup(current.superiorRoleId);
     }
@@ -108,16 +127,15 @@ export class ApprovalChainBuilder {
     // 各ステップ役割に承認者が存在するか検証する（§5.2・ADR-0002）。
     for (const role of chain) {
       if (!role.hasApprover) {
-        throw new BusinessRuleViolationError(
-          `承認対象役割に承認者が存在しません（roleId: ${role.roleId.value}）`
-        );
+        return { kind: "BLOCKED", reason: "NO_APPROVER" };
       }
     }
 
     // 到達役割の役職を finalApprovalPositionId とする（§5.3・ADR-0062）。
-    return ApprovalChainPlan.create(
+    const plan = ApprovalChainPlan.create(
       current.positionId,
       chain.map((role) => role.roleId)
     );
+    return { kind: "BUILT", plan };
   }
 }

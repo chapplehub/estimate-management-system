@@ -1,7 +1,4 @@
-import {
-  BusinessRuleViolationError,
-  InvalidArgumentError,
-} from "@server/shared/errors/DomainError";
+import { InvalidArgumentError } from "@server/shared/errors/DomainError";
 import { PositionId } from "@subdomains/position/domain/values/PositionId";
 import { RoleId } from "@subdomains/role/domain/values/RoleId";
 import { describe, expect, it } from "vitest";
@@ -28,11 +25,14 @@ describe("ApprovalChainBuilder", () => {
         ApprovalGoalTier.DEPARTMENT_MANAGER,
       ]);
 
-      const plan = ApprovalChainBuilder.build({
+      const result = ApprovalChainBuilder.build({
         goalTier: ApprovalGoalTier.DEPARTMENT_MANAGER,
         snapshot: { applicantSuperiorRoleId: roles[0].roleId, roles },
       });
 
+      expect(result.kind).toBe("BUILT");
+      if (result.kind !== "BUILT") throw new Error(`expected BUILT, got ${result.kind}`);
+      const plan = result.plan;
       expect(plan.roleIds).toHaveLength(2);
       expect(plan.roleIds[0].equals(roles[0].roleId)).toBe(true);
       expect(plan.roleIds[1].equals(roles[1].roleId)).toBe(true);
@@ -46,11 +46,14 @@ describe("ApprovalChainBuilder", () => {
         ApprovalGoalTier.DIVISION_MANAGER,
       ]);
 
-      const plan = ApprovalChainBuilder.build({
+      const result = ApprovalChainBuilder.build({
         goalTier: ApprovalGoalTier.SECTION_MANAGER,
         snapshot: { applicantSuperiorRoleId: roles[0].roleId, roles },
       });
 
+      expect(result.kind).toBe("BUILT");
+      if (result.kind !== "BUILT") throw new Error(`expected BUILT, got ${result.kind}`);
+      const plan = result.plan;
       expect(plan.roleIds).toHaveLength(1);
       expect(plan.roleIds[0].equals(roles[0].roleId)).toBe(true);
       expect(plan.goalPositionId.equals(roles[0].positionId)).toBe(true);
@@ -63,55 +66,58 @@ describe("ApprovalChainBuilder", () => {
         ApprovalGoalTier.DIVISION_MANAGER,
       ]);
 
-      const plan = ApprovalChainBuilder.build({
+      const result = ApprovalChainBuilder.build({
         goalTier: ApprovalGoalTier.DIVISION_MANAGER,
         snapshot: { applicantSuperiorRoleId: roles[0].roleId, roles },
       });
 
+      expect(result.kind).toBe("BUILT");
+      if (result.kind !== "BUILT") throw new Error(`expected BUILT, got ${result.kind}`);
+      const plan = result.plan;
       expect(plan.roleIds.map((r) => r.value)).toEqual(roles.map((n) => n.roleId.value));
       expect(plan.goalPositionId.equals(roles[2].positionId)).toBe(true);
     });
   });
 
   describe("異常系（§5.2・ADR-0038）", () => {
-    it("起点（申請者の上位役割）が未設定なら例外", () => {
+    it("起点（申請者の上位役割）が未設定なら BLOCKED(NO_SUPERIOR_ROLE)", () => {
       const roles = buildRoleChain([ApprovalGoalTier.SECTION_MANAGER]);
 
-      expect(() =>
-        ApprovalChainBuilder.build({
-          goalTier: ApprovalGoalTier.SECTION_MANAGER,
-          snapshot: { applicantSuperiorRoleId: null, roles },
-        })
-      ).toThrow(BusinessRuleViolationError);
+      const result = ApprovalChainBuilder.build({
+        goalTier: ApprovalGoalTier.SECTION_MANAGER,
+        snapshot: { applicantSuperiorRoleId: null, roles },
+      });
+
+      expect(result).toEqual({ kind: "BLOCKED", reason: "NO_SUPERIOR_ROLE" });
     });
 
-    it("ゴール役職に到達する前にチェーンが途切れたら例外", () => {
+    it("ゴール段階到達前に上位役割が尽きたら BLOCKED(GOAL_UNREACHABLE)", () => {
       const roles = buildRoleChain([
         ApprovalGoalTier.SECTION_MANAGER,
         ApprovalGoalTier.DEPARTMENT_MANAGER,
       ]);
 
-      expect(() =>
-        ApprovalChainBuilder.build({
-          goalTier: ApprovalGoalTier.PRESIDENT,
-          snapshot: { applicantSuperiorRoleId: roles[0].roleId, roles },
-        })
-      ).toThrow(BusinessRuleViolationError);
+      const result = ApprovalChainBuilder.build({
+        goalTier: ApprovalGoalTier.PRESIDENT,
+        snapshot: { applicantSuperiorRoleId: roles[0].roleId, roles },
+      });
+
+      expect(result).toEqual({ kind: "BLOCKED", reason: "GOAL_UNREACHABLE" });
     });
 
-    it("チェーン上の役割に承認者が不在なら例外（ADR-0002）", () => {
+    it("チェーン上の役割に承認者が不在なら BLOCKED(NO_APPROVER)（ADR-0002）", () => {
       const roles = buildRoleChain([
         ApprovalGoalTier.SECTION_MANAGER,
         ApprovalGoalTier.DEPARTMENT_MANAGER,
       ]);
       roles[1] = { ...roles[1], hasApprover: false };
 
-      expect(() =>
-        ApprovalChainBuilder.build({
-          goalTier: ApprovalGoalTier.DEPARTMENT_MANAGER,
-          snapshot: { applicantSuperiorRoleId: roles[0].roleId, roles },
-        })
-      ).toThrow(BusinessRuleViolationError);
+      const result = ApprovalChainBuilder.build({
+        goalTier: ApprovalGoalTier.DEPARTMENT_MANAGER,
+        snapshot: { applicantSuperiorRoleId: roles[0].roleId, roles },
+      });
+
+      expect(result).toEqual({ kind: "BLOCKED", reason: "NO_APPROVER" });
     });
   });
 
