@@ -36,6 +36,7 @@
 | [0035](0035-numbering-concurrency-max-plus-one-unique-manual-retry.md) | 採番の同時並行一意性をMAX(sequence)+1 + unique制約 + 手動リトライで担保する | 採用 | 2026-06-06 |
 | [0039](0039-cross-cutting-optimistic-locking-via-aggregate-root-version.md) | 楽観ロックは集約ルートの version 列＋フォーム往復＋リポジトリ insert/update 分割で横断適用する | 採用 | 2026-06-11 |
 | [0041](0041-variation-copy-natural-key.md) | 見積複製系譜表のキーをサロゲートidではなく自然キー(copiedVariationId)にする | 採用 | 2026-06-11 |
+| [0067](0067-temporal-validity-range-type-exclude-over-orm-type-safety.md) | 期間付きマスタの妥当期間は範囲型＋EXCLUDE で表現し、ORM 型安全より NULL レス・番兵レスを優先する | 採用 | 2026-06-23 |
 
 ## アプリケーション（フロントエンド・認可）
 
@@ -88,6 +89,7 @@
 |---|---------|-----------|--------|
 | [0064](0064-estimate-unit-price-fixed-from-master-no-manual-entry.md) | 見積単価は販売単価マスタを唯一の源とし、手入力を廃して掛率・値引のみで調整する | 採用 | 2026-06-22 |
 | [0065](0065-move-cost-price-off-product-into-time-valid-common-layer.md) | 原価を Product 集約から外し、共通販売単価と同じ期間付き共通レイヤーへ移設する | 採用 | 2026-06-22 |
+| [0066](0066-common-selling-price-as-product-aggregate-separate-from-cost.md) | 共通販売単価は商品単位集約とし、原価と共通売単価を独立改定の別集約に分離する | 採用 | 2026-06-23 |
 
 ## アプリケーション（コマンド）
 
