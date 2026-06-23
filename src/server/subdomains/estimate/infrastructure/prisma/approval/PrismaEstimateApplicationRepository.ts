@@ -40,9 +40,11 @@ export class PrismaEstimateApplicationRepository implements EstimateApplicationR
    * 申請アグリゲートを楽観ロック付きで更新する（承認・差戻・取下／方式 A・ADR-0039/0058）。
    *
    * ステップ骨格は不変なので一切触れず、終端イベント行のみを自然キー（stepId / applicationId =
-   * @id）で idempotent upsert する。並行性は version ガード（WHERE id AND version の条件付き
-   * UPDATE → count 0 で競合）が担い、冪等性は自然キーが担う。occurredAt はイベント行の
-   * created_at（@default(now())）で確定するため書き込まず、末尾の refetch で復元する。
+   * @id）で追記する。並行性は version ガード（WHERE id AND version の条件付き UPDATE →
+   * count 0 で競合）が担い、冪等性は `createMany({ skipDuplicates: true })` が担う（既決イベントは
+   * @id 衝突でスキップされ created_at を保持する）。テーブル毎に 1 往復へ畳み、version ロック
+   * 保持中の往復数を抑える。occurredAt はイベント行の created_at（@default(now())）で確定する
+   * ため書き込まず、末尾の refetch で復元する。
    */
   async update(
     application: EstimateApplication,
@@ -52,8 +54,8 @@ export class PrismaEstimateApplicationRepository implements EstimateApplicationR
 
     await prisma.$transaction(async (tx) => {
       // 1. ルートの version を条件付きインクリメント（楽観ロックのチェック地点）。
-      //    count 0 は version 不一致（先行更新）／行消失の両方を含むため競合として扱い、
-      //    throw で $transaction 全体（イベント upsert 含む）をロールバックする。
+      //    count 0 は version 不一致（先行更新あり）を意味する。申請は delete を持たない
+      //    append-only 集約のため行消失は通常起きない。throw で $transaction 全体をロールバックする。
       const rootUpdate = await tx.estimateApplication.updateMany({
         where: { id: applicationId, version: expectedVersion },
         data: { version: { increment: 1 } },
@@ -64,31 +66,22 @@ export class PrismaEstimateApplicationRepository implements EstimateApplicationR
         );
       }
 
-      // 2. 承認イベントを自然キーで idempotent upsert（既存は update:{} で no-op = created_at 保持）。
-      for (const input of EstimateApplicationMapper.toStepApprovalCreateInputs(application)) {
-        await tx.estimateStepApproval.upsert({
-          where: { stepId: input.stepId },
-          create: input,
-          update: {},
-        });
+      // 2. 承認・差戻イベントを自然キーで一括追記（既決は skipDuplicates でスキップ = created_at 保持）。
+      const approvals = EstimateApplicationMapper.toStepApprovalCreateInputs(application);
+      if (approvals.length > 0) {
+        await tx.estimateStepApproval.createMany({ data: approvals, skipDuplicates: true });
+      }
+      const rejections = EstimateApplicationMapper.toStepRejectionCreateInputs(application);
+      if (rejections.length > 0) {
+        await tx.estimateStepRejection.createMany({ data: rejections, skipDuplicates: true });
       }
 
-      // 3. 差戻イベントを自然キーで idempotent upsert。
-      for (const input of EstimateApplicationMapper.toStepRejectionCreateInputs(application)) {
-        await tx.estimateStepRejection.upsert({
-          where: { stepId: input.stepId },
-          create: input,
-          update: {},
-        });
-      }
-
-      // 4. 取下イベント（申請レベル・高々 1）を自然キーで idempotent upsert。
+      // 3. 取下イベント（申請レベル・高々 1）も同じく自然キーで冪等追記する。
       const withdrawal = EstimateApplicationMapper.toWithdrawalCreateInput(application);
       if (withdrawal) {
-        await tx.estimateApplicationWithdrawal.upsert({
-          where: { applicationId: withdrawal.applicationId },
-          create: withdrawal,
-          update: {},
+        await tx.estimateApplicationWithdrawal.createMany({
+          data: [withdrawal],
+          skipDuplicates: true,
         });
       }
     });
@@ -107,17 +100,15 @@ export class PrismaEstimateApplicationRepository implements EstimateApplicationR
 
   /**
    * 承認ステップ ID から、それを含む申請ルートを取得する（§7.1/§7.2）。
-   * まずステップ行から所属 applicationId を引き、申請ルートをアグリゲート単位で読み直す。
+   * ステップの `application` リレーションを辿り、親集約を 1 クエリで読む（承認 Inbox の
+   * 「このステップを承認」導線は最頻読取のため往復を 1 回に抑える）。
    */
   async findByStepId(stepId: EstimateApprovalStepId): Promise<EstimateApplication | null> {
     const step = await prisma.estimateApprovalStep.findUnique({
       where: { id: stepId.value },
-      select: { applicationId: true },
+      select: { application: { include: ESTIMATE_APPLICATION_FULL_INCLUDE } },
     });
-    if (!step) {
-      return null;
-    }
-    return this.findById(new EstimateApplicationId(step.applicationId));
+    return step ? EstimateApplicationMapper.toDomain(step.application) : null;
   }
 
   /**
@@ -146,6 +137,14 @@ export class PrismaEstimateApplicationRepository implements EstimateApplicationR
     return EstimateApplicationMapper.toDomain(row);
   }
 
+  /**
+   * 新規作成系の P2002（一意制約違反）を ConflictError へ翻訳する。
+   *
+   * 本 insert で発火しうる P2002 は実質 `@@unique([variationId, attempt])` のみ。ネスト create する
+   * steps の `@@unique([applicationId, stepOrder])` は新規 applicationId 配下かつ stepOrder が
+   * 1 始まり連番のため衝突不能、id は UUIDv7 で衝突不能。よって制約名で絞らず一律翻訳しても
+   * メッセージは (variationId, attempt) 競合に対応する（並行採番レース・§6.3 を再試行可能化）。
+   */
   private static translateInsertConflict(error: unknown, application: EstimateApplication): never {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       throw new ConflictError(

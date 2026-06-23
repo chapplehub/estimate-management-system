@@ -90,3 +90,50 @@ export async function ensureApprovalFixtures(): Promise<ApprovalFixtureIds> {
     stepRoleIds: stepRoles.map((r) => r.id),
   };
 }
+
+/**
+ * 指定見積番号に紐づく承認系テストデータを FK 安全な順序で削除する（免除・申請テスト共有）。
+ *
+ * 承認系の各表はすべて Restrict FK のため、内側（イベント → ステップ → 申請／免除）から
+ * estimate へ向けて削除する。免除・申請のどちらか一方しか作っていないケースでも、各 deleteMany は
+ * 対象ゼロなら no-op で安全に通る（上位集合として両系統を網羅する）。
+ */
+export async function cleanupApprovalFixtures(estimateNumbers: readonly string[]): Promise<void> {
+  const numbers = [...estimateNumbers];
+  const estimates = await prisma.estimate.findMany({
+    where: { estimateNumber: { in: numbers } },
+    select: { variations: { select: { id: true } } },
+  });
+  const variationIds = estimates.flatMap((e) => e.variations.map((v) => v.id));
+
+  if (variationIds.length > 0) {
+    // 承認免除（variation を Restrict FK 参照）。
+    await prisma.estimateApprovalExemption.deleteMany({
+      where: { variationId: { in: variationIds } },
+    });
+
+    // 申請 → ステップ → 各イベント（すべて Restrict FK のため内側から削除する）。
+    const applications = await prisma.estimateApplication.findMany({
+      where: { variationId: { in: variationIds } },
+      select: { id: true, steps: { select: { id: true } } },
+    });
+    const applicationIds = applications.map((a) => a.id);
+    const stepIds = applications.flatMap((a) => a.steps.map((s) => s.id));
+
+    if (stepIds.length > 0) {
+      await prisma.estimateStepApproval.deleteMany({ where: { stepId: { in: stepIds } } });
+      await prisma.estimateStepRejection.deleteMany({ where: { stepId: { in: stepIds } } });
+    }
+    if (applicationIds.length > 0) {
+      await prisma.estimateApplicationWithdrawal.deleteMany({
+        where: { applicationId: { in: applicationIds } },
+      });
+      await prisma.estimateApprovalStep.deleteMany({
+        where: { applicationId: { in: applicationIds } },
+      });
+      await prisma.estimateApplication.deleteMany({ where: { id: { in: applicationIds } } });
+    }
+  }
+
+  await prisma.estimate.deleteMany({ where: { estimateNumber: { in: numbers } } });
+}

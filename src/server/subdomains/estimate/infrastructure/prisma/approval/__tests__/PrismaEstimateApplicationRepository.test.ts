@@ -1,8 +1,8 @@
 import {
+  cleanupApprovalFixtures,
   ensureApprovalFixtures,
   type ApprovalFixtureIds,
 } from "@server/__tests__/helpers/ensureApprovalFixtures";
-import prisma from "@server/prisma";
 import { ConflictError } from "@server/shared/errors/ApplicationError";
 import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
 import { PositionId } from "@subdomains/position/domain/values/PositionId";
@@ -30,37 +30,6 @@ const EN = {
 } as const;
 const ALL_NUMBERS = Object.values(EN);
 
-async function cleanup(): Promise<void> {
-  const estimates = await prisma.estimate.findMany({
-    where: { estimateNumber: { in: [...ALL_NUMBERS] } },
-    select: { variations: { select: { id: true } } },
-  });
-  const variationIds = estimates.flatMap((e) => e.variations.map((v) => v.id));
-  if (variationIds.length > 0) {
-    // 申請（→ステップ→各イベント）を estimate 削除前に先に消す（variation FK は Restrict）。
-    const applications = await prisma.estimateApplication.findMany({
-      where: { variationId: { in: variationIds } },
-      select: { id: true, steps: { select: { id: true } } },
-    });
-    const applicationIds = applications.map((a) => a.id);
-    const stepIds = applications.flatMap((a) => a.steps.map((s) => s.id));
-    if (stepIds.length > 0) {
-      await prisma.estimateStepApproval.deleteMany({ where: { stepId: { in: stepIds } } });
-      await prisma.estimateStepRejection.deleteMany({ where: { stepId: { in: stepIds } } });
-    }
-    if (applicationIds.length > 0) {
-      await prisma.estimateApplicationWithdrawal.deleteMany({
-        where: { applicationId: { in: applicationIds } },
-      });
-      await prisma.estimateApprovalStep.deleteMany({
-        where: { applicationId: { in: applicationIds } },
-      });
-      await prisma.estimateApplication.deleteMany({ where: { id: { in: applicationIds } } });
-    }
-  }
-  await prisma.estimate.deleteMany({ where: { estimateNumber: { in: [...ALL_NUMBERS] } } });
-}
-
 describe("PrismaEstimateApplicationRepository", () => {
   let repository: PrismaEstimateApplicationRepository;
   let estimateRepository: PrismaEstimateRepository;
@@ -73,11 +42,11 @@ describe("PrismaEstimateApplicationRepository", () => {
   beforeEach(async () => {
     repository = new PrismaEstimateApplicationRepository();
     estimateRepository = new PrismaEstimateRepository();
-    await cleanup();
+    await cleanupApprovalFixtures(ALL_NUMBERS);
   });
 
   afterAll(async () => {
-    await cleanup();
+    await cleanupApprovalFixtures(ALL_NUMBERS);
   });
 
   /** 実 estimate を insert して本物の FK を持つバリエーション ID を得る。 */

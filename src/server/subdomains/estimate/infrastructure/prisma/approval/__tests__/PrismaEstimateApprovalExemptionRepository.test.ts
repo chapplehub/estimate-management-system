@@ -1,8 +1,8 @@
 import {
+  cleanupApprovalFixtures,
   ensureApprovalFixtures,
   type ApprovalFixtureIds,
 } from "@server/__tests__/helpers/ensureApprovalFixtures";
-import prisma from "@server/prisma";
 import { ConflictError } from "@server/shared/errors/ApplicationError";
 import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
 import { EstimateApprovalExemption } from "@subdomains/estimate/domain/entities";
@@ -21,21 +21,6 @@ const EN = {
 } as const;
 const ALL_NUMBERS = Object.values(EN);
 
-async function cleanup(): Promise<void> {
-  const estimates = await prisma.estimate.findMany({
-    where: { estimateNumber: { in: [...ALL_NUMBERS] } },
-    select: { variations: { select: { id: true } } },
-  });
-  const variationIds = estimates.flatMap((e) => e.variations.map((v) => v.id));
-  if (variationIds.length > 0) {
-    // 免除は variation を FK 参照（onDelete Restrict）するため、estimate 削除前に先に消す。
-    await prisma.estimateApprovalExemption.deleteMany({
-      where: { variationId: { in: variationIds } },
-    });
-  }
-  await prisma.estimate.deleteMany({ where: { estimateNumber: { in: [...ALL_NUMBERS] } } });
-}
-
 describe("PrismaEstimateApprovalExemptionRepository", () => {
   let repository: PrismaEstimateApprovalExemptionRepository;
   let estimateRepository: PrismaEstimateRepository;
@@ -48,11 +33,11 @@ describe("PrismaEstimateApprovalExemptionRepository", () => {
   beforeEach(async () => {
     repository = new PrismaEstimateApprovalExemptionRepository();
     estimateRepository = new PrismaEstimateRepository();
-    await cleanup();
+    await cleanupApprovalFixtures(ALL_NUMBERS);
   });
 
   afterAll(async () => {
-    await cleanup();
+    await cleanupApprovalFixtures(ALL_NUMBERS);
   });
 
   /** 実 estimate を insert して本物の FK を持つバリエーション ID を得る。 */
