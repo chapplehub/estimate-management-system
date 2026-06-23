@@ -50,7 +50,7 @@ describe("UpdateCustomerCommand", () => {
     expect(updated?.name.value).toBe("更新後得意先");
   });
 
-  it("住所・連絡先・マージン率を更新できる", async () => {
+  it("住所・連絡先を更新できる", async () => {
     await command.execute({
       id: testCustomerId,
       expectedVersion: 1,
@@ -61,7 +61,6 @@ describe("UpdateCustomerCommand", () => {
       phoneNumber: "06-1234-5678",
       faxNumber: "06-1234-5679",
       contactPerson: "更新担当",
-      marginRate: 20,
     });
 
     const updated = await repository.findById(new CustomerId(testCustomerId));
@@ -72,7 +71,6 @@ describe("UpdateCustomerCommand", () => {
     expect(updated?.phoneNumber?.value).toBe("0612345678");
     expect(updated?.faxNumber?.value).toBe("0612345679");
     expect(updated?.contactPerson).toBe("更新担当");
-    expect(updated?.marginRate?.value).toBe(20);
   });
 
   it("nullを渡すとオプション項目をクリアできる", async () => {
@@ -87,7 +85,6 @@ describe("UpdateCustomerCommand", () => {
       phoneNumber: "06-1234-5678",
       faxNumber: "06-1234-5679",
       contactPerson: "更新担当",
-      marginRate: 20,
     });
 
     // nullで全クリア（version 2 を提示）
@@ -101,7 +98,6 @@ describe("UpdateCustomerCommand", () => {
       phoneNumber: null,
       faxNumber: null,
       contactPerson: null,
-      marginRate: null,
     });
 
     const updated = await repository.findById(new CustomerId(testCustomerId));
@@ -112,7 +108,6 @@ describe("UpdateCustomerCommand", () => {
     expect(updated?.phoneNumber).toBeNull();
     expect(updated?.faxNumber).toBeNull();
     expect(updated?.contactPerson).toBeNull();
-    expect(updated?.marginRate).toBeNull();
   });
 
   it("存在しないIDの場合は NotFoundEntityError", async () => {

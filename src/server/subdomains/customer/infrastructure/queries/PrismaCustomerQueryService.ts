@@ -121,7 +121,6 @@ export class PrismaCustomerQueryService implements CustomerQueryService {
       faxNumber: true,
       contactPerson: true,
       isActive: true,
-      marginRate: true,
       version: true,
       createdAt: true,
       updatedAt: true,
@@ -139,7 +138,6 @@ export class PrismaCustomerQueryService implements CustomerQueryService {
     faxNumber: string | null;
     contactPerson: string | null;
     isActive: boolean;
-    marginRate: Prisma.Decimal | null;
     version: number;
     createdAt: Date;
     updatedAt: Date;
@@ -155,7 +153,6 @@ export class PrismaCustomerQueryService implements CustomerQueryService {
       faxNumber: customer.faxNumber,
       contactPerson: customer.contactPerson,
       isActive: customer.isActive,
-      marginRate: customer.marginRate !== null ? Number(customer.marginRate) : null,
       version: customer.version,
       createdAt: customer.createdAt,
       updatedAt: customer.updatedAt,

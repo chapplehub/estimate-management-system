@@ -8,7 +8,6 @@ import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { Customer } from "@subdomains/customer/domain/entities/Customer";
 import { CustomerRepository } from "@subdomains/customer/domain/repositories/CustomerRepository";
 import { CustomerId } from "@subdomains/customer/domain/values/CustomerId";
-import { MarginRate } from "@subdomains/customer/domain/values/MarginRate";
 
 export type UpdateCustomerInput = {
   id: string;
@@ -21,7 +20,6 @@ export type UpdateCustomerInput = {
   phoneNumber?: string | null;
   faxNumber?: string | null;
   contactPerson?: string | null;
-  marginRate?: number | null;
 };
 
 /**
@@ -51,12 +49,6 @@ export class UpdateCustomerCommand {
       input.phoneNumber ? new PhoneNumber(input.phoneNumber) : null,
       input.faxNumber ? new FaxNumber(input.faxNumber) : null,
       input.contactPerson ?? null
-    );
-
-    customer.changeMarginRate(
-      input.marginRate !== undefined && input.marginRate !== null
-        ? new MarginRate(input.marginRate)
-        : null
     );
 
     await this.customerRepository.update(customer, input.expectedVersion);

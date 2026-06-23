@@ -3,7 +3,6 @@ import { ConflictError } from "@server/shared/errors/ApplicationError";
 import { CompanyCode } from "@server/shared/domain/values/CompanyCode";
 import { CompanyName } from "@server/shared/domain/values/CompanyName";
 import { Customer } from "@subdomains/customer/domain/entities/Customer";
-import { MarginRate } from "@subdomains/customer/domain/values/MarginRate";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { PrismaCustomerRepository } from "../PrismaCustomerRepository";
 
@@ -11,9 +10,7 @@ import { PrismaCustomerRepository } from "../PrismaCustomerRepository";
 const TEST_CODES = ["CMLK960", "CMLK961", "CMLK962"] as const;
 
 function buildCustomer(code: string, name = "テスト得意先"): Customer {
-  return Customer.create(new CompanyCode(code), new CompanyName(name), {
-    marginRate: new MarginRate(10),
-  });
+  return Customer.create(new CompanyCode(code), new CompanyName(name));
 }
 
 async function cleanup(): Promise<void> {
