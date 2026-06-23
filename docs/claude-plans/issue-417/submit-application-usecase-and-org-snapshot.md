@@ -45,7 +45,8 @@ estimate サブドメインの **application 層**に、見積申請の「未接
 - **BLOCKED 理由は3値**。①上長未設定＝`NO_SUPERIOR_ROLE`／②ゴール段階到達前に上位役割が尽きる＝`GOAL_UNREACHABLE`／③チェーン上に承認者不在＝`NO_APPROVER`。②を業務状態（BLOCKED）とする根拠: `goalTier` は **judge＝金額由来**（最大で社長）だが、`resolveApprovalGoalTiersByDepth` が4段を強制するのは**役職**側だけ。walk-up するのは**役割チェーン**（`superiorRoleId`）という別グラフで、申請者の上長役割が4段に届かず途切れることは正当にあり得る（役職に本部長/社長が存在しても当該役割チェーンに配線されているとは限らない）。よって「金額が要求する承認段階に役割グラフが届かない」は①③と同じ家族の正当な業務回答であり、バグ（`InvalidArgumentError`）は循環・スナップショット欠落のみに限る。
 
 ### コマンド入力・採番・ガード（文書から確定）
-- 入力: `{ variationId, operatorEmployeeId, version }`（AC1＋§6.3）。組織文脈は入力せず employee から取得。
+- 入力: `{ estimateId, variationId, operatorEmployeeId, version }`（§6.3。estimateId は AC1 から逸脱し追加・`deviations.md` 逸脱1）。組織文脈は入力せず employee から取得。
+  - 逸脱理由: variationId から Estimate を引く手段が無く version 関門は `findById(estimateId)` を要する。既存の全 variation コマンドが `{estimateId, variationId}` を取る作法に揃える。
 - `attempt`: `findByVariationId` の最大+1（初回1・§6.3）。同一バリエーションへの同時再申請も version 関門で直列化。
 - INACTIVE バリエーションは申請不可（§3.4/§12）。
 - 新射影2つの Prisma 実装は **#417 の責務**（#407 は申請・免除リポジトリ専用）。
@@ -137,7 +138,7 @@ estimate サブドメインの **application 層**に、見積申請の「未接
 ### Step 7: SubmitApplication コマンド（version 関門→挿入・ADR-0066）
 - 対象ファイル: `estimate/application/commands/SubmitApplicationCommand.ts`（新規）、factory、`__tests__`
 - 作業内容:
-  - 入力 `{ variationId, operatorEmployeeId, version }`。Estimate ロード→INACTIVE/兄弟チェック→`judge` 再評価→`EstimateRepository.update(expectedVersion=version)` で関門→通過後に分岐（EXEMPT=`Exemption.insert` / REQUIRED=`EstimateApplication.create`(`attempt`採番)+`insert` / BLOCKED=`BusinessRuleViolationError`）。
+  - 入力 `{ estimateId, variationId, operatorEmployeeId, version }`。Estimate ロード→INACTIVE/兄弟チェック→`judge` 再評価→`EstimateRepository.update(expectedVersion=version)` で関門→通過後に分岐（EXEMPT=`Exemption.insert` / REQUIRED=`EstimateApplication.create`(`attempt`採番)+`insert` / BLOCKED=`BusinessRuleViolationError`）。
   - 関門後 insert 失敗は `EstimateApplicationPersistError` で包んで再送出（ケース2）。
 - テスト（**統合・実 Prisma**、組織階層＋見積を seed）:
   - REQUIRED: 申請＋ステップ列が永続化（`finalApprovalPositionId`・stepOrder 連番・`attempt=1`）。
