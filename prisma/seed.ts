@@ -931,6 +931,25 @@ const SET_COMPONENTS = [
   { setCode: "PRD017", componentCode: "PRD009", quantity: 3 }, //            + コピー用紙A4×3
 ];
 
+/**
+ * 共通販売単価（ADR-0066 / 0067）。商品単位の適用期間付き単価。
+ * 適用期間は半開区間 [開始, 終了)、end=null は無期限上端。同一商品内で重複しない。
+ * PRD001 は期中改定（10/1 で値上げ）、PRD002 は無期限1本の例。
+ */
+const COMMON_SELLING_PRICES = [
+  {
+    productCode: "PRD001",
+    periods: [
+      { start: "2025-04-01", end: "2025-10-01", price: 30000 },
+      { start: "2025-10-01", end: null, price: 32000 }, // 改定後・無期限
+    ],
+  },
+  {
+    productCode: "PRD002",
+    periods: [{ start: "2025-04-01", end: null, price: 18000 }],
+  },
+];
+
 // 消費税率データ（昇順）
 const TAX_RATES = [
   { rate: "0.080", effectiveFrom: new Date("2014-04-01T00:00:00+09:00") },
@@ -1154,6 +1173,7 @@ async function main() {
   await prisma.estimateVariationRevision.deleteMany();
   await prisma.estimate.deleteMany();
   await prisma.taxRate.deleteMany();
+  await prisma.commonSellingPrice.deleteMany(); // 期間行は FK Cascade で消える
   await prisma.setProductComponent.deleteMany();
   await prisma.productRelation.deleteMany();
   await prisma.product.deleteMany();
@@ -1257,6 +1277,34 @@ async function main() {
     })),
   });
   console.log(`Created ${SET_COMPONENTS.length} set product components`);
+  console.log("");
+
+  // 共通販売単価（ADR-0066 / 0067）。daterange 列は Prisma typed では書けないため、
+  // 親行は typed create、期間行は $executeRaw で daterange を生成して投入する。
+  console.log("Creating common selling prices...");
+  let cspPeriodCount = 0;
+  for (const csp of COMMON_SELLING_PRICES) {
+    const productId = productsByCode.get(csp.productCode);
+    if (!productId) continue;
+    await prisma.commonSellingPrice.create({ data: { productId } });
+    for (const p of csp.periods) {
+      await prisma.$executeRaw`
+        INSERT INTO common_selling_price_periods
+          (id, product_id, selling_price, applicable_period, updated_at)
+        VALUES (
+          ${generateId()}::uuid,
+          ${productId}::uuid,
+          ${p.price}::numeric,
+          daterange(${p.start}::date, ${p.end}::date, '[)'),
+          CURRENT_TIMESTAMP
+        )
+      `;
+      cspPeriodCount += 1;
+    }
+  }
+  console.log(
+    `Created common selling prices for ${COMMON_SELLING_PRICES.length} products (${cspPeriodCount} periods)`
+  );
   console.log("");
 
   // 消費税率を作成（昇順で投入。前期間の終わり = 次の行の effectiveFrom の暗黙）
