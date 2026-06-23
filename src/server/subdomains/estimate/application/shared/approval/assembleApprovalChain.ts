@@ -11,7 +11,7 @@ import {
 import { ApprovalChainPlan } from "@subdomains/estimate/domain/values/approval/ApprovalChainPlan";
 import { EstimateExemptionReason } from "@subdomains/estimate/domain/values/approval/EstimateExemptionReason";
 import { EstimateType } from "@subdomains/estimate/domain/values/EstimateType";
-import { Money } from "@subdomains/estimate/domain/values/Money";
+import { Money } from "@server/shared/domain/values/Money";
 import {
   resolveApprovalGoalTiersByDepth,
   type PositionHierarchyNode,
