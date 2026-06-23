@@ -276,9 +276,6 @@ model Customer {
   // 有効フラグ
   isActive Boolean @default(true) @map("is_active")
 
-  // 得意先固有の属性
-  marginRate Decimal? @map("margin_rate") @db.Decimal(5, 2) // 標準マージン率
-
   // 配下の納品先
   deliveryLocations DeliveryLocation[]
 

@@ -180,7 +180,6 @@ const CUSTOMERS = [
     phoneNumber: "0312345678",
     faxNumber: "0312345679",
     contactPerson: "山田 太郎",
-    marginRate: 10,
     isActive: true,
     deliveryLocations: [
       {
@@ -212,7 +211,6 @@ const CUSTOMERS = [
     phoneNumber: "0333456789",
     faxNumber: "0333456780",
     contactPerson: "鈴木 一郎",
-    marginRate: 15,
     isActive: true,
     deliveryLocations: [
       {
@@ -235,7 +233,6 @@ const CUSTOMERS = [
     phoneNumber: "0661234567",
     faxNumber: "0661234568",
     contactPerson: "田中 健太",
-    marginRate: 12,
     isActive: true,
     deliveryLocations: [
       {
@@ -277,7 +274,6 @@ const CUSTOMERS = [
     phoneNumber: "0521234567",
     faxNumber: "0521234568",
     contactPerson: "佐藤 花子",
-    marginRate: 8,
     isActive: false,
     deliveryLocations: [],
   },
@@ -290,7 +286,6 @@ const CUSTOMERS = [
     phoneNumber: "0921234567",
     faxNumber: null,
     contactPerson: null,
-    marginRate: null,
     isActive: true,
     deliveryLocations: [
       {
@@ -314,7 +309,6 @@ const CUSTOMERS = [
     phoneNumber: "0399990901",
     faxNumber: null,
     contactPerson: null,
-    marginRate: 10,
     isActive: true,
     deliveryLocations: [
       {
@@ -538,7 +532,6 @@ async function seedCustomersAndDeliveryLocations() {
         faxNumber: customerData.faxNumber,
         contactPerson: customerData.contactPerson,
         isActive: customerData.isActive ?? true,
-        marginRate: customerData.marginRate,
       },
     });
 
