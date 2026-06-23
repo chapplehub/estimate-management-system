@@ -104,14 +104,19 @@ function header(ids: EstimateFixtureIds) {
 export function buildNewEstimate(
   ids: EstimateFixtureIds,
   estimateNumber: string,
-  opts: { variationNumbers?: number[]; submissionType?: SubmissionType } = {}
+  opts: {
+    variationNumbers?: number[];
+    submissionType?: SubmissionType;
+    /** 各バリエーションの明細を上書きする（金額段階を制御する承認テスト等で使う）。 */
+    items?: EstimateItem[];
+  } = {}
 ): Estimate {
   const variationNumbers = opts.variationNumbers ?? [1];
   const variations = variationNumbers.map((n, idx) =>
     makeVariation(
       ids.productId,
       n,
-      [
+      opts.items ?? [
         makeItem(ids.productId, {
           sortOrder: 1,
           itemName: `商品A-${idx}`,

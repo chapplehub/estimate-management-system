@@ -5,6 +5,7 @@ import { ProductQueryService } from "@subdomains/product/application/queries/Pro
 import { ProductCategory } from "@subdomains/product/domain/values/ProductCategory";
 import { PositionId } from "@subdomains/position/domain/values/PositionId";
 import { RoleId } from "@subdomains/role/domain/values/RoleId";
+import { RoleDTO } from "@subdomains/role/application/queries/dto/RoleDTO";
 import { RoleQueryService } from "@subdomains/role/application/queries/RoleQueryService";
 import { Estimate } from "@subdomains/estimate/domain/entities";
 import { EstimateRepository } from "@subdomains/estimate/domain/repositories/EstimateRepository";
@@ -33,6 +34,8 @@ export type LoadedApprovalChainInputs = {
   targetVariationIsActive: boolean;
   /** 純粋アセンブラ {@link assembleApprovalChain} に渡す組立て入力。 */
   assemblerInput: AssembleApprovalChainInput;
+  /** 役割DTO（id→roleName/positionName 引き）。Preview のステップ表示名解決に使う。 */
+  roleDtos: RoleDTO[];
 };
 
 /**
@@ -116,5 +119,6 @@ export async function loadApprovalChainInputs(
     estimate,
     targetVariationIsActive: variation.isActive(),
     assemblerInput,
+    roleDtos,
   };
 }
