@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { DiscountRate } from "../../values/DiscountRate";
 import { ItemName } from "../../values/ItemName";
 import { Memo } from "../../values/Memo";
-import { Money } from "../../values/Money";
+import { Money } from "@server/shared/domain/values/Money";
 import { Quantity } from "../../values/Quantity";
 import { EstimateVariationId } from "../../values/EstimateVariationId";
 import { SubmissionType } from "../../values/SubmissionType";

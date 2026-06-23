@@ -9,7 +9,7 @@ import { EstimateNumber } from "../../values/EstimateNumber";
 import { FaultDescription } from "../../values/FaultDescription";
 import { ItemName } from "../../values/ItemName";
 import { Memo } from "../../values/Memo";
-import { Money } from "../../values/Money";
+import { Money } from "@server/shared/domain/values/Money";
 import { Quantity } from "../../values/Quantity";
 import { Unit } from "../../values/Unit";
 import { EstimateSetGroupId } from "../../values/EstimateSetGroupId";

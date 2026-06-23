@@ -14,7 +14,7 @@ import { Estimate, EstimateFactory } from "@subdomains/estimate/domain/entities"
 import { EstimateId } from "@subdomains/estimate/domain/values/EstimateId";
 import { EstimateNumber } from "@subdomains/estimate/domain/values/EstimateNumber";
 import { ItemName } from "@subdomains/estimate/domain/values/ItemName";
-import { Money } from "@subdomains/estimate/domain/values/Money";
+import { Money } from "@server/shared/domain/values/Money";
 import { Quantity } from "@subdomains/estimate/domain/values/Quantity";
 import { SubmissionType } from "@subdomains/estimate/domain/values/SubmissionType";
 import { TaxRate } from "@subdomains/estimate/domain/values/TaxRate";

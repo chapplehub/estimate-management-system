@@ -1,5 +1,5 @@
 import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
-import type { Money } from "../values/Money";
+import type { Money } from "@server/shared/domain/values/Money";
 
 /**
  * 粗利計算の結果（設計書 §8.4、得意先向け見積）。

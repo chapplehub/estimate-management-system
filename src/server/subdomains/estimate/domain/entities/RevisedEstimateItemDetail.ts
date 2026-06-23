@@ -1,4 +1,4 @@
-import { Money } from "../values/Money";
+import { Money } from "@server/shared/domain/values/Money";
 import { RevisedEstimateItemDetailId } from "../values/RevisedEstimateItemDetailId";
 
 /**

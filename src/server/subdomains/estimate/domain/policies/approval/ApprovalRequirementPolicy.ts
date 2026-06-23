@@ -2,7 +2,7 @@ import { ProductCategory } from "@subdomains/product/domain/values/ProductCatego
 import { ApprovalGoalTier } from "../../values/approval/ApprovalGoalTier";
 import { EstimateExemptionReason } from "../../values/approval/EstimateExemptionReason";
 import { EstimateType } from "../../values/EstimateType";
-import { Money } from "../../values/Money";
+import { Money } from "@server/shared/domain/values/Money";
 
 /**
  * 承認要否の判定結果（§4・ADR-0062）

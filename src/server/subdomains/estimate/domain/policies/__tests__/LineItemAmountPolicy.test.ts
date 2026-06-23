@@ -1,7 +1,7 @@
 import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
 import { describe, expect, it } from "vitest";
 import { DiscountRate } from "../../values/DiscountRate";
-import { Money } from "../../values/Money";
+import { Money } from "@server/shared/domain/values/Money";
 import { Quantity } from "../../values/Quantity";
 import { LineItemAmountPolicy } from "../LineItemAmountPolicy";
 

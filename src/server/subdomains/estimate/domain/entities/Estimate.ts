@@ -14,7 +14,7 @@ import { EstimateNumber } from "../values/EstimateNumber";
 import { EstimateType } from "../values/EstimateType";
 import type { EstimateVariationId } from "../values/EstimateVariationId";
 import type { Memo } from "../values/Memo";
-import type { Money } from "../values/Money";
+import type { Money } from "@server/shared/domain/values/Money";
 import type { Quantity } from "../values/Quantity";
 import { SubmissionType } from "../values/SubmissionType";
 import { TaxRate } from "../values/TaxRate";

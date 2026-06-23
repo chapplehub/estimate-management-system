@@ -7,7 +7,7 @@ import { EstimateId } from "@subdomains/estimate/domain/values/EstimateId";
 import { EstimateItemId } from "@subdomains/estimate/domain/values/EstimateItemId";
 import { EstimateVariationId } from "@subdomains/estimate/domain/values/EstimateVariationId";
 import { Memo } from "@subdomains/estimate/domain/values/Memo";
-import { Money } from "@subdomains/estimate/domain/values/Money";
+import { Money } from "@server/shared/domain/values/Money";
 import { checkTaxRateThenSave, type TaxCheckedSaveResult } from "../shared/checkTaxRateThenSave";
 
 /** 明細単位の調整入力（#390）。価格系（単価・掛率・明細値引）＋メモ。数量・商品は持たない。 */

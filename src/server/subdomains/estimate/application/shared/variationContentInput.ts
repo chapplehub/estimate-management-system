@@ -7,7 +7,7 @@ import {
 import { DiscountRate } from "@subdomains/estimate/domain/values/DiscountRate";
 import { ItemName } from "@subdomains/estimate/domain/values/ItemName";
 import { Memo } from "@subdomains/estimate/domain/values/Memo";
-import { Money } from "@subdomains/estimate/domain/values/Money";
+import { Money } from "@server/shared/domain/values/Money";
 import { Quantity } from "@subdomains/estimate/domain/values/Quantity";
 import { Unit } from "@subdomains/estimate/domain/values/Unit";
 
