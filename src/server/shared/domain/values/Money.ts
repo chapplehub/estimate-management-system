@@ -5,7 +5,7 @@ import { Currency } from "./Currency";
  * 金額を表す値オブジェクト（Money パターン）。
  *
  * 内部表現は「整数の最小単位」（JPY なら銭 = 1/100 円）。
- * 浮動小数点誤差を避けるため、金額は常に整数で保持し、掛率・税率の乗算も
+ * 浮動小数点誤差を避けるため、金額は常に整数で保持し、比率の乗算も
  * 可能な限り整数演算で行う（{@link applyRate} 参照）。ドメイン層は外部ライブラリ
  * （decimal.js 等）に依存できないため、この方針を採用している。
  *
@@ -92,14 +92,14 @@ export class Money {
   }
 
   /**
-   * 比率 `numerator / 10^scale` を掛ける（掛率・税率の適用）。
+   * 比率 `numerator / 10^scale` を掛ける（比率の適用）。
    *
    * 整数演算 `minorUnits * numerator` を先に行い、最後に除算してから最小単位へ
    * 切り捨てる（端数は最小単位＝銭で切り捨て、ゼロ方向）。これにより浮動小数点誤差を最小化する。
    * さらに「円未満切捨」が必要な場合は呼び出し側で {@link truncateToMajorUnit} を続けて適用する。
    *
-   * @param numerator 比率の分子（例: 掛率0.95 → 9500）。
-   * @param scale 比率の小数桁数（例: 掛率は4）。
+   * @param numerator 比率の分子（例: 0.95 → 9500）。
+   * @param scale 比率の小数桁数（例: 小数4桁なら 4）。
    */
   applyRate(numerator: number, scale: number): Money {
     if (!Number.isInteger(numerator) || numerator < 0) {
@@ -114,7 +114,7 @@ export class Money {
   }
 
   /**
-   * 主単位（円）未満を切り捨てる（ゼロ方向）。§8.1「端数切捨」の単位は円。
+   * 主単位（円）未満を切り捨てる（ゼロ方向）。
    */
   truncateToMajorUnit(): Money {
     const per = this._currency.minorUnitsPerMajorUnit;
