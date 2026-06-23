@@ -1,6 +1,6 @@
 import { ValidationError } from "@server/shared/errors/DomainError";
 import { describe, expect, it } from "vitest";
-import { Money } from "../Money";
+import { Money } from "@server/shared/domain/values/Money";
 import { TaxRoundingType } from "../TaxRoundingType";
 
 describe("TaxRoundingType", () => {

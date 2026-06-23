@@ -4,7 +4,7 @@ import { DiscountRate } from "../values/DiscountRate";
 import { EstimateItemId } from "../values/EstimateItemId";
 import { ItemName } from "../values/ItemName";
 import { Memo } from "../values/Memo";
-import { Money } from "../values/Money";
+import { Money } from "@server/shared/domain/values/Money";
 import { Quantity } from "../values/Quantity";
 import { Unit } from "../values/Unit";
 import { RevisedEstimateItemDetail } from "./RevisedEstimateItemDetail";

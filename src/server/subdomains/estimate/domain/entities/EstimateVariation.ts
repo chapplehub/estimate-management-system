@@ -4,7 +4,7 @@ import { DiscountRate } from "../values/DiscountRate";
 import type { EstimateItemId } from "../values/EstimateItemId";
 import { EstimateVariationId } from "../values/EstimateVariationId";
 import { Memo } from "../values/Memo";
-import { Money } from "../values/Money";
+import { Money } from "@server/shared/domain/values/Money";
 import type { Quantity } from "../values/Quantity";
 import type { SubmissionType } from "../values/SubmissionType";
 import type { TaxRate } from "../values/TaxRate";

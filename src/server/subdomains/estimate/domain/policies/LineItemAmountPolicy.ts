@@ -1,6 +1,6 @@
 import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
 import { DiscountRate } from "../values/DiscountRate";
-import type { Money } from "../values/Money";
+import type { Money } from "@server/shared/domain/values/Money";
 import type { Quantity } from "../values/Quantity";
 
 /**

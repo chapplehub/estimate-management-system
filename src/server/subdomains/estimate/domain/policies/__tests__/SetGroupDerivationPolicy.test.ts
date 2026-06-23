@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Money } from "../../values/Money";
+import { Money } from "@server/shared/domain/values/Money";
 import { SetGroupDerivationPolicy } from "../SetGroupDerivationPolicy";
 
 describe("SetGroupDerivationPolicy", () => {

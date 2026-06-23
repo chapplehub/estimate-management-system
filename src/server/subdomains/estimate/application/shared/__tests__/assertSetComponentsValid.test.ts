@@ -1,7 +1,7 @@
 import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
 import { EstimateFactory, type VariationContent } from "@subdomains/estimate/domain/entities";
 import { ItemName } from "@subdomains/estimate/domain/values/ItemName";
-import { Money } from "@subdomains/estimate/domain/values/Money";
+import { Money } from "@server/shared/domain/values/Money";
 import { Quantity } from "@subdomains/estimate/domain/values/Quantity";
 import { Unit } from "@subdomains/estimate/domain/values/Unit";
 import { ProductId } from "@subdomains/product/domain/values/ProductId";

@@ -1,5 +1,5 @@
 import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
-import { Money } from "../values/Money";
+import { Money } from "@server/shared/domain/values/Money";
 import { TaxRate } from "../values/TaxRate";
 import type { TaxRoundingType } from "../values/TaxRoundingType";
 

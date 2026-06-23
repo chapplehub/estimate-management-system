@@ -10,7 +10,7 @@ import { EmergencyReason } from "../../values/approval/EmergencyReason";
 import { EstimateNumber } from "../../values/EstimateNumber";
 import { FaultDescription } from "../../values/FaultDescription";
 import { ItemName } from "../../values/ItemName";
-import { Money } from "../../values/Money";
+import { Money } from "@server/shared/domain/values/Money";
 import { Quantity } from "../../values/Quantity";
 import { SubmissionType } from "../../values/SubmissionType";
 import { TaxRate } from "../../values/TaxRate";

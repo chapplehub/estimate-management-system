@@ -25,7 +25,7 @@ import { EstimateVariationId } from "@subdomains/estimate/domain/values/Estimate
 import { FaultDescription } from "@subdomains/estimate/domain/values/FaultDescription";
 import { ItemName } from "@subdomains/estimate/domain/values/ItemName";
 import { Memo } from "@subdomains/estimate/domain/values/Memo";
-import { Money } from "@subdomains/estimate/domain/values/Money";
+import { Money } from "@server/shared/domain/values/Money";
 import { Quantity } from "@subdomains/estimate/domain/values/Quantity";
 import { RepairEstimateDetailId } from "@subdomains/estimate/domain/values/RepairEstimateDetailId";
 import { EstimateSetGroupId } from "@subdomains/estimate/domain/values/EstimateSetGroupId";

@@ -1,6 +1,6 @@
 import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
 import { describe, expect, it } from "vitest";
-import { Money } from "../../values/Money";
+import { Money } from "@server/shared/domain/values/Money";
 import { TaxRate } from "../../values/TaxRate";
 import { TaxRoundingType } from "../../values/TaxRoundingType";
 import { EstimateAmountPolicy } from "../EstimateAmountPolicy";

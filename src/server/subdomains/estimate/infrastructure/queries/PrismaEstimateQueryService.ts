@@ -13,7 +13,7 @@ import {
   EstimateSearchCriteria,
 } from "@subdomains/estimate/application/queries/dto/EstimateSearchCriteria";
 import { SetGroupDerivationPolicy } from "@subdomains/estimate/domain/policies/SetGroupDerivationPolicy";
-import { Money } from "@subdomains/estimate/domain/values/Money";
+import { Money } from "@server/shared/domain/values/Money";
 
 /**
  * 見積詳細の読み取り include 定義。集約再構築の ESTIMATE_FULL_INCLUDE とは別に、

@@ -4,7 +4,7 @@ import { ApprovalRequirementPolicy } from "../ApprovalRequirementPolicy";
 import { ApprovalGoalTier } from "../../../values/approval/ApprovalGoalTier";
 import { EstimateExemptionReason } from "../../../values/approval/EstimateExemptionReason";
 import { EstimateType } from "../../../values/EstimateType";
-import { Money } from "../../../values/Money";
+import { Money } from "@server/shared/domain/values/Money";
 
 const yen = (amount: number) => Money.fromMajorUnits(amount);
 const judge = (input: {

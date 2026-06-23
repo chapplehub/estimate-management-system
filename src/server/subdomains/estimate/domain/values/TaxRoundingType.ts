@@ -1,6 +1,6 @@
 import { ValidationError } from "@server/shared/errors/DomainError";
 import { ValueObject } from "@server/shared/ValueObject";
-import type { Money } from "./Money";
+import type { Money } from "@server/shared/domain/values/Money";
 
 const VALID_VALUES = ["ROUND_DOWN", "ROUND_UP", "ROUND"] as const;
 type TaxRoundingTypeValue = (typeof VALID_VALUES)[number];
