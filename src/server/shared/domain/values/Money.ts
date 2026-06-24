@@ -45,6 +45,30 @@ export class Money {
     return new Money(rounded, currency);
   }
 
+  /**
+   * 10進文字列（例: DB の `DECIMAL(12,2)` を `::text` で受けた値）から厳密に生成する。
+   *
+   * `Number("...")` を経由すると主単位が float64 になり、値域の上限帯（約100億円弱）で
+   * 銭への換算が丸め誤差を持ちうる。これを避けるため、文字列のまま整数部・小数部に分解し、
+   * 小数部を通貨スケールへ桁合わせして最小単位の整数を直接組み立てる（float 非経由）。
+   */
+  static fromDecimalString(value: string, currency: Currency = Currency.JPY): Money {
+    const match = /^(-?)(\d+)(?:\.(\d+))?$/.exec(value);
+    if (match === null) {
+      throw new InvalidArgumentError(`金額の文字列形式が不正です: ${value}`);
+    }
+    const [, sign, intPart, fracPart = ""] = match;
+    const scale = currency.minorUnitScale;
+    if (fracPart.length > scale) {
+      throw new InvalidArgumentError(
+        `金額は${currency.code}の最小単位（小数${scale}桁）以下の精度では指定できません`
+      );
+    }
+    const paddedFrac = fracPart.padEnd(scale, "0");
+    const minorUnits = Number(`${sign}${intPart}${paddedFrac}`);
+    return Money.fromMinorUnits(minorUnits, currency);
+  }
+
   static zero(currency: Currency = Currency.JPY): Money {
     return new Money(0, currency);
   }
