@@ -81,6 +81,11 @@ const eslintConfig = defineConfig([
               message:
                 "得意先別販売単価集約の子エンティティ CustomerSellingPricePeriod は集約外から直接 import できません。集約ルート（@subdomains/pricing/domain/entities）経由で操作してください。再構成は CustomerSellingPrice.reconstruct に VO 記述子を渡してください。",
             },
+            {
+              group: ["@subdomains/pricing/domain/entities/DeliveryLocationSellingPricePeriod"],
+              message:
+                "納品先別販売単価集約の子エンティティ DeliveryLocationSellingPricePeriod は集約外から直接 import できません。集約ルート（@subdomains/pricing/domain/entities）経由で操作してください。再構成は DeliveryLocationSellingPrice.reconstruct に VO 記述子を渡してください。",
+            },
           ],
         },
       ],
