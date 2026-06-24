@@ -1,4 +1,5 @@
 import { ApplicablePeriod } from "@server/shared/domain/values/ApplicablePeriod";
+import { Money } from "@server/shared/domain/values/Money";
 import { ProductId } from "@subdomains/product/domain/values/ProductId";
 import { CommonSellingPrice } from "@subdomains/pricing/domain/entities";
 import { CommonSellingPricePeriodId } from "@subdomains/pricing/domain/values/CommonSellingPricePeriodId";
@@ -41,7 +42,8 @@ export class CommonSellingPriceMapper {
       rows.map((row) => ({
         id: new CommonSellingPricePeriodId(row.id),
         period: ApplicablePeriod.create({ start: row.start, end: row.end }),
-        price: SellingUnitPrice.fromMajorUnits(Number(row.sellingPrice)),
+        // ::text で受けた10進文字列を Number 経由（float64）にせず Money へ厳密変換する。
+        price: SellingUnitPrice.fromMoney(Money.fromDecimalString(row.sellingPrice)),
       }))
     );
   }
