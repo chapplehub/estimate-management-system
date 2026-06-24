@@ -568,7 +568,7 @@ model DeliveryLocationSellingPricePeriod {
   id                 String                       @id @db.Uuid // サロゲート UUIDv7（差分 upsert の identity・ADR-0032）
   deliveryLocationId String                       @map("delivery_location_id") @db.Uuid
   productId          String                       @map("product_id") @db.Uuid
-  parent             DeliveryLocationSellingPrice @relation(fields: [deliveryLocationId, productId], references: [deliveryLocationId, productId], onDelete: Cascade)
+  parent             DeliveryLocationSellingPrice @relation(fields: [deliveryLocationId, productId], references: [deliveryLocationId, productId], onDelete: Cascade, map: "delivery_location_selling_price_periods_dl_id_product_id_fkey")
 
   sellingPrice     Decimal                  @map("selling_price") @db.Decimal(12, 2) // 売単価（NUMERIC・銭精度）
   applicablePeriod Unsupported("daterange") @map("applicable_period") // 適用期間 [開始, 終了) 上端 unbounded で無期限
@@ -576,7 +576,7 @@ model DeliveryLocationSellingPricePeriod {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  @@index([deliveryLocationId, productId])
+  @@index([deliveryLocationId, productId], map: "delivery_location_selling_price_periods_dl_id_product_id_idx")
   @@map("delivery_location_selling_price_periods")
 }
 
