@@ -23,7 +23,7 @@ export type SubmitApplicationInput = {
   estimateId: string;
   variationId: string;
   operatorEmployeeId: string;
-  /** Preview 時に読んだ Estimate.version（TOCTOU 防御＋同時直列化の関門トークン・ADR-0066）。 */
+  /** Preview 時に読んだ Estimate.version（TOCTOU 防御＋同時直列化の関門トークン・ADR-0068）。 */
   version: number;
 };
 
@@ -49,7 +49,7 @@ function blockedMessage(reason: ApprovalChainBlockedReason): string {
 }
 
 /**
- * 見積申請コマンド（version 関門で「1見積1前進」を直列化・ADR-0066・#417・§6.3）
+ * 見積申請コマンド（version 関門で「1見積1前進」を直列化・ADR-0068・#417・§6.3）
  *
  * 単一ジェスチャで結末が2通り（承認必要なら申請＋ステップ列を作成、免除なら免除を記録）。
  * judge を再評価して分岐し（TOCTOU 防御・§6.3）、`Estimate.version` の条件付き更新を申請挿入の
@@ -96,7 +96,7 @@ export class SubmitApplicationCommand {
       throw new BusinessRuleViolationError(blockedMessage(result.reason));
     }
 
-    // 5. version 関門（ADR-0066）。通過した者だけが挿入へ進む。stale なら ConflictError（ケース1）。
+    // 5. version 関門（ADR-0068）。通過した者だけが挿入へ進む。stale なら ConflictError（ケース1）。
     await this.estimateRepository.update(loaded.estimate, input.version);
 
     // 6. 関門通過後にだけ永続化。挿入失敗は EstimateApplicationPersistError で包む（ケース2）。
@@ -130,7 +130,7 @@ export class SubmitApplicationCommand {
     } catch (error) {
       // ConflictError は insert リポジトリが P2002 を翻訳した「再試行可能な競合」（ケース1）。
       // これを PersistError（ケース2＝「申請に失敗しました」）で包むと、UI の再読込誘導・409 相当の
-      // 扱いが崩れるため素通しする。それ以外の保存失敗だけを PersistError で包む（ADR-0066）。
+      // 扱いが崩れるため素通しする。それ以外の保存失敗だけを PersistError で包む（ADR-0068）。
       if (error instanceof ConflictError) {
         throw error;
       }

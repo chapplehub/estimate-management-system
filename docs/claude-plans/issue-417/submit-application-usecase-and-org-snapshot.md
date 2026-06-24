@@ -11,7 +11,7 @@ estimate サブドメインの **application 層**に、見積申請の「未接
 
 ## 設計判断
 
-すべて本 issue の設計 grill で合意済み。直列化機構は **ADR-0066** に記録済み。
+すべて本 issue の設計 grill で合意済み。直列化機構は **ADR-0068** に記録済み。
 
 ### コマンド構造（EXEMPT 分岐の置き場）
 - A. 単一 `SubmitApplication` が `judge` を再評価し内部分岐（EXEMPT→免除／REQUIRED→申請+steps／BLOCKED→例外）。正常結末は `ApplicationSubmitted | ApprovalExempted` の union。
@@ -27,10 +27,10 @@ estimate サブドメインの **application 層**に、見積申請の「未接
 - B. estimate 専用の1本 join 読取りモデル（他サブドメインのテーブル直読み）。
 - **採用: A**。理由: `CreateEstimateCommand` の `ProductQueryService` 消費（ADR-0052）と同じ作法。承認探索は4段有界（ADR-0063）で N+1・性能問題なし。追加射影（`superiorRoleId`・役割メンバー有無）は承認固有でない汎用事実なので本拠に置く。
 
-### 「1見積1前進」の直列化とトランザクション境界（→ ADR-0066）
+### 「1見積1前進」の直列化とトランザクション境界（→ ADR-0068）
 - A. `Estimate.version` の条件付き更新を申請挿入の**前段の関門**にし、兄弟チェック（逐次）＋関門（同時）で担保。分散トランザクション不要。
 - B. 2集約（Estimate / EstimateApplication）を単一トランザクションで原子化（新抽象導入）。
-- **採用: A**（ADR-0066）。理由: 唯一の隙「bump成功・insert失敗」は無害な version 空振りで再 Preview で回復。B が消すのはこの無害ケースのみでコスト倒れ。version トークン1個で TOCTOU（§6.3）＋同時直列化を兼ねる。
+- **採用: A**（ADR-0068）。理由: 唯一の隙「bump成功・insert失敗」は無害な version 空振りで再 Preview で回復。B が消すのはこの無害ケースのみでコスト倒れ。version トークン1個で TOCTOU（§6.3）＋同時直列化を兼ねる。
 
 ### エラーの3分岐
 - ケース1: bump 失敗 → `ConflictError`（既存・整形済み文言「すでに更新されています」）。
@@ -135,7 +135,7 @@ estimate サブドメインの **application 層**に、見積申請の「未接
 - テスト（**単体**）: 所定メッセージと `cause` を保持する。
 - コミットメッセージ: `feat: 申請保存失敗を表す EstimateApplicationPersistError を追加する`
 
-### Step 7: SubmitApplication コマンド（version 関門→挿入・ADR-0066）
+### Step 7: SubmitApplication コマンド（version 関門→挿入・ADR-0068）
 - 対象ファイル: `estimate/application/commands/SubmitApplicationCommand.ts`（新規）、factory、`__tests__`
 - 作業内容:
   - 入力 `{ estimateId, variationId, operatorEmployeeId, version }`。Estimate ロード→INACTIVE/兄弟チェック→`judge` 再評価→`EstimateRepository.update(expectedVersion=version)` で関門→通過後に分岐（EXEMPT=`Exemption.insert` / REQUIRED=`EstimateApplication.create`(`attempt`採番)+`insert` / BLOCKED=`BusinessRuleViolationError`）。

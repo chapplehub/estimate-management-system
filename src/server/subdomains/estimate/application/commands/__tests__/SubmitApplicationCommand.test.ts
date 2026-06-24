@@ -23,7 +23,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { SubmitApplicationCommand } from "../SubmitApplicationCommand";
 
 /**
- * 見積申請コマンドの統合テスト（#417・ADR-0066・実 Prisma・モック禁止）。
+ * 見積申請コマンドの統合テスト（#417・ADR-0068・実 Prisma・モック禁止）。
  * シードの正準組織を再利用し、申請操作者の上位役割を営業一課長(ROLE009)に設定する。
  */
 describe("SubmitApplicationCommand", () => {
