@@ -1,3 +1,4 @@
+import { ValidationError } from "@server/shared/errors/DomainError";
 import { describe, expect, it } from "vitest";
 import { OccurredAt } from "../OccurredAt";
 
@@ -10,6 +11,10 @@ describe("OccurredAt", () => {
       source.setHours(0);
 
       expect(occurredAt.toDate().getTime()).toBe(new Date("2026-06-19T09:00:00Z").getTime());
+    });
+
+    it("不正な Date（Invalid Date）は構築時に弾く（NaN を保持しない）", () => {
+      expect(() => OccurredAt.from(new Date("not-a-date"))).toThrow(ValidationError);
     });
   });
 
