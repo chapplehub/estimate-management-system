@@ -71,6 +71,11 @@ const eslintConfig = defineConfig([
               message:
                 "Estimate / EstimateApplication 集約の子エンティティは集約外から直接 import できません。集約ルート（@subdomains/estimate/domain/entities）経由で操作してください。",
             },
+            {
+              group: ["@subdomains/pricing/domain/entities/CommonSellingPricePeriod"],
+              message:
+                "共通販売単価集約の子エンティティ CommonSellingPricePeriod は集約外から直接 import できません。集約ルート（@subdomains/pricing/domain/entities）経由で操作してください。再構成は CommonSellingPrice.reconstruct に VO 記述子を渡してください。",
+            },
           ],
         },
       ],

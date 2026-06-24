@@ -45,6 +45,38 @@ export class Money {
     return new Money(rounded, currency);
   }
 
+  /**
+   * 10進文字列（例: DB の `DECIMAL(12,2)` を `::text` で受けた値）から厳密に生成する。
+   *
+   * `Number("...")` を経由すると主単位が float64 になり、値域の上限帯（約100億円弱）で
+   * 銭への換算が丸め誤差を持ちうる。これを避けるため、文字列のまま整数部・小数部に分解し、
+   * 小数部を通貨スケールへ桁合わせして最小単位の整数を直接組み立てる（float 非経由）。
+   */
+  static fromDecimalString(value: string, currency: Currency = Currency.JPY): Money {
+    const match = /^(-?)(\d+)(?:\.(\d+))?$/.exec(value);
+    if (match === null) {
+      throw new InvalidArgumentError(`金額の文字列形式が不正です: ${value}`);
+    }
+    const [, sign, intPart, fracPart = ""] = match;
+    const scale = currency.minorUnitScale;
+    if (fracPart.length > scale) {
+      throw new InvalidArgumentError(
+        `金額は${currency.code}の最小単位（小数${scale}桁）以下の精度では指定できません`
+      );
+    }
+    const paddedFrac = fracPart.padEnd(scale, "0");
+    const minorUnits = Number(`${sign}${intPart}${paddedFrac}`);
+    // 2^53 を超える桁では Number が整数を正確に保持できず無言で精度が落ちる。
+    // より広い DECIMAL 列で再利用したとき破損データを黙って通さないよう弾く。
+    if (!Number.isSafeInteger(minorUnits)) {
+      throw new InvalidArgumentError(`金額が安全に表現できる整数の範囲を超えています: ${value}`);
+    }
+    // "-0"/"-0.00" は Number で -0 になる。`-0 === 0` だが Object.is や 1/x で表面化する
+    // 足枷を避けるため +0 へ正規化する（大きさは 0 で正しい）。
+    const normalized = minorUnits === 0 ? 0 : minorUnits;
+    return Money.fromMinorUnits(normalized, currency);
+  }
+
   static zero(currency: Currency = Currency.JPY): Money {
     return new Money(0, currency);
   }
