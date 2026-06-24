@@ -1,4 +1,5 @@
 import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
+import { OccurredAt } from "./OccurredAt";
 import { RejectionComment } from "./RejectionComment";
 
 /**
@@ -8,19 +9,20 @@ import { RejectionComment } from "./RejectionComment";
  * 親ステップ（`EstimateApprovalStep`）が自然キー（stepId）を所有するため、本 VO は
  * independent な identity を持たず、イベント payload（差戻者・差戻理由・差戻日時）のみを
  * 保持する。差戻理由は §3.4 で必須のため {@link RejectionComment}（空不可）で型強制する。
+ * 発生日時は raw `Date` ではなく不変VO {@link OccurredAt} で保持する（ADR-20260624-8f5）。
  */
 export class StepRejection {
   private constructor(
     private readonly _rejectedByEmployeeId: EmployeeId,
     private readonly _comment: RejectionComment,
-    private readonly _occurredAt: Date
+    private readonly _occurredAt: OccurredAt
   ) {}
 
   /** 差戻イベントを生成する。差戻者・差戻理由・差戻日時を受け取る。 */
   static create(
     rejectedByEmployeeId: EmployeeId,
     comment: RejectionComment,
-    occurredAt: Date
+    occurredAt: OccurredAt
   ): StepRejection {
     return new StepRejection(rejectedByEmployeeId, comment, occurredAt);
   }
@@ -36,7 +38,7 @@ export class StepRejection {
   }
 
   /** 差戻日時（イベント行の createdAt）。 */
-  get occurredAt(): Date {
+  get occurredAt(): OccurredAt {
     return this._occurredAt;
   }
 
@@ -44,7 +46,7 @@ export class StepRejection {
     return (
       this._rejectedByEmployeeId.equals(other._rejectedByEmployeeId) &&
       this._comment.equals(other._comment) &&
-      this._occurredAt.getTime() === other._occurredAt.getTime()
+      this._occurredAt.equals(other._occurredAt)
     );
   }
 }

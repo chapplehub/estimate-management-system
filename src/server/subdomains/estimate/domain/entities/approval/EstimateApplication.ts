@@ -9,6 +9,7 @@ import { EstimateApplicationId } from "../../values/approval/EstimateApplication
 import { EstimateApprovalStepId } from "../../values/approval/EstimateApprovalStepId";
 import { EstimateVariationId } from "../../values/EstimateVariationId";
 import { RejectionComment } from "../../values/approval/RejectionComment";
+import { OccurredAt } from "../../values/approval/OccurredAt";
 import { StepApproval } from "../../values/approval/StepApproval";
 import { StepRejection } from "../../values/approval/StepRejection";
 import { EstimateApprovalStep } from "./EstimateApprovalStep";
@@ -189,7 +190,7 @@ export class EstimateApplication {
   approve(stepId: EstimateApprovalStepId, approverEmployeeId: EmployeeId): void {
     const step = this.findStep(stepId);
     this.assertStepAwaiting(stepId);
-    step.recordApproval(StepApproval.create(approverEmployeeId, new Date()));
+    step.recordApproval(StepApproval.create(approverEmployeeId, OccurredAt.now()));
   }
 
   /**
@@ -203,7 +204,7 @@ export class EstimateApplication {
   ): void {
     const step = this.findStep(stepId);
     this.assertStepAwaiting(stepId);
-    step.recordRejection(StepRejection.create(rejectedByEmployeeId, comment, new Date()));
+    step.recordRejection(StepRejection.create(rejectedByEmployeeId, comment, OccurredAt.now()));
   }
 
   /**
@@ -216,7 +217,7 @@ export class EstimateApplication {
         "承認待ち（PENDING）でない申請は取り下げできません（§7.3）"
       );
     }
-    this._withdrawal = ApplicationWithdrawal.create(withdrawnByEmployeeId, new Date());
+    this._withdrawal = ApplicationWithdrawal.create(withdrawnByEmployeeId, OccurredAt.now());
   }
 
   private assertStepAwaiting(stepId: EstimateApprovalStepId): void {

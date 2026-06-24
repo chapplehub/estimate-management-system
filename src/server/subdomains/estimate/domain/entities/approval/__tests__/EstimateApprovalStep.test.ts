@@ -4,6 +4,7 @@ import { RoleId } from "@subdomains/role/domain/values/RoleId";
 import { describe, expect, it } from "vitest";
 import { EstimateApprovalStep } from "../EstimateApprovalStep";
 import { EstimateApprovalStepId } from "../../../values/approval/EstimateApprovalStepId";
+import { OccurredAt } from "../../../values/approval/OccurredAt";
 import { RejectionComment } from "../../../values/approval/RejectionComment";
 import { StepApproval } from "../../../values/approval/StepApproval";
 import { StepRejection } from "../../../values/approval/StepRejection";
@@ -37,7 +38,10 @@ describe("EstimateApprovalStep", () => {
         id: EstimateApprovalStepId.generate(),
         stepOrder: 1,
         roleId: RoleId.generate(),
-        approval: StepApproval.create(EmployeeId.generate(), new Date("2026-06-19T09:00:00Z")),
+        approval: StepApproval.create(
+          EmployeeId.generate(),
+          OccurredAt.from(new Date("2026-06-19T09:00:00Z"))
+        ),
         rejection: null,
       });
 
@@ -55,7 +59,7 @@ describe("EstimateApprovalStep", () => {
         rejection: StepRejection.create(
           EmployeeId.generate(),
           new RejectionComment("要修正"),
-          new Date("2026-06-19T09:00:00Z")
+          OccurredAt.from(new Date("2026-06-19T09:00:00Z"))
         ),
       });
 
@@ -68,7 +72,10 @@ describe("EstimateApprovalStep", () => {
   describe("recordApproval() / recordRejection() - 決定の付与", () => {
     it("recordApproval で承認イベントを付与できる", () => {
       const step = EstimateApprovalStep.create(RoleId.generate(), 1);
-      const approval = StepApproval.create(EmployeeId.generate(), new Date("2026-06-19T09:00:00Z"));
+      const approval = StepApproval.create(
+        EmployeeId.generate(),
+        OccurredAt.from(new Date("2026-06-19T09:00:00Z"))
+      );
 
       step.recordApproval(approval);
 
@@ -81,7 +88,7 @@ describe("EstimateApprovalStep", () => {
       const rejection = StepRejection.create(
         EmployeeId.generate(),
         new RejectionComment("要修正"),
-        new Date("2026-06-19T09:00:00Z")
+        OccurredAt.from(new Date("2026-06-19T09:00:00Z"))
       );
 
       step.recordRejection(rejection);
@@ -93,7 +100,10 @@ describe("EstimateApprovalStep", () => {
     it("決定済みステップに再度決定を付与すると拒否する（1ステップ1決定）", () => {
       const step = EstimateApprovalStep.create(RoleId.generate(), 1);
       step.recordApproval(
-        StepApproval.create(EmployeeId.generate(), new Date("2026-06-19T09:00:00Z"))
+        StepApproval.create(
+          EmployeeId.generate(),
+          OccurredAt.from(new Date("2026-06-19T09:00:00Z"))
+        )
       );
 
       expect(() =>
@@ -101,7 +111,7 @@ describe("EstimateApprovalStep", () => {
           StepRejection.create(
             EmployeeId.generate(),
             new RejectionComment("後から差戻"),
-            new Date("2026-06-19T10:00:00Z")
+            OccurredAt.from(new Date("2026-06-19T10:00:00Z"))
           )
         )
       ).toThrow(BusinessRuleViolationError);
