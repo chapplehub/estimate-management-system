@@ -1,6 +1,5 @@
 import prisma from "@server/prisma";
-import { applicablePeriodBounds, dateRangeValue } from "@server/shared/infrastructure/dateRange";
-import { ConflictError } from "@server/shared/errors/ApplicationError";
+import { applicablePeriodBounds } from "@server/shared/infrastructure/dateRange";
 import { CustomerId } from "@subdomains/customer/domain/values/CustomerId";
 import { CustomerSellingPrice } from "@subdomains/pricing/domain/entities";
 import { CustomerSellingPriceRepository } from "@subdomains/pricing/domain/repositories/CustomerSellingPriceRepository";
@@ -8,22 +7,25 @@ import {
   CustomerSellingPriceMapper,
   type CustomerSellingPricePeriodRow,
 } from "@subdomains/pricing/infrastructure/mappers/CustomerSellingPriceMapper";
+import {
+  appendPeriodRows,
+  assertVersionBumped,
+  translateInsertConflict,
+  type Tx,
+} from "@subdomains/pricing/infrastructure/prisma/sellingPricePeriodPersistence";
 import { ProductId } from "@subdomains/product/domain/values/ProductId";
-import { Prisma } from "@generated/prisma/client";
-
-/** $transaction のコールバックに渡るトランザクションクライアント。 */
-type Tx = Prisma.TransactionClient;
 
 /**
  * 得意先別販売単価集約の Prisma リポジトリ実装。
  *
  * 共通販売単価リポジトリと同型で、宛先が得意先（複合自然キー identity）である点だけが異なる
- * （ADR-20260624-8tg）。適用期間（daterange）は Prisma typed では扱えないため、期間行の読み書きは
- * `$queryRaw`/`$executeRaw` で行う（ADR-0067）。daterange の値生成・境界展開は共有フラグメント
- * （`dateRangeValue`/`applicablePeriodBounds`）に委ねる。期間行の同期は append-only で、新規 id
- * のみを挿入し既存行には触れない（`ON CONFLICT (id) DO NOTHING`）。ドメインの変更操作が addPeriod
- * （追加）のみ・子が id 単位で内容不変ゆえ削除分岐は到達不能で、既存行を触らないため改定時に
- * updated_at を保持できる（監査保持）。楽観ロックは親 version の条件付き更新で行う（ADR-0039）。
+ * （ADR-20260624-8tg）。適用期間（daterange）は Prisma typed では扱えないため、期間行の読み出しは
+ * `$queryRaw`・境界展開は `applicablePeriodBounds` に委ねる（ADR-0067）。期間行の書き込み（append-only
+ * INSERT）・P2002 の ConflictError 翻訳・楽観ロックの version 判定は、3層で共通の永続化ヘルパ
+ * `sellingPricePeriodPersistence` に委譲する（#458）。期間行の同期は append-only で、新規 id のみを
+ * 挿入し既存行には触れない（`ON CONFLICT (id) DO NOTHING`）。ドメインの変更操作が addPeriod（追加）
+ * のみ・子が id 単位で内容不変ゆえ削除分岐は到達不能で、既存行を触らないため改定時に updated_at を
+ * 保持できる（監査保持）。楽観ロックは親 version の条件付き更新で行う（ADR-0039）。
  */
 export class PrismaCustomerSellingPriceRepository implements CustomerSellingPriceRepository {
   async findByCustomerIdAndProductId(
@@ -60,27 +62,16 @@ export class PrismaCustomerSellingPriceRepository implements CustomerSellingPric
         await this.writePeriods(tx, aggregate);
       });
     } catch (error) {
-      PrismaCustomerSellingPriceRepository.translateInsertConflict(error, aggregate);
-    }
-  }
-
-  /**
-   * insert の例外を翻訳する。アプリ層の存在チェックをすり抜けた二重作成レースは親
-   * customer_selling_prices の複合 PK（customer_id, product_id）衝突として P2002 で表面化するため、
-   * 再試行可能な ConflictError へ翻訳する（共通販売単価リポジトリの translateInsertConflict と同型）。
-   *
-   * 期間行の EXCLUDE 違反（23P01）はここでは翻訳しない。insert は親 PK、update は version
-   * 条件付き updateMany が同一キーの期間並行書き込みを直列化するため公開 API 経由では到達不能で、
-   * トリガーするテストが書けず死にコードになる。EXCLUDE は SQL 直叩き・論理バグに対する DB 側の
-   * 最後の砦として残す。
-   */
-  private static translateInsertConflict(error: unknown, aggregate: CustomerSellingPrice): never {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      throw new ConflictError(
+      // アプリ層の存在チェックをすり抜けた二重作成レースは親 customer_selling_prices の複合 PK
+      // （customer_id, product_id）衝突として P2002 で表面化するため、再試行可能な ConflictError へ
+      // 翻訳する。期間行の EXCLUDE 違反（23P01）は翻訳しない: insert は親 PK、update は version
+      // 条件付き updateMany が同一キーの並行書き込みを直列化するため公開 API からは到達不能で、
+      // DB 側の最後の砦として残す。
+      translateInsertConflict(
+        error,
         `得意先 ${aggregate.customerId.value} × 商品 ${aggregate.productId.value} の得意先別販売単価は既に登録されています。画面を再読み込みして最新の内容を確認してください。`
       );
     }
-    throw error;
   }
 
   async update(aggregate: CustomerSellingPrice, expectedVersion: number): Promise<void> {
@@ -95,11 +86,7 @@ export class PrismaCustomerSellingPriceRepository implements CustomerSellingPric
         },
         data: { version: { increment: 1 } },
       });
-      if (result.count === 0) {
-        throw new ConflictError(
-          "他のユーザーによって更新または削除されています。画面を再読み込みして最新の内容を確認してください。"
-        );
-      }
+      assertVersionBumped(result.count);
 
       // 期間行は append-only で同期する。ドメインの変更操作は addPeriod（追加）のみで子は
       // id 単位で内容不変ゆえ、集約は常に DB の id を包含し「DB にあって集約に無い id（=削除）」
@@ -109,28 +96,18 @@ export class PrismaCustomerSellingPriceRepository implements CustomerSellingPric
     });
   }
 
-  /**
-   * 集約の全期間行を daterange 付きで挿入する（append-only）。
-   *
-   * 既存 id は `ON CONFLICT (id) DO NOTHING` で no-op にし、新規 id の行だけを挿入する。
-   * これにより insert/update のどちらからも安全に呼べ、update では既存行の updated_at を
-   * 一切動かさない。
-   */
+  /** 集約の全期間行を append-only で同期する（共通ヘルパへ委譲）。 */
   private async writePeriods(tx: Tx, aggregate: CustomerSellingPrice): Promise<void> {
-    for (const row of CustomerSellingPriceMapper.toPeriodWriteRows(aggregate)) {
-      await tx.$executeRaw`
-        INSERT INTO customer_selling_price_periods
-          (id, customer_id, product_id, selling_price, applicable_period, updated_at)
-        VALUES (
-          ${row.id}::uuid,
-          ${row.customerId}::uuid,
-          ${row.productId}::uuid,
-          ${row.sellingPrice}::numeric,
-          ${dateRangeValue(row.start, row.end)},
-          CURRENT_TIMESTAMP
-        )
-        ON CONFLICT (id) DO NOTHING
-      `;
-    }
+    await appendPeriodRows(
+      tx,
+      { table: "customer_selling_price_periods", keyColumns: ["customer_id", "product_id"] },
+      CustomerSellingPriceMapper.toPeriodWriteRows(aggregate).map((row) => ({
+        id: row.id,
+        keyValues: [row.customerId, row.productId],
+        sellingPrice: row.sellingPrice,
+        start: row.start,
+        end: row.end,
+      }))
+    );
   }
 }
