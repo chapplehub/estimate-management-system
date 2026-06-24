@@ -48,6 +48,18 @@ describe("Money", () => {
       expect(Money.fromDecimalString("0.01").minorUnits).toBe(1);
     });
 
+    it("負のゼロ文字列は +0 に正規化される（-0 を伝播させない）", () => {
+      const money = Money.fromDecimalString("-0.00");
+      expect(money.isZero()).toBe(true);
+      expect(money.isNegative()).toBe(false);
+      // -0 ではなく +0 であることを Object.is で厳密に確認する。
+      expect(Object.is(money.minorUnits, 0)).toBe(true);
+    });
+
+    it("負の金額文字列も生成できる（Money は負を許容・fromMajorUnits と一貫）", () => {
+      expect(Money.fromDecimalString("-100.50").minorUnits).toBe(-10_050);
+    });
+
     it("同額・同通貨は等価である", () => {
       expect(Money.fromMajorUnits(1000).equals(Money.fromMinorUnits(100_000))).toBe(true);
     });
@@ -163,6 +175,12 @@ describe("Money", () => {
       expect(() => Money.fromDecimalString("1.234")).toThrow(
         "金額はJPYの最小単位（小数2桁）以下の精度では指定できません"
       );
+    });
+
+    it("安全に表現できる整数を超える金額文字列はエラー（無言の精度欠落を許さない）", () => {
+      // 銭に直すと 2^53 を超え Number で正確に保持できない。より広い DECIMAL 列で
+      // fromDecimalString を再利用したときに無言でデータ破損しないよう loud fail させる。
+      expect(() => Money.fromDecimalString("99999999999999999.99")).toThrow(InvalidArgumentError);
     });
 
     it("不正な金額文字列は拒否する", () => {

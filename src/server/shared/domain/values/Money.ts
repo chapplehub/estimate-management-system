@@ -66,7 +66,15 @@ export class Money {
     }
     const paddedFrac = fracPart.padEnd(scale, "0");
     const minorUnits = Number(`${sign}${intPart}${paddedFrac}`);
-    return Money.fromMinorUnits(minorUnits, currency);
+    // 2^53 を超える桁では Number が整数を正確に保持できず無言で精度が落ちる。
+    // より広い DECIMAL 列で再利用したとき破損データを黙って通さないよう弾く。
+    if (!Number.isSafeInteger(minorUnits)) {
+      throw new InvalidArgumentError(`金額が安全に表現できる整数の範囲を超えています: ${value}`);
+    }
+    // "-0"/"-0.00" は Number で -0 になる。`-0 === 0` だが Object.is や 1/x で表面化する
+    // 足枷を避けるため +0 へ正規化する（大きさは 0 で正しい）。
+    const normalized = minorUnits === 0 ? 0 : minorUnits;
+    return Money.fromMinorUnits(normalized, currency);
   }
 
   static zero(currency: Currency = Currency.JPY): Money {
