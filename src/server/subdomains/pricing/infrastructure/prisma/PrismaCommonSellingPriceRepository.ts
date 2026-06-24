@@ -1,17 +1,18 @@
 import prisma from "@server/prisma";
-import { applicablePeriodBounds, dateRangeValue } from "@server/shared/infrastructure/dateRange";
-import { ConflictError } from "@server/shared/errors/ApplicationError";
+import { applicablePeriodBounds } from "@server/shared/infrastructure/dateRange";
 import { CommonSellingPrice } from "@subdomains/pricing/domain/entities";
 import { CommonSellingPriceRepository } from "@subdomains/pricing/domain/repositories/CommonSellingPriceRepository";
 import {
   CommonSellingPriceMapper,
   type CommonSellingPricePeriodRow,
 } from "@subdomains/pricing/infrastructure/mappers/CommonSellingPriceMapper";
+import {
+  appendPeriodRows,
+  assertVersionBumped,
+  translateInsertConflict,
+  type Tx,
+} from "@subdomains/pricing/infrastructure/prisma/sellingPricePeriodPersistence";
 import { ProductId } from "@subdomains/product/domain/values/ProductId";
-import { Prisma } from "@generated/prisma/client";
-
-/** $transaction のコールバックに渡るトランザクションクライアント。 */
-type Tx = Prisma.TransactionClient;
 
 /**
  * 共通販売単価集約の Prisma リポジトリ実装。
@@ -52,27 +53,16 @@ export class PrismaCommonSellingPriceRepository implements CommonSellingPriceRep
         await this.writePeriods(tx, aggregate);
       });
     } catch (error) {
-      PrismaCommonSellingPriceRepository.translateInsertConflict(error, aggregate);
-    }
-  }
-
-  /**
-   * insert の例外を翻訳する。アプリ層の存在チェックをすり抜けた二重作成レースは親
-   * common_selling_prices の PK（product_id）衝突として P2002 で表面化するため、再試行可能な
-   * ConflictError へ翻訳する（既存リポジトリの translateInsertConflict と同型）。
-   *
-   * 期間行の EXCLUDE 違反（23P01）はここでは翻訳しない。insert は親 PK、update は version
-   * 条件付き updateMany が同一商品の期間並行書き込みを直列化するため公開 API 経由では到達不能で、
-   * トリガーするテストが書けず死にコードになる。EXCLUDE は SQL 直叩き・論理バグに対する DB 側の
-   * 最後の砦として残す。
-   */
-  private static translateInsertConflict(error: unknown, aggregate: CommonSellingPrice): never {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      throw new ConflictError(
+      // アプリ層の存在チェックをすり抜けた二重作成レースは親 common_selling_prices の
+      // PK（product_id）衝突として P2002 で表面化するため、再試行可能な ConflictError へ翻訳する。
+      // 期間行の EXCLUDE 違反（23P01）は翻訳しない: insert は親 PK、update は version 条件付き
+      // updateMany が同一商品の並行書き込みを直列化するため公開 API からは到達不能で、DB 側の
+      // 最後の砦として残す。
+      translateInsertConflict(
+        error,
         `商品 ${aggregate.productId.value} の共通販売単価は既に登録されています。画面を再読み込みして最新の内容を確認してください。`
       );
     }
-    throw error;
   }
 
   async update(aggregate: CommonSellingPrice, expectedVersion: number): Promise<void> {
@@ -83,11 +73,7 @@ export class PrismaCommonSellingPriceRepository implements CommonSellingPriceRep
         where: { productId: aggregate.productId.value, version: expectedVersion },
         data: { version: { increment: 1 } },
       });
-      if (result.count === 0) {
-        throw new ConflictError(
-          "他のユーザーによって更新または削除されています。画面を再読み込みして最新の内容を確認してください。"
-        );
-      }
+      assertVersionBumped(result.count);
 
       // 期間行は append-only で同期する。ドメインの変更操作は addPeriod（追加）のみで子は
       // id 単位で内容不変ゆえ、集約は常に DB の id を包含し「DB にあって集約に無い id（=削除）」
@@ -98,27 +84,18 @@ export class PrismaCommonSellingPriceRepository implements CommonSellingPriceRep
     });
   }
 
-  /**
-   * 集約の全期間行を daterange 付きで挿入する（append-only）。
-   *
-   * 既存 id は `ON CONFLICT (id) DO NOTHING` で no-op にし、新規 id の行だけを挿入する。
-   * これにより insert/update のどちらからも安全に呼べ、update では既存行の updated_at を
-   * 一切動かさない。
-   */
+  /** 集約の全期間行を append-only で同期する（共通ヘルパへ委譲）。 */
   private async writePeriods(tx: Tx, aggregate: CommonSellingPrice): Promise<void> {
-    for (const row of CommonSellingPriceMapper.toPeriodWriteRows(aggregate)) {
-      await tx.$executeRaw`
-        INSERT INTO common_selling_price_periods
-          (id, product_id, selling_price, applicable_period, updated_at)
-        VALUES (
-          ${row.id}::uuid,
-          ${row.productId}::uuid,
-          ${row.sellingPrice}::numeric,
-          ${dateRangeValue(row.start, row.end)},
-          CURRENT_TIMESTAMP
-        )
-        ON CONFLICT (id) DO NOTHING
-      `;
-    }
+    await appendPeriodRows(
+      tx,
+      { table: "common_selling_price_periods", keyColumns: ["product_id"] },
+      CommonSellingPriceMapper.toPeriodWriteRows(aggregate).map((row) => ({
+        id: row.id,
+        keyValues: [row.productId],
+        sellingPrice: row.sellingPrice,
+        start: row.start,
+        end: row.end,
+      }))
+    );
   }
 }
