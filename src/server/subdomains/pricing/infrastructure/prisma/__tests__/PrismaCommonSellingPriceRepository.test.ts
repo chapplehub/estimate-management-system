@@ -129,6 +129,17 @@ describe("PrismaCommonSellingPriceRepository", () => {
     await expect(repository.update(aggregate, 999)).rejects.toBeInstanceOf(ConflictError);
   });
 
+  it("同一商品への二重 insert は ConflictError（親 PK 衝突の翻訳）", async () => {
+    const first = CommonSellingPrice.create(productId);
+    first.addPeriod(period("2025-07-01", null), price(1000));
+    await repository.insert(first);
+
+    // アプリ層の存在チェックをすり抜けた二重作成レースを模す。
+    const second = CommonSellingPrice.create(productId);
+    second.addPeriod(period("2025-07-01", null), price(2000));
+    await expect(repository.insert(second)).rejects.toBeInstanceOf(ConflictError);
+  });
+
   it("同一商品で適用期間が重複する行は EXCLUDE 制約で弾かれる", async () => {
     const aggregate = CommonSellingPrice.create(productId);
     aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000));

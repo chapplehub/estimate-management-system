@@ -7,7 +7,7 @@ import {
   type CommonSellingPricePeriodRow,
 } from "@subdomains/pricing/infrastructure/mappers/CommonSellingPriceMapper";
 import { ProductId } from "@subdomains/product/domain/values/ProductId";
-import type { Prisma } from "@generated/prisma/client";
+import { Prisma } from "@generated/prisma/client";
 
 /** $transaction のコールバックに渡るトランザクションクライアント。 */
 type Tx = Prisma.TransactionClient;
@@ -45,10 +45,33 @@ export class PrismaCommonSellingPriceRepository implements CommonSellingPriceRep
   }
 
   async insert(aggregate: CommonSellingPrice): Promise<void> {
-    await prisma.$transaction(async (tx) => {
-      await tx.commonSellingPrice.create({ data: { productId: aggregate.productId.value } });
-      await this.writePeriods(tx, aggregate);
-    });
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.commonSellingPrice.create({ data: { productId: aggregate.productId.value } });
+        await this.writePeriods(tx, aggregate);
+      });
+    } catch (error) {
+      PrismaCommonSellingPriceRepository.translateInsertConflict(error, aggregate);
+    }
+  }
+
+  /**
+   * insert の例外を翻訳する。アプリ層の存在チェックをすり抜けた二重作成レースは親
+   * common_selling_prices の PK（product_id）衝突として P2002 で表面化するため、再試行可能な
+   * ConflictError へ翻訳する（既存リポジトリの translateInsertConflict と同型）。
+   *
+   * 期間行の EXCLUDE 違反（23P01）はここでは翻訳しない。insert は親 PK、update は version
+   * 条件付き updateMany が同一商品の期間並行書き込みを直列化するため公開 API 経由では到達不能で、
+   * トリガーするテストが書けず死にコードになる。EXCLUDE は SQL 直叩き・論理バグに対する DB 側の
+   * 最後の砦として残す。
+   */
+  private static translateInsertConflict(error: unknown, aggregate: CommonSellingPrice): never {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      throw new ConflictError(
+        `商品 ${aggregate.productId.value} の共通販売単価は既に登録されています。画面を再読み込みして最新の内容を確認してください。`
+      );
+    }
+    throw error;
   }
 
   async update(aggregate: CommonSellingPrice, expectedVersion: number): Promise<void> {
