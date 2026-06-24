@@ -1,4 +1,5 @@
 import prisma from "@server/prisma";
+import { applicablePeriodBounds, dateRangeValue } from "@server/shared/infrastructure/dateRange";
 import { ConflictError } from "@server/shared/errors/ApplicationError";
 import { CommonSellingPrice } from "@subdomains/pricing/domain/entities";
 import { CommonSellingPriceRepository } from "@subdomains/pricing/domain/repositories/CommonSellingPriceRepository";
@@ -16,7 +17,8 @@ type Tx = Prisma.TransactionClient;
  * 共通販売単価集約の Prisma リポジトリ実装。
  *
  * 適用期間（daterange）は Prisma typed では扱えないため、期間行の読み書きは
- * `$queryRaw`/`$executeRaw` で行う（ADR-0067）。期間行の同期は append-only で、
+ * `$queryRaw`/`$executeRaw` で行う（ADR-0067）。daterange の値生成・境界展開は共有
+ * フラグメント（`dateRangeValue`/`applicablePeriodBounds`）に委ね3層で共用する。期間行の同期は append-only で、
  * 新規 id のみを挿入し既存行には触れない（`ON CONFLICT (id) DO NOTHING`）。ドメインの
  * 変更操作が addPeriod（追加）のみ・子が id 単位で内容不変ゆえ削除分岐は到達不能で、
  * 既存行を触らないため改定時に updated_at を保持できる（監査保持）。
@@ -33,8 +35,7 @@ export class PrismaCommonSellingPriceRepository implements CommonSellingPriceRep
 
     const rows = await prisma.$queryRaw<CommonSellingPricePeriodRow[]>`
       SELECT id::text AS id,
-             lower(applicable_period)::text AS start,
-             upper(applicable_period)::text AS "end",
+             ${applicablePeriodBounds},
              selling_price::text AS "sellingPrice"
       FROM common_selling_price_periods
       WHERE product_id = ${productId.value}::uuid
@@ -113,7 +114,7 @@ export class PrismaCommonSellingPriceRepository implements CommonSellingPriceRep
           ${row.id}::uuid,
           ${row.productId}::uuid,
           ${row.sellingPrice}::numeric,
-          daterange(${row.start}::date, ${row.end}::date, '[)'),
+          ${dateRangeValue(row.start, row.end)},
           CURRENT_TIMESTAMP
         )
         ON CONFLICT (id) DO NOTHING
