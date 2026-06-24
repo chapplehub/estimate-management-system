@@ -4,7 +4,7 @@ import { PrismaEstimateApplicationRepository } from "../../infrastructure/prisma
 import { PrismaEstimateApprovalExemptionRepository } from "../../infrastructure/prisma/approval/PrismaEstimateApprovalExemptionRepository";
 
 /**
- * 見積申請コマンド（#417・ADR-0066）の Composition Root。
+ * 見積申請コマンド（#417・ADR-0068）の Composition Root。
  *
  * version 関門で「1見積1前進」を直列化するため、見積本体・申請・免除の3リポジトリと、
  * 承認チェーン組立てに要する 商品／従業員／職位／役割 のクエリを解決して注入する。

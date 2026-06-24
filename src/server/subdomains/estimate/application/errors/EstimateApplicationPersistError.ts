@@ -1,7 +1,7 @@
 import { ApplicationError } from "@server/shared/errors/ApplicationError";
 
 /**
- * 申請の保存失敗を表すアプリ層例外（#417・ADR-0066 ケース2）
+ * 申請の保存失敗を表すアプリ層例外（#417・ADR-0068 ケース2）
  *
  * version 関門（`Estimate.version` の bump）には成功したが、その後の申請／免除の insert に
  * 失敗した「bump 成功・insert 失敗」の局面で送出する。前進バリエーションは生まれておらず
