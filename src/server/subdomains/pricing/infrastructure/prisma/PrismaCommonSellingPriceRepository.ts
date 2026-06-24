@@ -16,9 +16,10 @@ type Tx = Prisma.TransactionClient;
  * 共通販売単価集約の Prisma リポジトリ実装。
  *
  * 適用期間（daterange）は Prisma typed では扱えないため、期間行の読み書きは
- * `$queryRaw`/`$executeRaw` で行う（ADR-0067）。期間行の同期は EXCLUDE 制約の
- * 瞬間衝突を避けるため、トランザクション内で「全削除 → ドメインの identity を
- * 再利用して全挿入」とする（identity は保たれる・ADR-0032 / Estimate 集約と同型）。
+ * `$queryRaw`/`$executeRaw` で行う（ADR-0067）。期間行の同期は append-only で、
+ * 新規 id のみを挿入し既存行には触れない（`ON CONFLICT (id) DO NOTHING`）。ドメインの
+ * 変更操作が addPeriod（追加）のみ・子が id 単位で内容不変ゆえ削除分岐は到達不能で、
+ * 既存行を触らないため改定時に updated_at を保持できる（監査保持）。
  * 楽観ロックは親 version の条件付き更新で行う（ADR-0039）。
  */
 export class PrismaCommonSellingPriceRepository implements CommonSellingPriceRepository {
@@ -64,15 +65,22 @@ export class PrismaCommonSellingPriceRepository implements CommonSellingPriceRep
         );
       }
 
-      // 期間行は全削除してから再挿入する。EXCLUDE の瞬間衝突を避けつつ identity は再利用する。
-      await tx.commonSellingPricePeriod.deleteMany({
-        where: { productId: aggregate.productId.value },
-      });
+      // 期間行は append-only で同期する。ドメインの変更操作は addPeriod（追加）のみで子は
+      // id 単位で内容不変ゆえ、集約は常に DB の id を包含し「DB にあって集約に無い id（=削除）」
+      // は発生しない。よって既存行に触れず新規 id のみ挿入すればよく、既存行の updated_at は
+      // まったく動かない（監査保持）。DELETE/in-place UPDATE は #429 が removePeriod を入れる
+      // ときにテスト付きで追加する。
       await this.writePeriods(tx, aggregate);
     });
   }
 
-  /** 集約の全期間行を daterange 付きで挿入する。 */
+  /**
+   * 集約の全期間行を daterange 付きで挿入する（append-only）。
+   *
+   * 既存 id は `ON CONFLICT (id) DO NOTHING` で no-op にし、新規 id の行だけを挿入する。
+   * これにより insert/update のどちらからも安全に呼べ、update では既存行の updated_at を
+   * 一切動かさない。
+   */
   private async writePeriods(tx: Tx, aggregate: CommonSellingPrice): Promise<void> {
     for (const row of CommonSellingPriceMapper.toPeriodWriteRows(aggregate)) {
       await tx.$executeRaw`
@@ -85,6 +93,7 @@ export class PrismaCommonSellingPriceRepository implements CommonSellingPriceRep
           daterange(${row.start}::date, ${row.end}::date, '[)'),
           CURRENT_TIMESTAMP
         )
+        ON CONFLICT (id) DO NOTHING
       `;
     }
   }

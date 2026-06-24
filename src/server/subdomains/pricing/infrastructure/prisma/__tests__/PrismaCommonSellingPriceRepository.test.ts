@@ -74,7 +74,7 @@ describe("PrismaCommonSellingPriceRepository", () => {
     expect(periods[1].price.equals(price(1234.56))).toBe(true);
   });
 
-  it("update で期間行を差分同期できる（version 一致時）", async () => {
+  it("update で期間行を追加同期できる（version 一致時・append-only）", async () => {
     const aggregate = CommonSellingPrice.create(productId);
     aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000));
     await repository.insert(aggregate);
@@ -87,6 +87,38 @@ describe("PrismaCommonSellingPriceRepository", () => {
     const found = (await repository.findByProductId(productId))!;
     expect(found.periods).toHaveLength(2);
     expect(found.periods[1].price.equals(price(1200))).toBe(true);
+  });
+
+  it("update は既存期間行の updated_at を変更しない（append-only・監査保持）", async () => {
+    const aggregate = CommonSellingPrice.create(productId);
+    aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000));
+    await repository.insert(aggregate);
+
+    // 既存行の updated_at を既知の過去値に固定し、偶発的な現在時刻一致を排除する。
+    const frozen = new Date("2020-01-01T00:00:00.000Z");
+    await prisma.$executeRaw`
+      UPDATE common_selling_price_periods
+      SET updated_at = ${frozen}
+      WHERE product_id = ${productId.value}::uuid
+    `;
+
+    // version=1 を持ち回り、期間を1本追加して改定する。
+    const reloaded = (await repository.findByProductId(productId))!;
+    reloaded.addPeriod(period("2025-10-01", null), price(1200));
+    await repository.update(reloaded, 1);
+
+    const rows = await prisma.$queryRaw<{ updatedAt: Date; start: string }[]>`
+      SELECT updated_at AS "updatedAt", lower(applicable_period)::text AS start
+      FROM common_selling_price_periods
+      WHERE product_id = ${productId.value}::uuid
+      ORDER BY lower(applicable_period)
+    `;
+
+    expect(rows).toHaveLength(2);
+    // 既存行（2025-07-01 始まり）の updated_at は固定した過去値のまま不変。
+    expect(rows[0].updatedAt.toISOString()).toBe(frozen.toISOString());
+    // 追加行（2025-10-01 始まり）は今回の挿入なので過去値ではない。
+    expect(rows[1].updatedAt.getTime()).toBeGreaterThan(frozen.getTime());
   });
 
   it("古い expectedVersion での update は ConflictError", async () => {
