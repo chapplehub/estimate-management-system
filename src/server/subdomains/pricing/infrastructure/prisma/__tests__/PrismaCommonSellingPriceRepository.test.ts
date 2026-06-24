@@ -1,5 +1,6 @@
 import prisma from "@server/prisma";
 import { ApplicablePeriod } from "@server/shared/domain/values/ApplicablePeriod";
+import { Money } from "@server/shared/domain/values/Money";
 import { ConflictError } from "@server/shared/errors/ApplicationError";
 import { CommonSellingPrice } from "@subdomains/pricing/domain/entities";
 import { SellingUnitPrice } from "@subdomains/pricing/domain/values/SellingUnitPrice";
@@ -17,7 +18,7 @@ import { PrismaCommonSellingPriceRepository } from "../PrismaCommonSellingPriceR
 const TEST_PRODUCT_CODE = "CSPLK970";
 
 const period = (start: string, end: string | null) => ApplicablePeriod.create({ start, end });
-const price = (yen: number) => SellingUnitPrice.fromMajorUnits(yen);
+const price = (yen: number) => SellingUnitPrice.fromMoney(Money.fromMajorUnits(yen));
 
 async function cleanup(): Promise<void> {
   // products を消すと FK onDelete: Cascade で common_selling_prices と期間行も消える。

@@ -10,17 +10,18 @@ import { ValidationError } from "@server/shared/errors/DomainError";
 export class SellingUnitPrice {
   private constructor(private readonly _amount: Money) {}
 
-  /** {@link Money} から生成する。負の金額は許容しない。 */
+  /**
+   * {@link Money} から生成する。負の金額は許容しない。
+   *
+   * 生成口は `Money` 引数のみとする。number↔金額の変換と精度ガードは `Money`
+   * （`fromMajorUnits`/`fromDecimalString`）へ集約し、価格 VO は受け取った `Money` に
+   * 「非負」不変条件だけを課す（number ドアを VO 層で二重に開けない）。
+   */
   static fromMoney(amount: Money): SellingUnitPrice {
     if (amount.isNegative()) {
       throw new ValidationError("共通販売単価は0以上で指定してください");
     }
     return new SellingUnitPrice(amount);
-  }
-
-  /** 主単位（円）から生成する。 */
-  static fromMajorUnits(amount: number): SellingUnitPrice {
-    return SellingUnitPrice.fromMoney(Money.fromMajorUnits(amount));
   }
 
   /** 金額（{@link Money}）。 */

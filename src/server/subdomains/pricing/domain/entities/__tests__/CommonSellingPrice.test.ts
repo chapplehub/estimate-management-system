@@ -1,4 +1,5 @@
 import { ApplicablePeriod } from "@server/shared/domain/values/ApplicablePeriod";
+import { Money } from "@server/shared/domain/values/Money";
 import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
 import { ProductId } from "@subdomains/product/domain/values/ProductId";
 import { describe, expect, it } from "vitest";
@@ -8,7 +9,7 @@ import { CommonSellingPrice } from "../CommonSellingPrice";
 
 const productId = ProductId.generate();
 const period = (start: string, end: string | null) => ApplicablePeriod.create({ start, end });
-const price = (yen: number) => SellingUnitPrice.fromMajorUnits(yen);
+const price = (yen: number) => SellingUnitPrice.fromMoney(Money.fromMajorUnits(yen));
 
 describe("CommonSellingPrice 集約", () => {
   describe("生成", () => {
