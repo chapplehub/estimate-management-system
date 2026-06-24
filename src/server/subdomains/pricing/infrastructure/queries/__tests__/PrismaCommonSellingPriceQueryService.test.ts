@@ -63,4 +63,51 @@ describe("PrismaCommonSellingPriceQueryService", () => {
     // selling_price は DECIMAL(12,2)。::text は銭2桁を伴う10進文字列で返る（消費側で Money.fromDecimalString が解釈）。
     expect(result?.sellingPrice).toBe("1000.00");
   });
+
+  it("適用期間の開始日ちょうどは含む（半開 [) の下端）", async () => {
+    const aggregate = CommonSellingPrice.create(productId);
+    aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000));
+    await repository.insert(aggregate);
+
+    const result = await queryService.resolve({ productId: productId.value, date: "2025-07-01" });
+
+    expect(result?.sellingPrice).toBe("1000.00");
+  });
+
+  it("適用期間の終了日ちょうどは含まない（半開 [) の上端）", async () => {
+    const aggregate = CommonSellingPrice.create(productId);
+    aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000));
+    await repository.insert(aggregate);
+
+    const result = await queryService.resolve({ productId: productId.value, date: "2025-10-01" });
+
+    expect(result).toBeNull();
+  });
+
+  it("どの適用期間にも覆われない暦日では null を返す", async () => {
+    const aggregate = CommonSellingPrice.create(productId);
+    aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000));
+    await repository.insert(aggregate);
+
+    const result = await queryService.resolve({ productId: productId.value, date: "2025-06-30" });
+
+    expect(result).toBeNull();
+  });
+
+  it("共通販売単価が1件も無い商品では null を返す", async () => {
+    // 商品は存在するが期間行を1件も登録していない。「行が無い」と「覆う区間が無い」は区別しない。
+    const result = await queryService.resolve({ productId: productId.value, date: "2025-08-15" });
+
+    expect(result).toBeNull();
+  });
+
+  it("無期限上端（end=null）の期間は遠い未来の暦日でもヒットする", async () => {
+    const aggregate = CommonSellingPrice.create(productId);
+    aggregate.addPeriod(period("2025-10-01", null), price(1234.56));
+    await repository.insert(aggregate);
+
+    const result = await queryService.resolve({ productId: productId.value, date: "2099-12-31" });
+
+    expect(result?.sellingPrice).toBe("1234.56");
+  });
 });
