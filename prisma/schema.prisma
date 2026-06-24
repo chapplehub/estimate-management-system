@@ -321,6 +321,9 @@ model DeliveryLocation {
   // 納品先固有の属性
   deliveryNotes String? @map("delivery_notes") @db.VarChar(500) // 配送時の注意事項
 
+  // 納品先別販売単価集約（ADR-20260624-8tg）。逆リレーション仮想フィールド（FK列なし）
+  deliveryLocationSellingPrices DeliveryLocationSellingPrice[]
+
   // 納品先紐付け見積（逆参照）
   estimates Estimate[] @relation("DeliveryLocationEstimates")
 
@@ -393,6 +396,9 @@ model Product {
 
   // 得意先別販売単価集約（ADR-20260624-8tg）。逆リレーション仮想フィールド（FK列なし）
   customerSellingPrices CustomerSellingPrice[]
+
+  // 納品先別販売単価集約（ADR-20260624-8tg）。逆リレーション仮想フィールド（FK列なし）
+  deliveryLocationSellingPrices DeliveryLocationSellingPrice[]
 
   // 楽観ロックトークン（ADR-0039）。更新ごとに +1
   version Int @default(1)
@@ -528,6 +534,50 @@ model CustomerSellingPricePeriod {
 
   @@index([customerId, productId])
   @@map("customer_selling_price_periods")
+}
+
+// ========================================
+// 納品先別販売単価（pricing サブドメイン・ADR-0066 / 0067 / 20260624-8tg）
+// ========================================
+
+/// 納品先別販売単価集約のルート。納品先 × 商品（複合PK・複合自然キー identity）で楽観ロック
+/// version を持つ。共通・得意先別と同型だが宛先が納品先である独立集約（ADR-20260624-8tg）。
+model DeliveryLocationSellingPrice {
+  deliveryLocationId String           @map("delivery_location_id") @db.Uuid // 複合PKの一部 兼 delivery_locations への FK
+  deliveryLocation   DeliveryLocation @relation(fields: [deliveryLocationId], references: [id], onDelete: Cascade)
+  productId          String           @map("product_id") @db.Uuid // 複合PKの一部 兼 products への FK
+  product            Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  // 適用期間行（子エンティティ）
+  periods DeliveryLocationSellingPricePeriod[]
+
+  // 楽観ロックトークン（ADR-0039）。更新ごとに +1
+  version Int @default(1)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@id([deliveryLocationId, productId])
+  @@map("delivery_location_selling_prices")
+}
+
+/// 適用期間行。同一の納品先・商品内で適用期間が重複してはならない（EXCLUDE で物理保証・ADR-0067）。
+/// applicable_period は daterange のため Prisma typed では扱えず Unsupported とし、
+/// 読み書きは Repository/Mapper の $queryRaw で行う。共通販売単価への FK・存在依存は張らない。
+model DeliveryLocationSellingPricePeriod {
+  id                 String                       @id @db.Uuid // サロゲート UUIDv7（差分 upsert の identity・ADR-0032）
+  deliveryLocationId String                       @map("delivery_location_id") @db.Uuid
+  productId          String                       @map("product_id") @db.Uuid
+  parent             DeliveryLocationSellingPrice @relation(fields: [deliveryLocationId, productId], references: [deliveryLocationId, productId], onDelete: Cascade)
+
+  sellingPrice     Decimal                  @map("selling_price") @db.Decimal(12, 2) // 売単価（NUMERIC・銭精度）
+  applicablePeriod Unsupported("daterange") @map("applicable_period") // 適用期間 [開始, 終了) 上端 unbounded で無期限
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([deliveryLocationId, productId])
+  @@map("delivery_location_selling_price_periods")
 }
 
 // ========================================
