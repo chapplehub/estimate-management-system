@@ -10,6 +10,7 @@ import { RoleId } from "@subdomains/role/domain/values/RoleId";
 import { EstimateApplication } from "@subdomains/estimate/domain/entities";
 import { buildNewEstimate } from "@subdomains/estimate/domain/entities/__tests__/estimateAggregateBuilder";
 import { ApprovalChainPlan } from "@subdomains/estimate/domain/values/approval/ApprovalChainPlan";
+import { OccurredAt } from "@subdomains/estimate/domain/values/approval/OccurredAt";
 import { RejectionComment } from "@subdomains/estimate/domain/values/approval/RejectionComment";
 import { EstimateVariationId } from "@subdomains/estimate/domain/values/EstimateVariationId";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -153,7 +154,7 @@ describe("PrismaEstimateApplicationRepository", () => {
       expect(afterStep1.stepStatus(afterStep1.steps[1].id).value).toBe("AWAITING");
       // occurredAt は DB の created_at で確定し、refetch 後に復元される（ADR-0058）
       expect(afterStep1.steps[0].approval).not.toBeNull();
-      expect(afterStep1.steps[0].approval?.occurredAt).toBeInstanceOf(Date);
+      expect(afterStep1.steps[0].approval?.occurredAt).toBeInstanceOf(OccurredAt);
 
       // step2 承認（最終）→ version 2 で更新
       afterStep1.approve(afterStep1.steps[1].id, approver);
@@ -177,7 +178,7 @@ describe("PrismaEstimateApplicationRepository", () => {
       expect(updated.applicationStatus.value).toBe("REJECTED");
       expect(updated.stepStatus(updated.steps[0].id).value).toBe("REJECTED");
       expect(updated.steps[0].rejection?.comment.value).toBe("金額の根拠が不足しています");
-      expect(updated.steps[0].rejection?.occurredAt).toBeInstanceOf(Date);
+      expect(updated.steps[0].rejection?.occurredAt).toBeInstanceOf(OccurredAt);
     });
 
     it("withdraw で申請 WITHDRAWN（往復生存）", async () => {
@@ -189,7 +190,7 @@ describe("PrismaEstimateApplicationRepository", () => {
 
       expect(updated.applicationStatus.value).toBe("WITHDRAWN");
       expect(updated.withdrawal).not.toBeNull();
-      expect(updated.withdrawal?.occurredAt).toBeInstanceOf(Date);
+      expect(updated.withdrawal?.occurredAt).toBeInstanceOf(OccurredAt);
     });
 
     it("stale な expectedVersion での update は ConflictError", async () => {

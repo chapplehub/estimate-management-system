@@ -10,6 +10,7 @@ import { EstimateApprovalStep } from "@subdomains/estimate/domain/entities/appro
 import { ApplicationWithdrawal } from "@subdomains/estimate/domain/values/approval/ApplicationWithdrawal";
 import { EstimateApplicationId } from "@subdomains/estimate/domain/values/approval/EstimateApplicationId";
 import { EstimateApprovalStepId } from "@subdomains/estimate/domain/values/approval/EstimateApprovalStepId";
+import { OccurredAt } from "@subdomains/estimate/domain/values/approval/OccurredAt";
 import { RejectionComment } from "@subdomains/estimate/domain/values/approval/RejectionComment";
 import { StepApproval } from "@subdomains/estimate/domain/values/approval/StepApproval";
 import { StepRejection } from "@subdomains/estimate/domain/values/approval/StepRejection";
@@ -62,7 +63,7 @@ export class EstimateApplicationMapper {
       withdrawal: row.withdrawal
         ? ApplicationWithdrawal.create(
             new EmployeeId(row.withdrawal.withdrawnByEmployeeId),
-            row.withdrawal.createdAt
+            OccurredAt.from(row.withdrawal.createdAt)
           )
         : null,
     });
@@ -74,13 +75,16 @@ export class EstimateApplicationMapper {
       stepOrder: s.stepOrder,
       roleId: new RoleId(s.roleId),
       approval: s.approval
-        ? StepApproval.create(new EmployeeId(s.approval.approverEmployeeId), s.approval.createdAt)
+        ? StepApproval.create(
+            new EmployeeId(s.approval.approverEmployeeId),
+            OccurredAt.from(s.approval.createdAt)
+          )
         : null,
       rejection: s.rejection
         ? StepRejection.create(
             new EmployeeId(s.rejection.rejectedByEmployeeId),
             new RejectionComment(s.rejection.comment),
-            s.rejection.createdAt
+            OccurredAt.from(s.rejection.createdAt)
           )
         : null,
     });
