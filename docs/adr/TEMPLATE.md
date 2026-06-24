@@ -1,8 +1,10 @@
-# ADR-XXXX: タイトル
+<!-- ファイル名: YYYYMMDD-sss-{slug}.md（sss は base36 3桁ランダム。例: 20260624-a3f-common-selling-price.md）。詳細は ADR-0000 を参照 -->
+
+# ADR-YYYYMMDD-sss: タイトル
 
 | 項目 | 値 |
 |---|---|
-| ステータス | 提案 / 採用 / 廃止 / 差替（→ ADR-XXXX） |
+| ステータス | 提案 / 採用 / 廃止 / 差替（→ ADR-YYYYMMDD-sss） |
 | 起票日 | YYYY-MM-DD |
 | 最終更新日 | YYYY-MM-DD |
 
