@@ -17,13 +17,13 @@ import { ProductId } from "@subdomains/product/domain/values/ProductId";
 /**
  * 共通販売単価集約の Prisma リポジトリ実装。
  *
- * 適用期間（daterange）は Prisma typed では扱えないため、期間行の読み書きは
- * `$queryRaw`/`$executeRaw` で行う（ADR-0067）。daterange の値生成・境界展開は共有
- * フラグメント（`dateRangeValue`/`applicablePeriodBounds`）に委ね3層で共用する。期間行の同期は append-only で、
- * 新規 id のみを挿入し既存行には触れない（`ON CONFLICT (id) DO NOTHING`）。ドメインの
- * 変更操作が addPeriod（追加）のみ・子が id 単位で内容不変ゆえ削除分岐は到達不能で、
- * 既存行を触らないため改定時に updated_at を保持できる（監査保持）。
- * 楽観ロックは親 version の条件付き更新で行う（ADR-0039）。
+ * 適用期間（daterange）は Prisma typed では扱えないため、期間行の読み出しは `$queryRaw` で行い、
+ * 境界展開は共有フラグメント `applicablePeriodBounds` に委ねる（ADR-0067）。期間行の書き込み
+ * （append-only INSERT）・P2002 の ConflictError 翻訳・楽観ロックの version 判定は、3層で共通の
+ * 永続化ヘルパ `sellingPricePeriodPersistence` に委譲する（#458）。期間行の同期は append-only で、
+ * 新規 id のみを挿入し既存行には触れない（`ON CONFLICT (id) DO NOTHING`）。ドメインの変更操作が
+ * addPeriod（追加）のみ・子が id 単位で内容不変ゆえ削除分岐は到達不能で、既存行を触らないため
+ * 改定時に updated_at を保持できる（監査保持）。楽観ロックは親 version の条件付き更新（ADR-0039）。
  */
 export class PrismaCommonSellingPriceRepository implements CommonSellingPriceRepository {
   async findByProductId(productId: ProductId): Promise<CommonSellingPrice | null> {

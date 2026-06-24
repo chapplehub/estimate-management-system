@@ -19,12 +19,13 @@ import { ProductId } from "@subdomains/product/domain/values/ProductId";
  * 得意先別販売単価集約の Prisma リポジトリ実装。
  *
  * 共通販売単価リポジトリと同型で、宛先が得意先（複合自然キー identity）である点だけが異なる
- * （ADR-20260624-8tg）。適用期間（daterange）は Prisma typed では扱えないため、期間行の読み書きは
- * `$queryRaw`/`$executeRaw` で行う（ADR-0067）。daterange の値生成・境界展開は共有フラグメント
- * （`dateRangeValue`/`applicablePeriodBounds`）に委ねる。期間行の同期は append-only で、新規 id
- * のみを挿入し既存行には触れない（`ON CONFLICT (id) DO NOTHING`）。ドメインの変更操作が addPeriod
- * （追加）のみ・子が id 単位で内容不変ゆえ削除分岐は到達不能で、既存行を触らないため改定時に
- * updated_at を保持できる（監査保持）。楽観ロックは親 version の条件付き更新で行う（ADR-0039）。
+ * （ADR-20260624-8tg）。適用期間（daterange）は Prisma typed では扱えないため、期間行の読み出しは
+ * `$queryRaw`・境界展開は `applicablePeriodBounds` に委ねる（ADR-0067）。期間行の書き込み（append-only
+ * INSERT）・P2002 の ConflictError 翻訳・楽観ロックの version 判定は、3層で共通の永続化ヘルパ
+ * `sellingPricePeriodPersistence` に委譲する（#458）。期間行の同期は append-only で、新規 id のみを
+ * 挿入し既存行には触れない（`ON CONFLICT (id) DO NOTHING`）。ドメインの変更操作が addPeriod（追加）
+ * のみ・子が id 単位で内容不変ゆえ削除分岐は到達不能で、既存行を触らないため改定時に updated_at を
+ * 保持できる（監査保持）。楽観ロックは親 version の条件付き更新で行う（ADR-0039）。
  */
 export class PrismaCustomerSellingPriceRepository implements CustomerSellingPriceRepository {
   async findByCustomerIdAndProductId(
