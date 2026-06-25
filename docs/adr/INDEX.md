@@ -92,6 +92,7 @@
 | [0065](0065-move-cost-price-off-product-into-time-valid-common-layer.md) | 原価を Product 集約から外し、共通販売単価と同じ期間付き共通レイヤーへ移設する | 採用 | 2026-06-22 |
 | [0066](0066-common-selling-price-as-product-aggregate-separate-from-cost.md) | 共通販売単価は商品単位集約とし、原価と共通売単価を独立改定の別集約に分離する | 採用 | 2026-06-23 |
 | [20260624-8tg](20260624-8tg-override-selling-price-isomorphic-aggregates.md) | 販売単価の上書き2層は複合自然キーを identity とする独立同型集約として実装する | 採用 | 2026-06-24 |
+| [20260624-95f](20260624-95f-temporal-resolution-input-as-calendar-day-string.md) | 販売単価の時点解決 QueryService は暦日文字列を入力に取り、Date→JST 暦日変換を価格決定側に置く | 採用 | 2026-06-24 |
 
 ## アプリケーション（コマンド）
 
