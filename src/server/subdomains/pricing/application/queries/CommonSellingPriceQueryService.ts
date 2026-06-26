@@ -1,4 +1,4 @@
-import { CommonSellingPriceResolutionDTO } from "./dto/CommonSellingPriceResolutionDTO";
+import { SellingPriceResolutionDTO } from "./dto/SellingPriceResolutionDTO";
 
 /**
  * 共通販売単価の時点解決クエリサービス（価格決定フェーズ B・ADR-0066）。
@@ -16,8 +16,5 @@ export interface CommonSellingPriceQueryService {
    * @returns 当該暦日を覆う適用期間が無ければ `null`。解決不能の翻訳（エラー化）・画面メッセージ化は
    *   文脈を持つ上位の責務とし、ここでは検出に留める。
    */
-  resolve(input: {
-    productId: string;
-    date: string;
-  }): Promise<CommonSellingPriceResolutionDTO | null>;
+  resolve(input: { productId: string; date: string }): Promise<SellingPriceResolutionDTO | null>;
 }
