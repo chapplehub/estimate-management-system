@@ -4,6 +4,7 @@ import {
   type ApprovalFixtureIds,
 } from "@server/__tests__/helpers/ensureApprovalFixtures";
 import { ConflictError } from "@server/shared/errors/ApplicationError";
+import { PrismaTransactionRunner } from "@server/shared/infrastructure/transaction/PrismaTransactionRunner";
 import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
 import { PositionId } from "@subdomains/position/domain/values/PositionId";
 import { RoleId } from "@subdomains/role/domain/values/RoleId";
@@ -28,6 +29,7 @@ const EN = {
   reject: "N9907015",
   withdraw: "N9907016",
   stale: "N9907017",
+  txRollback: "N9907018",
 } as const;
 const ALL_NUMBERS = Object.values(EN);
 
@@ -137,6 +139,23 @@ describe("PrismaEstimateApplicationRepository", () => {
     await expect(repository.insert(buildApplication(variationId, 1))).rejects.toBeInstanceOf(
       ConflictError
     );
+  });
+
+  it("ambient トランザクション内で insert 後に後続処理が失敗すると申請行がロールバックされる（atomic submit 基盤・ADR-20260626-dee）", async () => {
+    const txRunner = new PrismaTransactionRunner();
+    const variationId = await createVariationId(EN.txRollback);
+
+    // insert が素 prisma ではなく currentClient() 経由で ambient tx に相乗りしていれば、
+    // 後続の throw で申請行ごとロールバックされる（atomic submit の挿入側原子性）。
+    await expect(
+      txRunner.run(async () => {
+        await repository.insert(buildApplication(variationId));
+        throw new Error("simulate downstream failure");
+      })
+    ).rejects.toThrow("simulate downstream failure");
+
+    const found = await repository.findByVariationId(variationId);
+    expect(found).toHaveLength(0);
   });
 
   describe("update（承認・差戻・取下＋楽観ロック）", () => {

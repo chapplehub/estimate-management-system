@@ -1,5 +1,5 @@
-import { ConflictError } from "@server/shared/errors/ApplicationError";
 import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
+import { TransactionRunner } from "@server/shared/application/transaction/TransactionRunner";
 import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
 import { EmployeeQueryService } from "@subdomains/employee/application/queries/EmployeeQueryService";
 import { PositionQueryService } from "@subdomains/position/application/queries/PositionQueryService";
@@ -15,7 +15,6 @@ import { EstimateApplicationRepository } from "@subdomains/estimate/domain/repos
 import { EstimateApprovalExemptionRepository } from "@subdomains/estimate/domain/repositories/approval/EstimateApprovalExemptionRepository";
 import { type ApprovalChainBlockedReason } from "@subdomains/estimate/domain/services/approval/ApprovalChainBuilder";
 import { EstimateVariationId } from "@subdomains/estimate/domain/values/EstimateVariationId";
-import { EstimateApplicationPersistError } from "../errors/EstimateApplicationPersistError";
 import { assembleApprovalChain } from "../shared/approval/assembleApprovalChain";
 import { loadApprovalChainInputs } from "../shared/approval/loadApprovalChainInputs";
 
@@ -49,16 +48,20 @@ function blockedMessage(reason: ApprovalChainBlockedReason): string {
 }
 
 /**
- * 見積申請コマンド（version 関門で「1見積1前進」を直列化・ADR-0068・#417・§6.3）
+ * 見積申請コマンド（version 関門で「1見積1前進」を直列化・ADR-0068・ADR-20260626-dee・#417・§6.3）
  *
  * 単一ジェスチャで結末が2通り（承認必要なら申請＋ステップ列を作成、免除なら免除を記録）。
- * judge を再評価して分岐し（TOCTOU 防御・§6.3）、`Estimate.version` の条件付き更新を申請挿入の
+ * judge を再評価して分岐し（TOCTOU 防御・§6.3）、`Estimate.version` の条件付きインクリメントを申請挿入の
  * 前段の関門に置く。兄弟チェック（逐次）と version 関門（同時）の二段で横断不変条件を担保する。
  *
- * - 順序: INACTIVE 拒否 → 兄弟前進チェック → judge 再評価 → version 関門 → 挿入。
- * - version 関門失敗（stale）は `ConflictError`（リポジトリ由来・ケース1）。
- * - 関門通過後の挿入失敗は `EstimateApplicationPersistError` で包む（ケース2）。順序が
- *   「bump → insert」なので部分失敗は無害な version 空振りに留まり、再 Preview で回復する。
+ * - 順序: INACTIVE 拒否 → 兄弟前進チェック → judge 再評価 → (version 関門 → 挿入)。
+ * - 関門は集約本体を変更しないため `bumpVersion`（根の version だけを条件付きで +1）を使い、全集約
+ *   update の deleteMany/upsert／refetch を避けて直列化トランザクション内のロックを最小化する。
+ * - **version 関門と挿入は単一トランザクションで原子化する（atomic submit・ADR-20260626-dee）**。
+ *   bump コミット〜insert コミット間の TOCTOU 窓（別バリの二重前進）を閉じる。bump 後の挿入失敗は
+ *   tx ごとロールバックされ、無害な version 空振りすら起きない（ADR-0068 ケース2 は消滅）。
+ * - エラーは2分岐: 関門失敗（stale）・挿入の一意制約衝突はいずれも `ConflictError`（リポジトリ由来）
+ *   として素通し／両成功は正常 union（`ApplicationSubmitted | ApprovalExempted`）。
  */
 export class SubmitApplicationCommand {
   constructor(
@@ -68,7 +71,8 @@ export class SubmitApplicationCommand {
     private readonly productQueryService: ProductQueryService,
     private readonly employeeQueryService: EmployeeQueryService,
     private readonly positionQueryService: PositionQueryService,
-    private readonly roleQueryService: RoleQueryService
+    private readonly roleQueryService: RoleQueryService,
+    private readonly txRunner: TransactionRunner
   ) {}
 
   async execute(input: SubmitApplicationInput): Promise<SubmitApplicationResult> {
@@ -96,13 +100,19 @@ export class SubmitApplicationCommand {
       throw new BusinessRuleViolationError(blockedMessage(result.reason));
     }
 
-    // 5. version 関門（ADR-0068）。通過した者だけが挿入へ進む。stale なら ConflictError（ケース1）。
-    await this.estimateRepository.update(loaded.estimate, input.version);
-
-    // 6. 関門通過後にだけ永続化。挿入失敗は EstimateApplicationPersistError で包む（ケース2）。
+    // 5-6. version 関門と挿入を単一トランザクションで原子化する（atomic submit・ADR-20260626-dee）。
+    //      「version が k+1 になる瞬間に申請行も同時に可視になる」ため、bump コミット〜insert
+    //      コミット間の TOCTOU 窓（別バリの二重前進）が消える。bump 後の挿入失敗は tx ごと
+    //      ロールバックされ、無害な version 空振りも起きない。関門失敗（stale）・挿入の一意制約
+    //      衝突はいずれも ConflictError として伝播し、tx をロールバックする。
     const variationId = new EstimateVariationId(input.variationId);
     const operatorId = new EmployeeId(input.operatorEmployeeId);
-    try {
+    return this.txRunner.run<SubmitApplicationResult>(async () => {
+      // version 関門（ADR-0068）。通過した者だけが挿入へ進む。stale なら ConflictError。
+      // submit は Estimate 本体を変更しないため、全集約 update ではなく version だけを進める
+      // 専用の bumpVersion を使う（直列化トランザクション内で保持するロックを最小化）。
+      await this.estimateRepository.bumpVersion(loaded.estimate.id, input.version);
+
       if (result.kind === "EXEMPT") {
         const exemption = EstimateApprovalExemption.create(variationId, result.reason, operatorId);
         const saved = await this.exemptionRepository.insert(exemption);
@@ -127,15 +137,7 @@ export class SubmitApplicationCommand {
         finalApprovalPositionId: saved.finalApprovalPositionId.value,
         attempt: saved.attempt,
       };
-    } catch (error) {
-      // ConflictError は insert リポジトリが P2002 を翻訳した「再試行可能な競合」（ケース1）。
-      // これを PersistError（ケース2＝「申請に失敗しました」）で包むと、UI の再読込誘導・409 相当の
-      // 扱いが崩れるため素通しする。それ以外の保存失敗だけを PersistError で包む（ADR-0068）。
-      if (error instanceof ConflictError) {
-        throw error;
-      }
-      throw new EstimateApplicationPersistError(error);
-    }
+    });
   }
 
   /** 見積配下のいずれかのバリエーションが前進中（免除済み or 申請中/承認済）なら拒否する。 */

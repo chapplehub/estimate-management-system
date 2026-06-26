@@ -1,5 +1,5 @@
-import prisma from "@server/prisma";
 import { ConflictError } from "@server/shared/errors/ApplicationError";
+import { currentClient, runAtomically } from "@server/shared/infrastructure/transaction/txContext";
 import { Estimate } from "@subdomains/estimate/domain/entities";
 import { EstimateRepository } from "@subdomains/estimate/domain/repositories/EstimateRepository";
 import { EstimateId } from "@subdomains/estimate/domain/values/EstimateId";
@@ -17,6 +17,11 @@ import { Prisma } from "@generated/prisma/client";
  * 見積集約（Estimate → EstimateVariation → EstimateItem ＋ 修理系子エンティティ）の
  * 永続化を担う EstimateRepository の Prisma 実装。
  * 集約ルート Estimate 単位でのみ永続化し、子は集約経由でカスケードする。
+ *
+ * DB アクセスは素の `prisma` ではなく `currentClient()` 経由で行う（ADR-20260626-dee）。これにより
+ * TransactionRunner（申請 submit の atomic submit 等）が張った ambient トランザクションに
+ * 相乗りし、無ければ global prisma で従来どおり動く。多文メソッドは `runAtomically`（join-or-open）
+ * で囲み、単独呼び出しでも原子性を保つ。
  */
 export class PrismaEstimateRepository implements EstimateRepository {
   /**
@@ -26,13 +31,14 @@ export class PrismaEstimateRepository implements EstimateRepository {
    */
   async insert(estimate: Estimate): Promise<Estimate> {
     try {
-      await prisma.$transaction(async (tx) => {
-        await tx.estimate.create({
+      await runAtomically(async () => {
+        const db = currentClient();
+        await db.estimate.create({
           data: EstimateMapper.toEstimateCreateInput(estimate),
         });
         const components = EstimateMapper.toSetComponentCreateManyInput(estimate);
         if (components.length > 0) {
-          await tx.estimateSetComponent.createMany({ data: components });
+          await db.estimateSetComponent.createMany({ data: components });
         }
       });
     } catch (error) {
@@ -51,16 +57,17 @@ export class PrismaEstimateRepository implements EstimateRepository {
    */
   async insertWithCopies(estimate: Estimate, copies: EstimateVariationCopy[]): Promise<Estimate> {
     try {
-      await prisma.$transaction(async (tx) => {
-        await tx.estimate.create({
+      await runAtomically(async () => {
+        const db = currentClient();
+        await db.estimate.create({
           data: EstimateMapper.toEstimateCreateInput(estimate),
         });
         const components = EstimateMapper.toSetComponentCreateManyInput(estimate);
         if (components.length > 0) {
-          await tx.estimateSetComponent.createMany({ data: components });
+          await db.estimateSetComponent.createMany({ data: components });
         }
         if (copies.length > 0) {
-          await tx.estimateVariationCopy.createMany({
+          await db.estimateVariationCopy.createMany({
             data: EstimateMapper.toVariationCopyCreateManyInput(copies),
           });
         }
@@ -100,12 +107,13 @@ export class PrismaEstimateRepository implements EstimateRepository {
     const variationIds = estimate.variations.map((v) => v.id.value);
 
     try {
-      await prisma.$transaction(async (tx) => {
+      await runAtomically(async () => {
+        const db = currentClient();
         // 1. ルートの scalar フィールドを条件付き更新（楽観ロックのチェック地点）。
         //    count 0 は「version 不一致（先行更新あり）」と「行の消失（削除済み）」の両方を
         //    含むが、UPDATE 文からは区別できないため両方を覆うメッセージで競合として扱う。
-        //    throw により $transaction 全体（子の差分 upsert 含む）がロールバックされる。
-        const rootUpdate = await tx.estimate.updateMany({
+        //    throw により トランザクション全体（子の差分 upsert 含む）がロールバックされる。
+        const rootUpdate = await db.estimate.updateMany({
           where: { id: estimateId, version: expectedVersion },
           data: {
             ...EstimateMapper.toEstimateScalarData(estimate),
@@ -119,7 +127,7 @@ export class PrismaEstimateRepository implements EstimateRepository {
         }
 
         // 2. 集約から消えたバリエーションを削除（items → revisedDetail へカスケード）
-        await tx.estimateVariation.deleteMany({
+        await db.estimateVariation.deleteMany({
           where: { estimateId, id: { notIn: variationIds } },
         });
 
@@ -131,7 +139,7 @@ export class PrismaEstimateRepository implements EstimateRepository {
         for (const variation of estimate.variations) {
           const variationId = variation.id.value;
           const variationScalar = EstimateMapper.toVariationScalarData(variation);
-          await tx.estimateVariation.upsert({
+          await db.estimateVariation.upsert({
             where: { id: variationId },
             create: { id: variationId, estimateId, ...variationScalar },
             update: variationScalar,
@@ -142,7 +150,7 @@ export class PrismaEstimateRepository implements EstimateRepository {
           // 自然キー（revisedVariationId @unique）で upsert する（update は no-op）。
           // 改訂先バリエーションの削除時は onDelete: Cascade で系譜行も消える
           if (variation.revisedFrom) {
-            await tx.estimateVariationRevision.upsert({
+            await db.estimateVariationRevision.upsert({
               where: { revisedVariationId: variationId },
               create: EstimateMapper.toVariationRevisionCreateInput(variation),
               update: {},
@@ -150,14 +158,14 @@ export class PrismaEstimateRepository implements EstimateRepository {
           }
 
           const itemIds = variation.items.map((i) => i.id.value);
-          await tx.estimateItem.deleteMany({
+          await db.estimateItem.deleteMany({
             where: { variationId, id: { notIn: itemIds } },
           });
 
           for (const item of variation.items) {
             const itemId = item.id.value;
             const itemScalar = EstimateMapper.toItemScalarData(item);
-            await tx.estimateItem.upsert({
+            await db.estimateItem.upsert({
               where: { id: itemId },
               create: { id: itemId, variationId, ...itemScalar },
               update: itemScalar,
@@ -166,7 +174,7 @@ export class PrismaEstimateRepository implements EstimateRepository {
             // 改訂明細詳細（1:1）の同期
             if (item.revisedDetail) {
               const revisedScalar = EstimateMapper.toRevisedDetailScalarData(item.revisedDetail);
-              await tx.revisedEstimateItemDetail.upsert({
+              await db.revisedEstimateItemDetail.upsert({
                 where: { estimateItemId: itemId },
                 create: {
                   id: item.revisedDetail.id.value,
@@ -176,7 +184,7 @@ export class PrismaEstimateRepository implements EstimateRepository {
                 update: revisedScalar,
               });
             } else {
-              await tx.revisedEstimateItemDetail.deleteMany({
+              await db.revisedEstimateItemDetail.deleteMany({
                 where: { estimateItemId: itemId },
               });
             }
@@ -186,13 +194,13 @@ export class PrismaEstimateRepository implements EstimateRepository {
           //     （全削除→再作成）。明細 upsert の後に行うため、構成明細 FK は満たされる。
           const setGroupIds = variation.setGroups.map((g) => g.id.value);
           // 集約から消えた群を削除（配下の交差行は onDelete: Cascade で連鎖削除）
-          await tx.estimateSetGroup.deleteMany({
+          await db.estimateSetGroup.deleteMany({
             where: { variationId, id: { notIn: setGroupIds } },
           });
           // 生存・新規の群を id キーで upsert（群ヘッダのみ。被参照のため identity を保持）
           for (const group of variation.setGroups) {
             const groupScalar = EstimateMapper.toSetGroupScalarData(group);
-            await tx.estimateSetGroup.upsert({
+            await db.estimateSetGroup.upsert({
               where: { id: group.id.value },
               create: { id: group.id.value, variationId, ...groupScalar },
               update: groupScalar,
@@ -202,7 +210,7 @@ export class PrismaEstimateRepository implements EstimateRepository {
           // 作り直す。削除済み明細・群の交差行は上のカスケードで既に消えているため、当該
           // バリエーションの交差行はここでゼロになり、createMany で PK 衝突は起きない。
           if (setGroupIds.length > 0) {
-            await tx.estimateSetComponent.deleteMany({
+            await db.estimateSetComponent.deleteMany({
               where: { setGroupId: { in: setGroupIds } },
             });
           }
@@ -213,33 +221,33 @@ export class PrismaEstimateRepository implements EstimateRepository {
             }))
           );
           if (components.length > 0) {
-            await tx.estimateSetComponent.createMany({ data: components });
+            await db.estimateSetComponent.createMany({ data: components });
           }
         }
 
         // 4. 修理系サブタイプ（排他・1:1）の同期。存在する片方を upsert、他方を削除。
         if (estimate.repairDetail) {
           const repairScalar = EstimateMapper.toRepairDetailScalarData(estimate.repairDetail);
-          await tx.repairEstimateDetail.upsert({
+          await db.repairEstimateDetail.upsert({
             where: { estimateId },
             create: { id: estimate.repairDetail.id.value, estimateId, ...repairScalar },
             update: repairScalar,
           });
         } else {
-          await tx.repairEstimateDetail.deleteMany({ where: { estimateId } });
+          await db.repairEstimateDetail.deleteMany({ where: { estimateId } });
         }
 
         if (estimate.afterRepairDetail) {
           const afterScalar = EstimateMapper.toAfterRepairDetailScalarData(
             estimate.afterRepairDetail
           );
-          await tx.afterRepairEstimateDetail.upsert({
+          await db.afterRepairEstimateDetail.upsert({
             where: { estimateId },
             create: { id: estimate.afterRepairDetail.id.value, estimateId, ...afterScalar },
             update: afterScalar,
           });
         } else {
-          await tx.afterRepairEstimateDetail.deleteMany({ where: { estimateId } });
+          await db.afterRepairEstimateDetail.deleteMany({ where: { estimateId } });
         }
       });
     } catch (error) {
@@ -255,9 +263,30 @@ export class PrismaEstimateRepository implements EstimateRepository {
     return this.refetch(estimateId);
   }
 
+  /**
+   * version 関門専用に根の version だけを条件付きで +1 する（ADR-0039・ADR-20260626-dee）。
+   *
+   * scalar・子エンティティを一切書き換えず `WHERE id AND version = expectedVersion` の
+   * インクリメント1文のみを発行する。submit のように集約本体を変更しない直列化では、
+   * {@link update} の全集約 deleteMany/upsert／refetch を避け、保持するロックを最小化する。
+   * count 0 は version 不一致（先行更新）と行消失（削除済み）の両方を覆い、いずれも競合として
+   * ConflictError へ翻訳する。ambient トランザクション配下なら throw で全体がロールバックされる。
+   */
+  async bumpVersion(estimateId: EstimateId, expectedVersion: number): Promise<void> {
+    const result = await currentClient().estimate.updateMany({
+      where: { id: estimateId.value, version: expectedVersion },
+      data: { version: { increment: 1 } },
+    });
+    if (result.count === 0) {
+      throw new ConflictError(
+        "他のユーザーによって更新または削除されています。画面を再読み込みして最新の内容を確認してください。"
+      );
+    }
+  }
+
   /** 保存後の集約を完全な include で読み直して返す（insert / update の戻り値共通化） */
   private async refetch(estimateId: string): Promise<Estimate> {
-    const row = await prisma.estimate.findUnique({
+    const row = await currentClient().estimate.findUnique({
       where: { id: estimateId },
       include: ESTIMATE_FULL_INCLUDE,
     });
@@ -268,7 +297,7 @@ export class PrismaEstimateRepository implements EstimateRepository {
   }
 
   async delete(id: EstimateId): Promise<void> {
-    const existing = await prisma.estimate.findUnique({
+    const existing = await currentClient().estimate.findUnique({
       where: { id: id.value },
       select: { id: true },
     });
@@ -281,16 +310,17 @@ export class PrismaEstimateRepository implements EstimateRepository {
     // schema の onDelete: Cascade で連鎖削除される。
     // 改訂系譜（ADR-0044）は両端とも本見積内のバリエーションを指すが、sourceVariation 側
     // FK が Restrict のためカスケードの削除順序によっては違反になる。先に明示削除する
-    await prisma.$transaction(async (tx) => {
-      await tx.estimateVariationRevision.deleteMany({
+    await runAtomically(async () => {
+      const db = currentClient();
+      await db.estimateVariationRevision.deleteMany({
         where: { sourceVariation: { estimateId: id.value } },
       });
-      await tx.estimate.delete({ where: { id: id.value } });
+      await db.estimate.delete({ where: { id: id.value } });
     });
   }
 
   async findById(id: EstimateId): Promise<Estimate | null> {
-    const row = await prisma.estimate.findUnique({
+    const row = await currentClient().estimate.findUnique({
       where: { id: id.value },
       include: ESTIMATE_FULL_INCLUDE,
     });
@@ -299,7 +329,7 @@ export class PrismaEstimateRepository implements EstimateRepository {
   }
 
   async findByEstimateNumber(estimateNumber: EstimateNumber): Promise<Estimate | null> {
-    const row = await prisma.estimate.findUnique({
+    const row = await currentClient().estimate.findUnique({
       where: { estimateNumber: estimateNumber.value },
       include: ESTIMATE_FULL_INCLUDE,
     });

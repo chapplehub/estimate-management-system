@@ -20,6 +20,7 @@ import {
 import prisma from "@server/prisma";
 import { ConflictError } from "@server/shared/errors/ApplicationError";
 import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
+import { PrismaTransactionRunner } from "@server/shared/infrastructure/transaction/PrismaTransactionRunner";
 import { SubmissionType } from "@subdomains/estimate/domain/values/SubmissionType";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { PrismaEstimateRepository } from "../PrismaEstimateRepository";
@@ -45,6 +46,11 @@ const EN = {
   setGroupAddRemove: "N9900015",
   setGroupMove: "N9900016",
   setGroupRemoveAdd: "N9900017",
+  txRollback: "N9900018",
+  bump: "N9900019",
+  bumpNoChildWrite: "N9900020",
+  bumpStale: "N9900021",
+  bumpTxRollback: "N9900022",
   missing: "N9900099",
 } as const;
 const ALL_NUMBERS = Object.values(EN);
@@ -487,6 +493,91 @@ describe("PrismaEstimateRepository", () => {
       // B の変更が残っている（lost update が起きていない）
       const found = await repository.findById(saved.id);
       expect(found?.deadline.toISOString()).toBe("2025-12-31T00:00:00.000Z");
+    });
+
+    it("外部トランザクション内で update が bump した後に後続処理が失敗すると version がロールバックされる（atomic submit 基盤・ADR-20260626-dee）", async () => {
+      const txRunner = new PrismaTransactionRunner();
+      const saved = await repository.insert(buildNewEstimate(ids, EN.txRollback));
+
+      // version 関門（bump 1→2）を通した直後に、後続の申請挿入失敗を模して throw する。
+      // update が自前 $transaction を開かず ambient tx に相乗りしていれば、throw で bump ごと
+      // ロールバックされ「無害な version 空振り」すら起きない（ADR-20260626-dee の原子性）。
+      await expect(
+        txRunner.run(async () => {
+          await repository.update(saved, 1);
+          throw new Error("simulate downstream insert failure");
+        })
+      ).rejects.toThrow("simulate downstream insert failure");
+
+      const after = await prisma.estimate.findUnique({
+        where: { id: saved.id.value },
+        select: { version: true },
+      });
+      expect(after?.version).toBe(1);
+    });
+  });
+
+  describe("bumpVersion（version 関門専用・ADR-20260626-dee）", () => {
+    it("expectedVersion 一致で根の version だけが +1 される", async () => {
+      const saved = await repository.insert(buildNewEstimate(ids, EN.bump));
+
+      await repository.bumpVersion(saved.id, 1);
+
+      const after = await prisma.estimate.findUnique({
+        where: { id: saved.id.value },
+        select: { version: true },
+      });
+      expect(after?.version).toBe(2);
+    });
+
+    it("子（variation/item）には一切書き込まない（updated_at が不変）", async () => {
+      const saved = await repository.insert(buildNewEstimate(ids, EN.bumpNoChildWrite));
+      const variationId = saved.variations[0].id.value;
+      const before = await prisma.estimateVariation.findUniqueOrThrow({
+        where: { id: variationId },
+        select: { updatedAt: true },
+      });
+
+      await repository.bumpVersion(saved.id, 1);
+
+      // update() なら全 variation/item を upsert して updated_at が動くが、bumpVersion は
+      // 根の version しか触らないため子行は完全に不変。
+      const after = await prisma.estimateVariation.findUniqueOrThrow({
+        where: { id: variationId },
+        select: { updatedAt: true },
+      });
+      expect(after.updatedAt.getTime()).toBe(before.updatedAt.getTime());
+    });
+
+    it("stale な expectedVersion では ConflictError（先行更新後に古いトークンで関門を叩く）", async () => {
+      const saved = await repository.insert(buildNewEstimate(ids, EN.bumpStale));
+
+      // 先行する関門通過で DB version を 2 に進める
+      await repository.bumpVersion(saved.id, 1);
+
+      // 古いトークン 1 のまま関門を叩く → count 0 で競合
+      await expect(repository.bumpVersion(saved.id, 1)).rejects.toThrow(ConflictError);
+    });
+
+    it("外部トランザクション内で bump した後に後続処理が失敗すると version がロールバックされる（atomic submit 基盤・ADR-20260626-dee）", async () => {
+      const txRunner = new PrismaTransactionRunner();
+      const saved = await repository.insert(buildNewEstimate(ids, EN.bumpTxRollback));
+
+      // version 関門（bump 1→2）を通した直後に、後続の申請挿入失敗を模して throw する。
+      // bumpVersion が currentClient() 経由で ambient tx に相乗りしていれば、throw で bump ごと
+      // ロールバックされ「無害な version 空振り」すら起きない（ADR-20260626-dee の原子性）。
+      await expect(
+        txRunner.run(async () => {
+          await repository.bumpVersion(saved.id, 1);
+          throw new Error("simulate downstream insert failure");
+        })
+      ).rejects.toThrow("simulate downstream insert failure");
+
+      const after = await prisma.estimate.findUnique({
+        where: { id: saved.id.value },
+        select: { version: true },
+      });
+      expect(after?.version).toBe(1);
     });
   });
 

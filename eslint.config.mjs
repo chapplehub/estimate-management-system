@@ -3,6 +3,50 @@ import nextTs from "eslint-config-next/typescript";
 import prettier from "eslint-config-prettier/flat";
 import { defineConfig, globalIgnores } from "eslint/config";
 
+// 集約境界規約: 各集約の子エンティティへの集約外からの直接 import を禁止するパターン群。
+// グローバルルールと、atomic submit 参加リポジトリ向けオーバーライド（素 prisma も追加禁止）の
+// 双方で共有する。ESLint flat config はルールオプションをマージせず置換するため、オーバーライド側で
+// no-restricted-imports を再宣言する際に本パターンを失わないよう const に括り出している。
+const aggregateChildImportPatterns = [
+  {
+    group: [
+      "@subdomains/estimate/domain/entities/EstimateVariation",
+      "@subdomains/estimate/domain/entities/EstimateItem",
+      "@subdomains/estimate/domain/entities/RepairEstimateDetail",
+      "@subdomains/estimate/domain/entities/AfterRepairEstimateDetail",
+      "@subdomains/estimate/domain/entities/RevisedEstimateItemDetail",
+      "@subdomains/estimate/domain/entities/approval/EstimateApprovalStep",
+    ],
+    message:
+      "Estimate / EstimateApplication 集約の子エンティティは集約外から直接 import できません。集約ルート（@subdomains/estimate/domain/entities）経由で操作してください。",
+  },
+  {
+    group: ["@subdomains/pricing/domain/entities/CommonSellingPricePeriod"],
+    message:
+      "共通販売単価集約の子エンティティ CommonSellingPricePeriod は集約外から直接 import できません。集約ルート（@subdomains/pricing/domain/entities）経由で操作してください。再構成は CommonSellingPrice.reconstruct に VO 記述子を渡してください。",
+  },
+  {
+    group: ["@subdomains/pricing/domain/entities/CustomerSellingPricePeriod"],
+    message:
+      "得意先別販売単価集約の子エンティティ CustomerSellingPricePeriod は集約外から直接 import できません。集約ルート（@subdomains/pricing/domain/entities）経由で操作してください。再構成は CustomerSellingPrice.reconstruct に VO 記述子を渡してください。",
+  },
+  {
+    group: ["@subdomains/pricing/domain/entities/DeliveryLocationSellingPricePeriod"],
+    message:
+      "納品先別販売単価集約の子エンティティ DeliveryLocationSellingPricePeriod は集約外から直接 import できません。集約ルート（@subdomains/pricing/domain/entities）経由で操作してください。再構成は DeliveryLocationSellingPrice.reconstruct に VO 記述子を渡してください。",
+  },
+];
+
+// atomic submit（ADR-20260626-dee）の参加リポジトリ。素 prisma を import すると ambient トランザクションを
+// 逃げ、bump+insert の原子性を静かに壊すため、これらに限り @server/prisma の import を追加で禁止する
+// （currentClient()/runAtomically 経由を強制）。最小スコープ: 未参加 repo は次に tx に参加する時点で
+// 本リストへ移す（#440 の repo 変換スコープは estimate / application / exemption の3つ）。
+const atomicSubmitRepositoryFiles = [
+  "src/server/subdomains/estimate/infrastructure/prisma/PrismaEstimateRepository.ts",
+  "src/server/subdomains/estimate/infrastructure/prisma/approval/PrismaEstimateApplicationRepository.ts",
+  "src/server/subdomains/estimate/infrastructure/prisma/approval/PrismaEstimateApprovalExemptionRepository.ts",
+];
+
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
@@ -55,40 +99,7 @@ const eslintConfig = defineConfig([
       // バレル (@subdomains/estimate/domain/entities) 経由で集約ルート Estimate のみ
       // 公開する。同 entities ディレクトリ内の相対 import（隣接テスト等）は別オーバーライド
       // で許可する。
-      "no-restricted-imports": [
-        "error",
-        {
-          patterns: [
-            {
-              group: [
-                "@subdomains/estimate/domain/entities/EstimateVariation",
-                "@subdomains/estimate/domain/entities/EstimateItem",
-                "@subdomains/estimate/domain/entities/RepairEstimateDetail",
-                "@subdomains/estimate/domain/entities/AfterRepairEstimateDetail",
-                "@subdomains/estimate/domain/entities/RevisedEstimateItemDetail",
-                "@subdomains/estimate/domain/entities/approval/EstimateApprovalStep",
-              ],
-              message:
-                "Estimate / EstimateApplication 集約の子エンティティは集約外から直接 import できません。集約ルート（@subdomains/estimate/domain/entities）経由で操作してください。",
-            },
-            {
-              group: ["@subdomains/pricing/domain/entities/CommonSellingPricePeriod"],
-              message:
-                "共通販売単価集約の子エンティティ CommonSellingPricePeriod は集約外から直接 import できません。集約ルート（@subdomains/pricing/domain/entities）経由で操作してください。再構成は CommonSellingPrice.reconstruct に VO 記述子を渡してください。",
-            },
-            {
-              group: ["@subdomains/pricing/domain/entities/CustomerSellingPricePeriod"],
-              message:
-                "得意先別販売単価集約の子エンティティ CustomerSellingPricePeriod は集約外から直接 import できません。集約ルート（@subdomains/pricing/domain/entities）経由で操作してください。再構成は CustomerSellingPrice.reconstruct に VO 記述子を渡してください。",
-            },
-            {
-              group: ["@subdomains/pricing/domain/entities/DeliveryLocationSellingPricePeriod"],
-              message:
-                "納品先別販売単価集約の子エンティティ DeliveryLocationSellingPricePeriod は集約外から直接 import できません。集約ルート（@subdomains/pricing/domain/entities）経由で操作してください。再構成は DeliveryLocationSellingPrice.reconstruct に VO 記述子を渡してください。",
-            },
-          ],
-        },
-      ],
+      "no-restricted-imports": ["error", { patterns: aggregateChildImportPatterns }],
       // Naming convention rules (based on typescript-eslint recommendations)
       "@typescript-eslint/naming-convention": [
         "error",
@@ -186,6 +197,28 @@ const eslintConfig = defineConfig([
     ],
     rules: {
       "no-restricted-imports": "off",
+    },
+  },
+  // atomic submit 参加リポジトリ（ADR-20260626-dee）は素 prisma を import せず currentClient()/runAtomically
+  // 経由でアクセスする。素 prisma は ambient トランザクションを逃げ、bump+insert の原子性を静かに
+  // 壊すため、これらのファイルに限り @server/prisma の import を追加で禁止する。集約境界パターン
+  // （aggregateChildImportPatterns）も併せて維持する（flat config はルールを置換するため再宣言が要る）。
+  {
+    files: atomicSubmitRepositoryFiles,
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: aggregateChildImportPatterns,
+          paths: [
+            {
+              name: "@server/prisma",
+              message:
+                "atomic submit 参加リポジトリ（ADR-20260626-dee）は素の prisma を import せず、currentClient()/runAtomically（@server/shared/infrastructure/transaction/txContext）経由でアクセスしてください。素 prisma は ambient トランザクションを逃げ、bump+insert の原子性を静かに壊します。",
+            },
+          ],
+        },
+      ],
     },
   },
 ]);

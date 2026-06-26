@@ -1,5 +1,5 @@
-import prisma from "@server/prisma";
 import { ConflictError } from "@server/shared/errors/ApplicationError";
+import { currentClient } from "@server/shared/infrastructure/transaction/txContext";
 import { EstimateApprovalExemption } from "@subdomains/estimate/domain/entities";
 import { EstimateApprovalExemptionRepository } from "@subdomains/estimate/domain/repositories/approval/EstimateApprovalExemptionRepository";
 import { EstimateVariationId } from "@subdomains/estimate/domain/values/EstimateVariationId";
@@ -20,7 +20,7 @@ export class PrismaEstimateApprovalExemptionRepository implements EstimateApprov
    */
   async insert(exemption: EstimateApprovalExemption): Promise<EstimateApprovalExemption> {
     try {
-      await prisma.estimateApprovalExemption.create({
+      await currentClient().estimateApprovalExemption.create({
         data: EstimateApprovalExemptionMapper.toCreateInput(exemption),
       });
     } catch (error) {
@@ -33,7 +33,7 @@ export class PrismaEstimateApprovalExemptionRepository implements EstimateApprov
   async findByVariationId(
     variationId: EstimateVariationId
   ): Promise<EstimateApprovalExemption | null> {
-    const row = await prisma.estimateApprovalExemption.findUnique({
+    const row = await currentClient().estimateApprovalExemption.findUnique({
       where: { variationId: variationId.value },
     });
 
