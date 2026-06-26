@@ -263,6 +263,27 @@ export class PrismaEstimateRepository implements EstimateRepository {
     return this.refetch(estimateId);
   }
 
+  /**
+   * version 関門専用に根の version だけを条件付きで +1 する（ADR-0039・ADR-20260626-dee）。
+   *
+   * scalar・子エンティティを一切書き換えず `WHERE id AND version = expectedVersion` の
+   * インクリメント1文のみを発行する。submit のように集約本体を変更しない直列化では、
+   * {@link update} の全集約 deleteMany/upsert／refetch を避け、保持するロックを最小化する。
+   * count 0 は version 不一致（先行更新）と行消失（削除済み）の両方を覆い、いずれも競合として
+   * ConflictError へ翻訳する。ambient トランザクション配下なら throw で全体がロールバックされる。
+   */
+  async bumpVersion(estimateId: EstimateId, expectedVersion: number): Promise<void> {
+    const result = await currentClient().estimate.updateMany({
+      where: { id: estimateId.value, version: expectedVersion },
+      data: { version: { increment: 1 } },
+    });
+    if (result.count === 0) {
+      throw new ConflictError(
+        "他のユーザーによって更新または削除されています。画面を再読み込みして最新の内容を確認してください。"
+      );
+    }
+  }
+
   /** 保存後の集約を完全な include で読み直して返す（insert / update の戻り値共通化） */
   private async refetch(estimateId: string): Promise<Estimate> {
     const row = await currentClient().estimate.findUnique({
