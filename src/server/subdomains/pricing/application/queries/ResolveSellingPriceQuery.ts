@@ -43,20 +43,25 @@ export class ResolveSellingPriceQuery {
   async execute(target: SellingPriceResolutionTarget): Promise<SellingUnitPrice> {
     const date = toJstCalendarDay(target.estimateDate);
 
-    const overrideDto =
+    // 上書き層と共通層は互いに出力依存が無いため並列に解決する。Policy が `override ?? common`
+    // で先勝ちするため共通層は上書きヒット時に捨てられるが、上書き層は例外的存在で多数派は共通層
+    // に着地する設計上、常時並列のほうが短絡（上書きnull時のみ共通取得）より総レイテンシが小さい。
+    const overridePromise =
       target.addressee === "CUSTOMER"
-        ? await this.customerQuery.execute({
+        ? this.customerQuery.execute({
             customerId: target.customerId,
             productId: target.productId,
             date,
           })
-        : await this.deliveryLocationQuery.execute({
+        : this.deliveryLocationQuery.execute({
             deliveryLocationId: target.deliveryLocationId,
             productId: target.productId,
             date,
           });
 
-    const commonDto = await this.commonQuery.execute({ productId: target.productId, date });
+    const commonPromise = this.commonQuery.execute({ productId: target.productId, date });
+
+    const [overrideDto, commonDto] = await Promise.all([overridePromise, commonPromise]);
 
     return PriceResolutionPolicy.resolve({
       override: toSellingUnitPrice(overrideDto),
