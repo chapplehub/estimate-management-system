@@ -6,6 +6,7 @@ import {
 import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
 import { ConflictError } from "@server/shared/errors/ApplicationError";
 import prisma from "@server/prisma";
+import { PrismaTransactionRunner } from "@server/shared/infrastructure/transaction/PrismaTransactionRunner";
 import { generateId } from "@server/shared/generateId";
 import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
 import { PrismaPositionQueryService } from "@subdomains/position/infrastructure/queries/PrismaPositionQueryService";
@@ -18,6 +19,7 @@ import {
 import { PrismaEstimateRepository } from "@subdomains/estimate/infrastructure/prisma/PrismaEstimateRepository";
 import { PrismaEstimateApplicationRepository } from "@subdomains/estimate/infrastructure/prisma/approval/PrismaEstimateApplicationRepository";
 import { PrismaEstimateApprovalExemptionRepository } from "@subdomains/estimate/infrastructure/prisma/approval/PrismaEstimateApprovalExemptionRepository";
+import { EstimateApplicationRepository } from "@subdomains/estimate/domain/repositories/approval/EstimateApplicationRepository";
 import { EstimateVariationId } from "@subdomains/estimate/domain/values/EstimateVariationId";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { SubmitApplicationCommand } from "../SubmitApplicationCommand";
@@ -34,6 +36,7 @@ describe("SubmitApplicationCommand", () => {
     inactive: "N9909004",
     sibling: "N9909005",
     stale: "N9909006",
+    atomicRollback: "N9909007",
   } as const;
   const ALL_NUMBERS = Object.values(EN);
   const OPERATOR_CD = "EMP999097";
@@ -81,7 +84,8 @@ describe("SubmitApplicationCommand", () => {
       new PrismaProductQueryService(),
       new PrismaEmployeeQueryService(),
       new PrismaPositionQueryService(),
-      new PrismaRoleQueryService()
+      new PrismaRoleQueryService(),
+      new PrismaTransactionRunner()
     );
     await cleanupApprovalFixtures(ALL_NUMBERS);
   });
@@ -230,6 +234,54 @@ describe("SubmitApplicationCommand", () => {
         version: INITIAL_VERSION + 99,
       })
     ).rejects.toThrow(ConflictError);
+
+    const applications = await applicationRepository.findByVariationId(
+      new EstimateVariationId(variationId)
+    );
+    expect(applications).toHaveLength(0);
+  });
+
+  it("version 関門通過後に申請挿入が失敗したら version をロールバックし申請行を残さない（atomic submit・ADR-0069）", async () => {
+    const estimate = await estimateRepository.insert(
+      buildNewEstimate(ids.estimate, EN.atomicRollback, { items: requiredItems() })
+    );
+    const variationId = estimate.variations[0].id.value;
+
+    // 申請挿入だけを失敗させる decorator（兄弟チェック・nextAttempt は実 repo に委譲）。
+    const failingApplicationRepository: EstimateApplicationRepository = {
+      insert: () => Promise.reject(new Error("simulated insert failure")),
+      update: (application, version) => applicationRepository.update(application, version),
+      findById: (id) => applicationRepository.findById(id),
+      findByStepId: (id) => applicationRepository.findByStepId(id),
+      findByVariationId: (id) => applicationRepository.findByVariationId(id),
+    };
+    const failing = new SubmitApplicationCommand(
+      estimateRepository,
+      failingApplicationRepository,
+      exemptionRepository,
+      new PrismaProductQueryService(),
+      new PrismaEmployeeQueryService(),
+      new PrismaPositionQueryService(),
+      new PrismaRoleQueryService(),
+      new PrismaTransactionRunner()
+    );
+
+    await expect(
+      failing.execute({
+        estimateId: estimate.id.value,
+        variationId,
+        operatorEmployeeId: operatorId,
+        version: INITIAL_VERSION,
+      })
+    ).rejects.toThrow();
+
+    // bump と insert が単一 tx で原子化されていれば、insert 失敗で version 関門の bump ごと
+    // ロールバックされる（無害な version 空振りすら起きない＝ADR-0068 ケース2 が消滅）。
+    const after = await prisma.estimate.findUnique({
+      where: { id: estimate.id.value },
+      select: { version: true },
+    });
+    expect(after?.version).toBe(INITIAL_VERSION);
 
     const applications = await applicationRepository.findByVariationId(
       new EstimateVariationId(variationId)
