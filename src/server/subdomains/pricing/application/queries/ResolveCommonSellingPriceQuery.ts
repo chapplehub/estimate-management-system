@@ -1,5 +1,5 @@
 import { CommonSellingPriceQueryService } from "./CommonSellingPriceQueryService";
-import { CommonSellingPriceResolutionDTO } from "./dto/CommonSellingPriceResolutionDTO";
+import { SellingPriceResolutionDTO } from "./dto/SellingPriceResolutionDTO";
 
 export type ResolveCommonSellingPriceInput = {
   productId: string;
@@ -17,9 +17,7 @@ export type ResolveCommonSellingPriceInput = {
 export class ResolveCommonSellingPriceQuery {
   constructor(private readonly queryService: CommonSellingPriceQueryService) {}
 
-  async execute(
-    input: ResolveCommonSellingPriceInput
-  ): Promise<CommonSellingPriceResolutionDTO | null> {
+  async execute(input: ResolveCommonSellingPriceInput): Promise<SellingPriceResolutionDTO | null> {
     return await this.queryService.resolve({ productId: input.productId, date: input.date });
   }
 }

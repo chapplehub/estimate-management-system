@@ -1,6 +1,6 @@
 import prisma from "@server/prisma";
 import { CommonSellingPriceQueryService } from "@subdomains/pricing/application/queries/CommonSellingPriceQueryService";
-import { CommonSellingPriceResolutionDTO } from "@subdomains/pricing/application/queries/dto/CommonSellingPriceResolutionDTO";
+import { SellingPriceResolutionDTO } from "@subdomains/pricing/application/queries/dto/SellingPriceResolutionDTO";
 
 /**
  * 共通販売単価の時点解決クエリサービスの Prisma 実装（ADR-0066・0067・20260624-95f）。
@@ -18,8 +18,8 @@ export class PrismaCommonSellingPriceQueryService implements CommonSellingPriceQ
   async resolve(input: {
     productId: string;
     date: string;
-  }): Promise<CommonSellingPriceResolutionDTO | null> {
-    const rows = await prisma.$queryRaw<CommonSellingPriceResolutionDTO[]>`
+  }): Promise<SellingPriceResolutionDTO | null> {
+    const rows = await prisma.$queryRaw<SellingPriceResolutionDTO[]>`
       SELECT selling_price::text AS "sellingPrice"
       FROM common_selling_price_periods
       WHERE product_id = ${input.productId}::uuid
