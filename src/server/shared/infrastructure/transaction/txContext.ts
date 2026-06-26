@@ -19,10 +19,6 @@ const als = new AsyncLocalStorage<Prisma.TransactionClient>();
 /** ambient トランザクションがあればそのハンドル、無ければ global prisma を返す。 */
 export const currentClient = (): Db => als.getStore() ?? prisma;
 
-/** 与えた tx を ambient として work を実行する（PrismaTransactionRunner が $transaction の中で使う）。 */
-export const runInTx = <T>(tx: Prisma.TransactionClient, work: () => Promise<T>): Promise<T> =>
-  als.run(tx, work);
-
 /**
  * 自前トランザクションを「join-or-open」で開く。
  *
