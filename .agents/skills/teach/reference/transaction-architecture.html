@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>リファレンス — ALS トランザクション構成の地図</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+
+<p class="eyebrow">リファレンス · 早見表</p>
+<h1>トランザクション構成の地図</h1>
+<p class="subtitle">どの責務がどのファイルに棲むか／4つの API の使い分け</p>
+
+<h2>責務マップ</h2>
+<table style="width:100%; border-collapse:collapse; font-size:.9rem;">
+<thead>
+  <tr style="border-bottom:2px solid var(--rule); text-align:left;">
+    <th style="padding:.4rem;">要素</th><th>層</th><th>責務</th>
+  </tr>
+</thead>
+<tbody>
+  <tr style="border-bottom:1px solid var(--rule);"><td style="padding:.4rem;"><code>TransactionRunner</code></td><td>app/ポート</td><td>「何が原子的か」を宣言。Prisma 型ゼロ</td></tr>
+  <tr style="border-bottom:1px solid var(--rule);"><td style="padding:.4rem;"><code>PrismaTransactionRunner</code></td><td>infra/アダプタ</td><td>$transaction を開き tx を ALS に seed</td></tr>
+  <tr style="border-bottom:1px solid var(--rule);"><td style="padding:.4rem;"><code>txContext.ts</code></td><td>infra</td><td>ALS 本体・currentClient・runInTx・runAtomically</td></tr>
+  <tr style="border-bottom:1px solid var(--rule);"><td style="padding:.4rem;">各 Prisma リポジトリ</td><td>infra</td><td><code>currentClient()</code> で ambient tx を拾い CRUD</td></tr>
+  <tr style="border-bottom:1px solid var(--rule);"><td style="padding:.4rem;"><code>SubmitApplicationCommand</code></td><td>app/利用者</td><td>txRunner.run で bump+insert を1単位に包む</td></tr>
+  <tr><td style="padding:.4rem;">eslint.config.mjs</td><td>ガードレール</td><td>参加 repo で素 prisma import を禁止</td></tr>
+</tbody>
+</table>
+
+<h2>4 つの API の使い分け</h2>
+<div class="cast">
+  <div class="role">
+    <h3><code>currentClient()</code></h3>
+    <b>読み書きのたびに</b>呼ぶ。ambient tx があればそれ、無ければ global prisma。<br>
+    用途：リポジトリの全クエリ。<code>const db = currentClient(); db.xxx.findMany(...)</code>
+  </div>
+  <div class="role">
+    <h3><code>runAtomically(work)</code></h3>
+    <b>リポジトリ内の多文メソッド</b>（楽観ロック付き update 等）を包む。<br>
+    join-or-open：ambient あれば相乗り／無ければ自前 $transaction。
+  </div>
+  <div class="role">
+    <h3><code>txRunner.run(work)</code></h3>
+    <b>アプリ層から集約またぎ</b>を原子化したいとき。コマンドが注入された <code>TransactionRunner</code> 経由で呼ぶ。
+  </div>
+  <div class="role">
+    <h3><code>runInTx(tx, work)</code></h3>
+    <b>内部用</b>。<code>PrismaTransactionRunner</code> だけが使う。普段アプリ／リポジトリから直接は呼ばない。
+  </div>
+</div>
+
+<h2 id="run-vs-atomically">紛らわしい2つ：<code>txRunner.run</code> vs <code>runAtomically</code></h2>
+<p>
+どちらも <code>$transaction</code> を開いて ALS に seed するので似て見えるが、<b>層・粒度・ネスト挙動</b>が違う。
+本質は2つ — ① app 層は Prisma を import 不可ゆえポート（<code>txRunner.run</code>）が要る、
+② リポジトリは単独でも submit 配下でも呼ばれるので <b>join-or-open</b> が要る。
+</p>
+<table style="width:100%; border-collapse:collapse; font-size:.88rem;">
+<thead>
+  <tr style="border-bottom:2px solid var(--rule); text-align:left;">
+    <th style="padding:.4rem;">軸</th><th><code>txRunner.run(work)</code></th><th><code>runAtomically(work)</code></th>
+  </tr>
+</thead>
+<tbody>
+  <tr style="border-bottom:1px solid var(--rule);"><td style="padding:.4rem;">層</td><td>app 層ポート経由</td><td>infra 関数を直接呼ぶ</td></tr>
+  <tr style="border-bottom:1px solid var(--rule);"><td style="padding:.4rem;">呼ぶ人</td><td>ユースケース（コマンド）</td><td>リポジトリ内部の多文メソッド</td></tr>
+  <tr style="border-bottom:1px solid var(--rule);"><td style="padding:.4rem;">境界の粒度</td><td>集約またぎ（bump＋insert）</td><td>1リポジトリメソッド内（root＋子群）</td></tr>
+  <tr><td style="padding:.4rem;">ネスト挙動</td><td><b>always-open</b>（最外殻専用）</td><td><b>join-or-open</b>（入れ子で相乗り）</td></tr>
+</tbody>
+</table>
+<div class="note ok">
+<b>協調する：</b> <code>txRunner.run</code> が天井で tx を1回開き、その下のリポジトリの <code>runAtomically</code> は
+<code>als.getStore()</code> で「もう開いてる」と気づき<b>相乗り</b>する。結果、リポジトリのコードは
+<em>単独でも submit 配下でも一字一句同じ</em>で正しく動く（same code, two contexts）。
+</div>
+<div class="note warn">
+<b>もし update が always-open のままだったら：</b> submit 配下で呼ばれたとき global prisma で
+<em>2つ目の別 tx</em> が開き、bump と insert が別トランザクションに割れて原子性が壊れる。
+これが今回の TOCTOU 修正で <code>$transaction</code> を <code>runAtomically</code> に替えた急所。
+</div>
+
+<h2>新しいリポジトリを tx に参加させる手順</h2>
+<pre><code>1. import を `prisma` → `currentClient, runAtomically` に差し替え
+2. 全 `prisma.xxx` を `currentClient().xxx` に置換
+3. 自前 `prisma.$transaction(async (tx) => ...)` を
+   `runAtomically(async () => { const db = currentClient(); ... })` に
+4. eslint.config.mjs の `atomicSubmitRepositoryFiles` にファイルを追加
+5. 単独呼び出しのテスト（自前 tx）と Runner 配下のテスト（合流）の両方を書く</code></pre>
+
+<div class="note warn">
+<b>落とし穴：</b> work の中で <code>await</code> を挟まず別の非同期スケジューリング（<code>setTimeout</code>・切り離した Promise）に処理を逃すと、
+ALS の文脈は引き継がれない。tx 文脈に乗せたい処理は work の <code>await</code> チェーン上に保つこと。
+</div>
+
+<footer>
+出典：<a href="https://nodejs.org/api/async_context.html">Node.js — AsyncLocalStorage</a> ·
+<a href="../lessons/0001-async-local-storage-ambient-transaction.html">レッスン 01</a> ·
+ADR-20260626-dee / ADR-0068 / ADR-0039
+</footer>
+
+</body>
+</html>
