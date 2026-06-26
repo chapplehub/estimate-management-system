@@ -20,6 +20,7 @@ import {
 import prisma from "@server/prisma";
 import { ConflictError } from "@server/shared/errors/ApplicationError";
 import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
+import { PrismaTransactionRunner } from "@server/shared/infrastructure/transaction/PrismaTransactionRunner";
 import { SubmissionType } from "@subdomains/estimate/domain/values/SubmissionType";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { PrismaEstimateRepository } from "../PrismaEstimateRepository";
@@ -45,6 +46,7 @@ const EN = {
   setGroupAddRemove: "N9900015",
   setGroupMove: "N9900016",
   setGroupRemoveAdd: "N9900017",
+  txRollback: "N9900018",
   missing: "N9900099",
 } as const;
 const ALL_NUMBERS = Object.values(EN);
@@ -487,6 +489,27 @@ describe("PrismaEstimateRepository", () => {
       // B の変更が残っている（lost update が起きていない）
       const found = await repository.findById(saved.id);
       expect(found?.deadline.toISOString()).toBe("2025-12-31T00:00:00.000Z");
+    });
+
+    it("外部トランザクション内で update が bump した後に後続処理が失敗すると version がロールバックされる（atomic submit 基盤・ADR-0069）", async () => {
+      const txRunner = new PrismaTransactionRunner();
+      const saved = await repository.insert(buildNewEstimate(ids, EN.txRollback));
+
+      // version 関門（bump 1→2）を通した直後に、後続の申請挿入失敗を模して throw する。
+      // update が自前 $transaction を開かず ambient tx に相乗りしていれば、throw で bump ごと
+      // ロールバックされ「無害な version 空振り」すら起きない（ADR-0069 の原子性）。
+      await expect(
+        txRunner.run(async () => {
+          await repository.update(saved, 1);
+          throw new Error("simulate downstream insert failure");
+        })
+      ).rejects.toThrow("simulate downstream insert failure");
+
+      const after = await prisma.estimate.findUnique({
+        where: { id: saved.id.value },
+        select: { version: true },
+      });
+      expect(after?.version).toBe(1);
     });
   });
 
