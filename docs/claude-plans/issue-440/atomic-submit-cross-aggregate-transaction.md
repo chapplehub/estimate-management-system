@@ -4,7 +4,7 @@
 
 `SubmitApplicationCommand` の version 関門（`estimateRepository.update`）と申請挿入（`applicationRepository.insert`）が別トランザクションのため、「version が k+1 に進んだのに申請行がまだ可視でない」一瞬に、別バリエーションが兄弟チェックも version 関門も抜けて二重前進する TOCTOU 窓がある（ADR-0068 §残存リスク）。
 
-これを **atomic submit**（bump+insert を単一トランザクションで原子化）で閉じる。集約またぎトランザクションは本コードベース初なので、DIP で `TransactionRunner` ポートを導入し、AsyncLocalStorage で tx を伝播する。意思決定は ADR-0069 に記録済み。
+これを **atomic submit**（bump+insert を単一トランザクションで原子化）で閉じる。集約またぎトランザクションは本コードベース初なので、DIP で `TransactionRunner` ポートを導入し、AsyncLocalStorage で tx を伝播する。意思決定は ADR-20260626-dee に記録済み。
 
 ## 設計判断
 
@@ -13,7 +13,7 @@
 ### 窓を閉じる機構
 - 採用: **atomic submit**（bump+insert を1 tx で原子化）。
 - 却下: full-merge（申請を見積集約へ取り込む）/ slot 同居（advancingVariationId を見積に持つ）/ DB バックストップ再導入。
-- 理由: 「1見積1前進」が即時整合を要求するのは「どのバリが前進枠を占有するか」の1事実だけで、窓が噛むのは submit の一瞬。full-merge は ADR-0053/54/58/61 等の前提を崩し偽競合を生む（Vernon 集約則1×2 衝突の定石＝即時整合を要する最小データのみ同居）。詳細は ADR-0069。
+- 理由: 「1見積1前進」が即時整合を要求するのは「どのバリが前進枠を占有するか」の1事実だけで、窓が噛むのは submit の一瞬。full-merge は ADR-0053/54/58/61 等の前提を崩し偽競合を生む（Vernon 集約則1×2 衝突の定石＝即時整合を要する最小データのみ同居）。詳細は ADR-20260626-dee。
 
 ### 集約またぎ tx の実現（DIP）
 - 採用: `TransactionRunner` ポートを **`shared/application`** に置き、実装を `shared/infrastructure`。
@@ -75,7 +75,7 @@
   - コマンドに `TransactionRunner` を DI し、step5-6（version 関門→挿入）を `txRunner.run(async () => { update; insert/exemption })` で原子化
   - 兄弟チェック（step2）・judge（step3）は tx 外のまま
   - `EstimateApplicationPersistError` と関連写像を撤去、エラーは ConflictError / 正常 union の2分岐へ
-- コミットメッセージ: `feat: 申請submitのbump+insertを単一トランザクション化しTOCTOU窓を閉じる（ADR-0069）`
+- コミットメッセージ: `feat: 申請submitのbump+insertを単一トランザクション化しTOCTOU窓を閉じる（ADR-20260626-dee）`
 
 ### Step 5: テスト
 - 対象ファイル:

@@ -141,7 +141,7 @@ describe("PrismaEstimateApplicationRepository", () => {
     );
   });
 
-  it("ambient トランザクション内で insert 後に後続処理が失敗すると申請行がロールバックされる（atomic submit 基盤・ADR-0069）", async () => {
+  it("ambient トランザクション内で insert 後に後続処理が失敗すると申請行がロールバックされる（atomic submit 基盤・ADR-20260626-dee）", async () => {
     const txRunner = new PrismaTransactionRunner();
     const variationId = await createVariationId(EN.txRollback);
 

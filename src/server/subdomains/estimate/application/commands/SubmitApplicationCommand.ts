@@ -48,14 +48,14 @@ function blockedMessage(reason: ApprovalChainBlockedReason): string {
 }
 
 /**
- * 見積申請コマンド（version 関門で「1見積1前進」を直列化・ADR-0068/0069・#417・§6.3）
+ * 見積申請コマンド（version 関門で「1見積1前進」を直列化・ADR-0068・ADR-20260626-dee・#417・§6.3）
  *
  * 単一ジェスチャで結末が2通り（承認必要なら申請＋ステップ列を作成、免除なら免除を記録）。
  * judge を再評価して分岐し（TOCTOU 防御・§6.3）、`Estimate.version` の条件付き更新を申請挿入の
  * 前段の関門に置く。兄弟チェック（逐次）と version 関門（同時）の二段で横断不変条件を担保する。
  *
  * - 順序: INACTIVE 拒否 → 兄弟前進チェック → judge 再評価 → (version 関門 → 挿入)。
- * - **version 関門と挿入は単一トランザクションで原子化する（atomic submit・ADR-0069）**。
+ * - **version 関門と挿入は単一トランザクションで原子化する（atomic submit・ADR-20260626-dee）**。
  *   bump コミット〜insert コミット間の TOCTOU 窓（別バリの二重前進）を閉じる。bump 後の挿入失敗は
  *   tx ごとロールバックされ、無害な version 空振りすら起きない（ADR-0068 ケース2 は消滅）。
  * - エラーは2分岐: 関門失敗（stale）・挿入の一意制約衝突はいずれも `ConflictError`（リポジトリ由来）
@@ -98,7 +98,7 @@ export class SubmitApplicationCommand {
       throw new BusinessRuleViolationError(blockedMessage(result.reason));
     }
 
-    // 5-6. version 関門と挿入を単一トランザクションで原子化する（atomic submit・ADR-0069）。
+    // 5-6. version 関門と挿入を単一トランザクションで原子化する（atomic submit・ADR-20260626-dee）。
     //      「version が k+1 になる瞬間に申請行も同時に可視になる」ため、bump コミット〜insert
     //      コミット間の TOCTOU 窓（別バリの二重前進）が消える。bump 後の挿入失敗は tx ごと
     //      ロールバックされ、無害な version 空振りも起きない。関門失敗（stale）・挿入の一意制約

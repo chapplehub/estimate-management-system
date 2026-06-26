@@ -3,7 +3,7 @@ import { TransactionRunner } from "@server/shared/application/transaction/Transa
 import { runInTx } from "./txContext";
 
 /**
- * TransactionRunner ポートの Prisma アダプタ（ADR-0069）。
+ * TransactionRunner ポートの Prisma アダプタ（ADR-20260626-dee）。
  *
  * `$transaction` を開き、その tx を AsyncLocalStorage に seed してから work を実行する。
  * work 内のリポジトリは `currentClient()` でこの tx を拾い、同一トランザクションで動く。

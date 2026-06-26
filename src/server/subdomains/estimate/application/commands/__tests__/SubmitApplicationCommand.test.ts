@@ -241,7 +241,7 @@ describe("SubmitApplicationCommand", () => {
     expect(applications).toHaveLength(0);
   });
 
-  it("version 関門通過後に申請挿入が失敗したら version をロールバックし申請行を残さない（atomic submit・ADR-0069）", async () => {
+  it("version 関門通過後に申請挿入が失敗したら version をロールバックし申請行を残さない（atomic submit・ADR-20260626-dee）", async () => {
     const estimate = await estimateRepository.insert(
       buildNewEstimate(ids.estimate, EN.atomicRollback, { items: requiredItems() })
     );

@@ -1,4 +1,4 @@
-# ADR-0069: 申請 submit の version bump と申請挿入を単一トランザクションで原子化し、兄弟二重前進の TOCTOU 窓を閉じる
+# ADR-20260626-dee: 申請 submit の version bump と申請挿入を単一トランザクションで原子化し、兄弟二重前進の TOCTOU 窓を閉じる
 
 | 項目 | 値 |
 |---|---|

@@ -491,13 +491,13 @@ describe("PrismaEstimateRepository", () => {
       expect(found?.deadline.toISOString()).toBe("2025-12-31T00:00:00.000Z");
     });
 
-    it("外部トランザクション内で update が bump した後に後続処理が失敗すると version がロールバックされる（atomic submit 基盤・ADR-0069）", async () => {
+    it("外部トランザクション内で update が bump した後に後続処理が失敗すると version がロールバックされる（atomic submit 基盤・ADR-20260626-dee）", async () => {
       const txRunner = new PrismaTransactionRunner();
       const saved = await repository.insert(buildNewEstimate(ids, EN.txRollback));
 
       // version 関門（bump 1→2）を通した直後に、後続の申請挿入失敗を模して throw する。
       // update が自前 $transaction を開かず ambient tx に相乗りしていれば、throw で bump ごと
-      // ロールバックされ「無害な version 空振り」すら起きない（ADR-0069 の原子性）。
+      // ロールバックされ「無害な version 空振り」すら起きない（ADR-20260626-dee の原子性）。
       await expect(
         txRunner.run(async () => {
           await repository.update(saved, 1);

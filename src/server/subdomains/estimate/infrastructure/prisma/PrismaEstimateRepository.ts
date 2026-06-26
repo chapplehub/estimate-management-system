@@ -18,7 +18,7 @@ import { Prisma } from "@generated/prisma/client";
  * 永続化を担う EstimateRepository の Prisma 実装。
  * 集約ルート Estimate 単位でのみ永続化し、子は集約経由でカスケードする。
  *
- * DB アクセスは素の `prisma` ではなく `currentClient()` 経由で行う（ADR-0069）。これにより
+ * DB アクセスは素の `prisma` ではなく `currentClient()` 経由で行う（ADR-20260626-dee）。これにより
  * TransactionRunner（申請 submit の atomic submit 等）が張った ambient トランザクションに
  * 相乗りし、無ければ global prisma で従来どおり動く。多文メソッドは `runAtomically`（join-or-open）
  * で囲み、単独呼び出しでも原子性を保つ。

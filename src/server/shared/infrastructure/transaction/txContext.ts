@@ -3,7 +3,7 @@ import prisma from "@server/prisma";
 import type { Prisma, PrismaClient } from "@generated/prisma/client";
 
 /**
- * 集約またぎトランザクションの ambient 伝播基盤（ADR-0069）。
+ * 集約またぎトランザクションの ambient 伝播基盤（ADR-20260626-dee）。
  *
  * AsyncLocalStorage に「現在のトランザクションハンドル」を載せ、リポジトリは `currentClient()` で
  * それを取り出す。非同期コンテキストが並行チェーンを構造的に隔離するため、可変ホルダ方式

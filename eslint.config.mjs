@@ -37,7 +37,7 @@ const aggregateChildImportPatterns = [
   },
 ];
 
-// atomic submit（ADR-0069）の参加リポジトリ。素 prisma を import すると ambient トランザクションを
+// atomic submit（ADR-20260626-dee）の参加リポジトリ。素 prisma を import すると ambient トランザクションを
 // 逃げ、bump+insert の原子性を静かに壊すため、これらに限り @server/prisma の import を追加で禁止する
 // （currentClient()/runAtomically 経由を強制）。最小スコープ: 未参加 repo は次に tx に参加する時点で
 // 本リストへ移す（#440 の repo 変換スコープは estimate / application / exemption の3つ）。
@@ -199,7 +199,7 @@ const eslintConfig = defineConfig([
       "no-restricted-imports": "off",
     },
   },
-  // atomic submit 参加リポジトリ（ADR-0069）は素 prisma を import せず currentClient()/runAtomically
+  // atomic submit 参加リポジトリ（ADR-20260626-dee）は素 prisma を import せず currentClient()/runAtomically
   // 経由でアクセスする。素 prisma は ambient トランザクションを逃げ、bump+insert の原子性を静かに
   // 壊すため、これらのファイルに限り @server/prisma の import を追加で禁止する。集約境界パターン
   // （aggregateChildImportPatterns）も併せて維持する（flat config はルールを置換するため再宣言が要る）。
@@ -214,7 +214,7 @@ const eslintConfig = defineConfig([
             {
               name: "@server/prisma",
               message:
-                "atomic submit 参加リポジトリ（ADR-0069）は素の prisma を import せず、currentClient()/runAtomically（@server/shared/infrastructure/transaction/txContext）経由でアクセスしてください。素 prisma は ambient トランザクションを逃げ、bump+insert の原子性を静かに壊します。",
+                "atomic submit 参加リポジトリ（ADR-20260626-dee）は素の prisma を import せず、currentClient()/runAtomically（@server/shared/infrastructure/transaction/txContext）経由でアクセスしてください。素 prisma は ambient トランザクションを逃げ、bump+insert の原子性を静かに壊します。",
             },
           ],
         },

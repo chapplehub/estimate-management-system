@@ -4,7 +4,7 @@
 
 ## 概要
 
-複数集約にまたがる原子的書き込み（cross-aggregate transaction）を、DDD のレイヤリング（Domain/App は Prisma を import しない）を一切壊さずに実現する構造。issue #440（申請 submit の bump+insert 原子化・ADR-0069）の実装方式を詰める中で整理した。
+複数集約にまたがる原子的書き込み（cross-aggregate transaction）を、DDD のレイヤリング（Domain/App は Prisma を import しない）を一切壊さずに実現する構造。issue #440（申請 submit の bump+insert 原子化・ADR-20260626-dee）の実装方式を詰める中で整理した。
 
 要点：
 - **トランザクション境界の demarcation がアプリ層へ上がること自体は、レイヤリング違反ではない**。違反になるのは「具体 `prisma` に触れる」「`Prisma.TransactionClient` 型を repo インターフェースに漏らす」という*手段*だけ。
@@ -85,7 +85,7 @@ repos (infra) 内部:
 ## 参考
 
 - issue #440（申請 submit の bump〜insert 間 TOCTOU 窓）
-- ADR-0069（bump+insert を単一トランザクションで原子化）
+- ADR-20260626-dee（bump+insert を単一トランザクションで原子化）
 - ADR-0039（集約ルート version 楽観ロック・version は非業務概念ゆえドメインに載せない＝本件のポート配置と同型論法）
 - ADR-0032（差分 upsert＝update が自前 $transaction を張る永続化方式）
 - CLAUDE.md「Critical: DDD Layering Rules」

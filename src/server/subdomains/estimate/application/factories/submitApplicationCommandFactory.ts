@@ -11,7 +11,7 @@ import { PrismaEstimateApprovalExemptionRepository } from "../../infrastructure/
  * 承認チェーン組立てに要する 商品／従業員／職位／役割 のクエリを解決して注入する。
  * 見積リポジトリ＋組織系クエリは Preview と共有する {@link buildApprovalChainLoaderDeps} から取り、
  * 申請／免除リポジトリだけを本コマンド固有に足す。version 関門と挿入を原子化する atomic submit
- * （ADR-0069）のため {@link PrismaTransactionRunner} も注入する。コマンド自身はアプリ層ポート
+ * （ADR-20260626-dee）のため {@link PrismaTransactionRunner} も注入する。コマンド自身はアプリ層ポート
  * （TransactionRunner）とドメインインターフェースにのみ依存する。
  */
 export function submitApplicationCommandFactory(): SubmitApplicationCommand {
