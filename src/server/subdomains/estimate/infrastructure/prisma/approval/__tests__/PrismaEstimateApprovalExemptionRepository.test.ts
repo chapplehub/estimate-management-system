@@ -4,6 +4,7 @@ import {
   type ApprovalFixtureIds,
 } from "@server/__tests__/helpers/ensureApprovalFixtures";
 import { ConflictError } from "@server/shared/errors/ApplicationError";
+import { PrismaTransactionRunner } from "@server/shared/infrastructure/transaction/PrismaTransactionRunner";
 import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
 import { EstimateApprovalExemption } from "@subdomains/estimate/domain/entities";
 import { buildNewEstimate } from "@subdomains/estimate/domain/entities/__tests__/estimateAggregateBuilder";
@@ -18,6 +19,7 @@ import { PrismaEstimateApprovalExemptionRepository } from "../PrismaEstimateAppr
 const EN = {
   roundtrip: "N9907001",
   conflict: "N9907002",
+  txRollback: "N9907003",
 } as const;
 const ALL_NUMBERS = Object.values(EN);
 
@@ -93,5 +95,27 @@ describe("PrismaEstimateApprovalExemptionRepository", () => {
     );
 
     await expect(repository.insert(second)).rejects.toBeInstanceOf(ConflictError);
+  });
+
+  it("ambient トランザクション内で insert 後に後続処理が失敗すると免除行がロールバックされる（atomic submit 基盤・ADR-0069）", async () => {
+    const txRunner = new PrismaTransactionRunner();
+    const variationId = await createVariationId(EN.txRollback);
+    const exemption = EstimateApprovalExemption.create(
+      variationId,
+      EstimateExemptionReason.BELOW_THRESHOLD,
+      new EmployeeId(ids.exempterEmployeeId)
+    );
+
+    // insert が currentClient() 経由で ambient tx に相乗りしていれば、後続の throw で
+    // 免除行ごとロールバックされる（EXEMPT パスの atomic submit 原子性）。
+    await expect(
+      txRunner.run(async () => {
+        await repository.insert(exemption);
+        throw new Error("simulate downstream failure");
+      })
+    ).rejects.toThrow("simulate downstream failure");
+
+    const found = await repository.findByVariationId(variationId);
+    expect(found).toBeNull();
   });
 });

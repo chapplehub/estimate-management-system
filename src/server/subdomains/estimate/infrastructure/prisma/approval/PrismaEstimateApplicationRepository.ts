@@ -1,5 +1,5 @@
-import prisma from "@server/prisma";
 import { ConflictError } from "@server/shared/errors/ApplicationError";
+import { currentClient, runAtomically } from "@server/shared/infrastructure/transaction/txContext";
 import { EstimateApplication } from "@subdomains/estimate/domain/entities";
 import { EstimateApplicationRepository } from "@subdomains/estimate/domain/repositories/approval/EstimateApplicationRepository";
 import { EstimateApplicationId } from "@subdomains/estimate/domain/values/approval/EstimateApplicationId";
@@ -26,7 +26,7 @@ export class PrismaEstimateApplicationRepository implements EstimateApplicationR
    */
   async insert(application: EstimateApplication): Promise<EstimateApplication> {
     try {
-      await prisma.estimateApplication.create({
+      await currentClient().estimateApplication.create({
         data: EstimateApplicationMapper.toCreateInput(application),
       });
     } catch (error) {
@@ -52,11 +52,12 @@ export class PrismaEstimateApplicationRepository implements EstimateApplicationR
   ): Promise<EstimateApplication> {
     const applicationId = application.id.value;
 
-    await prisma.$transaction(async (tx) => {
+    await runAtomically(async () => {
+      const db = currentClient();
       // 1. ルートの version を条件付きインクリメント（楽観ロックのチェック地点）。
       //    count 0 は version 不一致（先行更新あり）を意味する。申請は delete を持たない
-      //    append-only 集約のため行消失は通常起きない。throw で $transaction 全体をロールバックする。
-      const rootUpdate = await tx.estimateApplication.updateMany({
+      //    append-only 集約のため行消失は通常起きない。throw でトランザクション全体をロールバックする。
+      const rootUpdate = await db.estimateApplication.updateMany({
         where: { id: applicationId, version: expectedVersion },
         data: { version: { increment: 1 } },
       });
@@ -69,17 +70,17 @@ export class PrismaEstimateApplicationRepository implements EstimateApplicationR
       // 2. 承認・差戻イベントを自然キーで一括追記（既決は skipDuplicates でスキップ = created_at 保持）。
       const approvals = EstimateApplicationMapper.toStepApprovalCreateInputs(application);
       if (approvals.length > 0) {
-        await tx.estimateStepApproval.createMany({ data: approvals, skipDuplicates: true });
+        await db.estimateStepApproval.createMany({ data: approvals, skipDuplicates: true });
       }
       const rejections = EstimateApplicationMapper.toStepRejectionCreateInputs(application);
       if (rejections.length > 0) {
-        await tx.estimateStepRejection.createMany({ data: rejections, skipDuplicates: true });
+        await db.estimateStepRejection.createMany({ data: rejections, skipDuplicates: true });
       }
 
       // 3. 取下イベント（申請レベル・高々 1）も同じく自然キーで冪等追記する。
       const withdrawal = EstimateApplicationMapper.toWithdrawalCreateInput(application);
       if (withdrawal) {
-        await tx.estimateApplicationWithdrawal.createMany({
+        await db.estimateApplicationWithdrawal.createMany({
           data: [withdrawal],
           skipDuplicates: true,
         });
@@ -90,7 +91,7 @@ export class PrismaEstimateApplicationRepository implements EstimateApplicationR
   }
 
   async findById(id: EstimateApplicationId): Promise<EstimateApplication | null> {
-    const row = await prisma.estimateApplication.findUnique({
+    const row = await currentClient().estimateApplication.findUnique({
       where: { id: id.value },
       include: ESTIMATE_APPLICATION_FULL_INCLUDE,
     });
@@ -104,7 +105,7 @@ export class PrismaEstimateApplicationRepository implements EstimateApplicationR
    * 「このステップを承認」導線は最頻読取のため往復を 1 回に抑える）。
    */
   async findByStepId(stepId: EstimateApprovalStepId): Promise<EstimateApplication | null> {
-    const step = await prisma.estimateApprovalStep.findUnique({
+    const step = await currentClient().estimateApprovalStep.findUnique({
       where: { id: stepId.value },
       select: { application: { include: ESTIMATE_APPLICATION_FULL_INCLUDE } },
     });
@@ -116,7 +117,7 @@ export class PrismaEstimateApplicationRepository implements EstimateApplicationR
    * 差戻→再申請で複数 attempt を持ちうるため全件を attempt 昇順で返す。
    */
   async findByVariationId(variationId: EstimateVariationId): Promise<EstimateApplication[]> {
-    const rows = await prisma.estimateApplication.findMany({
+    const rows = await currentClient().estimateApplication.findMany({
       where: { variationId: variationId.value },
       include: ESTIMATE_APPLICATION_FULL_INCLUDE,
       orderBy: { attempt: "asc" },
@@ -127,7 +128,7 @@ export class PrismaEstimateApplicationRepository implements EstimateApplicationR
 
   /** 保存後の集約を完全な include で読み直して返す（イベント createdAt を DB 既定で確定させる）。 */
   private async refetch(id: string): Promise<EstimateApplication> {
-    const row = await prisma.estimateApplication.findUnique({
+    const row = await currentClient().estimateApplication.findUnique({
       where: { id },
       include: ESTIMATE_APPLICATION_FULL_INCLUDE,
     });
