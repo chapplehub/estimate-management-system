@@ -36,6 +36,20 @@ export interface EstimateRepository {
   update(estimate: Estimate, expectedVersion: number): Promise<Estimate>;
 
   /**
+   * version 関門専用に根の version だけを条件付きで +1 する（楽観ロック / ADR-0039・ADR-20260626-dee）。
+   *
+   * scalar・子エンティティは一切書き換えず、`WHERE id AND version = expectedVersion` の条件付き
+   * インクリメント1文のみを発行する。申請 submit のように集約本体を変更せず「1見積1前進」の
+   * 直列化トークンだけを進めたい場合に使う。{@link update} と異なり全集約 deleteMany/upsert や
+   * refetch を行わないため、直列化トランザクション内で保持するロックを最小化する。
+   *
+   * @param expectedVersion Preview 時に読んだ version。一致しない（先行更新）または行が消失して
+   *   いる場合は count 0 となり ConflictError を throw する。呼び出しが ambient トランザクション内
+   *   なら throw でトランザクション全体がロールバックされる。
+   */
+  bumpVersion(estimateId: EstimateId, expectedVersion: number): Promise<void>;
+
+  /**
    * 見積を削除
    */
   delete(id: EstimateId): Promise<void>;
