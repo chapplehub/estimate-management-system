@@ -1,0 +1,123 @@
+/*
+ * Shared lesson stylesheet — Tufte-inspired.
+ * すべてのレッスン／リファレンスがこの1枚をリンクし、コース全体の統一感を出す。
+ * 印刷しても綺麗に出ることを優先（余白・本文幅・モノクロ耐性）。
+ */
+:root {
+  --ink: #1a1a1a;
+  --paper: #fffff8;        /* Tufte の温かい紙色 */
+  --muted: #6b6b6b;
+  --rule: #d8d8c8;
+  --accent: #8b2500;       /* 落ち着いた朱 */
+  --code-bg: #f3f3e9;
+  --ok: #1f6b34;
+  --warn: #8b6914;
+  --maxw: 42rem;
+}
+
+html { font-size: 17px; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: et-book, Palatino, "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  line-height: 1.55;
+  margin: 0 auto;
+  padding: 3rem 2rem 6rem;
+  max-width: var(--maxw);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 { line-height: 1.15; font-weight: 600; }
+h1 { font-size: 2.1rem; margin: 0 0 .2rem; }
+h2 { font-size: 1.45rem; margin: 2.6rem 0 .6rem; }
+h3 { font-size: 1.12rem; margin: 1.8rem 0 .4rem; }
+
+.subtitle { color: var(--muted); font-style: italic; font-size: 1.15rem; margin: 0 0 1.2rem; }
+.eyebrow {
+  text-transform: uppercase; letter-spacing: .12em; font-size: .72rem;
+  color: var(--accent); font-family: ui-sans-serif, system-ui, sans-serif; font-weight: 600;
+}
+
+p { margin: .8rem 0; }
+a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--rule); }
+a:hover { border-bottom-color: var(--accent); }
+
+hr { border: none; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
+
+code, pre, .mono {
+  font-family: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  font-size: .86em;
+}
+code { background: var(--code-bg); padding: .1em .35em; border-radius: 3px; }
+pre {
+  background: var(--code-bg);
+  padding: 1rem 1.1rem; border-radius: 6px; overflow-x: auto;
+  border-left: 3px solid var(--rule); line-height: 1.45;
+}
+pre code { background: none; padding: 0; }
+
+blockquote {
+  margin: 1.2rem 0; padding: .2rem 0 .2rem 1.1rem;
+  border-left: 3px solid var(--accent); color: var(--muted); font-style: italic;
+}
+
+/* 役者カード（責務の地図用） */
+.cast { display: grid; gap: .8rem; margin: 1.2rem 0; }
+.role {
+  border: 1px solid var(--rule); border-radius: 8px; padding: .9rem 1.1rem;
+  background: #fffffc;
+}
+.role h3 { margin: 0 0 .25rem; }
+.role .where {
+  font-family: "SF Mono", Menlo, monospace; font-size: .76rem; color: var(--muted);
+  display: block; margin: 0 0 .4rem; word-break: break-all;
+}
+.role .layer {
+  display: inline-block; font-size: .68rem; font-family: ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: .04em; padding: .12em .5em; border-radius: 999px; margin-left: .4rem;
+  vertical-align: middle;
+}
+.layer-app { background: #e8f0fb; color: #1f4e8b; }
+.layer-infra { background: #f3ece0; color: #8b5a14; }
+.layer-tool { background: #ece8f3; color: #5a3a8b; }
+
+/* コール・アウト */
+.note {
+  background: #f6f6ee; border: 1px solid var(--rule); border-radius: 6px;
+  padding: .8rem 1rem; margin: 1.2rem 0; font-size: .95rem;
+}
+.note.ok { border-left: 3px solid var(--ok); }
+.note.warn { border-left: 3px solid var(--warn); }
+.note b { font-style: normal; }
+
+/* 想起練習 */
+.recall { margin: 1.4rem 0; }
+.recall details {
+  border: 1px solid var(--rule); border-radius: 6px; padding: .7rem 1rem; margin: .6rem 0;
+  background: #fffffc;
+}
+.recall summary { cursor: pointer; font-weight: 600; }
+.recall details[open] summary { margin-bottom: .5rem; color: var(--accent); }
+
+.source {
+  background: #f1f4f1; border-left: 3px solid var(--ok); border-radius: 6px;
+  padding: .9rem 1.1rem; margin: 1.6rem 0;
+}
+.source .eyebrow { color: var(--ok); }
+
+.teacher {
+  text-align: center; color: var(--muted); font-style: italic;
+  margin: 2.5rem 0 0; font-size: .95rem;
+}
+
+footer { margin-top: 3rem; padding-top: 1.2rem; border-top: 1px solid var(--rule);
+  color: var(--muted); font-size: .82rem; }
+footer a { color: var(--muted); }
+
+@media print {
+  body { padding: 0; max-width: none; }
+  .recall details { break-inside: avoid; }
+  .role { break-inside: avoid; }
+  a { border: none; color: var(--ink); }
+}
