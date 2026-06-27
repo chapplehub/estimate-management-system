@@ -22,7 +22,6 @@ test.describe("商品CRUD（管理者）", () => {
       await page.getByLabel("商品名").fill("E2Eテスト個別商品");
       await page.getByLabel("商品区分").selectOption("INDIVIDUAL");
       await page.getByLabel("単位").selectOption("UNIT");
-      await page.getByLabel("原価").fill("10000");
       await page.getByLabel("商品説明").fill("E2Eテスト用の個別商品です");
 
       await page.getByRole("button", { name: "登録" }).click();
@@ -44,7 +43,6 @@ test.describe("商品CRUD（管理者）", () => {
       await expect(field("商品区分")).toContainText("個別商品");
       await expect(field("単位")).toContainText("台");
       await expect(field("状態")).toContainText("有効");
-      await expect(field("原価")).toContainText("10,000円");
       await expect(field("商品説明")).toContainText("E2Eテスト用の個別商品です");
 
       // 個別商品なので周辺商品セクションが表示される
@@ -98,7 +96,6 @@ test.describe("商品CRUD（管理者）", () => {
       await page.getByLabel("商品名").fill("E2Eステータス管理商品");
       await page.getByLabel("商品区分").selectOption("INDIVIDUAL");
       await page.getByLabel("単位").selectOption("UNIT");
-      await page.getByLabel("原価").fill("5000");
 
       await page.getByRole("button", { name: "登録" }).click();
 
