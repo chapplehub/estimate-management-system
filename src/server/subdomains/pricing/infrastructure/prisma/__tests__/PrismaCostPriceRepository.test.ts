@@ -168,4 +168,44 @@ describe("PrismaCostPriceRepository", () => {
     `;
     await expect(insertOverlapping).rejects.toThrow();
   });
+
+  // 回帰: バックフィル移行が生成する期間行 id は UUIDv7 でなければ CostPricePeriodId VO に弾かれる。
+  // gen_random_uuid()（v4）で投入すると findByProductId のロードで「不正なUUIDv7形式です」になるため、
+  // 移行 SQL は pg_temp.gen_uuid_v7() で v7 を生成する。その生成式で直接 INSERT し、リポジトリ往復で
+  // 読み出せること（VO 構築が throw しないこと）を固定する。
+  it("バックフィル機構（v7生成）で投入した期間行をリポジトリでロードできる", async () => {
+    await prisma.$executeRaw`
+      CREATE OR REPLACE FUNCTION pg_temp.gen_uuid_v7() RETURNS uuid AS $$
+        SELECT encode(
+          set_bit(
+            set_bit(
+              overlay(uuid_send(gen_random_uuid())
+                placing substring(int8send(floor(extract(epoch from clock_timestamp()) * 1000)::bigint) from 3)
+                from 1 for 6),
+              52, 1),
+            53, 1), 'hex')::uuid;
+      $$ LANGUAGE sql VOLATILE;
+    `;
+    await prisma.$executeRaw`
+      INSERT INTO cost_prices (product_id, version, updated_at)
+      VALUES (${productId.value}::uuid, 1, CURRENT_TIMESTAMP)
+    `;
+    await prisma.$executeRaw`
+      INSERT INTO cost_price_periods
+        (id, product_id, cost_price, applicable_period, updated_at)
+      VALUES (
+        pg_temp.gen_uuid_v7(),
+        ${productId.value}::uuid,
+        15000::numeric,
+        daterange('2026-04-01'::date, NULL, '[)'),
+        CURRENT_TIMESTAMP
+      )
+    `;
+
+    const loaded = await repository.findByProductId(productId);
+
+    expect(loaded).not.toBeNull();
+    expect(loaded!.periods).toHaveLength(1);
+    expect(loaded!.periods[0].price.equals(cost(15000))).toBe(true);
+  });
 });
