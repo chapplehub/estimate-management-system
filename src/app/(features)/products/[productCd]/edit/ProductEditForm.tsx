@@ -13,7 +13,6 @@ type Product = {
   unit: string;
   description: string | null;
   note: string | null;
-  costPrice: number | null;
   version: number;
 };
 
