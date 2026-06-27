@@ -46,6 +46,8 @@ export interface PeriodTableConfig {
   table: string;
   /** id を除く一意キー列名。順序は {@link PeriodWriteRow.keyValues} と対応する（例: ["customer_id", "product_id"]）。 */
   keyColumns: readonly string[];
+  /** 金額（NUMERIC）の値列名（例: "selling_price" / "cost_price"）。コンパイル時定数のみ。 */
+  valueColumn: string;
 }
 
 /** append-only で書き込む期間行1件分の値。 */
@@ -53,7 +55,8 @@ export interface PeriodWriteRow {
   id: string;
   /** {@link PeriodTableConfig.keyColumns} と同順の uuid 値。 */
   keyValues: readonly string[];
-  sellingPrice: string;
+  /** {@link PeriodTableConfig.valueColumn} 列へ書き込む通貨スケール固定の10進文字列。 */
+  value: string;
   start: string;
   end: string | null;
 }
@@ -76,7 +79,7 @@ export async function appendPeriodRows(
 ): Promise<void> {
   const table = Prisma.raw(config.table);
   const columns = Prisma.raw(
-    ["id", ...config.keyColumns, "selling_price", "applicable_period", "updated_at"].join(", ")
+    ["id", ...config.keyColumns, config.valueColumn, "applicable_period", "updated_at"].join(", ")
   );
   for (const row of rows) {
     const idAndKeys = Prisma.join([
@@ -87,7 +90,7 @@ export async function appendPeriodRows(
       INSERT INTO ${table} (${columns})
       VALUES (
         ${idAndKeys},
-        ${row.sellingPrice}::numeric,
+        ${row.value}::numeric,
         ${dateRangeValue(row.start, row.end)},
         CURRENT_TIMESTAMP
       )
