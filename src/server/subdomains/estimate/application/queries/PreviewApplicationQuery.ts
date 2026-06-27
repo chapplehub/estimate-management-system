@@ -45,6 +45,13 @@ export class PreviewApplicationQuery {
       roleQueryService: this.roleQueryService,
     });
 
+    // INACTIVE バリエーションは申請不可（§3.4/§12）。Submit（SubmitApplicationCommand）と同じく
+    // `targetVariationIsActive` を判定の起点に置き、judge＋チェーン組立ての前に弾く。これを
+    // 怠ると Preview だけが INACTIVE でも EXEMPT/REQUIRED を見せ、Submit と可否が食い違う（#442）。
+    if (!loaded.targetVariationIsActive) {
+      return { kind: "INACTIVE" };
+    }
+
     const result = assembleApprovalChain(loaded.assemblerInput);
 
     if (result.kind === "EXEMPT") {
