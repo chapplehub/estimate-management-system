@@ -579,6 +579,7 @@ async function main() {
   await prisma.taxRate.deleteMany();
   await prisma.setProductComponent.deleteMany();
   await prisma.productRelation.deleteMany();
+  await prisma.costPrice.deleteMany(); // 原価集約。期間行は FK Cascade で消える（ADR-20260627-a5c）
   await prisma.product.deleteMany();
   await prisma.deliveryLocation.deleteMany();
   await prisma.customer.deleteMany();
@@ -698,6 +699,34 @@ async function main() {
     });
   }
   console.log(`Created ${PRODUCTS.length} products`);
+
+  // 原価集約（ADR-0066 / 0067 / 20260627-a5c）。別 curated 配列を作らず PRODUCTS から導出し、
+  // バックフィル移行と同じカテゴリ分岐・同じ起点（2026-04-01）で投入する（seed と移行の意味論ドリフトを防ぐ）。
+  // 非複合品 ＆ costPrice 非null のみ親＋期間 [2026-04-01, ) を1本生成する（複合品・null は作らない）。
+  const COST_PRICE_BASE_DATE = "2026-04-01";
+  const productIdByCode = new Map(
+    (await prisma.product.findMany({ select: { id: true, code: true } })).map((p) => [p.code, p.id])
+  );
+  let e2eCostCount = 0;
+  for (const product of PRODUCTS) {
+    if (product.category === "SET" || product.costPrice == null) continue;
+    const productId = productIdByCode.get(product.code);
+    if (!productId) continue;
+    await prisma.costPrice.create({ data: { productId } });
+    await prisma.$executeRaw`
+      INSERT INTO cost_price_periods
+        (id, product_id, cost_price, applicable_period, updated_at)
+      VALUES (
+        ${generateId()}::uuid,
+        ${productId}::uuid,
+        ${product.costPrice}::numeric,
+        daterange(${COST_PRICE_BASE_DATE}::date, NULL, '[)'),
+        CURRENT_TIMESTAMP
+      )
+    `;
+    e2eCostCount += 1;
+  }
+  console.log(`Created cost prices (${e2eCostCount} products / periods)`);
 
   // S4 周辺商品サジェスト E2E 用の関連（本体 PRD810 → 周辺 PRD811・数量2）。
   const suggestParent = await prisma.product.findUniqueOrThrow({ where: { code: "PRD810" } });

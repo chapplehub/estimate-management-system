@@ -1174,6 +1174,7 @@ async function main() {
   await prisma.estimate.deleteMany();
   await prisma.taxRate.deleteMany();
   await prisma.commonSellingPrice.deleteMany(); // 期間行は FK Cascade で消える
+  await prisma.costPrice.deleteMany(); // 原価集約。期間行は FK Cascade で消える（ADR-20260627-a5c）
   await prisma.setProductComponent.deleteMany();
   await prisma.productRelation.deleteMany();
   await prisma.product.deleteMany();
@@ -1305,6 +1306,36 @@ async function main() {
   console.log(
     `Created common selling prices for ${COMMON_SELLING_PRICES.length} products (${cspPeriodCount} periods)`
   );
+  console.log("");
+
+  // 原価集約（ADR-0066 / 0067 / 20260627-a5c）。別 curated 配列を作らず PRODUCTS から導出し、
+  // バックフィル移行と同じカテゴリ分岐・同じ起点で投入する（seed と移行の意味論ドリフトを防ぐ）。
+  //   - 複合品（category === "SET"）       → 行を作らない（強制 0 はプレースホルダ。粗利は後続）
+  //   - 非複合品 ＆ costPrice == null        → 行を作らない（期間なし＝原価未設定）
+  //   - 非複合品 ＆ costPrice 非null         → [2026-04-01, ) を1本（本物の 0 も保存）
+  // 起点は移行 SQL の暦日定数と一致させる（ADR-0024 の当年度期首）。
+  const COST_PRICE_BASE_DATE = "2026-04-01";
+  console.log("Creating cost prices...");
+  let costPeriodCount = 0;
+  for (const product of PRODUCTS) {
+    if (product.category === "SET" || product.costPrice == null) continue;
+    const productId = productsByCode.get(product.code);
+    if (!productId) continue;
+    await prisma.costPrice.create({ data: { productId } });
+    await prisma.$executeRaw`
+      INSERT INTO cost_price_periods
+        (id, product_id, cost_price, applicable_period, updated_at)
+      VALUES (
+        ${generateId()}::uuid,
+        ${productId}::uuid,
+        ${product.costPrice}::numeric,
+        daterange(${COST_PRICE_BASE_DATE}::date, NULL, '[)'),
+        CURRENT_TIMESTAMP
+      )
+    `;
+    costPeriodCount += 1;
+  }
+  console.log(`Created cost prices (${costPeriodCount} products / periods)`);
   console.log("");
 
   // 消費税率を作成（昇順で投入。前期間の終わり = 次の行の effectiveFrom の暗黙）

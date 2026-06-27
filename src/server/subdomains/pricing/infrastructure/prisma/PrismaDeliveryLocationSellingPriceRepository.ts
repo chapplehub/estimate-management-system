@@ -110,11 +110,12 @@ export class PrismaDeliveryLocationSellingPriceRepository implements DeliveryLoc
       {
         table: "delivery_location_selling_price_periods",
         keyColumns: ["delivery_location_id", "product_id"],
+        valueColumn: "selling_price",
       },
       DeliveryLocationSellingPriceMapper.toPeriodWriteRows(aggregate).map((row) => ({
         id: row.id,
         keyValues: [row.deliveryLocationId, row.productId],
-        sellingPrice: row.sellingPrice,
+        value: row.sellingPrice,
         start: row.start,
         end: row.end,
       }))

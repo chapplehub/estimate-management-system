@@ -26,6 +26,11 @@ const aggregateChildImportPatterns = [
       "共通販売単価集約の子エンティティ CommonSellingPricePeriod は集約外から直接 import できません。集約ルート（@subdomains/pricing/domain/entities）経由で操作してください。再構成は CommonSellingPrice.reconstruct に VO 記述子を渡してください。",
   },
   {
+    group: ["@subdomains/pricing/domain/entities/CostPricePeriod"],
+    message:
+      "原価集約の子エンティティ CostPricePeriod は集約外から直接 import できません。集約ルート（@subdomains/pricing/domain/entities）経由で操作してください。再構成は CostPrice.reconstruct に VO 記述子を渡してください。",
+  },
+  {
     group: ["@subdomains/pricing/domain/entities/CustomerSellingPricePeriod"],
     message:
       "得意先別販売単価集約の子エンティティ CustomerSellingPricePeriod は集約外から直接 import できません。集約ルート（@subdomains/pricing/domain/entities）経由で操作してください。再構成は CustomerSellingPrice.reconstruct に VO 記述子を渡してください。",

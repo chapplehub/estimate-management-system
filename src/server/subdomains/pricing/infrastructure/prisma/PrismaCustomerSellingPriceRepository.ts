@@ -100,11 +100,15 @@ export class PrismaCustomerSellingPriceRepository implements CustomerSellingPric
   private async writePeriods(tx: Tx, aggregate: CustomerSellingPrice): Promise<void> {
     await appendPeriodRows(
       tx,
-      { table: "customer_selling_price_periods", keyColumns: ["customer_id", "product_id"] },
+      {
+        table: "customer_selling_price_periods",
+        keyColumns: ["customer_id", "product_id"],
+        valueColumn: "selling_price",
+      },
       CustomerSellingPriceMapper.toPeriodWriteRows(aggregate).map((row) => ({
         id: row.id,
         keyValues: [row.customerId, row.productId],
-        sellingPrice: row.sellingPrice,
+        value: row.sellingPrice,
         start: row.start,
         end: row.end,
       }))

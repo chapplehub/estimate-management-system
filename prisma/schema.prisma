@@ -394,6 +394,10 @@ model Product {
   // 共通販売単価集約（ADR-0066）。商品と1:1の従属集約（逆リレーション仮想フィールド）
   commonSellingPrice CommonSellingPrice?
 
+  // 原価集約（ADR-0066 / 20260627-a5c）。商品と1:1の従属集約（逆リレーション仮想フィールド）
+  // ※ Issue A（加法スライス）では products.cost_price 列を温存・二重存在。列削除は Issue B
+  costPriceAggregate CostPrice?
+
   // 得意先別販売単価集約（ADR-20260624-8tg）。逆リレーション仮想フィールド（FK列なし）
   customerSellingPrices CustomerSellingPrice[]
 
@@ -490,6 +494,46 @@ model CommonSellingPricePeriod {
 
   @@index([productId])
   @@map("common_selling_price_periods")
+}
+
+// ========================================
+// 原価（pricing サブドメイン・ADR-0066 / 0067 / 20260627-a5c）
+// ========================================
+
+/// 原価集約のルート。商品と1:1（従属集約）で、楽観ロック version を持つ。
+/// CommonSellingPrice と完全同型。Issue A では products.cost_price 列と一時併存（列削除は B）。
+model CostPrice {
+  productId String  @id @map("product_id") @db.Uuid // PK 兼 products への FK（ProductId 流用）
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  // 適用期間行（子エンティティ）
+  periods CostPricePeriod[]
+
+  // 楽観ロックトークン（ADR-0039）。更新ごとに +1
+  version Int @default(1)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("cost_prices")
+}
+
+/// 原価の適用期間行。同一商品内で適用期間が重複してはならない（EXCLUDE で物理保証・ADR-0067）。
+/// applicable_period は daterange のため Prisma typed では扱えず Unsupported とし、
+/// 読み書きは Repository/Mapper の $queryRaw で行う。
+model CostPricePeriod {
+  id        String    @id @db.Uuid // サロゲート UUIDv7（差分 upsert の identity・ADR-0032）
+  productId String    @map("product_id") @db.Uuid
+  parent    CostPrice @relation(fields: [productId], references: [productId], onDelete: Cascade)
+
+  costPrice        Decimal                  @map("cost_price") @db.Decimal(12, 2) // 原価（NUMERIC・銭精度）
+  applicablePeriod Unsupported("daterange") @map("applicable_period") // 適用期間 [開始, 終了) 上端 unbounded で無期限
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([productId])
+  @@map("cost_price_periods")
 }
 
 // ========================================

@@ -88,11 +88,15 @@ export class PrismaCommonSellingPriceRepository implements CommonSellingPriceRep
   private async writePeriods(tx: Tx, aggregate: CommonSellingPrice): Promise<void> {
     await appendPeriodRows(
       tx,
-      { table: "common_selling_price_periods", keyColumns: ["product_id"] },
+      {
+        table: "common_selling_price_periods",
+        keyColumns: ["product_id"],
+        valueColumn: "selling_price",
+      },
       CommonSellingPriceMapper.toPeriodWriteRows(aggregate).map((row) => ({
         id: row.id,
         keyValues: [row.productId],
-        sellingPrice: row.sellingPrice,
+        value: row.sellingPrice,
         start: row.start,
         end: row.end,
       }))
