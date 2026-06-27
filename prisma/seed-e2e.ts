@@ -692,7 +692,6 @@ async function main() {
         name: product.name,
         category: product.category,
         unit: product.unit,
-        costPrice: product.costPrice,
         isActive: product.isActive,
         description: product.description,
       },

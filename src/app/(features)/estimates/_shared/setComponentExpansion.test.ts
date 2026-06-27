@@ -12,7 +12,6 @@ function product(overrides: Partial<ProductDTO> = {}): ProductDTO {
     isActive: true,
     description: null,
     note: null,
-    costPrice: null,
     relatedProducts: [],
     setComponents: [],
     version: 1,

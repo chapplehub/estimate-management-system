@@ -3,7 +3,6 @@ import { Product } from "@subdomains/product/domain/entities/Product";
 import { ProductRepository } from "@subdomains/product/domain/repositories/ProductRepository";
 import { ProductCodeDuplicationCheckDomainService } from "@subdomains/product/domain/services/ProductCodeDuplicationCheckDomainService";
 import { ProductNameDuplicationCheckDomainService } from "@subdomains/product/domain/services/ProductNameDuplicationCheckDomainService";
-import { CostPrice } from "@subdomains/product/domain/values/CostPrice";
 import { ProductCategory } from "@subdomains/product/domain/values/ProductCategory";
 import { ProductCode } from "@subdomains/product/domain/values/ProductCode";
 import { ProductDescription } from "@subdomains/product/domain/values/ProductDescription";
@@ -18,7 +17,6 @@ export type CreateProductInput = {
   unit: string;
   description?: string | null;
   note?: string | null;
-  costPrice?: number | null;
 };
 
 /**
@@ -51,12 +49,8 @@ export class CreateProductCommand {
 
     const description = input.description ? new ProductDescription(input.description) : null;
     const note = input.note ? new ProductNote(input.note) : null;
-    const costPrice =
-      input.costPrice !== undefined && input.costPrice !== null
-        ? new CostPrice(input.costPrice)
-        : null;
 
-    const product = Product.create(code, name, category, unit, description, note, costPrice);
+    const product = Product.create(code, name, category, unit, description, note);
 
     return await this.productRepository.insert(product);
   }

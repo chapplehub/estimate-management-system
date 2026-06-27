@@ -48,7 +48,6 @@ describe("CreateProductCommand", () => {
     expect(saved!.isActive).toBe(true);
     expect(saved!.description).toBeNull();
     expect(saved!.note).toBeNull();
-    expect(saved!.costPrice).toBeNull();
   });
 
   it("全項目指定で商品を作成できる", async () => {
@@ -59,26 +58,11 @@ describe("CreateProductCommand", () => {
       unit: "PIECE",
       description: "商品の説明",
       note: "備考メモ",
-      costPrice: 1500.5,
     });
 
     const saved = await repository.findByCode(new ProductCode(TEST_CODES[0]));
     expect(saved!.description?.value).toBe("商品の説明");
     expect(saved!.note?.value).toBe("備考メモ");
-    expect(saved!.costPrice?.value).toBe(1500.5);
-  });
-
-  it("SET商品はcostPriceが0になる", async () => {
-    await command.execute({
-      code: TEST_CODES[0],
-      name: "テストセット商品",
-      category: "SET",
-      unit: "SET",
-      costPrice: 999,
-    });
-
-    const saved = await repository.findByCode(new ProductCode(TEST_CODES[0]));
-    expect(saved!.costPrice?.value).toBe(0);
   });
 
   it("B001: 既に存在する商品コードの場合はエラー", async () => {

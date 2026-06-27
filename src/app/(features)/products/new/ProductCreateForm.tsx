@@ -110,28 +110,6 @@ export function ProductCreateForm() {
 
         <div>
           <label
-            htmlFor={fields.costPrice.id}
-            className="block text-gray-700 text-sm font-bold mb-2"
-          >
-            原価
-          </label>
-          <input
-            {...getInputProps(fields.costPrice, { type: "text" })}
-            disabled={isPending}
-            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
-            placeholder="15000"
-          />
-          {fields.costPrice.errors ? (
-            <p className="text-red-500 text-xs mt-1" id={fields.costPrice.errorId}>
-              {fields.costPrice.errors[0]}
-            </p>
-          ) : (
-            <p className="text-gray-600 text-xs mt-1">任意。セット商品の場合は自動で0になります</p>
-          )}
-        </div>
-
-        <div>
-          <label
             htmlFor={fields.description.id}
             className="block text-gray-700 text-sm font-bold mb-2"
           >

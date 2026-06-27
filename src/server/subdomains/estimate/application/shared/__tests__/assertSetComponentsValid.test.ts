@@ -25,7 +25,6 @@ function product(id: string, category: string, isActive: boolean): ProductDTO {
     isActive,
     description: null,
     note: null,
-    costPrice: null,
     relatedProducts: [],
     setComponents: [],
     version: 1,
