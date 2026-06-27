@@ -25,7 +25,7 @@ export async function updateProduct(productCd: string, prevState: unknown, formD
     return submission.reply();
   }
 
-  const { code, name, category, unit, description, note, costPrice, version } = submission.value;
+  const { code, name, category, unit, description, note, version } = submission.value;
 
   // productCdからidを取得
   const queryService = new PrismaProductQueryService();
@@ -49,7 +49,6 @@ export async function updateProduct(productCd: string, prevState: unknown, formD
       unit,
       description,
       note,
-      costPrice,
     });
 
     revalidatePath("/products");

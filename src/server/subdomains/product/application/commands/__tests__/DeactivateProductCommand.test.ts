@@ -90,7 +90,6 @@ describe("DeactivateProductCommand", () => {
       false,
       null,
       null,
-      null,
       [],
       [],
       new Date(),

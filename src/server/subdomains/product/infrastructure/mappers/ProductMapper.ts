@@ -5,7 +5,6 @@ import {
 } from "@generated/prisma/client";
 import { Product } from "@subdomains/product/domain/entities/Product";
 import { ComponentQuantity } from "@subdomains/product/domain/values/ComponentQuantity";
-import { CostPrice } from "@subdomains/product/domain/values/CostPrice";
 import { ProductCategory } from "@subdomains/product/domain/values/ProductCategory";
 import { ProductCode } from "@subdomains/product/domain/values/ProductCode";
 import { ProductDescription } from "@subdomains/product/domain/values/ProductDescription";
@@ -57,7 +56,6 @@ export class ProductMapper {
       prismaProduct.isActive,
       prismaProduct.description ? new ProductDescription(prismaProduct.description) : null,
       prismaProduct.note ? new ProductNote(prismaProduct.note) : null,
-      prismaProduct.costPrice !== null ? new CostPrice(Number(prismaProduct.costPrice)) : null,
       relatedProducts,
       setComponents,
       prismaProduct.createdAt,
@@ -75,7 +73,6 @@ export class ProductMapper {
       isActive: product.isActive,
       description: product.description?.value ?? null,
       note: product.note?.value ?? null,
-      costPrice: product.costPrice?.value ?? null,
     };
   }
 
@@ -87,7 +84,6 @@ export class ProductMapper {
       isActive: product.isActive,
       description: product.description?.value ?? null,
       note: product.note?.value ?? null,
-      costPrice: product.costPrice?.value ?? null,
       updatedAt: product.updatedAt,
     };
   }

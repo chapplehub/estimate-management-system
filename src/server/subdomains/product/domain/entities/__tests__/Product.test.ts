@@ -1,7 +1,6 @@
 import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
 import { describe, expect, it } from "vitest";
 import { ComponentQuantity } from "../../values/ComponentQuantity";
-import { CostPrice } from "../../values/CostPrice";
 import { ProductCategory } from "../../values/ProductCategory";
 import { ProductCode } from "../../values/ProductCode";
 import { ProductDescription } from "../../values/ProductDescription";
@@ -34,7 +33,6 @@ describe("Product", () => {
       expect(product.isActive).toBe(true);
       expect(product.description).toBeNull();
       expect(product.note).toBeNull();
-      expect(product.costPrice).toBeNull();
       expect(product.relatedProducts).toEqual([]);
       expect(product.components).toEqual([]);
     });
@@ -46,38 +44,11 @@ describe("Product", () => {
         ProductCategory.INDIVIDUAL,
         ProductUnit.PIECE,
         new ProductDescription("商品説明"),
-        new ProductNote("備考"),
-        new CostPrice(1000.5)
+        new ProductNote("備考")
       );
 
       expect(product.description?.value).toBe("商品説明");
       expect(product.note?.value).toBe("備考");
-      expect(product.costPrice?.value).toBe(1000.5);
-    });
-
-    it("SET商品はcostPriceが強制的に0になる", () => {
-      const product = Product.create(
-        new ProductCode("SET001"),
-        new ProductName("セット商品"),
-        ProductCategory.SET,
-        ProductUnit.SET,
-        null,
-        null,
-        new CostPrice(999)
-      );
-
-      expect(product.costPrice?.value).toBe(0);
-    });
-
-    it("SET商品はcostPrice未指定でも0になる", () => {
-      const product = Product.create(
-        new ProductCode("SET002"),
-        new ProductName("セット商品2"),
-        ProductCategory.SET,
-        ProductUnit.SET
-      );
-
-      expect(product.costPrice?.value).toBe(0);
     });
   });
 
@@ -99,7 +70,6 @@ describe("Product", () => {
         true,
         null,
         null,
-        new CostPrice(500),
         [],
         [],
         now,
@@ -109,7 +79,6 @@ describe("Product", () => {
       expect(product.id.equals(id)).toBe(true);
       expect(product.code.value).toBe("PROD001");
       expect(product.isActive).toBe(true);
-      expect(product.costPrice?.value).toBe(500);
     });
   });
 
@@ -138,20 +107,6 @@ describe("Product", () => {
       const product = createIndividualProduct();
       product.changeUnit(ProductUnit.BOX);
       expect(product.unit.value).toBe("BOX");
-    });
-  });
-
-  describe("changeCostPrice", () => {
-    it("原価を変更できる", () => {
-      const product = createIndividualProduct();
-      product.changeCostPrice(new CostPrice(2000));
-      expect(product.costPrice?.value).toBe(2000);
-    });
-
-    it("SET商品はcostPrice変更が無視される（常に0）", () => {
-      const product = createSetProduct();
-      product.changeCostPrice(new CostPrice(999));
-      expect(product.costPrice?.value).toBe(0);
     });
   });
 
@@ -394,7 +349,6 @@ function createInactiveProduct(): Product {
     ProductCategory.INDIVIDUAL,
     ProductUnit.UNIT,
     false,
-    null,
     null,
     null,
     [],

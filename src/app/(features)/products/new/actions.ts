@@ -20,7 +20,7 @@ export async function createProduct(prevState: unknown, formData: FormData) {
     return submission.reply();
   }
 
-  const { code, name, category, unit, description, note, costPrice } = submission.value;
+  const { code, name, category, unit, description, note } = submission.value;
 
   try {
     const command = createProductCommandFactory();
@@ -31,7 +31,6 @@ export async function createProduct(prevState: unknown, formData: FormData) {
       unit,
       description,
       note,
-      costPrice,
     });
 
     revalidatePath("/products");

@@ -50,20 +50,6 @@ export const productBaseSchema = z.object({
     .max(1000, { error: "備考は1000文字以内で入力してください" })
     .optional()
     .transform((val) => val || null),
-  costPrice: z
-    .string()
-    .trim()
-    .optional()
-    .transform((val) => {
-      if (!val || val === "") return null;
-      return Number(val);
-    })
-    .pipe(
-      z
-        .number({ error: "原価は数値で入力してください" })
-        .min(0, { error: "原価は0以上で入力してください" })
-        .nullable()
-    ),
 });
 
 export type ProductBaseInput = z.infer<typeof productBaseSchema>;
