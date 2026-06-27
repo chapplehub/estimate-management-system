@@ -98,3 +98,70 @@ export async function appendPeriodRows(
     `;
   }
 }
+
+/**
+ * 集約の期間行と DB を一致させる差分 sync（upsert＋集約から消えた行の削除）。
+ *
+ * append-only（{@link appendPeriodRows}）が追加しか表現できないのに対し、こちらは編集（in-place
+ * 更新）・適用終了（終了日差し替え）・削除（行の消去）を伴う集約のために、DB を集約の現在状態へ
+ * 収束させる（ADR-0032 の差分 upsert）。
+ *
+ * - **upsert**: 既存 id は `ON CONFLICT (id) DO UPDATE` で値（金額・適用期間）を更新する。ただし
+ *   `WHERE 値が IS DISTINCT FROM` を付け、**変更が無い行は no-op** にして `updated_at` を据え置く
+ *   （監査保持）。変更がある行だけ `updated_at` が前進する。
+ * - **delete**: スコープキー（{@link scopeKeyValues}）配下で、集約に存在しない id の行を削除する。
+ *   集約が空（全行削除）でも `scopeKeyValues` でスコープを特定できるよう、削除範囲のキーは行から
+ *   導かず明示引数で受ける（空集約だと `rows` から導出できないため）。
+ *
+ * `daterange` は Prisma typed では扱えないため `$executeRaw`/`dateRangeValue` で書く（ADR-0067）。
+ * version 競合の検査は呼び出し側の条件付き updateMany が担う（ADR-0039）。
+ *
+ * @param scopeKeyValues 削除スコープを定める {@link PeriodTableConfig.keyColumns} と同順の uuid 値。
+ */
+export async function syncPeriodRows(
+  tx: Tx,
+  config: PeriodTableConfig,
+  scopeKeyValues: readonly string[],
+  rows: readonly PeriodWriteRow[]
+): Promise<void> {
+  const table = Prisma.raw(config.table);
+  const valueColumn = Prisma.raw(config.valueColumn);
+  const columns = Prisma.raw(
+    ["id", ...config.keyColumns, config.valueColumn, "applicable_period", "updated_at"].join(", ")
+  );
+
+  for (const row of rows) {
+    const idAndKeys = Prisma.join([
+      Prisma.sql`${row.id}::uuid`,
+      ...row.keyValues.map((value) => Prisma.sql`${value}::uuid`),
+    ]);
+    await tx.$executeRaw`
+      INSERT INTO ${table} (${columns})
+      VALUES (
+        ${idAndKeys},
+        ${row.value}::numeric,
+        ${dateRangeValue(row.start, row.end)},
+        CURRENT_TIMESTAMP
+      )
+      ON CONFLICT (id) DO UPDATE SET
+        ${valueColumn} = EXCLUDED.${valueColumn},
+        applicable_period = EXCLUDED.applicable_period,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE ${table}.${valueColumn} IS DISTINCT FROM EXCLUDED.${valueColumn}
+         OR ${table}.applicable_period IS DISTINCT FROM EXCLUDED.applicable_period
+    `;
+  }
+
+  // 集約に存在しない id の行を削除する。空配列なら ANY(空) が常に偽となり、スコープ配下の全行が
+  // 削除対象になる（全行削除のケースも同一経路で扱える）。
+  const keyPredicate = Prisma.join(
+    config.keyColumns.map((col, i) => Prisma.sql`${Prisma.raw(col)} = ${scopeKeyValues[i]}::uuid`),
+    " AND "
+  );
+  const survivingIds = rows.map((row) => row.id);
+  await tx.$executeRaw`
+    DELETE FROM ${table}
+    WHERE ${keyPredicate}
+      AND NOT (id = ANY(${survivingIds}::uuid[]))
+  `;
+}
