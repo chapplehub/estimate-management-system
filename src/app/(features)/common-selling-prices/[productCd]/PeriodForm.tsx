@@ -4,7 +4,8 @@ import { getFormProps, getInputProps } from "@conform-to/react";
 import { useEffect } from "react";
 import { z } from "zod";
 import { useServerForm } from "@/app/_hooks/useServerForm";
-import type { PeriodDetail } from "../_data/types";
+import type { CommonSellingPriceEditPeriodDTO } from "@subdomains/pricing/application/queries/dto/CommonSellingPriceEditDTO";
+import { formatYenFromDecimal } from "../_components/formatYen";
 import { addPeriodAction, endDatePeriodAction, updateFuturePeriodAction } from "./actions";
 import { addPeriodSchema, endDatePeriodSchema, updateFuturePeriodSchema } from "./schema";
 
@@ -26,22 +27,20 @@ const _periodFormFieldsSchema = z.object({
 });
 
 type Props = {
-  productCd: string;
-  /** 集約ルートの楽観ロックversion（hidden で往復）。 */
-  version: number;
+  /** コマンド宛先キー（編集読みモデルが返す productId を bind）。 */
+  productId: string;
+  /** route／revalidate 用キー（編集読みモデルが返す productCode を bind）。 */
+  productCode: string;
+  /** 集約ルートの楽観ロックversion（hidden で往復）。未設定商品（新規登録モード）では null。 */
+  version: number | null;
   mode: PeriodFormMode;
   /** edit / endDate で対象行。new では未指定。 */
-  period?: PeriodDetail;
+  period?: CommonSellingPriceEditPeriodDTO;
   /** 成功時（パネルを閉じる）。 */
   onSuccess: () => void;
   /** キャンセル時（パネルを閉じる）。 */
   onCancel: () => void;
 };
-
-/** 円表示。 */
-function formatYen(value: number): string {
-  return `¥${value.toLocaleString("ja-JP")}`;
-}
 
 const SUBMIT_LABEL: Record<PeriodFormMode, { idle: string; busy: string }> = {
   new: { idle: "登録", busy: "登録中..." },
@@ -49,30 +48,45 @@ const SUBMIT_LABEL: Record<PeriodFormMode, { idle: string; busy: string }> = {
   endDate: { idle: "適用終了", busy: "処理中..." },
 };
 
-/** モード別に送信先Action（productCd を bind）と実行時スキーマを選ぶ。 */
-function pickRuntime(mode: PeriodFormMode, productCd: string) {
+/** モード別に送信先Action（productId・productCode を bind）と実行時スキーマを選ぶ。 */
+function pickRuntime(mode: PeriodFormMode, productId: string, productCode: string) {
   switch (mode) {
     case "new":
-      return { action: addPeriodAction.bind(null, productCd), schema: addPeriodSchema };
+      return {
+        action: addPeriodAction.bind(null, productId, productCode),
+        schema: addPeriodSchema,
+      };
     case "edit":
       return {
-        action: updateFuturePeriodAction.bind(null, productCd),
+        action: updateFuturePeriodAction.bind(null, productId, productCode),
         schema: updateFuturePeriodSchema,
       };
     case "endDate":
-      return { action: endDatePeriodAction.bind(null, productCd), schema: endDatePeriodSchema };
+      return {
+        action: endDatePeriodAction.bind(null, productId, productCode),
+        schema: endDatePeriodSchema,
+      };
   }
 }
 
-export function PeriodForm({ productCd, version, mode, period, onSuccess, onCancel }: Props) {
-  const runtime = pickRuntime(mode, productCd);
+export function PeriodForm({
+  productId,
+  productCode,
+  version,
+  mode,
+  period,
+  onSuccess,
+  onCancel,
+}: Props) {
+  const runtime = pickRuntime(mode, productId, productCode);
 
   const defaultValue = {
-    version: String(version),
+    version: version != null ? String(version) : undefined,
     periodId: period?.periodId,
-    startDate: period?.startDate,
-    endDate: period?.endDate ?? undefined,
-    price: period != null ? String(period.price) : undefined,
+    startDate: period?.start,
+    endDate: period?.end ?? undefined,
+    // 単価は10進文字列で運ぶ。整数入力欄の既定値は整数部のみを渡す（float を経由しない）。
+    price: period != null ? period.sellingPrice.split(".")[0] : undefined,
   };
 
   const { form, fields, isPending } = useServerForm({
@@ -111,7 +125,10 @@ export function PeriodForm({ productCd, version, mode, period, onSuccess, onCanc
       )}
 
       <form {...getFormProps(form)} noValidate className="space-y-4">
-        <input type="hidden" name={fields.version.name} value={String(version)} />
+        {/* 未設定商品の初回登録（version=null）では version を送らず BE に新規作成を選ばせる（#473）。 */}
+        {version != null && (
+          <input type="hidden" name={fields.version.name} value={String(version)} />
+        )}
         {(mode === "edit" || mode === "endDate") && period != null && (
           <input type="hidden" name={fields.periodId.name} value={period.periodId} />
         )}
@@ -121,11 +138,13 @@ export function PeriodForm({ productCd, version, mode, period, onSuccess, onCanc
           <dl className="grid grid-cols-2 gap-4 bg-gray-50 rounded p-4">
             <div>
               <dt className="text-sm font-bold text-gray-700">適用開始日</dt>
-              <dd className="mt-1 tabular-nums text-gray-900">{period.startDate}</dd>
+              <dd className="mt-1 tabular-nums text-gray-900">{period.start}</dd>
             </div>
             <div>
               <dt className="text-sm font-bold text-gray-700">共通売単価</dt>
-              <dd className="mt-1 tabular-nums text-gray-900">{formatYen(period.price)}</dd>
+              <dd className="mt-1 tabular-nums text-gray-900">
+                {formatYenFromDecimal(period.sellingPrice)}
+              </dd>
             </div>
           </dl>
         )}

@@ -1,7 +1,8 @@
 import { verifySession } from "@/app/_lib/verifyAuthentication";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { fetchCommonSellingPriceDetail } from "../_data/queries";
+import { commonSellingPriceEditQueryFactory } from "@subdomains/pricing/application/factories/pricingQueryFactory";
+import { toJstCalendarDay } from "@server/shared/domain/values/toJstCalendarDay";
 import { PeriodDetailPanel } from "./PeriodDetailPanel";
 
 export default async function CommonSellingPriceDetailPage({
@@ -12,7 +13,10 @@ export default async function CommonSellingPriceDetailPage({
   await verifySession();
   const { productCd } = await params;
 
-  const detail = await fetchCommonSellingPriceDetail(productCd);
+  const detail = await commonSellingPriceEditQueryFactory().find({
+    productCode: productCd,
+    referenceDate: toJstCalendarDay(new Date()),
+  });
   if (detail == null) {
     notFound();
   }
@@ -38,7 +42,7 @@ export default async function CommonSellingPriceDetailPage({
         <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <dt className="text-sm font-bold text-gray-700">商品コード</dt>
-            <dd className="mt-1 text-gray-900">{detail.productCd}</dd>
+            <dd className="mt-1 text-gray-900">{detail.productCode}</dd>
           </div>
           <div>
             <dt className="text-sm font-bold text-gray-700">商品名</dt>

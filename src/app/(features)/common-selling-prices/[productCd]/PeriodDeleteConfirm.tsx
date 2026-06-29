@@ -7,9 +7,12 @@ import { deletePeriodAction } from "./actions";
 import { deletePeriodSchema } from "./schema";
 
 type Props = {
-  productCd: string;
+  /** コマンド宛先キー（編集読みモデルが返す productId を bind）。 */
+  productId: string;
+  /** route／revalidate 用キー（編集読みモデルが返す productCode を bind）。 */
+  productCode: string;
   periodId: string;
-  /** 集約ルートの楽観ロックversion。 */
+  /** 集約ルートの楽観ロックversion（削除対象＝将来行は集約が在るため非null）。 */
   version: number;
   onSuccess: () => void;
   onCancel: () => void;
@@ -23,9 +26,16 @@ type Props = {
  * undo 無しの物理削除に最小ガードを掛ける。成功/エラーの解釈は PeriodForm と
  * 同じ conform 機構（form.status / form.errors）に揃える。
  */
-export function PeriodDeleteConfirm({ productCd, periodId, version, onSuccess, onCancel }: Props) {
+export function PeriodDeleteConfirm({
+  productId,
+  productCode,
+  periodId,
+  version,
+  onSuccess,
+  onCancel,
+}: Props) {
   const { form, fields, isPending } = useServerForm({
-    action: deletePeriodAction.bind(null, productCd),
+    action: deletePeriodAction.bind(null, productId, productCode),
     schema: deletePeriodSchema,
     defaultValue: { version: String(version), periodId },
   });
