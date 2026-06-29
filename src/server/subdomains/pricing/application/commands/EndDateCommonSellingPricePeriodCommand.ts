@@ -1,8 +1,7 @@
-import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { CommonSellingPrice } from "@subdomains/pricing/domain/entities";
 import { CommonSellingPriceRepository } from "@subdomains/pricing/domain/repositories/CommonSellingPriceRepository";
 import { CommonSellingPricePeriodId } from "@subdomains/pricing/domain/values/CommonSellingPricePeriodId";
-import { ProductId } from "@subdomains/product/domain/values/ProductId";
+import { loadCommonSellingPriceOrThrow } from "./loadCommonSellingPriceOrThrow";
 
 export type EndDateCommonSellingPricePeriodInput = {
   productId: string;
@@ -26,11 +25,7 @@ export class EndDateCommonSellingPricePeriodCommand {
   constructor(private readonly repository: CommonSellingPriceRepository) {}
 
   async execute(input: EndDateCommonSellingPricePeriodInput): Promise<CommonSellingPrice> {
-    const productId = new ProductId(input.productId);
-    const aggregate = await this.repository.findByProductId(productId);
-    if (aggregate === null) {
-      throw new NotFoundEntityError(CommonSellingPrice, { productId: input.productId });
-    }
+    const aggregate = await loadCommonSellingPriceOrThrow(this.repository, input.productId);
 
     aggregate.endDatePeriod(
       new CommonSellingPricePeriodId(input.periodId),

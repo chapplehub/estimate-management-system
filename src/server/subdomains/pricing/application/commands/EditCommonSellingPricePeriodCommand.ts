@@ -1,11 +1,10 @@
 import { ApplicablePeriod } from "@server/shared/domain/values/ApplicablePeriod";
 import { Money } from "@server/shared/domain/values/Money";
-import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { CommonSellingPrice } from "@subdomains/pricing/domain/entities";
 import { CommonSellingPriceRepository } from "@subdomains/pricing/domain/repositories/CommonSellingPriceRepository";
 import { CommonSellingPricePeriodId } from "@subdomains/pricing/domain/values/CommonSellingPricePeriodId";
 import { SellingUnitPrice } from "@subdomains/pricing/domain/values/SellingUnitPrice";
-import { ProductId } from "@subdomains/product/domain/values/ProductId";
+import { loadCommonSellingPriceOrThrow } from "./loadCommonSellingPriceOrThrow";
 
 export type EditCommonSellingPricePeriodInput = {
   productId: string;
@@ -31,11 +30,7 @@ export class EditCommonSellingPricePeriodCommand {
   constructor(private readonly repository: CommonSellingPriceRepository) {}
 
   async execute(input: EditCommonSellingPricePeriodInput): Promise<CommonSellingPrice> {
-    const productId = new ProductId(input.productId);
-    const aggregate = await this.repository.findByProductId(productId);
-    if (aggregate === null) {
-      throw new NotFoundEntityError(CommonSellingPrice, { productId: input.productId });
-    }
+    const aggregate = await loadCommonSellingPriceOrThrow(this.repository, input.productId);
 
     const period = ApplicablePeriod.create({ start: input.start, end: input.end });
     const price = SellingUnitPrice.fromMoney(Money.fromDecimalString(input.price));
