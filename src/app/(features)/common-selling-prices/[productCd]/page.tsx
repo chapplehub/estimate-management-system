@@ -1,24 +1,8 @@
 import { verifySession } from "@/app/_lib/verifyAuthentication";
-import { Badge } from "@/app/_components/shadcnui/badge";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { fetchCommonSellingPriceDetail } from "../_data/queries";
-import type { PeriodState } from "../_data/types";
-
-/** 円表示（プロトタイプの yen() に一致）。 */
-function formatYen(value: number): string {
-  return `¥${value.toLocaleString("ja-JP")}`;
-}
-
-/** 派生状態のラベルと Badge variant（現在有効/将来/失効）。 */
-const STATE_BADGE: Record<
-  PeriodState,
-  { label: string; variant: "default" | "outline" | "secondary" }
-> = {
-  current: { label: "現在有効", variant: "default" },
-  future: { label: "将来", variant: "outline" },
-  lapsed: { label: "失効", variant: "secondary" },
-};
+import { PeriodDetailPanel } from "./PeriodDetailPanel";
 
 export default async function CommonSellingPriceDetailPage({
   params,
@@ -63,45 +47,8 @@ export default async function CommonSellingPriceDetailPage({
         </dl>
       </div>
 
-      {/* 適用期間明細 */}
-      <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-8">
-        <h2 className="text-xl font-semibold mb-4 text-gray-500">適用期間</h2>
-        {detail.periods.length > 0 ? (
-          <table className="w-full text-left">
-            <thead>
-              <tr className="border-b">
-                <th className="py-2 text-sm font-bold text-gray-700">適用開始日</th>
-                <th className="py-2 text-sm font-bold text-gray-700">適用終了日</th>
-                <th className="py-2 text-sm font-bold text-gray-700 text-right">共通売単価</th>
-                <th className="py-2 text-sm font-bold text-gray-700">状態</th>
-              </tr>
-            </thead>
-            <tbody>
-              {detail.periods.map((period) => {
-                const badge = STATE_BADGE[period.state];
-                return (
-                  <tr key={period.periodId} className="border-b">
-                    <td className="py-2 tabular-nums">{period.startDate}</td>
-                    <td className="py-2 tabular-nums">
-                      {period.endDate ?? <span className="text-gray-500">無期限</span>}
-                    </td>
-                    <td className="py-2 text-right font-medium tabular-nums">
-                      {formatYen(period.price)}
-                    </td>
-                    <td className="py-2">
-                      <Badge variant={badge.variant}>{badge.label}</Badge>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        ) : (
-          <p className="text-gray-500">
-            適用期間が未設定です。共通売単価が無いと価格決定が解決できません。
-          </p>
-        )}
-      </div>
+      {/* 適用期間明細＋操作（UC-2/3/4/5）。表示・操作はクライアント wrapper に委譲。 */}
+      <PeriodDetailPanel detail={detail} />
     </div>
   );
 }
