@@ -111,7 +111,9 @@ export class CommonSellingPrice {
    * 単価改定は「適用終了＋新規期間追加」で表現し、各行を不変の履歴として残す（ADR-20260627-86b）。
    *
    * 終了日は今日より後でなければならない（半開区間 `[開始, 終了)` ゆえ終了日=今日は今日を被覆外にし
-   * 遡及削除になるため）。
+   * 遡及削除になるため）。また「適用終了」は打ち切り＝短縮であり延長ではないため、既存終了日が有界なら
+   * 新しい終了日はそれより手前でなければならない（延長は本来失効すべき単価を生かし未来見積の単価判定を
+   * 誤らせる）。既存が無期限（end=null）なら任意の未来日が正当な短縮として許される。
    *
    * @param referenceDate 参照日（今日・JST 暦日 `"YYYY-MM-DD"`）。
    */
@@ -129,6 +131,11 @@ export class CommonSellingPrice {
     if (endDate <= referenceDate) {
       throw new BusinessRuleViolationError(
         `${CommonSellingPrice.ENTITY_NAME}の適用終了日は今日より後である必要があります: ${endDate} <= ${referenceDate}`
+      );
+    }
+    if (row.period.end !== null && endDate >= row.period.end) {
+      throw new BusinessRuleViolationError(
+        `${CommonSellingPrice.ENTITY_NAME}の適用終了は短縮のみ可能です（既存終了日より後へは延長できません）: ${endDate} >= ${row.period.end}`
       );
     }
     const ended = ApplicablePeriod.create({ start: row.period.start, end: endDate });

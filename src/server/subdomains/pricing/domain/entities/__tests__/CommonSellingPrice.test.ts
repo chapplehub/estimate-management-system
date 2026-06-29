@@ -190,6 +190,37 @@ describe("CommonSellingPrice 集約", () => {
         BusinessRuleViolationError
       );
     });
+
+    it("有界の現在有効行を既存終了日より後へは延長できない（短縮のみ許可）", () => {
+      const aggregate = CommonSellingPrice.create(productId);
+      aggregate.addPeriod(period("2025-04-01", "2025-07-01"), price(1000), "2025-03-01");
+      const id = aggregate.periods[0].id;
+
+      // 既存 end=2025-07-01 を 2025-12-01 へ動かすのは延長＝適用終了の意味に反するため不可
+      expect(() => aggregate.endDatePeriod(id, "2025-12-01", today)).toThrow(
+        BusinessRuleViolationError
+      );
+    });
+
+    it("有界の現在有効行で既存終了日と同一の終了日は不可（短縮になっていない）", () => {
+      const aggregate = CommonSellingPrice.create(productId);
+      aggregate.addPeriod(period("2025-04-01", "2025-07-01"), price(1000), "2025-03-01");
+      const id = aggregate.periods[0].id;
+
+      expect(() => aggregate.endDatePeriod(id, "2025-07-01", today)).toThrow(
+        BusinessRuleViolationError
+      );
+    });
+
+    it("有界の現在有効行を既存終了日より手前へは短縮できる", () => {
+      const aggregate = CommonSellingPrice.create(productId);
+      aggregate.addPeriod(period("2025-04-01", "2025-07-01"), price(1000), "2025-03-01");
+      const id = aggregate.periods[0].id;
+
+      aggregate.endDatePeriod(id, "2025-06-15", today);
+
+      expect(aggregate.periods[0].period.equals(period("2025-04-01", "2025-06-15"))).toBe(true);
+    });
   });
 
   describe("deletePeriod — 未来開始行の削除", () => {
