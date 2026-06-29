@@ -5,8 +5,16 @@
  * 共通売単価 保守画面.dc.html` の `seed()`）のシードを流用した読み取り専用ストア。
  * #466 完成時はこのモジュールごと差し替える（`queries.ts` のシグネチャは維持）。
  *
- * 本ラウンドは読み取りのみ。ミューテータ（登録・編集・削除）は次ラウンドで追加する。
+ * 読み取り（`getAllAggregates` / `getAggregateByProductCd`）に加え、ミューテータ
+ * （登録・編集・適用終了・削除）を持つ。不変条件（重複禁止・状態別権限・楽観ロック）は
+ * ここに集約し、Server Action は parse→ミューテータ→catch→revalidate の薄いガワに保つ
+ * （ラウンド2決定1）。違反時は本番リポジトリ／コマンドと同じ既存エラー型を throw して
+ * Action の catch を本番同形にする（#466 差し替え時に Action を変えずに済む）。
  */
+
+import { ConflictError } from "@server/shared/errors/ApplicationError";
+import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
+import { authorityFor, classifyState, hasOverlap } from "./period-rules";
 
 /**
  * 参照日（時点解決の基準日）。プロトタイプの `TODAY` に一致。
@@ -169,4 +177,150 @@ export function getAllAggregates(): MockAggregate[] {
 /** 商品コードで集約を1件返す。無ければ null。 */
 export function getAggregateByProductCd(productCd: string): MockAggregate | null {
   return store.find((aggregate) => aggregate.productCd === productCd) ?? null;
+}
+
+// ───────────────────────── ミューテータ（書き込み） ─────────────────────────
+
+/** 楽観ロック競合の標準文言（本番リポジトリと同一。ADR-0039）。 */
+const CONFLICT_MESSAGE =
+  "他のユーザーによって更新または削除されています。画面を再読み込みして最新の内容を確認してください。";
+
+/** 重複違反の文言。 */
+const OVERLAP_MESSAGE = "適用期間が既存の期間と重複しています。";
+
+/**
+ * 新規 periodId の単調カウンタ。
+ * シードの `{商品コード}-p{連番}`（index採番）は delete→add で既存IDと衝突するため、
+ * 別系列（`-new{n}`）で衝突しないよう単調に採番する。
+ */
+let periodIdCounter = 0;
+function nextPeriodId(productCd: string): string {
+  periodIdCounter += 1;
+  return `${productCd}-new${periodIdCounter}`;
+}
+
+/**
+ * 書き込み対象の集約を取得し version を突合する。
+ * 集約が無い（削除済み相当）か version 不一致なら ConflictError（再読込を促す文言）。
+ */
+function loadForWrite(productCd: string, expectedVersion: number): MockAggregate {
+  const aggregate = store.find((a) => a.productCd === productCd);
+  if (aggregate == null || aggregate.version !== expectedVersion) {
+    throw new ConflictError(CONFLICT_MESSAGE);
+  }
+  return aggregate;
+}
+
+/** 対象期間行を取得する。無ければ ConflictError（他者削除相当）。 */
+function requirePeriod(aggregate: MockAggregate, periodId: string): MockPeriod {
+  const period = aggregate.periods.find((p) => p.periodId === periodId);
+  if (period == null) throw new ConflictError(CONFLICT_MESSAGE);
+  return period;
+}
+
+/** UC-3 登録の入力（適用開始日・適用終了日・単価）。 */
+export type AddPeriodInput = {
+  startDate: string;
+  endDate: string | null;
+  price: number;
+};
+
+/** UC-3 適用期間を登録する。既存期間と重複したら拒否。version を bump。 */
+export async function addPeriod(
+  productCd: string,
+  expectedVersion: number,
+  input: AddPeriodInput
+): Promise<void> {
+  const aggregate = loadForWrite(productCd, expectedVersion);
+  if (hasOverlap(input, aggregate.periods)) {
+    throw new BusinessRuleViolationError(OVERLAP_MESSAGE);
+  }
+  aggregate.periods.push({
+    periodId: nextPeriodId(productCd),
+    startDate: input.startDate,
+    endDate: input.endDate,
+    price: input.price,
+  });
+  aggregate.periods.sort((a, b) => a.startDate.localeCompare(b.startDate));
+  aggregate.version += 1;
+}
+
+/** UC-4 将来行の全項目編集の入力。 */
+export type UpdateFuturePeriodInput = {
+  periodId: string;
+  startDate: string;
+  endDate: string | null;
+  price: number;
+};
+
+/** UC-4 将来開始の期間行を全項目編集する。将来行以外は拒否、重複は自己除外で判定。 */
+export async function updateFuturePeriod(
+  productCd: string,
+  expectedVersion: number,
+  input: UpdateFuturePeriodInput
+): Promise<void> {
+  const aggregate = loadForWrite(productCd, expectedVersion);
+  const target = requirePeriod(aggregate, input.periodId);
+  if (!authorityFor(classifyState(target, REFERENCE_DATE)).editable) {
+    throw new BusinessRuleViolationError("将来開始の期間のみ編集できます。");
+  }
+  if (hasOverlap(input, aggregate.periods, input.periodId)) {
+    throw new BusinessRuleViolationError(OVERLAP_MESSAGE);
+  }
+  target.startDate = input.startDate;
+  target.endDate = input.endDate;
+  target.price = input.price;
+  aggregate.periods.sort((a, b) => a.startDate.localeCompare(b.startDate));
+  aggregate.version += 1;
+}
+
+/** UC-4 適用終了（end-dating）の入力。終了日のみ（無期限化ではなく終了させる操作ゆえ必須）。 */
+export type EndDateCurrentPeriodInput = {
+  periodId: string;
+  endDate: string;
+};
+
+/** UC-4 現在有効行に終了日を設定し以後の時点解決から外す（適用終了）。現在有効行以外は拒否。 */
+export async function endDateCurrentPeriod(
+  productCd: string,
+  expectedVersion: number,
+  input: EndDateCurrentPeriodInput
+): Promise<void> {
+  const aggregate = loadForWrite(productCd, expectedVersion);
+  const target = requirePeriod(aggregate, input.periodId);
+  if (!authorityFor(classifyState(target, REFERENCE_DATE)).endDatable) {
+    throw new BusinessRuleViolationError("現在有効な期間のみ適用終了できます。");
+  }
+  // 適用終了は「以後適用しなくする」操作。過去で締めて現在の有効性を遡及的に消さないよう
+  // 終了日は本日以降（use-cases.md §4「今日以降で適用終了」）。終了>開始は zod 層で担保。
+  if (input.endDate < REFERENCE_DATE) {
+    throw new BusinessRuleViolationError("適用終了日は本日以降を指定してください。");
+  }
+  // 終了日を延ばして後続の将来期間に食い込むケースを最終チェック（自己除外）。
+  const candidate = { startDate: target.startDate, endDate: input.endDate };
+  if (hasOverlap(candidate, aggregate.periods, input.periodId)) {
+    throw new BusinessRuleViolationError(OVERLAP_MESSAGE);
+  }
+  target.endDate = input.endDate;
+  aggregate.version += 1;
+}
+
+/** UC-5 削除の入力。 */
+export type DeletePeriodInput = {
+  periodId: string;
+};
+
+/** UC-5 未適用（将来開始）の期間行を物理削除する。将来行以外は拒否。最低1期間ガードは持たない。 */
+export async function deletePeriod(
+  productCd: string,
+  expectedVersion: number,
+  input: DeletePeriodInput
+): Promise<void> {
+  const aggregate = loadForWrite(productCd, expectedVersion);
+  const target = requirePeriod(aggregate, input.periodId);
+  if (!authorityFor(classifyState(target, REFERENCE_DATE)).deletable) {
+    throw new BusinessRuleViolationError("将来開始の期間のみ削除できます。");
+  }
+  aggregate.periods = aggregate.periods.filter((p) => p.periodId !== input.periodId);
+  aggregate.version += 1;
 }
