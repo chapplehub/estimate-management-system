@@ -1,4 +1,5 @@
 import { verifySession } from "@/app/_lib/verifyAuthentication";
+import { isAdmin } from "@server/shared/auth";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { commonSellingPriceEditQueryFactory } from "@subdomains/pricing/application/factories/pricingQueryFactory";
@@ -11,7 +12,8 @@ export default async function CommonSellingPriceDetailPage({
 }: {
   params: Promise<{ productCd: string }>;
 }) {
-  await verifySession();
+  const session = await verifySession();
+  const admin = isAdmin(session);
   const { productCd } = await params;
 
   const detail = await commonSellingPriceEditQueryFactory().find({
@@ -56,7 +58,7 @@ export default async function CommonSellingPriceDetailPage({
       </div>
 
       {/* 適用期間明細＋操作（UC-2/3/4/5）。表示・操作はクライアント wrapper に委譲。 */}
-      <PeriodDetailPanel detail={detail} />
+      <PeriodDetailPanel detail={detail} isAdmin={admin} />
     </div>
   );
 }
