@@ -34,6 +34,8 @@ type PanelMode =
 
 type Props = {
   detail: CommonSellingPriceEditDTO;
+  /** 管理者のみミューテーション系UI（新規追加・編集・適用終了・削除）を描画する。認可の正本はサーバー側 verifyAdmin。 */
+  isAdmin: boolean;
 };
 
 /**
@@ -43,7 +45,7 @@ type Props = {
  * （use-cases.md §7・authorityFor）、登録/編集/適用終了は単一 PeriodForm をモードで
  * 切り替えて下部パネルに表示する。削除は行内2段階確認（決定5）。
  */
-export function PeriodDetailPanel({ detail }: Props) {
+export function PeriodDetailPanel({ detail, isAdmin }: Props) {
   const [mode, setMode] = useState<PanelMode>({ kind: "closed" });
   const close = useCallback(() => setMode({ kind: "closed" }), []);
 
@@ -59,13 +61,15 @@ export function PeriodDetailPanel({ detail }: Props) {
     <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-8">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold text-gray-500">適用期間</h2>
-        <button
-          type="button"
-          onClick={() => setMode({ kind: "new" })}
-          className="bg-blue-500 hover:bg-blue-700 text-white text-sm font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-        >
-          新規追加
-        </button>
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={() => setMode({ kind: "new" })}
+            className="bg-blue-500 hover:bg-blue-700 text-white text-sm font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+          >
+            新規追加
+          </button>
+        )}
       </div>
 
       {detail.periods.length > 0 ? (
@@ -76,7 +80,7 @@ export function PeriodDetailPanel({ detail }: Props) {
               <th className="py-2 text-sm font-bold text-gray-700">適用終了日</th>
               <th className="py-2 text-sm font-bold text-gray-700 text-right">共通売単価</th>
               <th className="py-2 text-sm font-bold text-gray-700">状態</th>
-              <th className="py-2 text-sm font-bold text-gray-700 text-right">操作</th>
+              {isAdmin && <th className="py-2 text-sm font-bold text-gray-700 text-right">操作</th>}
             </tr>
           </thead>
           <tbody>
@@ -96,51 +100,55 @@ export function PeriodDetailPanel({ detail }: Props) {
                   <td className="py-2">
                     <Badge variant={badge.variant}>{badge.label}</Badge>
                   </td>
-                  <td className="py-2">
-                    {isDeleting ? (
-                      <PeriodDeleteConfirm
-                        productId={detail.productId}
-                        productCode={detail.productCode}
-                        periodId={period.periodId}
-                        version={detail.version ?? 0}
-                        onSuccess={close}
-                        onCancel={close}
-                      />
-                    ) : (
-                      <div className="flex gap-2 justify-end">
-                        {auth.editable && (
-                          <button
-                            type="button"
-                            onClick={() => setMode({ kind: "edit", periodId: period.periodId })}
-                            className="text-blue-600 hover:text-blue-800 hover:underline text-sm"
-                          >
-                            編集
-                          </button>
-                        )}
-                        {auth.endDatable && (
-                          <button
-                            type="button"
-                            onClick={() => setMode({ kind: "endDate", periodId: period.periodId })}
-                            className="text-blue-600 hover:text-blue-800 hover:underline text-sm"
-                          >
-                            適用終了
-                          </button>
-                        )}
-                        {auth.deletable && (
-                          <button
-                            type="button"
-                            onClick={() => setMode({ kind: "delete", periodId: period.periodId })}
-                            className="text-red-600 hover:text-red-800 hover:underline text-sm"
-                          >
-                            削除
-                          </button>
-                        )}
-                        {!auth.editable && !auth.endDatable && !auth.deletable && (
-                          <span className="text-gray-400 text-sm">—</span>
-                        )}
-                      </div>
-                    )}
-                  </td>
+                  {isAdmin && (
+                    <td className="py-2">
+                      {isDeleting ? (
+                        <PeriodDeleteConfirm
+                          productId={detail.productId}
+                          productCode={detail.productCode}
+                          periodId={period.periodId}
+                          version={detail.version ?? 0}
+                          onSuccess={close}
+                          onCancel={close}
+                        />
+                      ) : (
+                        <div className="flex gap-2 justify-end">
+                          {auth.editable && (
+                            <button
+                              type="button"
+                              onClick={() => setMode({ kind: "edit", periodId: period.periodId })}
+                              className="text-blue-600 hover:text-blue-800 hover:underline text-sm"
+                            >
+                              編集
+                            </button>
+                          )}
+                          {auth.endDatable && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setMode({ kind: "endDate", periodId: period.periodId })
+                              }
+                              className="text-blue-600 hover:text-blue-800 hover:underline text-sm"
+                            >
+                              適用終了
+                            </button>
+                          )}
+                          {auth.deletable && (
+                            <button
+                              type="button"
+                              onClick={() => setMode({ kind: "delete", periodId: period.periodId })}
+                              className="text-red-600 hover:text-red-800 hover:underline text-sm"
+                            >
+                              削除
+                            </button>
+                          )}
+                          {!auth.editable && !auth.endDatable && !auth.deletable && (
+                            <span className="text-gray-400 text-sm">—</span>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                  )}
                 </tr>
               );
             })}
