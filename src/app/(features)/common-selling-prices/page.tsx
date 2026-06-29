@@ -1,9 +1,10 @@
 import { verifySession } from "@/app/_lib/verifyAuthentication";
 import { SearchForm, type SearchFieldDef } from "@/app/_components/shared/SearchForm";
 import { DataTable } from "@/app/_components/shared/DataTable";
-import { columns, type CommonSellingPriceRow } from "./_components/columns";
-import { fetchCommonSellingPriceList } from "./_data/queries";
-import type { CommonSellingPriceListFilter } from "./_data/types";
+import { commonSellingPriceListQueryFactory } from "@subdomains/pricing/application/factories/pricingQueryFactory";
+import type { CommonSellingPricePriceStatus } from "@subdomains/pricing/application/queries/dto/CommonSellingPriceListItemDTO";
+import { toJstCalendarDay } from "@server/shared/domain/values/toJstCalendarDay";
+import { columns } from "./_components/columns";
 import { type SearchParams, getStringParam } from "@/app/_lib/searchParams";
 
 const searchFields: SearchFieldDef[] = [
@@ -17,8 +18,10 @@ const searchFields: SearchFieldDef[] = [
   },
 ];
 
-/** select値を絞り込み区分へ正規化（未設定のみ=unset、それ以外=指定なし）。 */
-function validateFilter(value: string | undefined): CommonSellingPriceListFilter | undefined {
+/** select値を単価状態の絞り込みへ正規化（未設定のみ=unset、それ以外=指定なし）。 */
+function validatePriceStatusFilter(
+  value: string | undefined
+): CommonSellingPricePriceStatus | undefined {
   return value === "unset" ? "unset" : undefined;
 }
 
@@ -30,18 +33,12 @@ export default async function CommonSellingPricePage({
   await verifySession();
   const params = await searchParams;
 
-  const items = await fetchCommonSellingPriceList({
+  const items = await commonSellingPriceListQueryFactory().list({
+    referenceDate: toJstCalendarDay(new Date()),
     code: getStringParam(params, "code"),
     name: getStringParam(params, "name"),
-    filter: validateFilter(getStringParam(params, "filter")),
+    priceStatus: validatePriceStatusFilter(getStringParam(params, "filter")),
   });
-
-  const rows: CommonSellingPriceRow[] = items.map((item) => ({
-    productCd: item.productCd,
-    productName: item.productName,
-    currentPrice: item.currentPrice,
-    status: item.status,
-  }));
 
   const defaultSearchValues = {
     code: getStringParam(params, "code") ?? "",
@@ -64,7 +61,7 @@ export default async function CommonSellingPricePage({
           <h2 className="text-xl font-semibold">共通売単価一覧</h2>
         </div>
 
-        <DataTable columns={columns} data={rows} emptyMessage="該当する商品がありません" />
+        <DataTable columns={columns} data={items} emptyMessage="該当する商品がありません" />
       </div>
     </div>
   );
