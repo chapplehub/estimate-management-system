@@ -57,17 +57,8 @@ export class CommonSellingPrice {
    * @param referenceDate 参照日（今日・JST 暦日 `"YYYY-MM-DD"`）。保存実行時にサーバー生成して注入する。
    */
   addPeriod(period: ApplicablePeriod, price: SellingUnitPrice, referenceDate: string): void {
-    if (period.start < referenceDate) {
-      throw new BusinessRuleViolationError(
-        `${CommonSellingPrice.ENTITY_NAME}の適用開始日は今日以降である必要があります: ${period.start} < ${referenceDate}`
-      );
-    }
-    const overlapping = this._periods.find((row) => row.period.overlaps(period));
-    if (overlapping !== undefined) {
-      throw new BusinessRuleViolationError(
-        `${CommonSellingPrice.ENTITY_NAME}の適用期間が既存の期間と重複しています`
-      );
-    }
+    this.assertStartNotPast(period.start, referenceDate);
+    this.assertNoOverlap(period);
     this._periods.push(CommonSellingPricePeriod.create(period, price));
   }
 
@@ -89,19 +80,8 @@ export class CommonSellingPrice {
         `${CommonSellingPrice.ENTITY_NAME}は将来行のみ編集できます（現在有効・失効の行は変更不可）`
       );
     }
-    if (changes.period.start < referenceDate) {
-      throw new BusinessRuleViolationError(
-        `${CommonSellingPrice.ENTITY_NAME}の適用開始日は今日以降である必要があります: ${changes.period.start} < ${referenceDate}`
-      );
-    }
-    const overlapping = this._periods.find(
-      (other) => other !== row && other.period.overlaps(changes.period)
-    );
-    if (overlapping !== undefined) {
-      throw new BusinessRuleViolationError(
-        `${CommonSellingPrice.ENTITY_NAME}の適用期間が既存の期間と重複しています`
-      );
-    }
+    this.assertStartNotPast(changes.period.start, referenceDate);
+    this.assertNoOverlap(changes.period, row);
     row.changeTo(changes.period, changes.price);
   }
 
@@ -139,14 +119,7 @@ export class CommonSellingPrice {
       );
     }
     const ended = ApplicablePeriod.create({ start: row.period.start, end: endDate });
-    const overlapping = this._periods.find(
-      (other) => other !== row && other.period.overlaps(ended)
-    );
-    if (overlapping !== undefined) {
-      throw new BusinessRuleViolationError(
-        `${CommonSellingPrice.ENTITY_NAME}の適用期間が既存の期間と重複しています`
-      );
-    }
+    this.assertNoOverlap(ended, row);
     row.endDateOn(endDate);
   }
 
@@ -180,6 +153,30 @@ export class CommonSellingPrice {
   /** 将来行か（今日 < 開始）。 */
   private isFuture(period: ApplicablePeriod, referenceDate: string): boolean {
     return referenceDate < period.start;
+  }
+
+  /** 適用開始日が参照日（今日）より前なら過去不変違反として投げる（ADR-20260627-86b）。 */
+  private assertStartNotPast(start: string, referenceDate: string): void {
+    if (start < referenceDate) {
+      throw new BusinessRuleViolationError(
+        `${CommonSellingPrice.ENTITY_NAME}の適用開始日は今日以降である必要があります: ${start} < ${referenceDate}`
+      );
+    }
+  }
+
+  /**
+   * 指定期間が既存のどの行とも重ならないことを保証する。重なれば不変条件違反として投げる。
+   * `excludeRow` を渡すと自分自身（編集・適用終了の対象行）を比較から除外する。
+   */
+  private assertNoOverlap(period: ApplicablePeriod, excludeRow?: CommonSellingPricePeriod): void {
+    const overlapping = this._periods.find(
+      (row) => row !== excludeRow && row.period.overlaps(period)
+    );
+    if (overlapping !== undefined) {
+      throw new BusinessRuleViolationError(
+        `${CommonSellingPrice.ENTITY_NAME}の適用期間が既存の期間と重複しています`
+      );
+    }
   }
 
   get productId(): ProductId {
