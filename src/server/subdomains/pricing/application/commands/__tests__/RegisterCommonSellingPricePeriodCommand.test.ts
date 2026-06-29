@@ -1,7 +1,7 @@
 import prisma from "@server/prisma";
 import { Money } from "@server/shared/domain/values/Money";
 import { ConflictError } from "@server/shared/errors/ApplicationError";
-import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
+import { BusinessRuleViolationError, ValidationError } from "@server/shared/errors/DomainError";
 import { SellingUnitPrice } from "@subdomains/pricing/domain/values/SellingUnitPrice";
 import { PrismaCommonSellingPriceRepository } from "@subdomains/pricing/infrastructure/prisma/PrismaCommonSellingPriceRepository";
 import { Product } from "@subdomains/product/domain/entities/Product";
@@ -91,6 +91,28 @@ describe("RegisterCommonSellingPricePeriodCommand", () => {
         referenceDate: "2025-06-01",
       })
     ).rejects.toBeInstanceOf(BusinessRuleViolationError);
+  });
+
+  it("既存集約への追加で expectedVersion 未指定なら ValidationError（楽観ロック失敗ではなく入力契約違反）", async () => {
+    await command.execute({
+      productId: productId.value,
+      start: "2030-01-01",
+      end: "2030-06-01",
+      price: "1000",
+      referenceDate: "2025-06-01",
+    });
+
+    // 既存集約への追加なのに version を渡さない＝呼び出し側の契約違反。silent な ConflictError ではなく
+    // loud な ValidationError で弾く（`?? 0` による誤った楽観ロック失敗を起こさない）。
+    await expect(
+      command.execute({
+        productId: productId.value,
+        start: "2030-06-01",
+        end: null,
+        price: "1200",
+        referenceDate: "2025-06-01",
+      })
+    ).rejects.toBeInstanceOf(ValidationError);
   });
 
   it("既存集約への追加で expectedVersion が古いと ConflictError（expectedVersion が repo まで素通しされる）", async () => {

@@ -1,5 +1,6 @@
 import { ApplicablePeriod } from "@server/shared/domain/values/ApplicablePeriod";
 import { Money } from "@server/shared/domain/values/Money";
+import { ValidationError } from "@server/shared/errors/DomainError";
 import { CommonSellingPrice } from "@subdomains/pricing/domain/entities";
 import { CommonSellingPriceRepository } from "@subdomains/pricing/domain/repositories/CommonSellingPriceRepository";
 import { SellingUnitPrice } from "@subdomains/pricing/domain/values/SellingUnitPrice";
@@ -41,8 +42,17 @@ export class RegisterCommonSellingPricePeriodCommand {
       return aggregate;
     }
 
+    // 既存集約への追加は version を渡した楽観ロックが必須。未指定を `?? 0` で吸収すると 1 始まりの
+    // 実 version と永久に一致せず必ず ConflictError（「他のユーザーが更新」の誤表示）になるため、
+    // 入力契約違反として ValidationError で早期に弾く（silent conflict を loud failure へ）。
+    if (input.expectedVersion === undefined) {
+      throw new ValidationError(
+        "既存の共通販売単価へ期間を追加するには expectedVersion（編集画面表示時の version）が必要です"
+      );
+    }
+
     existing.addPeriod(period, price, input.referenceDate);
-    await this.repository.update(existing, input.expectedVersion ?? 0);
+    await this.repository.update(existing, input.expectedVersion);
     return existing;
   }
 }
