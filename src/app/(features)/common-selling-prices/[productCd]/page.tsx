@@ -31,12 +31,12 @@ export default async function CommonSellingPriceDetailPage({
           href="/common-selling-prices"
           className="text-blue-600 hover:text-blue-800 hover:underline"
         >
-          ← 共通売単価一覧に戻る
+          ← 共通販売単価一覧に戻る
         </Link>
       </div>
 
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">共通売単価</h1>
+        <h1 className="text-3xl font-bold">共通販売単価</h1>
       </div>
 
       {/* 商品情報 */}

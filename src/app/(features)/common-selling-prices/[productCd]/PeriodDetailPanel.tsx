@@ -78,7 +78,7 @@ export function PeriodDetailPanel({ detail, isAdmin }: Props) {
             <tr className="border-b">
               <th className="py-2 text-sm font-bold text-gray-700">適用開始日</th>
               <th className="py-2 text-sm font-bold text-gray-700">適用終了日</th>
-              <th className="py-2 text-sm font-bold text-gray-700 text-right">共通売単価</th>
+              <th className="py-2 text-sm font-bold text-gray-700 text-right">共通販売単価</th>
               <th className="py-2 text-sm font-bold text-gray-700">状態</th>
               {isAdmin && <th className="py-2 text-sm font-bold text-gray-700 text-right">操作</th>}
             </tr>
@@ -156,7 +156,7 @@ export function PeriodDetailPanel({ detail, isAdmin }: Props) {
         </table>
       ) : (
         <p className="text-gray-500">
-          適用期間が未設定です。共通売単価が無いと価格決定が解決できません。
+          適用期間が未設定です。共通販売単価が無いと価格決定が解決できません。
         </p>
       )}
 
