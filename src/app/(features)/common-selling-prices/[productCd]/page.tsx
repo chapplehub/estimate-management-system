@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { commonSellingPriceEditQueryFactory } from "@subdomains/pricing/application/factories/pricingQueryFactory";
 import { toJstCalendarDay } from "@server/shared/domain/values/toJstCalendarDay";
+import { Badge } from "@/app/_components/shadcnui/badge";
 import { PeriodDetailPanel } from "./PeriodDetailPanel";
 
 export default async function CommonSellingPriceDetailPage({
@@ -46,7 +47,10 @@ export default async function CommonSellingPriceDetailPage({
           </div>
           <div>
             <dt className="text-sm font-bold text-gray-700">商品名</dt>
-            <dd className="mt-1 text-gray-900">{detail.productName}</dd>
+            <dd className="mt-1 flex items-center gap-2 text-gray-900">
+              {detail.productName}
+              {!detail.isActive && <Badge variant="outline">無効</Badge>}
+            </dd>
           </div>
         </dl>
       </div>
