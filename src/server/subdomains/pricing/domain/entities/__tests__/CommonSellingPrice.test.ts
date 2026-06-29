@@ -1,6 +1,6 @@
 import { ApplicablePeriod } from "@server/shared/domain/values/ApplicablePeriod";
 import { Money } from "@server/shared/domain/values/Money";
-import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
+import { BusinessRuleViolationError, ValidationError } from "@server/shared/errors/DomainError";
 import { ProductId } from "@subdomains/product/domain/values/ProductId";
 import { describe, expect, it } from "vitest";
 import { CommonSellingPricePeriodId } from "../../values/CommonSellingPricePeriodId";
@@ -220,6 +220,25 @@ describe("CommonSellingPrice 集約", () => {
       aggregate.endDatePeriod(id, "2025-06-15", today);
 
       expect(aggregate.periods[0].period.equals(period("2025-04-01", "2025-06-15"))).toBe(true);
+    });
+
+    it("実在しない日付の終了日は形式エラー（短縮判定より前に弾く）", () => {
+      const aggregate = CommonSellingPrice.create(productId);
+      aggregate.addPeriod(period("2025-04-01", "2025-07-01"), price(1000), "2025-03-01");
+      const id = aggregate.periods[0].id;
+
+      // "9999-99-99" は既存 end より大きいため、形式検証を後回しにすると「短縮のみ可能」という
+      // 原因と無関係なメッセージになる。形式不正は ValidationError で正しく弾く。
+      expect(() => aggregate.endDatePeriod(id, "9999-99-99", today)).toThrow(ValidationError);
+    });
+
+    it("空文字の終了日は形式エラー（今日比較より前に弾く）", () => {
+      const aggregate = CommonSellingPrice.create(productId);
+      aggregate.addPeriod(period("2025-04-01", "2025-07-01"), price(1000), "2025-03-01");
+      const id = aggregate.periods[0].id;
+
+      // "" は today より小さく「今日より後である必要があります」へ誤って落ちる。形式エラーで弾く。
+      expect(() => aggregate.endDatePeriod(id, "", today)).toThrow(ValidationError);
     });
   });
 

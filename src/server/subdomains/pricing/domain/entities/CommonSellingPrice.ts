@@ -108,6 +108,10 @@ export class CommonSellingPrice {
         `${CommonSellingPrice.ENTITY_NAME}は現在有効行のみ適用終了できます`
       );
     }
+    // 業務ルール（今日比較・短縮限定）の前に endDate の形式・実在性を検証する。後回しにすると
+    // 不正値が文字列比較で「短縮のみ」「今日より後」などの無関係なメッセージへ誤って落ちるため、
+    // ここで ApplicablePeriod を生成して形式エラー（ValidationError）を前倒しする。
+    const ended = ApplicablePeriod.create({ start: row.period.start, end: endDate });
     if (endDate <= referenceDate) {
       throw new BusinessRuleViolationError(
         `${CommonSellingPrice.ENTITY_NAME}の適用終了日は今日より後である必要があります: ${endDate} <= ${referenceDate}`
@@ -118,7 +122,6 @@ export class CommonSellingPrice {
         `${CommonSellingPrice.ENTITY_NAME}の適用終了は短縮のみ可能です（既存終了日より後へは延長できません）: ${endDate} >= ${row.period.end}`
       );
     }
-    const ended = ApplicablePeriod.create({ start: row.period.start, end: endDate });
     this.assertNoOverlap(ended, row);
     row.endDateOn(endDate);
   }
