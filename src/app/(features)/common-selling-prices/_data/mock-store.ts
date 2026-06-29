@@ -292,9 +292,15 @@ export async function endDateCurrentPeriod(
     throw new BusinessRuleViolationError("現在有効な期間のみ適用終了できます。");
   }
   // 適用終了は「以後適用しなくする」操作。過去で締めて現在の有効性を遡及的に消さないよう
-  // 終了日は本日以降（use-cases.md §4「今日以降で適用終了」）。終了>開始は zod 層で担保。
+  // 終了日は本日以降（use-cases.md §4「今日以降で適用終了」）。
   if (input.endDate < REFERENCE_DATE) {
     throw new BusinessRuleViolationError("適用終了日は本日以降を指定してください。");
+  }
+  // 終了>開始（厳密・半開区間）。開始日はフォーム契約に無い（改竄不能化・決定3）ため、
+  // ストア上の真の開始日でサーバ側判定する。本日開始（開始=本日）の現在有効行を本日で
+  // 締めると空区間 [本日, 本日) になるため弾く。
+  if (input.endDate <= target.startDate) {
+    throw new BusinessRuleViolationError("適用終了日は適用開始日より後にしてください。");
   }
   // 終了日を延ばして後続の将来期間に食い込むケースを最終チェック（自己除外）。
   const candidate = { startDate: target.startDate, endDate: input.endDate };
