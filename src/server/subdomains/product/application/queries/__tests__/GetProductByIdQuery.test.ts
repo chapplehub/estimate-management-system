@@ -16,7 +16,6 @@ describe("GetProductByIdQuery", () => {
     name: string;
     category?: ProductCategory;
     unit?: ProductUnit;
-    costPrice?: number;
     isActive?: boolean;
   }) {
     const productId = generateId();
@@ -28,7 +27,6 @@ describe("GetProductByIdQuery", () => {
         name: data.name,
         category: data.category ?? ProductCategory.INDIVIDUAL,
         unit: data.unit ?? ProductUnit.UNIT,
-        costPrice: data.costPrice ?? null,
         isActive: data.isActive ?? true,
       },
     });
@@ -59,7 +57,6 @@ describe("GetProductByIdQuery", () => {
     const { productId } = await createTestProduct({
       code: TEST_CODES[0],
       name: "ID取得テスト商品",
-      costPrice: 1000,
     });
 
     const result = await query.execute({ id: productId });
@@ -69,7 +66,6 @@ describe("GetProductByIdQuery", () => {
     expect(result?.code).toBe(TEST_CODES[0]);
     expect(result?.name).toBe("ID取得テスト商品");
     expect(result?.category).toBe(ProductCategory.INDIVIDUAL);
-    expect(result?.costPrice).toBe(1000);
     expect(result?.relatedProducts).toEqual([]);
     expect(result?.setComponents).toEqual([]);
   });

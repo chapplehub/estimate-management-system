@@ -1,5 +1,4 @@
 import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
-import { CostPrice } from "../values/CostPrice";
 import { ProductCategory } from "../values/ProductCategory";
 import { ProductCode } from "../values/ProductCode";
 import { ProductDescription } from "../values/ProductDescription";
@@ -16,7 +15,10 @@ import { SetProductComponent } from "../values/SetProductComponent";
  * 商品区分に応じた制約を持つ:
  * - INDIVIDUAL: 周辺商品を設定可能
  * - CONSUMABLE: 周辺商品は持てない
- * - SET: 構成商品を保持、原価は常に0
+ * - SET: 構成商品を保持
+ *
+ * 原価は別集約 pricing/CostPrice（商品id × 適用期間 × 原価）へ移管済（#465/#468）。
+ * Product 本体は原価を持たない。
  */
 export class Product {
   static readonly ENTITY_NAME = "商品";
@@ -30,7 +32,6 @@ export class Product {
     private _isActive: boolean,
     private _description: ProductDescription | null,
     private _note: ProductNote | null,
-    private _costPrice: CostPrice | null,
     private _relatedProducts: ProductRelation[],
     private _setComponents: SetProductComponent[],
     private readonly _createdAt: Date,
@@ -43,12 +44,9 @@ export class Product {
     category: ProductCategory,
     unit: ProductUnit,
     description: ProductDescription | null = null,
-    note: ProductNote | null = null,
-    costPrice: CostPrice | null = null
+    note: ProductNote | null = null
   ): Product {
     const now = new Date();
-    // SET商品の原価は常に0
-    const resolvedCostPrice = category.canHaveComponents() ? new CostPrice(0) : costPrice;
 
     return new Product(
       ProductId.generate(),
@@ -59,7 +57,6 @@ export class Product {
       true,
       description,
       note,
-      resolvedCostPrice,
       [],
       [],
       now,
@@ -76,7 +73,6 @@ export class Product {
     isActive: boolean,
     description: ProductDescription | null,
     note: ProductNote | null,
-    costPrice: CostPrice | null,
     relatedProducts: ProductRelation[],
     setComponents: SetProductComponent[],
     createdAt: Date,
@@ -91,7 +87,6 @@ export class Product {
       isActive,
       description,
       note,
-      costPrice,
       relatedProducts,
       setComponents,
       createdAt,
@@ -115,15 +110,6 @@ export class Product {
 
   changeUnit(newUnit: ProductUnit): void {
     this._unit = newUnit;
-    this._updatedAt = new Date();
-  }
-
-  changeCostPrice(newCostPrice: CostPrice | null): void {
-    // SET商品は原価変更不可（常に0を維持）
-    if (this._category.canHaveComponents()) {
-      return;
-    }
-    this._costPrice = newCostPrice;
     this._updatedAt = new Date();
   }
 
@@ -239,10 +225,6 @@ export class Product {
 
   get note(): ProductNote | null {
     return this._note;
-  }
-
-  get costPrice(): CostPrice | null {
-    return this._costPrice;
   }
 
   get relatedProducts(): ProductRelation[] {

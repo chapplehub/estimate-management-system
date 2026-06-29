@@ -4,7 +4,6 @@ import { Product } from "@subdomains/product/domain/entities/Product";
 import { ProductRepository } from "@subdomains/product/domain/repositories/ProductRepository";
 import { ProductCodeDuplicationCheckDomainService } from "@subdomains/product/domain/services/ProductCodeDuplicationCheckDomainService";
 import { ProductNameDuplicationCheckDomainService } from "@subdomains/product/domain/services/ProductNameDuplicationCheckDomainService";
-import { CostPrice } from "@subdomains/product/domain/values/CostPrice";
 import { ProductCategory } from "@subdomains/product/domain/values/ProductCategory";
 import { ProductCode } from "@subdomains/product/domain/values/ProductCode";
 import { ProductDescription } from "@subdomains/product/domain/values/ProductDescription";
@@ -23,7 +22,6 @@ export type UpdateProductInput = {
   unit?: string;
   description?: string | null;
   note?: string | null;
-  costPrice?: number | null;
 };
 
 /**
@@ -83,10 +81,6 @@ export class UpdateProductCommand {
 
     if (input.note !== undefined) {
       product.changeNote(input.note !== null ? new ProductNote(input.note) : null);
-    }
-
-    if (input.costPrice !== undefined) {
-      product.changeCostPrice(input.costPrice !== null ? new CostPrice(input.costPrice) : null);
     }
 
     return await this.productRepository.update(product, input.expectedVersion);

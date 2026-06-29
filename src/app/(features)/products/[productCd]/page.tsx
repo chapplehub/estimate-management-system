@@ -92,12 +92,6 @@ export default async function ProductDetailPage({
               </Badge>
             </dd>
           </div>
-          <div>
-            <dt className="text-sm font-bold text-gray-700">原価</dt>
-            <dd className="mt-1 text-gray-900">
-              {product.costPrice !== null ? `${product.costPrice.toLocaleString()}円` : "未設定"}
-            </dd>
-          </div>
           <div className="md:col-span-2">
             <dt className="text-sm font-bold text-gray-700">商品説明</dt>
             <dd className="mt-1 text-gray-900 whitespace-pre-wrap">

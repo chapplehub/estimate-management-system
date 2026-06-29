@@ -41,7 +41,6 @@ describe("ActivateProductCommand", () => {
       false,
       null,
       null,
-      null,
       [],
       [],
       new Date(),

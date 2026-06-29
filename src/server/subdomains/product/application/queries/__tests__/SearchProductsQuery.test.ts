@@ -16,7 +16,6 @@ describe("SearchProductsQuery", () => {
     name: string;
     category?: ProductCategory;
     unit?: ProductUnit;
-    costPrice?: number;
     isActive?: boolean;
   }) {
     const productId = generateId();
@@ -28,7 +27,6 @@ describe("SearchProductsQuery", () => {
         name: data.name,
         category: data.category ?? ProductCategory.INDIVIDUAL,
         unit: data.unit ?? ProductUnit.UNIT,
-        costPrice: data.costPrice ?? null,
         isActive: data.isActive ?? true,
       },
     });

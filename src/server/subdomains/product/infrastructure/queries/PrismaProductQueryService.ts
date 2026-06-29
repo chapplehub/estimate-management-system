@@ -129,7 +129,6 @@ export class PrismaProductQueryService implements ProductQueryService {
       isActive: product.isActive,
       description: product.description,
       note: product.note,
-      costPrice: product.costPrice !== null ? Number(product.costPrice) : null,
       relatedProducts: product.relatedProducts.map(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (r: any): ProductRelationDTO => ({

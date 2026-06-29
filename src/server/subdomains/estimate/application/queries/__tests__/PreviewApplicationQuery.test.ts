@@ -28,6 +28,7 @@ describe("PreviewApplicationQuery", () => {
     required: "N9908002",
     noSuperior: "N9908003",
     sideEffect: "N9908004",
+    inactive: "N9908005",
   } as const;
   const ALL_NUMBERS = Object.values(EN);
   const OPERATOR_CD = "EMP999096";
@@ -131,6 +132,31 @@ describe("PreviewApplicationQuery", () => {
     });
 
     expect(result).toEqual({ kind: "BLOCKED", reason: "NO_SUPERIOR_ROLE" });
+  });
+
+  it("INACTIVE バリエーションは judge を走らせず INACTIVE を返す（Submit と可否一致）", async () => {
+    // 複数バリエーションで対象を無効化する（Submit テストと同じ手順）。
+    // INACTIVE 判定は judge より前で弾くため金額は不問。
+    const built = buildNewEstimate(ids.estimate, EN.inactive, { variationNumbers: [1, 2] });
+    const targetVariation = built.variations[1];
+    built.deactivateVariation(targetVariation.id);
+    const estimate = await estimateRepository.insert(built);
+    const variationId = targetVariation.id.value;
+
+    const result = await query.execute({
+      estimateId: estimate.id.value,
+      variationId,
+      operatorEmployeeId: operatorId,
+    });
+
+    // Submit（無効なバリエーションには申請できない）と可否が一致する。
+    expect(result).toEqual({ kind: "INACTIVE" });
+
+    // 副作用なし（クエリのため申請行・免除行を作らない）。
+    const applications = await prisma.estimateApplication.count({ where: { variationId } });
+    const exemptions = await prisma.estimateApprovalExemption.count({ where: { variationId } });
+    expect(applications).toBe(0);
+    expect(exemptions).toBe(0);
   });
 
   it("プレビューは副作用を持たない（申請行・免除行を作らない）", async () => {

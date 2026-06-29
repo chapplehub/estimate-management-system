@@ -54,7 +54,6 @@ describe("UpdateProductCommand", () => {
       unit: "BOX",
       description: "新しい説明",
       note: "新しい備考",
-      costPrice: 2000,
     });
 
     const updated = await repository.findById(saved.id);
@@ -63,7 +62,6 @@ describe("UpdateProductCommand", () => {
     expect(updated!.unit.value).toBe("BOX");
     expect(updated!.description?.value).toBe("新しい説明");
     expect(updated!.note?.value).toBe("新しい備考");
-    expect(updated!.costPrice?.value).toBe(2000);
   });
 
   it("説明と備考をnullでクリアできる", async () => {
