@@ -28,6 +28,11 @@ const navigationItems = [
     description: "商品の一覧表示、登録、編集、削除を行います。",
   },
   {
+    href: "/common-selling-prices",
+    title: "共通販売単価管理",
+    description: "共通販売単価の一覧表示・編集を行います。",
+  },
+  {
     href: "/customers",
     title: "得意先管理",
     description: "得意先の一覧表示を行います。",
