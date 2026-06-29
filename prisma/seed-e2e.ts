@@ -399,10 +399,10 @@ const PRODUCTS = [
     isActive: true,
     description: "S4 周辺商品サジェスト E2E 用（周辺）",
   },
-  // 共通販売単価 保守 E2E 用（PRD9NN 帯・#481）。costPrice は null とし原価集約を作らない
+  // 共通販売単価 保守 E2E 用（PRD82x 帯・#481）。costPrice は null とし原価集約を作らない
   // （CSP 関心に閉じたフィクスチャ）。CSP 期間は seedCommonSellingPrices で today 相対 raw insert する。
   {
-    code: "PRD901",
+    code: "PRD820",
     name: "CSP_3状態テスト商品",
     category: "INDIVIDUAL" as const,
     unit: "UNIT" as const,
@@ -411,7 +411,7 @@ const PRODUCTS = [
     description: "共通販売単価 E2E（失効/現在有効/将来の3期間）",
   },
   {
-    code: "PRD902",
+    code: "PRD821",
     name: "CSP_未設定テスト商品",
     category: "INDIVIDUAL" as const,
     unit: "UNIT" as const,
@@ -420,7 +420,7 @@ const PRODUCTS = [
     description: "共通販売単価 E2E（CSP 集約なし＝未設定）",
   },
   {
-    code: "PRD903",
+    code: "PRD822",
     name: "CSP_登録編集削除テスト商品",
     category: "INDIVIDUAL" as const,
     unit: "UNIT" as const,
@@ -429,7 +429,7 @@ const PRODUCTS = [
     description: "共通販売単価 E2E（CRUD Chain A・テスト内で期間生成）",
   },
   {
-    code: "PRD904",
+    code: "PRD823",
     name: "CSP_失効のみテスト商品",
     category: "INDIVIDUAL" as const,
     unit: "UNIT" as const,
@@ -438,7 +438,7 @@ const PRODUCTS = [
     description: "共通販売単価 E2E（失効期間のみ＝失効中）",
   },
   {
-    code: "PRD905",
+    code: "PRD824",
     name: "CSP_適用終了改定テスト商品",
     category: "INDIVIDUAL" as const,
     unit: "UNIT" as const,
@@ -468,10 +468,10 @@ function jstRelativeDate(dayOffset: number): string {
 }
 
 /**
- * 共通販売単価の E2E フィクスチャを投入する（PRD9NN 帯・today 相対）。
- * - PRD901: 失効`[today-60,today-30)`¥1000 / 現在有効`[today-30,today+30)`¥2000 / 将来`[today+30,∞)`¥3000
- * - PRD904: 失効`[today-60,today-30)`¥1500
- * - PRD902/903/905: CSP 集約を作らない（未設定で開始。903/905 はテスト内で期間を生成）
+ * 共通販売単価の E2E フィクスチャを投入する（PRD82x 帯・today 相対）。
+ * - PRD820: 失効`[today-60,today-30)`¥1000 / 現在有効`[today-30,today+30)`¥2000 / 将来`[today+30,∞)`¥3000
+ * - PRD823: 失効`[today-60,today-30)`¥1500
+ * - PRD821/822/824: CSP 集約を作らない（未設定で開始。822/824 はテスト内で期間を生成）
  *
  * 期間は EXCLUDE 制約（同一商品で適用期間の重複不可・ADR-0067）を満たすよう半開区間で隣接させる。
  * 過去開始は集約の assertStartNotPast を通せないため raw daterange insert で投入する。
@@ -496,7 +496,7 @@ async function seedCommonSellingPrices(productIdByCode: Map<string, string>): Pr
     `;
   };
 
-  const prd901 = productIdByCode.get("PRD901");
+  const prd901 = productIdByCode.get("PRD820");
   if (prd901) {
     await prisma.commonSellingPrice.create({ data: { productId: prd901 } });
     await insertPeriod(prd901, 1000, jstRelativeDate(-60), jstRelativeDate(-30)); // 失効
@@ -504,13 +504,13 @@ async function seedCommonSellingPrices(productIdByCode: Map<string, string>): Pr
     await insertPeriod(prd901, 3000, jstRelativeDate(30), null); // 将来（無期限）
   }
 
-  const prd904 = productIdByCode.get("PRD904");
+  const prd904 = productIdByCode.get("PRD823");
   if (prd904) {
     await prisma.commonSellingPrice.create({ data: { productId: prd904 } });
     await insertPeriod(prd904, 1500, jstRelativeDate(-60), jstRelativeDate(-30)); // 失効のみ
   }
 
-  console.log("Created common selling prices (PRD901: 3 periods / PRD904: 1 period)");
+  console.log("Created common selling prices (PRD820: 3 periods / PRD823: 1 period)");
 }
 
 // 消費税率マスタ（§8.7 の保存時税率一致チェックが参照）。8%(2014-) / 10%(2019-)。
@@ -839,7 +839,7 @@ async function main() {
   }
   console.log(`Created cost prices (${e2eCostCount} products / periods)`);
 
-  // 共通販売単価 保守 E2E フィクスチャ（PRD9NN 帯・#481・ADR-20260629-3x5）。
+  // 共通販売単価 保守 E2E フィクスチャ（PRD82x 帯・#481・ADR-20260629-3x5）。
   // 状態（future/active/expired）はサーバの参照日由来の派生のため、固定日付では実行日によって
   // 状態が変わってテストが壊れる。シードもテストも「実行時の今日（JST 暦日）」起点の相対日付で
   // 期間を作り、状態を決定的に再現する。過去開始（expired）は集約の assertStartNotPast を通せない

@@ -3,7 +3,7 @@ import { type Page, expect, test } from "@playwright/test";
 /**
  * 共通販売単価 詳細（UC-2）の E2E。
  *
- * PRD901 は失効/現在有効/将来の3期間を持つ（today 相対シード・ADR-20260629-3x5）。状態バッジ
+ * PRD820 は失効/現在有効/将来の3期間を持つ（today 相対シード・ADR-20260629-3x5）。状態バッジ
  * （現在有効/将来/失効）と、authorityFor によるミューテーションボタンの出し分け
  * （将来=編集/削除・現在有効=適用終了・失効=操作なし）を検証する。並列・共通シード（DB 不変）。
  * 管理者 storageState（既定）のため操作列が描画される（権限非表示は CRUD/権限 E2E で検証）。
@@ -17,12 +17,12 @@ async function waitForDetailReady(page: Page) {
 
 test.describe("共通販売単価 詳細（UC-2）", () => {
   test("商品情報と3状態バッジが表示される", async ({ page }) => {
-    await page.goto("/common-selling-prices/PRD901");
+    await page.goto("/common-selling-prices/PRD820");
     await waitForDetailReady(page);
 
     // 商品情報
     await expect(page.getByRole("heading", { name: "共通販売単価", exact: true })).toBeVisible();
-    await expect(page.getByText("PRD901")).toBeVisible();
+    await expect(page.getByText("PRD820")).toBeVisible();
     await expect(page.getByText("CSP_3状態テスト商品")).toBeVisible();
 
     // 3状態バッジ（失効/現在有効/将来）が揃う
@@ -35,7 +35,7 @@ test.describe("共通販売単価 詳細（UC-2）", () => {
   });
 
   test("将来行は編集・削除のみ操作できる", async ({ page }) => {
-    await page.goto("/common-selling-prices/PRD901");
+    await page.goto("/common-selling-prices/PRD820");
     await waitForDetailReady(page);
 
     const futureRow = page.locator("table tbody tr", { hasText: "将来" });
@@ -45,7 +45,7 @@ test.describe("共通販売単価 詳細（UC-2）", () => {
   });
 
   test("現在有効行は適用終了のみ操作できる", async ({ page }) => {
-    await page.goto("/common-selling-prices/PRD901");
+    await page.goto("/common-selling-prices/PRD820");
     await waitForDetailReady(page);
 
     const activeRow = page.locator("table tbody tr", { hasText: "現在有効" });
@@ -55,7 +55,7 @@ test.describe("共通販売単価 詳細（UC-2）", () => {
   });
 
   test("失効行は操作できない（— 表示）", async ({ page }) => {
-    await page.goto("/common-selling-prices/PRD901");
+    await page.goto("/common-selling-prices/PRD820");
     await waitForDetailReady(page);
 
     const expiredRow = page.locator("table tbody tr", { hasText: "失効" });
@@ -64,7 +64,7 @@ test.describe("共通販売単価 詳細（UC-2）", () => {
   });
 
   test("戻りリンクから一覧へ遷移できる", async ({ page }) => {
-    await page.goto("/common-selling-prices/PRD901");
+    await page.goto("/common-selling-prices/PRD820");
     await waitForDetailReady(page);
 
     await page.getByRole("link", { name: "← 共通販売単価一覧に戻る" }).click();
