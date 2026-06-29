@@ -105,7 +105,7 @@ describe("ResolveSellingPriceQuery", () => {
 
   it("得意先宛: 得意先別の上書きがあれば共通より優先して採用する", async () => {
     const common = CommonSellingPrice.create(productId);
-    common.addPeriod(period("2025-07-01", null), price(1000));
+    common.addPeriod(period("2025-07-01", null), price(1000), "2025-07-01");
     await commonRepository.insert(common);
 
     const customerPrice = CustomerSellingPrice.create(customerId, productId);
@@ -124,7 +124,7 @@ describe("ResolveSellingPriceQuery", () => {
 
   it("得意先宛: 得意先別が無ければ共通へフォールバックする", async () => {
     const common = CommonSellingPrice.create(productId);
-    common.addPeriod(period("2025-07-01", null), price(1000));
+    common.addPeriod(period("2025-07-01", null), price(1000), "2025-07-01");
     await commonRepository.insert(common);
 
     const resolved = await query.execute({
@@ -139,7 +139,7 @@ describe("ResolveSellingPriceQuery", () => {
 
   it("納品先宛: 納品先別の上書きへルーティングして採用する", async () => {
     const common = CommonSellingPrice.create(productId);
-    common.addPeriod(period("2025-07-01", null), price(1000));
+    common.addPeriod(period("2025-07-01", null), price(1000), "2025-07-01");
     await commonRepository.insert(common);
 
     const deliveryLocationPrice = DeliveryLocationSellingPrice.create(
@@ -173,7 +173,7 @@ describe("ResolveSellingPriceQuery", () => {
   it("JST境界: UTC 15:00 の見積年月日は JST 翌日として暦日変換され、その日始まりの期間に解決する", async () => {
     // 2026-06-25 始まりの期間。UTC 2026-06-24T15:00:00Z = JST 2026-06-25 00:00 が初日に当たる。
     const common = CommonSellingPrice.create(productId);
-    common.addPeriod(period("2026-06-25", null), price(1234));
+    common.addPeriod(period("2026-06-25", null), price(1234), "2026-06-25");
     await commonRepository.insert(common);
 
     const resolved = await query.execute({

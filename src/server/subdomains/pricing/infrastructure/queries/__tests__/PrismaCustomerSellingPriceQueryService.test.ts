@@ -140,7 +140,7 @@ describe("PrismaCustomerSellingPriceQueryService", () => {
     // 共通販売単価だけを登録し、得意先別は1件も登録しない。
     // 得意先別 QueryService は customer_selling_price_periods のみを見るため null になる。
     const common = CommonSellingPrice.create(productId);
-    common.addPeriod(period("2025-07-01", "2025-10-01"), price(1000));
+    common.addPeriod(period("2025-07-01", "2025-10-01"), price(1000), "2025-07-01");
     await new PrismaCommonSellingPriceRepository().insert(common);
 
     const result = await queryService.resolve({
