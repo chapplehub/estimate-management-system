@@ -21,14 +21,25 @@ export interface CommonSellingPriceEditPeriodDTO {
 }
 
 /**
- * 共通売単価 編集画面の読みモデル DTO（#429・read 関心）。
+ * 共通売単価 編集画面の読みモデル DTO（#429・read 関心・#473 で productCode キー化）。
  *
- * 親（集約ルート）に version を1つ持つ。version は楽観ロックトークンで、編集フォームが往復させ保存時に
- * `expectedVersion` として戻す（ADR-0039。参照日が実行時生成なのと逆方向＝過去から運ぶ）。期間行は
- * `lower(applicable_period)` 昇順の配列で、各行に時点状態を添える。Decimal は文字列で運ぶ。
+ * 商品 identity（id/code/name/isActive）を同梱し、FE 側の code→id 解決クエリ・商品名の二重取得を不要に
+ * する（#473・FE 素描画方針）。`productId` はコマンド宛先キーとしてフォームが往復させる。
+ *
+ * version は楽観ロックトークンで、編集フォームが往復させ保存時に `expectedVersion` として戻す
+ * （ADR-0039。参照日が実行時生成なのと逆方向＝過去から運ぶ）。共通売単価が**未設定**（集約なし）でも
+ * 商品が在れば identity を返し `version: null`＝新規登録モードとする（`periods` は空配列）。商品自体が
+ * 存在しない場合のみ QueryService は `null` を返す（FE は `notFound()`）。
+ *
+ * 期間行は `lower(applicable_period)` 昇順の配列で、各行に時点状態を添える。Decimal は文字列で運ぶ。
  */
 export interface CommonSellingPriceEditDTO {
   productId: string;
-  version: number;
+  productCode: string;
+  productName: string;
+  /** 商品マスタの有効フラグ（無効商品の編集時バッジ表示用）。 */
+  isActive: boolean;
+  /** 楽観ロックトークン。未設定（集約なし＝新規登録モード）なら null。 */
+  version: number | null;
   periods: CommonSellingPriceEditPeriodDTO[];
 }
