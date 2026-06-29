@@ -5,9 +5,8 @@ import { z } from "zod";
  *
  * 単項目の形（必須・実在日・整数・非負）と、同一フォーム内で完結する交差検証
  * （終了>開始）のみをここで担保する。集約横断の重複・状態別権限・楽観ロック競合・
- * 適用終了の「本日以降」は mock-store ミューテータ（＝ドメインのスタンドイン）が
- * 最終判定する（ラウンド2決定1/6）。操作別に分けることで、現在有効行の開始日・単価を
- * 入力契約から外し改竄不能にする（決定3）。
+ * 適用終了の「本日以降」は BE コマンド（集約の不変条件）が最終判定する（#473）。
+ * 操作別に分けることで、現在有効行の開始日・単価を入力契約から外し改竄不能にする（決定3）。
  */
 
 /** `YYYY-MM-DD` かつ実在する暦日（2026-02-30 や 2026-13-01 を弾く）。 */
@@ -30,6 +29,13 @@ const priceInput = z.coerce
 /** 楽観ロックトークン（ADR-0039）。表示時の version を hidden で往復させる。 */
 const versionInput = z.coerce.number().int();
 
+/**
+ * 楽観ロックトークン（登録用・任意）。未設定商品への初回登録は集約が無く version を持たないため
+ * 省略を許容する（BE の RegisterCommand が expectedVersion 省略時は create+insert を選ぶ・#473）。
+ * 既存集約へ期間を追加する場合のみ表示時 version を hidden で往復させ、存在時は楽観ロックが効く。
+ */
+const versionOptionalInput = z.coerce.number().int().optional();
+
 /** 開始日に対し終了日が後（厳密）であること。終了日 未指定（無期限）は許容。 */
 function endAfterStart(value: { startDate: string; endDate?: string }): boolean {
   return value.endDate == null || value.startDate < value.endDate;
@@ -39,10 +45,10 @@ const END_AFTER_START_ISSUE = {
   path: ["endDate"],
 };
 
-/** UC-3 登録: 開始日（必須）・終了日（任意・無期限可）・単価。 */
+/** UC-3 登録: 開始日（必須）・終了日（任意・無期限可）・単価。version は新規モードで省略可。 */
 export const addPeriodSchema = z
   .object({
-    version: versionInput,
+    version: versionOptionalInput,
     startDate: dateInput,
     // conform は空文字を undefined 化するため任意は optional にする（無期限＝終了日なし）。
     endDate: dateInput.optional(),

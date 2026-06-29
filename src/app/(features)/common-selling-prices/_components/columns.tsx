@@ -3,47 +3,48 @@
 import Link from "next/link";
 import { type ColumnDef } from "@/app/_components/shared/DataTable";
 import { Badge } from "@/app/_components/shadcnui/badge";
-import type { ProductPriceStatus } from "../_data/types";
+import type { CommonSellingPriceListItemDTO } from "@subdomains/pricing/application/queries/dto/CommonSellingPriceListItemDTO";
+import { formatYenFromDecimal } from "./formatYen";
 
-export type CommonSellingPriceRow = {
-  productCd: string;
-  productName: string;
-  /** 現在有効単価。未設定・失効中は null。 */
-  currentPrice: number | null;
-  status: ProductPriceStatus;
-};
-
-/** 円表示（プロトタイプの yen() に一致）。 */
-function formatYen(value: number): string {
-  return `¥${value.toLocaleString("ja-JP")}`;
-}
+/** 一覧行は BE 読みモデル DTO を素通しする（#473・変換層を挟まない）。 */
+export type CommonSellingPriceRow = CommonSellingPriceListItemDTO;
 
 export const columns: ColumnDef<CommonSellingPriceRow, unknown>[] = [
   {
-    accessorKey: "productCd",
+    accessorKey: "productCode",
     header: "商品コード",
     cell: ({ row }) => (
       <Link
-        href={`/common-selling-prices/${row.original.productCd}`}
+        href={`/common-selling-prices/${row.original.productCode}`}
         className="text-blue-600 hover:text-blue-800 hover:underline"
       >
-        {row.original.productCd}
+        {row.original.productCode}
       </Link>
     ),
   },
   {
     accessorKey: "productName",
     header: "商品名",
+    cell: ({ row }) => (
+      <span className="flex items-center gap-2">
+        {row.original.productName}
+        {!row.original.isActive && <Badge variant="outline">無効</Badge>}
+      </span>
+    ),
   },
   {
-    accessorKey: "currentPrice",
+    accessorKey: "currentSellingPrice",
     header: "現在有効単価",
     cell: ({ row }) => {
-      const { status, currentPrice } = row.original;
-      if (status === "active" && currentPrice != null) {
-        return <span className="font-medium tabular-nums">{formatYen(currentPrice)}</span>;
+      const { priceStatus, currentSellingPrice } = row.original;
+      if (priceStatus === "active" && currentSellingPrice != null) {
+        return (
+          <span className="font-medium tabular-nums">
+            {formatYenFromDecimal(currentSellingPrice)}
+          </span>
+        );
       }
-      if (status === "unset") {
+      if (priceStatus === "unset") {
         return <Badge variant="outline">未設定</Badge>;
       }
       return <Badge variant="secondary">失効中</Badge>;

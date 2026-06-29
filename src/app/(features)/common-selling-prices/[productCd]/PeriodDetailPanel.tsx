@@ -2,25 +2,24 @@
 
 import { useCallback, useState } from "react";
 import { Badge } from "@/app/_components/shadcnui/badge";
+import type {
+  CommonSellingPriceEditDTO,
+  CommonSellingPricePeriodStatus,
+} from "@subdomains/pricing/application/queries/dto/CommonSellingPriceEditDTO";
 import { authorityFor } from "../_data/period-rules";
-import type { CommonSellingPriceDetail, PeriodState } from "../_data/types";
+import { formatYenFromDecimal } from "../_components/formatYen";
 import { PeriodDeleteConfirm } from "./PeriodDeleteConfirm";
 import { PeriodForm } from "./PeriodForm";
 
-/** 派生状態のラベルと Badge variant（現在有効/将来/失効）。 */
-const STATE_BADGE: Record<
-  PeriodState,
+/** BE 時点状態のラベルと Badge variant（現在有効=active/将来=future/失効=expired）。 */
+const STATUS_BADGE: Record<
+  CommonSellingPricePeriodStatus,
   { label: string; variant: "default" | "outline" | "secondary" }
 > = {
-  current: { label: "現在有効", variant: "default" },
+  active: { label: "現在有効", variant: "default" },
   future: { label: "将来", variant: "outline" },
-  lapsed: { label: "失効", variant: "secondary" },
+  expired: { label: "失効", variant: "secondary" },
 };
-
-/** 円表示。 */
-function formatYen(value: number): string {
-  return `¥${value.toLocaleString("ja-JP")}`;
-}
 
 /**
  * パネルの開閉モード（決定2: URLに載せずクライアント状態で保持）。
@@ -34,7 +33,7 @@ type PanelMode =
   | { kind: "delete"; periodId: string };
 
 type Props = {
-  detail: CommonSellingPriceDetail;
+  detail: CommonSellingPriceEditDTO;
 };
 
 /**
@@ -82,17 +81,17 @@ export function PeriodDetailPanel({ detail }: Props) {
           </thead>
           <tbody>
             {detail.periods.map((period) => {
-              const badge = STATE_BADGE[period.state];
-              const auth = authorityFor(period.state);
+              const badge = STATUS_BADGE[period.status];
+              const auth = authorityFor(period.status);
               const isDeleting = mode.kind === "delete" && mode.periodId === period.periodId;
               return (
                 <tr key={period.periodId} className="border-b">
-                  <td className="py-2 tabular-nums">{period.startDate}</td>
+                  <td className="py-2 tabular-nums">{period.start}</td>
                   <td className="py-2 tabular-nums">
-                    {period.endDate ?? <span className="text-gray-500">無期限</span>}
+                    {period.end ?? <span className="text-gray-500">無期限</span>}
                   </td>
                   <td className="py-2 text-right font-medium tabular-nums">
-                    {formatYen(period.price)}
+                    {formatYenFromDecimal(period.sellingPrice)}
                   </td>
                   <td className="py-2">
                     <Badge variant={badge.variant}>{badge.label}</Badge>
@@ -100,9 +99,10 @@ export function PeriodDetailPanel({ detail }: Props) {
                   <td className="py-2">
                     {isDeleting ? (
                       <PeriodDeleteConfirm
-                        productCd={detail.productCd}
+                        productId={detail.productId}
+                        productCode={detail.productCode}
                         periodId={period.periodId}
-                        version={detail.version}
+                        version={detail.version ?? 0}
                         onSuccess={close}
                         onCancel={close}
                       />
@@ -155,7 +155,8 @@ export function PeriodDetailPanel({ detail }: Props) {
       {/* 登録／編集／適用終了の単一フォーム（決定3）。編集系で対象行が消えていたら表示しない。 */}
       {formMode != null && (formMode.kind === "new" || formPeriod != null) && (
         <PeriodForm
-          productCd={detail.productCd}
+          productId={detail.productId}
+          productCode={detail.productCode}
           version={detail.version}
           mode={formMode.kind}
           period={formPeriod}
