@@ -49,7 +49,7 @@ export default async function CommonSellingPricePage({
   return (
     <div className="flex flex-col h-full">
       <div className="flex justify-between items-center mb-2 px-4 pt-4">
-        <h1 className="text-3xl font-bold">共通売単価</h1>
+        <h1 className="text-3xl font-bold">共通販売単価</h1>
       </div>
 
       <div className="px-4">
@@ -58,7 +58,7 @@ export default async function CommonSellingPricePage({
 
       <div className="flex-1 flex flex-col min-h-0 bg-white shadow-md rounded mx-4 mb-4 text-gray-500">
         <div className="px-8 pt-6 pb-2">
-          <h2 className="text-xl font-semibold">共通売単価一覧</h2>
+          <h2 className="text-xl font-semibold">共通販売単価一覧</h2>
         </div>
 
         <DataTable columns={columns} data={items} emptyMessage="該当する商品がありません" />

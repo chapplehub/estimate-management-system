@@ -141,7 +141,7 @@ export function PeriodForm({
               <dd className="mt-1 tabular-nums text-gray-900">{period.start}</dd>
             </div>
             <div>
-              <dt className="text-sm font-bold text-gray-700">共通売単価</dt>
+              <dt className="text-sm font-bold text-gray-700">共通販売単価</dt>
               <dd className="mt-1 tabular-nums text-gray-900">
                 {formatYenFromDecimal(period.sellingPrice)}
               </dd>
@@ -195,7 +195,7 @@ export function PeriodForm({
         {showFullFields && (
           <div>
             <label htmlFor={fields.price.id} className="block text-gray-700 text-sm font-bold mb-2">
-              共通売単価（円）
+              共通販売単価（円）
             </label>
             <input
               {...getInputProps(fields.price, { type: "number" })}

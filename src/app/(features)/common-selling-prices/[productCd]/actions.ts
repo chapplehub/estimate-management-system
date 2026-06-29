@@ -17,7 +17,7 @@ import {
 } from "./schema";
 
 /**
- * 共通売単価 適用期間の操作別 Server Action（UC-3/4/5・#473 実BE接続）。
+ * 共通販売単価 適用期間の操作別 Server Action（UC-3/4/5・#473 実BE接続）。
  *
  * いずれも parse → BE コマンド → catch → revalidate の薄いガワ。不変条件（開始日 ≥ 今日・重複禁止・
  * 状態別権限）と楽観ロックは集約／コマンドが既存エラー型で throw し、`handleCommandError` が本番同形に
