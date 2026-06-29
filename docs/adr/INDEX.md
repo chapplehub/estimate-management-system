@@ -119,3 +119,4 @@
 | [0012](0012-e2e-test-db-separation-strategy.md) | E2Eテスト専用DB環境の構築方針 | 採用 | 2026-04-09 |
 | [0017](0017-e2e-table-cell-selector-strategy.md) | E2Eテストのテーブルセル特定にヘッダー名ベースを使用する | 採用 | 2026-04-14 |
 | [0020](0020-e2e-test-composition-and-execution-strategy.md) | E2Eテストの構成・実行戦略 | 採用 | 2026-04-17 |
+| [20260629-3x5](20260629-3x5-e2e-time-dependent-tests-use-today-relative-seed.md) | E2E の時点依存テストは today 相対シードで扱う（クロック固定しない） | 採用 | 2026-06-29 |
