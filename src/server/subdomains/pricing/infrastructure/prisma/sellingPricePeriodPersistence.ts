@@ -62,20 +62,22 @@ export interface PeriodWriteRow {
 }
 
 /**
- * 集約の全期間行を daterange 付きで append-only 挿入する（販売単価3層で共用）。
+ * 期間行を daterange 付きで1行ずつ INSERT する共通本体（append / sync で共用）。
  *
- * 既存 id は `ON CONFLICT (id) DO NOTHING` で no-op にし、新規 id の行だけを挿入する。これにより
- * insert/update のどちらからも安全に呼べ、update では既存行の updated_at を一切動かさない（監査保持）。
- * `daterange` は Prisma typed では扱えないため `$executeRaw` で書き、半開区間 `[)` の生成は共有
- * フラグメント `dateRangeValue` に委ねる（ADR-0067）。
+ * テーブル・列・VALUES（id・キー・金額・適用期間・updated_at）の構築は両者で同一のため、ここへ寄せる。
+ * 挿入専用（`DO NOTHING`）と差分 sync（`DO UPDATE … WHERE IS DISTINCT FROM`）の違いは `onConflict` 句
+ * として呼び出し側から受け取り、その一点に局所化する。テーブル・列は config のコンパイル時定数のみで
+ * ユーザー入力を含まないため `Prisma.raw` で埋め込んで安全。`daterange` は Prisma typed では扱えない
+ * ため `$executeRaw` で書き、半開区間 `[)` の生成は共有フラグメント `dateRangeValue` に委ねる（ADR-0067）。
  *
  * 現状は行ごとのループ INSERT（N+1）。一括 INSERT への改善（別 Issue）はこのループを複数行 VALUES
  * へ差し替えるだけで済む。
  */
-export async function appendPeriodRows(
+async function insertPeriodRows(
   tx: Tx,
   config: PeriodTableConfig,
-  rows: readonly PeriodWriteRow[]
+  rows: readonly PeriodWriteRow[],
+  onConflict: Prisma.Sql
 ): Promise<void> {
   const table = Prisma.raw(config.table);
   const columns = Prisma.raw(
@@ -94,9 +96,23 @@ export async function appendPeriodRows(
         ${dateRangeValue(row.start, row.end)},
         CURRENT_TIMESTAMP
       )
-      ON CONFLICT (id) DO NOTHING
+      ${onConflict}
     `;
   }
+}
+
+/**
+ * 集約の全期間行を daterange 付きで append-only 挿入する（販売単価3層で共用）。
+ *
+ * 既存 id は `ON CONFLICT (id) DO NOTHING` で no-op にし、新規 id の行だけを挿入する。これにより
+ * insert/update のどちらからも安全に呼べ、update では既存行の updated_at を一切動かさない（監査保持）。
+ */
+export async function appendPeriodRows(
+  tx: Tx,
+  config: PeriodTableConfig,
+  rows: readonly PeriodWriteRow[]
+): Promise<void> {
+  await insertPeriodRows(tx, config, rows, Prisma.sql`ON CONFLICT (id) DO NOTHING`);
 }
 
 /**
@@ -126,31 +142,22 @@ export async function syncPeriodRows(
 ): Promise<void> {
   const table = Prisma.raw(config.table);
   const valueColumn = Prisma.raw(config.valueColumn);
-  const columns = Prisma.raw(
-    ["id", ...config.keyColumns, config.valueColumn, "applicable_period", "updated_at"].join(", ")
-  );
 
-  for (const row of rows) {
-    const idAndKeys = Prisma.join([
-      Prisma.sql`${row.id}::uuid`,
-      ...row.keyValues.map((value) => Prisma.sql`${value}::uuid`),
-    ]);
-    await tx.$executeRaw`
-      INSERT INTO ${table} (${columns})
-      VALUES (
-        ${idAndKeys},
-        ${row.value}::numeric,
-        ${dateRangeValue(row.start, row.end)},
-        CURRENT_TIMESTAMP
-      )
+  // 既存 id は値（金額・適用期間）が変わった行だけ in-place 更新する。`WHERE … IS DISTINCT FROM` で
+  // 無変更行を no-op にし updated_at を据え置く（監査保持）。append との差は ON CONFLICT 句のみ。
+  await insertPeriodRows(
+    tx,
+    config,
+    rows,
+    Prisma.sql`
       ON CONFLICT (id) DO UPDATE SET
         ${valueColumn} = EXCLUDED.${valueColumn},
         applicable_period = EXCLUDED.applicable_period,
         updated_at = CURRENT_TIMESTAMP
       WHERE ${table}.${valueColumn} IS DISTINCT FROM EXCLUDED.${valueColumn}
          OR ${table}.applicable_period IS DISTINCT FROM EXCLUDED.applicable_period
-    `;
-  }
+    `
+  );
 
   // 集約に存在しない id の行を削除する。空配列なら ANY(空) が常に偽となり、スコープ配下の全行が
   // 削除対象になる（全行削除のケースも同一経路で扱える）。
