@@ -174,6 +174,22 @@ describe("PrismaCommonSellingPriceRepository", () => {
     expect(found.periods[0].period.equals(period("2030-06-01", null))).toBe(true);
   });
 
+  it("update で最後の将来行を削除すると期間行が0件になる（空集約 delete・空配列バインド）", async () => {
+    const aggregate = CommonSellingPrice.create(productId);
+    aggregate.addPeriod(period("2030-01-01", null), price(1000), "2025-06-01");
+    await repository.insert(aggregate);
+
+    // 唯一の将来行を削除 → syncPeriodRows が rows=[] で DELETE ... ANY('{}'::uuid[]) を走らせる経路。
+    const reloaded = (await repository.findByProductId(productId))!;
+    reloaded.deletePeriod(reloaded.periods[0].id, "2025-06-01");
+    await repository.update(reloaded, 1);
+
+    // 親（common_selling_prices）は残り、期間行だけ0件＝空集約として往復する（例外なく完了）。
+    const found = await repository.findByProductId(productId);
+    expect(found).not.toBeNull();
+    expect(found!.periods).toHaveLength(0);
+  });
+
   it("古い expectedVersion での update は ConflictError", async () => {
     const aggregate = CommonSellingPrice.create(productId);
     aggregate.addPeriod(period("2025-07-01", null), price(1000), "2025-07-01");
