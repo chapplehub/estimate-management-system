@@ -23,7 +23,7 @@ test.describe("ダッシュボード", () => {
     // 共通販売単価管理リンクをクリックして遷移を確認
     await page.getByRole("link", { name: "共通販売単価管理" }).click();
     await expect(page).toHaveURL(/\/common-selling-prices/, { timeout: 10000 });
-    await expect(page.getByRole("heading", { name: "共通売単価", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "共通販売単価", exact: true })).toBeVisible();
   });
 });
 
