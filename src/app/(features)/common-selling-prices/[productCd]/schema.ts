@@ -84,7 +84,19 @@ export const deletePeriodSchema = z.object({
   periodId: z.string().min(1),
 });
 
+/**
+ * 単価改定（ガイド付き・#474）: 改定日（必須・実在日）＋ 新単価。
+ * 現在有効行はサーバー側で特定するため periodId は入力契約に含めない（改竄面を消す・決定2）。
+ * 改定日＝適用終了日＝新行開始日で本日以降であること・据え置き許容は BE コマンドが最終判定する。
+ */
+export const revisePeriodSchema = z.object({
+  version: versionInput,
+  revisionDate: dateInput,
+  price: priceInput,
+});
+
 export type AddPeriodFormInput = z.infer<typeof addPeriodSchema>;
 export type UpdateFuturePeriodFormInput = z.infer<typeof updateFuturePeriodSchema>;
 export type EndDatePeriodFormInput = z.infer<typeof endDatePeriodSchema>;
 export type DeletePeriodFormInput = z.infer<typeof deletePeriodSchema>;
+export type RevisePeriodFormInput = z.infer<typeof revisePeriodSchema>;
