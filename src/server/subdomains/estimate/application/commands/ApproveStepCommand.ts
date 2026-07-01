@@ -1,10 +1,9 @@
-import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
-import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
 import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
 import { EstimateApplication } from "@subdomains/estimate/domain/entities";
 import { EstimateApplicationRepository } from "@subdomains/estimate/domain/repositories/approval/EstimateApplicationRepository";
 import { EstimateApprovalStepId } from "@subdomains/estimate/domain/values/approval/EstimateApprovalStepId";
 import { RoleQueryService } from "@subdomains/role/application/queries/RoleQueryService";
+import { loadStepForMemberDecision } from "../shared/approval/loadStepForMemberDecision";
 
 /**
  * ステップ承認コマンドの入力（§7.1）。
@@ -42,26 +41,13 @@ export class ApproveStepCommand {
 
   async execute(input: ApproveStepInput): Promise<EstimateApplication> {
     const stepId = new EstimateApprovalStepId(input.stepId);
-    const application = await this.applicationRepository.findByStepId(stepId);
-    if (!application) {
-      throw new NotFoundEntityError(EstimateApplication, { stepId: input.stepId });
-    }
-
-    const step = application.steps.find((candidate) => candidate.id.equals(stepId));
-    if (!step) {
-      // findByStepId が返した集約には当該ステップが必ず含まれる（多層防御）。
-      throw new NotFoundEntityError(EstimateApplication, { stepId: input.stepId });
-    }
-
-    const isMember = await this.roleQueryService.hasMember(
-      step.roleId.value,
-      input.approverEmployeeId
-    );
-    if (!isMember) {
-      throw new BusinessRuleViolationError(
-        "承認者は当該ステップの役割メンバーではないため承認できません（§7.4）"
-      );
-    }
+    const application = await loadStepForMemberDecision({
+      applicationRepository: this.applicationRepository,
+      roleQueryService: this.roleQueryService,
+      stepId,
+      operatorEmployeeId: input.approverEmployeeId,
+      operationLabel: "承認",
+    });
 
     application.approve(stepId, new EmployeeId(input.approverEmployeeId));
 
