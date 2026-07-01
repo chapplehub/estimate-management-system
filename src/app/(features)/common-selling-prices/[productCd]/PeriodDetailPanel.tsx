@@ -7,9 +7,11 @@ import type {
   CommonSellingPricePeriodStatus,
 } from "@subdomains/pricing/application/queries/dto/CommonSellingPriceEditDTO";
 import { authorityFor } from "../_data/period-rules";
+import { computeTimelineLayout } from "../_data/timeline-layout";
 import { formatYenFromDecimal } from "../_components/formatYen";
 import { PeriodDeleteConfirm } from "./PeriodDeleteConfirm";
 import { PeriodForm } from "./PeriodForm";
+import { PriceTimeline } from "./PriceTimeline";
 
 /** BE 時点状態のラベルと Badge variant（現在有効=active/将来=future/失効=expired）。 */
 const STATUS_BADGE: Record<
@@ -36,6 +38,8 @@ type Props = {
   detail: CommonSellingPriceEditDTO;
   /** 管理者のみミューテーション系UI（新規追加・編集・適用終了・削除）を描画する。認可の正本はサーバー側 verifyAdmin。 */
   isAdmin: boolean;
+  /** 今日マーカーの基準日（`YYYY-MM-DD`）。status 算出と同一基準日をサーバーから受け取る（#475）。 */
+  referenceDate: string;
 };
 
 /**
@@ -45,9 +49,12 @@ type Props = {
  * （use-cases.md §7・authorityFor）、登録/編集/適用終了は単一 PeriodForm をモードで
  * 切り替えて下部パネルに表示する。削除は行内2段階確認（決定5）。
  */
-export function PeriodDetailPanel({ detail, isAdmin }: Props) {
+export function PeriodDetailPanel({ detail, isAdmin, referenceDate }: Props) {
   const [mode, setMode] = useState<PanelMode>({ kind: "closed" });
   const close = useCallback(() => setMode({ kind: "closed" }), []);
+
+  // タイムライン帯の表示トグル（決定: 既定は table＝帯なし。決定2 と同じくクライアント状態で保持）。
+  const [showTimeline, setShowTimeline] = useState(false);
 
   // 編集系パネルの対象行を最新 detail から引く（削除済みなら閉じる）。
   const formMode =
@@ -61,16 +68,46 @@ export function PeriodDetailPanel({ detail, isAdmin }: Props) {
     <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-8">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold text-gray-500">適用期間</h2>
-        {isAdmin && (
-          <button
-            type="button"
-            onClick={() => setMode({ kind: "new" })}
-            className="bg-blue-500 hover:bg-blue-700 text-white text-sm font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-          >
-            新規追加
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {/* 表示切替（テーブル／タイムライン）。タイムラインは付加式で、テーブルは常時表示のまま。 */}
+          <div className="inline-flex rounded-md border border-gray-300 p-0.5 text-sm">
+            <button
+              type="button"
+              aria-pressed={!showTimeline}
+              onClick={() => setShowTimeline(false)}
+              className={`rounded px-3 py-1 font-semibold ${
+                showTimeline ? "text-gray-600 hover:bg-gray-100" : "bg-blue-500 text-white"
+              }`}
+            >
+              テーブル
+            </button>
+            <button
+              type="button"
+              aria-pressed={showTimeline}
+              onClick={() => setShowTimeline(true)}
+              className={`rounded px-3 py-1 font-semibold ${
+                showTimeline ? "bg-blue-500 text-white" : "text-gray-600 hover:bg-gray-100"
+              }`}
+            >
+              タイムライン
+            </button>
+          </div>
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => setMode({ kind: "new" })}
+              className="bg-blue-500 hover:bg-blue-700 text-white text-sm font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+            >
+              新規追加
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* タイムライン帯（付加式・トグル ON 時のみ）。テーブルの上に重ねて期間の連続・隙間・無期限を可視化。 */}
+      {showTimeline && (
+        <PriceTimeline layout={computeTimelineLayout(detail.periods, referenceDate)} />
+      )}
 
       {detail.periods.length > 0 ? (
         <table className="w-full text-left">

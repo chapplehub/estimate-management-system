@@ -16,9 +16,12 @@ export default async function CommonSellingPriceDetailPage({
   const admin = isAdmin(session);
   const { productCd } = await params;
 
+  // status 算出とタイムラインの今日マーカーを同一基準日に揃えるため、参照日を一度だけ求めて共有する。
+  const referenceDate = toJstCalendarDay(new Date());
+
   const detail = await commonSellingPriceEditQueryFactory().find({
     productCode: productCd,
-    referenceDate: toJstCalendarDay(new Date()),
+    referenceDate,
   });
   if (detail == null) {
     notFound();
@@ -58,7 +61,7 @@ export default async function CommonSellingPriceDetailPage({
       </div>
 
       {/* 適用期間明細＋操作（UC-2/3/4/5）。表示・操作はクライアント wrapper に委譲。 */}
-      <PeriodDetailPanel detail={detail} isAdmin={admin} />
+      <PeriodDetailPanel detail={detail} isAdmin={admin} referenceDate={referenceDate} />
     </div>
   );
 }
