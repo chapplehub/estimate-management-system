@@ -208,10 +208,14 @@ export class EstimateApplication {
   }
 
   /**
-   * 申請を取り下げる（§7.3）。申請が承認待ち（PENDING）であることをガードし、取下イベントを
-   * 付与する。これにより申請は導出上 WITHDRAWN（最優先）になる。
+   * 申請を取り下げる（§7.3）。取下は申請者本人のみが行え（本人性は集約内 `_applicantEmployeeId`
+   * で完結するためドメインでガード・#386 補完）、かつ申請が承認待ち（PENDING）であることをガード
+   * して取下イベントを付与する。これにより申請は導出上 WITHDRAWN（最優先）になる。
    */
   withdraw(withdrawnByEmployeeId: EmployeeId): void {
+    if (!withdrawnByEmployeeId.equals(this._applicantEmployeeId)) {
+      throw new BusinessRuleViolationError("取下は申請者本人のみが行えます（§7.3）");
+    }
     if (!this.applicationStatus.isPending()) {
       throw new BusinessRuleViolationError(
         "承認待ち（PENDING）でない申請は取り下げできません（§7.3）"
