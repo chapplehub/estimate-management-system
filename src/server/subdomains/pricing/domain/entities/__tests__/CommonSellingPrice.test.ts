@@ -285,6 +285,43 @@ describe("CommonSellingPrice 集約", () => {
     });
   });
 
+  describe("currentValidPeriod — 現在有効行の照会", () => {
+    const today = "2025-06-01";
+
+    it("現在有効行（開始 ≤ 今日 < 終了）を返す", () => {
+      const aggregate = CommonSellingPrice.create(productId);
+      aggregate.addPeriod(period("2025-04-01", "2025-12-01"), price(1000), "2025-03-01");
+
+      const row = aggregate.currentValidPeriod(today);
+
+      expect(row).toBeDefined();
+      expect(row?.period.equals(period("2025-04-01", "2025-12-01"))).toBe(true);
+      expect(row?.price.equals(price(1000))).toBe(true);
+    });
+
+    it("無期限の現在有効行（開始 ≤ 今日・終了なし）を返す", () => {
+      const aggregate = CommonSellingPrice.create(productId);
+      aggregate.addPeriod(period("2025-04-01", null), price(1000), "2025-03-01");
+
+      const row = aggregate.currentValidPeriod(today);
+
+      expect(row?.period.equals(period("2025-04-01", null))).toBe(true);
+    });
+
+    it("現在有効行が無ければ undefined（将来行・失効行のみ）", () => {
+      const aggregate = CommonSellingPrice.create(productId);
+      aggregate.addPeriod(period("2025-01-01", "2025-04-01"), price(1000), "2024-12-01"); // 失効
+      aggregate.addPeriod(period("2025-07-01", null), price(1200), today); // 将来
+
+      expect(aggregate.currentValidPeriod(today)).toBeUndefined();
+    });
+
+    it("空集約では undefined", () => {
+      const aggregate = CommonSellingPrice.create(productId);
+      expect(aggregate.currentValidPeriod(today)).toBeUndefined();
+    });
+  });
+
   describe("reconstruct — 永続化からの再構成", () => {
     it("VO記述子から identity を保って再構成できる", () => {
       const id1 = CommonSellingPricePeriodId.generate();

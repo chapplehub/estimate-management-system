@@ -142,6 +142,19 @@ export class CommonSellingPrice {
     this._periods.splice(this._periods.indexOf(row), 1);
   }
 
+  /**
+   * 参照日（今日）時点で現在有効な期間行（開始 ≤ 今日 < 終了）を返す。無ければ undefined。
+   *
+   * 「現在有効」という述語を集約に集約するクエリ（read-only）。単価改定はこの行を `endDatePeriod`
+   * の対象として特定するために使う。半開区間の被覆判定はそのまま `ApplicablePeriod.contains` に委ねる。
+   * 集約内の重複ゼロ不変条件（`addPeriod`）により、被覆する行は高々1つに定まる。
+   *
+   * @param referenceDate 参照日（今日・JST 暦日 `"YYYY-MM-DD"`）。
+   */
+  currentValidPeriod(referenceDate: string): CommonSellingPricePeriod | undefined {
+    return this._periods.find((row) => row.period.contains(referenceDate));
+  }
+
   /** identity で期間行を引く。存在しなければ不変条件違反として投げる。 */
   private requireRow(periodId: CommonSellingPricePeriodId): CommonSellingPricePeriod {
     const row = this._periods.find((r) => r.id.equals(periodId));
