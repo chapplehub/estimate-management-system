@@ -10,7 +10,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
  */
 describe("PrismaRoleQueryService.findRoleIdsWithMembers", () => {
   // ファイル別プレフィックスで並列実行の P2002 を避ける（#327）。roleCd は VarChar(7)。
-  const TEST_ROLE_CDS = ["ROLE921", "ROLE922"];
+  const TEST_ROLE_CDS = ["ROLE923", "ROLE924"];
   const TEST_EMP_CDS = ["EMP990210"];
 
   let service: PrismaRoleQueryService;
