@@ -201,7 +201,7 @@ describe("EstimateApplication", () => {
     it("取下げると申請は WITHDRAWN になる（最優先）", () => {
       const app = buildApp(2);
 
-      app.withdraw(EmployeeId.generate());
+      app.withdraw(app.applicantEmployeeId);
 
       expect(app.applicationStatus.equals(ApplicationStatus.WITHDRAWN)).toBe(true);
       expect(app.withdrawal).not.toBeNull();
@@ -211,23 +211,30 @@ describe("EstimateApplication", () => {
       const app = buildApp(2);
       app.approve(app.steps[0].id, EmployeeId.generate());
 
-      app.withdraw(EmployeeId.generate());
+      app.withdraw(app.applicantEmployeeId);
 
       expect(app.applicationStatus.equals(ApplicationStatus.WITHDRAWN)).toBe(true);
     });
 
     it("既に取下済みの申請の再取下は拒否する", () => {
       const app = buildApp(1);
-      app.withdraw(EmployeeId.generate());
+      app.withdraw(app.applicantEmployeeId);
 
-      expect(() => app.withdraw(EmployeeId.generate())).toThrow(BusinessRuleViolationError);
+      expect(() => app.withdraw(app.applicantEmployeeId)).toThrow(BusinessRuleViolationError);
     });
 
     it("承認完了済み（PENDING でない）の取下は拒否する", () => {
       const app = buildApp(1);
       app.approve(app.steps[0].id, EmployeeId.generate());
 
+      expect(() => app.withdraw(app.applicantEmployeeId)).toThrow(BusinessRuleViolationError);
+    });
+
+    it("申請者本人でない従業員による取下は拒否する（§7.3）", () => {
+      const app = buildApp(2);
+
       expect(() => app.withdraw(EmployeeId.generate())).toThrow(BusinessRuleViolationError);
+      expect(app.withdrawal).toBeNull();
     });
   });
 });
