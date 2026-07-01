@@ -35,6 +35,9 @@ import { EstimateApprovalStep } from "./EstimateApprovalStep";
  * リポジトリ更新時に `expectedVersion` 引数として渡す（ADR-0039）。
  */
 export class EstimateApplication {
+  /** NotFoundEntityError 等でのエンティティ表示名（Estimate と同じ規約）。 */
+  static readonly ENTITY_NAME = "見積申請";
+
   private constructor(
     private readonly _id: EstimateApplicationId,
     private readonly _variationId: EstimateVariationId,
