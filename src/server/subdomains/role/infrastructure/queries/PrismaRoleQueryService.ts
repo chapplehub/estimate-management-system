@@ -74,6 +74,15 @@ export class PrismaRoleQueryService implements RoleQueryService {
     return new Set(rows.map((row) => row.roleId));
   }
 
+  async hasMember(roleId: string, employeeId: string): Promise<boolean> {
+    // 存在確認1本。複合ユニーク（employeeId, roleId）に対する count で真偽を返す。
+    const count = await prisma.employeeRole.count({
+      where: { roleId, employeeId },
+    });
+
+    return count > 0;
+  }
+
   async findByPositionId(positionId: string, options?: RoleListOptions): Promise<RoleDTO[]> {
     const orderBy = this.buildOrderBy(options) ?? { roleCd: "asc" as const };
 

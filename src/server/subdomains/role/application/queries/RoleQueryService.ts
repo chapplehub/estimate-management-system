@@ -43,4 +43,17 @@ export interface RoleQueryService {
    * @returns メンバーが存在する役割IDの集合（部分集合・空入力なら空集合）
    */
   findRoleIdsWithMembers(roleIds: string[]): Promise<Set<string>>;
+
+  /**
+   * 指定従業員が指定役割のメンバー（`EmployeeRole`）かを判定する（#418）。
+   *
+   * 承認/差戻ユースケースの個人認可（当該ステップの役割メンバーのみ操作可・システム設計書 §7.4/§12）に
+   * 使う。役割グラフは estimate 集約の外にあるため、判定はアプリ層でこのクエリを介して行う
+   * （ドメインにポートを持たせない・ADR-0030/0052）。存在しない役割・従業員は false。
+   *
+   * @param roleId 判定対象の役割ID
+   * @param employeeId 判定対象の従業員ID
+   * @returns メンバーであれば true
+   */
+  hasMember(roleId: string, employeeId: string): Promise<boolean>;
 }
