@@ -7,15 +7,21 @@ import { authorityFor } from "./period-rules";
  * `authorityFor`（BE status から操作可否を導く）のみを対象にする。
  */
 describe("authorityFor", () => {
-  it("将来行（future）は全項目編集可・適用終了不可・削除可", () => {
-    expect(authorityFor("future")).toEqual({ editable: true, endDatable: false, deletable: true });
+  it("将来行（future）は全項目編集可・適用終了不可・削除可・改定不可", () => {
+    expect(authorityFor("future")).toEqual({
+      editable: true,
+      endDatable: false,
+      deletable: true,
+      revisable: false,
+    });
   });
 
-  it("現在有効行（active）は編集不可・適用終了のみ可・削除不可", () => {
+  it("現在有効行（active）は編集不可・適用終了のみ可・削除不可・改定可", () => {
     expect(authorityFor("active")).toEqual({
       editable: false,
       endDatable: true,
       deletable: false,
+      revisable: true,
     });
   });
 
@@ -24,6 +30,7 @@ describe("authorityFor", () => {
       editable: false,
       endDatable: false,
       deletable: false,
+      revisable: false,
     });
   });
 });

@@ -10,6 +10,7 @@ import { authorityFor } from "../_data/period-rules";
 import { formatYenFromDecimal } from "../_components/formatYen";
 import { PeriodDeleteConfirm } from "./PeriodDeleteConfirm";
 import { PeriodForm } from "./PeriodForm";
+import { ReviseForm } from "./ReviseForm";
 
 /** BE 時点状態のラベルと Badge variant（現在有効=active/将来=future/失効=expired）。 */
 const STATUS_BADGE: Record<
@@ -30,6 +31,7 @@ type PanelMode =
   | { kind: "new" }
   | { kind: "edit"; periodId: string }
   | { kind: "endDate"; periodId: string }
+  | { kind: "revise"; periodId: string }
   | { kind: "delete"; periodId: string };
 
 type Props = {
@@ -55,6 +57,12 @@ export function PeriodDetailPanel({ detail, isAdmin }: Props) {
   const formPeriod =
     formMode != null && formMode.kind !== "new"
       ? detail.periods.find((p) => p.periodId === formMode.periodId)
+      : undefined;
+
+  // 改定パネルの対象（現在有効行）を最新 detail から引く（状態が変わっていたら閉じる）。
+  const revisePeriod =
+    mode.kind === "revise"
+      ? detail.periods.find((p) => p.periodId === mode.periodId && p.status === "active")
       : undefined;
 
   return (
@@ -122,6 +130,15 @@ export function PeriodDetailPanel({ detail, isAdmin }: Props) {
                               編集
                             </button>
                           )}
+                          {auth.revisable && (
+                            <button
+                              type="button"
+                              onClick={() => setMode({ kind: "revise", periodId: period.periodId })}
+                              className="text-blue-600 hover:text-blue-800 hover:underline text-sm"
+                            >
+                              改定
+                            </button>
+                          )}
                           {auth.endDatable && (
                             <button
                               type="button"
@@ -168,6 +185,18 @@ export function PeriodDetailPanel({ detail, isAdmin }: Props) {
           version={detail.version}
           mode={formMode.kind}
           period={formPeriod}
+          onSuccess={close}
+          onCancel={close}
+        />
+      )}
+
+      {/* 単価改定の専用フォーム（#474）。現在有効行が在るときのみ。version は集約が在るため非null。 */}
+      {revisePeriod != null && detail.version != null && (
+        <ReviseForm
+          productId={detail.productId}
+          productCode={detail.productCode}
+          version={detail.version}
+          currentPrice={revisePeriod.sellingPrice}
           onSuccess={close}
           onCancel={close}
         />

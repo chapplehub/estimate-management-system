@@ -17,6 +17,8 @@ export type PeriodAuthority = {
   endDatable: boolean;
   /** 物理削除可（将来行のみ）。 */
   deletable: boolean;
+  /** 単価改定（適用終了＋新規追加の合成）可（現在有効行のみ・#474）。 */
+  revisable: boolean;
 };
 
 /**
@@ -30,5 +32,6 @@ export function authorityFor(status: CommonSellingPricePeriodStatus): PeriodAuth
     editable: status === "future",
     endDatable: status === "active",
     deletable: status === "future",
+    revisable: status === "active",
   };
 }

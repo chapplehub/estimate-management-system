@@ -446,6 +446,15 @@ const PRODUCTS = [
     isActive: true,
     description: "共通販売単価 E2E（CRUD Chain B・テスト内で期間生成）",
   },
+  {
+    code: "PRD825",
+    name: "CSP_ガイド付き改定テスト商品",
+    category: "INDIVIDUAL" as const,
+    unit: "UNIT" as const,
+    costPrice: null,
+    isActive: true,
+    description: "共通販売単価 E2E（ガイド付き単価改定 Chain・テスト内で期間生成）",
+  },
 ];
 
 // --- 共通販売単価 E2E フィクスチャ（#481・ADR-20260629-3x5）---
@@ -471,7 +480,7 @@ function jstRelativeDate(dayOffset: number): string {
  * 共通販売単価の E2E フィクスチャを投入する（PRD82x 帯・today 相対）。
  * - PRD820: 失効`[today-60,today-30)`¥1000 / 現在有効`[today-30,today+30)`¥2000 / 将来`[today+30,∞)`¥3000
  * - PRD823: 失効`[today-60,today-30)`¥1500
- * - PRD821/822/824: CSP 集約を作らない（未設定で開始。822/824 はテスト内で期間を生成）
+ * - PRD821/822/824/825: CSP 集約を作らない（未設定で開始。822/824/825 はテスト内で期間を生成）
  *
  * 期間は EXCLUDE 制約（同一商品で適用期間の重複不可・ADR-0067）を満たすよう半開区間で隣接させる。
  * 過去開始は集約の assertStartNotPast を通せないため raw daterange insert で投入する。
