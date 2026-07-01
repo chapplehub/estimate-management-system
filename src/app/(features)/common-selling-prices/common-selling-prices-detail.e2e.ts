@@ -79,3 +79,53 @@ test.describe("共通販売単価 詳細（UC-2）", () => {
     await expect(page.getByText("404")).toBeVisible({ timeout: 10000 });
   });
 });
+
+/**
+ * 共通販売単価 タイムライン表示（#475）の E2E。
+ *
+ * PRD820（失効/現在有効/将来の3期間）で、既定はテーブル（帯なし）→ トグルでタイムライン帯を付加表示
+ * → テーブルへ戻すと帯が消えることを検証する。凡例（現在有効/失効/将来）はテーブルの状態バッジと
+ * テキストが衝突するため data-testid でスコープする。共通シード・DB 不変（並列可）。
+ */
+test.describe("共通販売単価 タイムライン表示（#475）", () => {
+  test("既定はテーブル表示で、タイムライン帯は描かれない", async ({ page }) => {
+    await page.goto("/common-selling-prices/PRD820");
+    await waitForDetailReady(page);
+
+    await expect(page.getByTestId("price-timeline")).not.toBeVisible();
+  });
+
+  test("タイムラインへ切替えると帯・今日マーカー・凡例が表示される", async ({ page }) => {
+    await page.goto("/common-selling-prices/PRD820");
+    await waitForDetailReady(page);
+
+    await page.getByRole("button", { name: "タイムライン" }).click();
+
+    const timeline = page.getByTestId("price-timeline");
+    await expect(timeline).toBeVisible();
+
+    // 3期間ぶんの帯と、参照日（今日）マーカー。
+    await expect(page.getByTestId("price-timeline-bar")).toHaveCount(3);
+    await expect(page.getByTestId("price-timeline-today")).toBeVisible();
+
+    // 凡例（現在有効/失効/将来）は testid でスコープしてテーブルのバッジと区別する。
+    const legend = page.getByTestId("price-timeline-legend");
+    await expect(legend.getByText("現在有効", { exact: true })).toBeVisible();
+    await expect(legend.getByText("失効", { exact: true })).toBeVisible();
+    await expect(legend.getByText("将来", { exact: true })).toBeVisible();
+  });
+
+  test("テーブルへ戻すとタイムライン帯が消える", async ({ page }) => {
+    await page.goto("/common-selling-prices/PRD820");
+    await waitForDetailReady(page);
+
+    await page.getByRole("button", { name: "タイムライン" }).click();
+    await expect(page.getByTestId("price-timeline")).toBeVisible();
+
+    await page.getByRole("button", { name: "テーブル" }).click();
+    await expect(page.getByTestId("price-timeline")).not.toBeVisible();
+
+    // 操作テーブルは切替に関係なく常時表示（付加式）。
+    await expect(page.locator("table tbody tr").first()).toBeVisible();
+  });
+});
