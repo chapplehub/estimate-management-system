@@ -50,6 +50,8 @@ export class PrismaCostPriceListQueryService implements CostPriceListQueryServic
                p.name               AS "productName",
                p.is_active          AS "isActive",
                per.cost_price::text AS "currentCostPrice",
+               lower(per.applicable_period)::text AS "currentPeriodStart",
+               upper(per.applicable_period)::text AS "currentPeriodEnd",
                CASE
                  WHEN per.id IS NOT NULL THEN 'active'
                  WHEN EXISTS (
