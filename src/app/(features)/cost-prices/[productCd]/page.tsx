@@ -16,7 +16,7 @@ export default async function CostPriceDetailPage({
   const admin = isAdmin(session);
   const { productCd } = await params;
 
-  // 各行の時点状態を BE が算出するための参照日（今日）。PR2 でタイムラインの今日マーカーとも共有する。
+  // status 算出とタイムラインの今日マーカーを同一基準日に揃えるため、参照日を一度だけ求めて共有する。
   const referenceDate = toJstCalendarDay(new Date());
 
   const detail = await costPriceEditQueryFactory().find({
@@ -58,7 +58,7 @@ export default async function CostPriceDetailPage({
       </div>
 
       {/* 適用期間明細＋操作（UC-2/3/4/5）。表示・操作はクライアント wrapper に委譲。 */}
-      <PeriodDetailPanel detail={detail} isAdmin={admin} />
+      <PeriodDetailPanel detail={detail} isAdmin={admin} referenceDate={referenceDate} />
     </div>
   );
 }
