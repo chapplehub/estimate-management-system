@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import { z } from "zod";
 import { useServerForm } from "@/app/_hooks/useServerForm";
 import type { CommonSellingPriceEditPeriodDTO } from "@subdomains/pricing/application/queries/dto/CommonSellingPriceEditDTO";
-import { formatYenFromDecimal } from "../_components/formatYen";
+import { formatYenFromDecimal } from "../../_shared/formatYen";
 import { addPeriodAction, endDatePeriodAction, updateFuturePeriodAction } from "./actions";
 import { addPeriodSchema, endDatePeriodSchema, updateFuturePeriodSchema } from "./schema";
 

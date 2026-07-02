@@ -12,7 +12,7 @@
  */
 
 import type { CommonSellingPriceEditPeriodDTO } from "@subdomains/pricing/application/queries/dto/CommonSellingPriceEditDTO";
-import { formatYenFromDecimal } from "../_components/formatYen";
+import { formatYenFromDecimal } from "../../_shared/formatYen";
 
 /** 1本の帯の描画情報（%は 0–100 の数値・呼び出し側で `${leftPct}%` に整形）。 */
 export interface TimelineBar {
