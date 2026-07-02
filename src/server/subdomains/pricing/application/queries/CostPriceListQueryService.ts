@@ -3,7 +3,8 @@ import { CostPriceListItemDTO, CostPricePriceStatus } from "./dto/CostPriceListI
 /**
  * 原価 保守一覧の読みモデル（#500 保守画面・read 関心）。
  *
- * 母集合は全商品（マスタ）。商品ごとに参照日（今日）で有効な原価を1件添えて一覧化する。
+ * 母集合は全商品（マスタ）。商品ごとに参照日（今日）で有効な原価を1件添えて一覧化する。有効行がある
+ * 場合はその適用期間（`currentPeriodStart`/`currentPeriodEnd`）も添える（#501・一覧に適用期間列を出す）。
  * 検索条件（商品コード／商品名／単価状態）での絞り込みは BE 側で1クエリに寄せる（FE での全件取得→
  * 絞り込みを避ける）。集約・Repository を介さず Prisma 直当てで DTO を返す（既存 QueryService 規約）。
  * 共通売単価 `CommonSellingPriceListQueryService` の同型ミラー（ADR-20260627-a5c）。

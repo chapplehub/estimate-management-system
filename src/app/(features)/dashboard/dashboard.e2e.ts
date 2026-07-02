@@ -25,6 +25,18 @@ test.describe("ダッシュボード", () => {
     await expect(page).toHaveURL(/\/common-selling-prices/, { timeout: 10000 });
     await expect(page.getByRole("heading", { name: "共通販売単価", exact: true })).toBeVisible();
   });
+
+  test("原価管理に遷移できる", async ({ page }) => {
+    await page.goto("/dashboard");
+
+    // 原価管理リンクの表示を確認
+    await expect(page.getByRole("link", { name: "原価管理" })).toBeVisible();
+
+    // 原価管理リンクをクリックして遷移を確認
+    await page.getByRole("link", { name: "原価管理" }).click();
+    await expect(page).toHaveURL(/\/cost-prices/, { timeout: 10000 });
+    await expect(page.getByRole("heading", { name: "原価", exact: true })).toBeVisible();
+  });
 });
 
 test.describe("ダッシュボード（未認証）", () => {
