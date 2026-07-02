@@ -38,7 +38,7 @@ describe("EditCommonSellingPricePeriodCommand", () => {
     const product = await new PrismaProductRepository().insert(
       Product.create(
         new ProductCode(TEST_PRODUCT_CODE),
-        new ProductName("編集コマンドテスト商品"),
+        new ProductName(`編集コマンドテスト商品${TEST_PRODUCT_CODE}`),
         ProductCategory.INDIVIDUAL,
         ProductUnit.UNIT
       )
