@@ -96,7 +96,7 @@ describe("PrismaCustomerSellingPriceQueryService", () => {
 
   it("区間内の暦日で有効な得意先別単価を引く", async () => {
     const aggregate = CustomerSellingPrice.create(customerId, productId);
-    aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000));
+    aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000), "2025-07-01");
     await repository.insert(aggregate);
 
     const result = await queryService.resolve({
@@ -110,7 +110,7 @@ describe("PrismaCustomerSellingPriceQueryService", () => {
 
   it("同じ商品でも別の得意先では引かない（得意先キーの隔離）", async () => {
     const aggregate = CustomerSellingPrice.create(customerId, productId);
-    aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000));
+    aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000), "2025-07-01");
     await repository.insert(aggregate);
 
     const result = await queryService.resolve({
@@ -124,7 +124,7 @@ describe("PrismaCustomerSellingPriceQueryService", () => {
 
   it("同じ得意先でも別の商品では引かない（商品キーの隔離）", async () => {
     const aggregate = CustomerSellingPrice.create(customerId, productId);
-    aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000));
+    aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000), "2025-07-01");
     await repository.insert(aggregate);
 
     const result = await queryService.resolve({
@@ -154,7 +154,7 @@ describe("PrismaCustomerSellingPriceQueryService", () => {
 
   it("どの適用期間にも覆われない暦日では null を返す", async () => {
     const aggregate = CustomerSellingPrice.create(customerId, productId);
-    aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000));
+    aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000), "2025-07-01");
     await repository.insert(aggregate);
 
     const result = await queryService.resolve({

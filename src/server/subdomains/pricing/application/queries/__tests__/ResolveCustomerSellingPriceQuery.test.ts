@@ -70,7 +70,7 @@ describe("ResolveCustomerSellingPriceQuery", () => {
 
   it("基準暦日に有効な得意先別販売単価を解決する", async () => {
     const aggregate = CustomerSellingPrice.create(customerId, productId);
-    aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000));
+    aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000), "2025-07-01");
     await repository.insert(aggregate);
 
     const result = await query.execute({
