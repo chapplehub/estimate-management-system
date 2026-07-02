@@ -3,12 +3,12 @@ import type { PeriodStatus } from "../../_shared/period-rules";
 import type { TimelineLayout } from "../../_shared/timeline-layout";
 
 /**
- * 適用期間タイムライン帯（#475・純プレゼンテーション）。
+ * 適用期間タイムライン帯（純プレゼンテーション）。
  *
  * computeTimelineLayout の算出結果を受けて、各期間を時間軸の帯として描画する。半開区間の連続・隙間・
  * 無期限（軸右端まで）を視覚化し、参照日（今日）を赤マーカーで示す。状態（active/future/expired）は
  * BE 算出値をそのまま色分けに使う（現在有効=緑／将来=青／失効=灰・プロト踏襲）。hooks を持たないため
- * "use client" は付けない（client の PeriodDetailPanel から利用される）。
+ * "use client" は付けない（client の PeriodDetailPanel から利用される）。共通売単価 PriceTimeline の同型ミラー。
  */
 
 /** 状態→帯のパレット（プロトの timeline bars と同一の配色）。 */

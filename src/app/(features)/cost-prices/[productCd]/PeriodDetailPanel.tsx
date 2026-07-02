@@ -3,9 +3,9 @@
 import { useCallback, useState } from "react";
 import { Badge } from "@/app/_components/shadcnui/badge";
 import type {
-  CommonSellingPriceEditDTO,
-  CommonSellingPricePeriodStatus,
-} from "@subdomains/pricing/application/queries/dto/CommonSellingPriceEditDTO";
+  CostPriceEditDTO,
+  CostPricePeriodStatus,
+} from "@subdomains/pricing/application/queries/dto/CostPriceEditDTO";
 import { authorityFor } from "../../_shared/period-rules";
 import { computeTimelineLayout } from "../../_shared/timeline-layout";
 import { formatYenFromDecimal } from "../../_shared/formatYen";
@@ -16,7 +16,7 @@ import { ReviseForm } from "./ReviseForm";
 
 /** BE 時点状態のラベルと Badge variant（現在有効=active/将来=future/失効=expired）。 */
 const STATUS_BADGE: Record<
-  CommonSellingPricePeriodStatus,
+  CostPricePeriodStatus,
   { label: string; variant: "default" | "outline" | "secondary" }
 > = {
   active: { label: "現在有効", variant: "default" },
@@ -37,10 +37,10 @@ type PanelMode =
   | { kind: "delete"; periodId: string };
 
 type Props = {
-  detail: CommonSellingPriceEditDTO;
+  detail: CostPriceEditDTO;
   /** 管理者のみミューテーション系UI（新規追加・編集・適用終了・削除）を描画する。認可の正本はサーバー側 verifyAdmin。 */
   isAdmin: boolean;
-  /** 今日マーカーの基準日（`YYYY-MM-DD`）。status 算出と同一基準日をサーバーから受け取る（#475）。 */
+  /** 今日マーカーの基準日（`YYYY-MM-DD`）。status 算出と同一基準日をサーバーから受け取る。 */
   referenceDate: string;
 };
 
@@ -49,13 +49,14 @@ type Props = {
  *
  * 時点状態（現在有効/将来/失効）に応じて各行の編集/適用終了/削除ボタンを出し分け
  * （use-cases.md §7・authorityFor）、登録/編集/適用終了は単一 PeriodForm をモードで
- * 切り替えて下部パネルに表示する。削除は行内2段階確認（決定5）。
+ * 切り替えて下部パネルに表示する。単価改定は専用の ReviseForm、削除は行内2段階確認（決定5）。
+ * タイムライン帯は付加式トグル（既定オフ）。共通売単価 PeriodDetailPanel の同型ミラー。
  */
 export function PeriodDetailPanel({ detail, isAdmin, referenceDate }: Props) {
   const [mode, setMode] = useState<PanelMode>({ kind: "closed" });
   const close = useCallback(() => setMode({ kind: "closed" }), []);
 
-  // タイムライン帯の表示トグル（決定: 既定は table＝帯なし。決定2 と同じくクライアント状態で保持）。
+  // タイムライン帯の表示トグル（既定は table＝帯なし。クライアント状態で保持）。
   const [showTimeline, setShowTimeline] = useState(false);
 
   // 編集系パネルの対象行を最新 detail から引く（削除済みなら閉じる）。
@@ -121,7 +122,7 @@ export function PeriodDetailPanel({ detail, isAdmin, referenceDate }: Props) {
               start: p.start,
               end: p.end,
               status: p.status,
-              price: p.sellingPrice,
+              price: p.costPrice,
             })),
             referenceDate
           )}
@@ -134,7 +135,7 @@ export function PeriodDetailPanel({ detail, isAdmin, referenceDate }: Props) {
             <tr className="border-b">
               <th className="py-2 text-sm font-bold text-gray-700">適用開始日</th>
               <th className="py-2 text-sm font-bold text-gray-700">適用終了日</th>
-              <th className="py-2 text-sm font-bold text-gray-700 text-right">共通販売単価</th>
+              <th className="py-2 text-sm font-bold text-gray-700 text-right">原価</th>
               <th className="py-2 text-sm font-bold text-gray-700">状態</th>
               {isAdmin && <th className="py-2 text-sm font-bold text-gray-700 text-right">操作</th>}
             </tr>
@@ -151,7 +152,7 @@ export function PeriodDetailPanel({ detail, isAdmin, referenceDate }: Props) {
                     {period.end ?? <span className="text-gray-500">無期限</span>}
                   </td>
                   <td className="py-2 text-right font-medium tabular-nums">
-                    {formatYenFromDecimal(period.sellingPrice)}
+                    {formatYenFromDecimal(period.costPrice)}
                   </td>
                   <td className="py-2">
                     <Badge variant={badge.variant}>{badge.label}</Badge>
@@ -221,7 +222,7 @@ export function PeriodDetailPanel({ detail, isAdmin, referenceDate }: Props) {
         </table>
       ) : (
         <p className="text-gray-500">
-          適用期間が未設定です。共通販売単価が無いと価格決定が解決できません。
+          適用期間が未設定です。原価が無いと粗利計算が解決できません。
         </p>
       )}
 
@@ -238,13 +239,13 @@ export function PeriodDetailPanel({ detail, isAdmin, referenceDate }: Props) {
         />
       )}
 
-      {/* 単価改定の専用フォーム（#474）。現在有効行が在るときのみ。version は集約が在るため非null。 */}
+      {/* 単価改定の専用フォーム。現在有効行が在るときのみ。version は集約が在るため非null。 */}
       {revisePeriod != null && detail.version != null && (
         <ReviseForm
           productId={detail.productId}
           productCode={detail.productCode}
           version={detail.version}
-          currentPrice={revisePeriod.sellingPrice}
+          currentPrice={revisePeriod.costPrice}
           onSuccess={close}
           onCancel={close}
         />
