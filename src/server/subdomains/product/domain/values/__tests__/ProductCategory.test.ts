@@ -92,4 +92,28 @@ describe("ProductCategory", () => {
   it("SETは構成商品になれない", () => {
     expect(ProductCategory.SET.canBeComponent()).toBe(false);
   });
+
+  // ========================================
+  // canHavePrice: 価格（単価・原価）を持ちうるか＝価格保守対象商品か
+  // ========================================
+
+  it("INDIVIDUALは価格を持ちうる", () => {
+    expect(ProductCategory.INDIVIDUAL.canHavePrice()).toBe(true);
+  });
+
+  it("CONSUMABLEは価格を持ちうる", () => {
+    expect(ProductCategory.CONSUMABLE.canHavePrice()).toBe(true);
+  });
+
+  it("SETは価格を持たない", () => {
+    expect(ProductCategory.SET.canHavePrice()).toBe(false);
+  });
+
+  // ========================================
+  // priceableValues: 価格保守対象商品の区分値リスト
+  // ========================================
+
+  it("価格保守対象商品の区分値は個別商品・消耗品", () => {
+    expect(ProductCategory.priceableValues()).toEqual(["INDIVIDUAL", "CONSUMABLE"]);
+  });
 });
