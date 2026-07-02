@@ -33,7 +33,8 @@ async function makeProduct(code: string, name: string): Promise<ProductId> {
   const product = await new PrismaProductRepository().insert(
     Product.create(
       new ProductCode(code),
-      new ProductName(name),
+      // products.name は @unique。他テストファイルとの並列実行衝突を code 接尾で防ぐ（#517）
+      new ProductName(`${name}${code}`),
       ProductCategory.INDIVIDUAL,
       ProductUnit.UNIT
     )
