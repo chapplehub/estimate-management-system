@@ -5,9 +5,24 @@ import { type Page, expect, test } from "@playwright/test";
  *
  * 母集合は全商品。商品ごとに参照日（今日）で有効な共通販売単価を1件添えて一覧化する
  * （CommonSellingPriceListQueryService）。状態は ¥表示（現在有効）/「未設定」/「失効中」の3値で、
- * シードの PRD820(現在有効)・PRD821(未設定)・PRD823(失効) に対応する（ADR-20260629-3x5）。
- * 並列・共通シード（DB 不変）。状態の time-dependence は today 相対シードで決定的に再現する。
+ * シードの PRD820(現在有効・有界)・PRD826(現在有効・無期限)・PRD821(未設定)・PRD823(失効) に
+ * 対応する（ADR-20260629-3x5）。適用期間列は現在有効行の期間（有界=開始〜終了・無期限=開始〜無期限）を
+ * 表示し、失効/未設定は空欄（原価一覧 #501 と同型・#513）。並列・共通シード（DB 不変）。状態と期間の
+ * time-dependence は today 相対シードで決定的に再現する。
  */
+
+const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
+
+/** シードの jstRelativeDate と同じロジックで today 相対の `"YYYY-MM-DD"` を求める（突き合わせ用）。 */
+function jstRelativeDate(dayOffset: number): string {
+  const nowJst = new Date(Date.now() + JST_OFFSET_MS);
+  const baseUtcMs = Date.UTC(nowJst.getUTCFullYear(), nowJst.getUTCMonth(), nowJst.getUTCDate());
+  const shifted = new Date(baseUtcMs + dayOffset * 24 * 60 * 60 * 1000);
+  const y = shifted.getUTCFullYear();
+  const m = String(shifted.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(shifted.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
 
 /** 一覧のハイドレーション完了を待つ（SearchForm の onSubmit が効く状態）。 */
 async function waitForListReady(page: Page) {
@@ -76,6 +91,37 @@ test.describe("共通販売単価一覧（UC-1）", () => {
     await expect(page.locator(`table tbody tr td:nth-child(${priceCol})`).first()).toHaveText(
       "失効中"
     );
+  });
+
+  test("適用期間列に現在有効行の期間（有界・無期限）を表示し失効/未設定は空欄", async ({
+    page,
+  }) => {
+    const periodColName = "適用期間";
+
+    // 現在有効・有界（PRD820）: [today-30, today+30) を「開始 〜 終了」で表示（排他上端の生値）。
+    await page.goto("/common-selling-prices?code=PRD820");
+    await waitForListReady(page);
+    const periodCol = await getColumnIndex(page, periodColName);
+    await expect(page.locator(`table tbody tr td:nth-child(${periodCol})`).first()).toHaveText(
+      `${jstRelativeDate(-30)} 〜 ${jstRelativeDate(30)}`
+    );
+
+    // 現在有効・無期限（PRD826）: [today-30, ∞) を「開始 〜 無期限」で表示。
+    await page.goto("/common-selling-prices?code=PRD826");
+    await waitForListReady(page);
+    await expect(page.locator(`table tbody tr td:nth-child(${periodCol})`).first()).toHaveText(
+      `${jstRelativeDate(-30)} 〜 無期限`
+    );
+
+    // 失効（PRD823）: 現在有効行が無いため期間列は空欄。
+    await page.goto("/common-selling-prices?code=PRD823");
+    await waitForListReady(page);
+    await expect(page.locator(`table tbody tr td:nth-child(${periodCol})`).first()).toHaveText("");
+
+    // 未設定（PRD821）: CSP 集約が無いため期間列は空欄。
+    await page.goto("/common-selling-prices?code=PRD821");
+    await waitForListReady(page);
+    await expect(page.locator(`table tbody tr td:nth-child(${periodCol})`).first()).toHaveText("");
   });
 
   test("「未設定のみ」で絞り込める", async ({ page }) => {
