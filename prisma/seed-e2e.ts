@@ -464,9 +464,12 @@ const PRODUCTS = [
     isActive: true,
     description: "共通販売単価 一覧 E2E（現在有効・無期限＝適用期間列 開始〜無期限の検証用・#513）",
   },
-  // 原価 一覧 E2E 用（PRD84x 帯・#501）。costPrice は null とし PRODUCTS 由来の既定原価集約
-  // （2026-04-01 起点）を作らせず、seedCostPrices で today 相対 raw insert する。3状態＋適用期間列
-  // （有界／無期限）の検証用に、active（有界）・active（無期限）・lapsed・unset を用意する。
+  // 原価 E2E 用（PRD84x 帯・#501/#504）。costPrice は null とし PRODUCTS 由来の既定原価集約
+  // （2026-04-01 起点）を作らせず、seedCostPrices で today 相対 raw insert する。
+  // 一覧（#501）: 3状態＋適用期間列（有界／無期限）の検証用に active（有界）・active（無期限）・
+  //   lapsed・unset を用意する（PRD840〜843）。
+  // 保守（#504）: 詳細3状態表示・重複拒否（PRD844=3期間・DB不変）と、CRUD/改定チェーン用に
+  //   期間なし商品（PRD845〜847・テスト内で期間生成）を用意する。売単価 PRD820/822/824/825 の同型ミラー。
   {
     code: "PRD840",
     name: "COST_現在有効有界テスト商品",
@@ -502,6 +505,42 @@ const PRODUCTS = [
     costPrice: null,
     isActive: true,
     description: "原価 一覧 E2E（原価集約なし＝未設定）",
+  },
+  {
+    code: "PRD844",
+    name: "COST_3状態テスト商品",
+    category: "INDIVIDUAL" as const,
+    unit: "UNIT" as const,
+    costPrice: null,
+    isActive: true,
+    description: "原価 保守 E2E（失効/現在有効/将来の3期間・詳細表示と重複拒否・DB不変）",
+  },
+  {
+    code: "PRD845",
+    name: "COST_登録編集削除テスト商品",
+    category: "INDIVIDUAL" as const,
+    unit: "UNIT" as const,
+    costPrice: null,
+    isActive: true,
+    description: "原価 保守 E2E（CRUD Chain A・テスト内で期間生成）",
+  },
+  {
+    code: "PRD846",
+    name: "COST_適用終了改定テスト商品",
+    category: "INDIVIDUAL" as const,
+    unit: "UNIT" as const,
+    costPrice: null,
+    isActive: true,
+    description: "原価 保守 E2E（CRUD Chain B・テスト内で期間生成）",
+  },
+  {
+    code: "PRD847",
+    name: "COST_ガイド付き改定テスト商品",
+    category: "INDIVIDUAL" as const,
+    unit: "UNIT" as const,
+    costPrice: null,
+    isActive: true,
+    description: "原価 保守 E2E（ガイド付き単価改定 Chain・テスト内で期間生成）",
   },
 ];
 
@@ -580,11 +619,16 @@ async function seedCommonSellingPrices(productIdByCode: Map<string, string>): Pr
 }
 
 /**
- * 原価の E2E フィクスチャを投入する（PRD84x 帯・today 相対・#501・ADR-20260629-3x5）。
+ * 原価の E2E フィクスチャを投入する（PRD84x 帯・today 相対・#501/#504・ADR-20260629-3x5）。
+ * 一覧（#501）:
  * - PRD840: 現在有効・有界 `[today-30, today+30)` ¥1000（適用期間列＝開始〜終了の検証用）
  * - PRD841: 現在有効・無期限 `[today-30, ∞)` ¥1500（適用期間列＝開始〜無期限の検証用）
  * - PRD842: 失効のみ `[today-60, today-30)` ¥800（現在有効行なし＝失効中・期間列は空欄）
  * - PRD843: 原価集約を作らない（未設定＝期間列は空欄）
+ * 保守（#504）:
+ * - PRD844: 失効`[today-60,today-30)`¥1000 / 現在有効`[today-30,today+30)`¥2000 / 将来`[today+30,∞)`¥3000
+ *   （詳細の3状態バッジ表示と重複拒否の検証用。売単価 PRD820 の完全ミラー）
+ * - PRD845/846/847: 原価集約を作らない（未設定で開始。CRUD/改定チェーンがテスト内で期間を生成する）
  *
  * seedCommonSellingPrices と同型。過去開始（失効）は集約の assertStartNotPast を通せないため
  * raw daterange insert で投入する。既存 PRD82x 帯（原価集約なし前提）には手を触れない。
@@ -627,8 +671,16 @@ async function seedCostPrices(productIdByCode: Map<string, string>): Promise<voi
     await insertPeriod(prd842, 800, jstRelativeDate(-60), jstRelativeDate(-30)); // 失効のみ
   }
 
+  const prd844 = productIdByCode.get("PRD844");
+  if (prd844) {
+    await prisma.costPrice.create({ data: { productId: prd844 } });
+    await insertPeriod(prd844, 1000, jstRelativeDate(-60), jstRelativeDate(-30)); // 失効
+    await insertPeriod(prd844, 2000, jstRelativeDate(-30), jstRelativeDate(30)); // 現在有効
+    await insertPeriod(prd844, 3000, jstRelativeDate(30), null); // 将来（無期限）
+  }
+
   console.log(
-    "Created cost prices (PRD840: bounded active / PRD841: unbounded active / PRD842: expired)"
+    "Created cost prices (PRD840: bounded active / PRD841: unbounded active / PRD842: expired / PRD844: 3 periods)"
   );
 }
 
