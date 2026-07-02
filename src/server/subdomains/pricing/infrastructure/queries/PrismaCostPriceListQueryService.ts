@@ -6,14 +6,17 @@ import {
   CostPriceListItemDTO,
   CostPricePriceStatus,
 } from "@subdomains/pricing/application/queries/dto/CostPriceListItemDTO";
+import { ProductCategory } from "@subdomains/product/domain/values/ProductCategory";
 
 /**
  * 原価 保守一覧の読みモデルの Prisma 実装（ADR-0066・0067・20260627-86b・#500）。
  * `PrismaCommonSellingPriceListQueryService` の同型ミラー（ADR-20260627-a5c・値カラムのみ相違）。
  *
- * 母集合=全商品を左表に、現在有効な期間行を `LEFT JOIN ... applicable_period @> $参照日::date` で
- * 添える。`applicable_period` の EXCLUDE 制約が区間重複ゼロを物理保証するため、参照日を覆う行は商品
- * ごと最大1件で、JOIN は商品ごと最大1行に収束する（複数件ガードは到達不能ゆえ置かない）。
+ * 母集合=価格保守対象商品（個別商品・消耗品。セット商品を除く。区分は
+ * `ProductCategory.priceableValues()` を単一源に注入。#514）を左表に、現在有効な期間行を
+ * `LEFT JOIN ... applicable_period @> $参照日::date` で添える。`applicable_period` の EXCLUDE
+ * 制約が区間重複ゼロを物理保証するため、参照日を覆う行は商品ごと最大1件で、JOIN は商品ごと
+ * 最大1行に収束する（複数件ガードは到達不能ゆえ置かない）。
  *
  * 単価状態 `priceStatus` は null（現在有効原価なし）の内訳を区別する三状態:
  *   - 参照日を覆う行が JOIN された → `active`
@@ -44,6 +47,9 @@ export class PrismaCostPriceListQueryService implements CostPriceListQueryServic
     const where =
       conditions.length > 0 ? Prisma.sql`WHERE ${Prisma.join(conditions, " AND ")}` : Prisma.empty;
 
+    // 母集合を価格保守対象商品（個別商品・消耗品）に限定する（セット商品を除外・#514）。
+    const priceableCategories = [...ProductCategory.priceableValues()];
+
     return prisma.$queryRaw<CostPriceListItemDTO[]>`
       SELECT * FROM (
         SELECT p.id                 AS "productId",
@@ -64,6 +70,7 @@ export class PrismaCostPriceListQueryService implements CostPriceListQueryServic
         LEFT JOIN cost_price_periods per
           ON per.product_id = p.id
           AND per.applicable_period @> ${input.referenceDate}::date
+        WHERE p.category IN (${Prisma.join(priceableCategories)})
       ) t
       ${where}
       ORDER BY t."productCode"
