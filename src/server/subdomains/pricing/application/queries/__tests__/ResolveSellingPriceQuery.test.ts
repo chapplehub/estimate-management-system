@@ -109,7 +109,7 @@ describe("ResolveSellingPriceQuery", () => {
     await commonRepository.insert(common);
 
     const customerPrice = CustomerSellingPrice.create(customerId, productId);
-    customerPrice.addPeriod(period("2025-07-01", null), price(800));
+    customerPrice.addPeriod(period("2025-07-01", null), price(800), "2025-07-01");
     await customerRepo.insert(customerPrice);
 
     const resolved = await query.execute({
