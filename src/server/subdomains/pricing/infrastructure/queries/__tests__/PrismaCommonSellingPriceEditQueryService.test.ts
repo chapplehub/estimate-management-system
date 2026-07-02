@@ -15,6 +15,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { PrismaCommonSellingPriceEditQueryService } from "../PrismaCommonSellingPriceEditQueryService";
 
 const TEST_PRODUCT_CODE = "CSPEDT01";
+const TEST_PRODUCT_NAME = `編集読みモデルテスト商品${TEST_PRODUCT_CODE}`;
 const price = (yen: number) => SellingUnitPrice.fromMoney(Money.fromMajorUnits(yen));
 const period = (start: string, end: string | null) => ApplicablePeriod.create({ start, end });
 
@@ -35,7 +36,7 @@ describe("PrismaCommonSellingPriceEditQueryService", () => {
     const product = await new PrismaProductRepository().insert(
       Product.create(
         new ProductCode(TEST_PRODUCT_CODE),
-        new ProductName("編集読みモデルテスト商品"),
+        new ProductName(TEST_PRODUCT_NAME),
         ProductCategory.INDIVIDUAL,
         ProductUnit.UNIT
       )
@@ -60,7 +61,7 @@ describe("PrismaCommonSellingPriceEditQueryService", () => {
     expect(dto).not.toBeNull();
     expect(dto!.productId).toBe(productId.value);
     expect(dto!.productCode).toBe(TEST_PRODUCT_CODE);
-    expect(dto!.productName).toBe("編集読みモデルテスト商品");
+    expect(dto!.productName).toBe(TEST_PRODUCT_NAME);
     expect(dto!.isActive).toBe(true);
     expect(dto!.version).toBe(1);
 
@@ -86,7 +87,7 @@ describe("PrismaCommonSellingPriceEditQueryService", () => {
     expect(dto).not.toBeNull();
     expect(dto!.productId).toBe(productId.value);
     expect(dto!.productCode).toBe(TEST_PRODUCT_CODE);
-    expect(dto!.productName).toBe("編集読みモデルテスト商品");
+    expect(dto!.productName).toBe(TEST_PRODUCT_NAME);
     expect(dto!.version).toBeNull();
     expect(dto!.periods).toEqual([]);
   });

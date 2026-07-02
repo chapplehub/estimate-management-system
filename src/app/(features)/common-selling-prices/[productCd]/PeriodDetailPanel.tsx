@@ -8,7 +8,7 @@ import type {
 } from "@subdomains/pricing/application/queries/dto/CommonSellingPriceEditDTO";
 import { authorityFor } from "../_data/period-rules";
 import { computeTimelineLayout } from "../_data/timeline-layout";
-import { formatYenFromDecimal } from "../_components/formatYen";
+import { formatYenFromDecimal } from "../../_shared/formatYen";
 import { PeriodDeleteConfirm } from "./PeriodDeleteConfirm";
 import { PeriodForm } from "./PeriodForm";
 import { PriceTimeline } from "./PriceTimeline";

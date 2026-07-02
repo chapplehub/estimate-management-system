@@ -4,7 +4,7 @@ import Link from "next/link";
 import { type ColumnDef } from "@/app/_components/shared/DataTable";
 import { Badge } from "@/app/_components/shadcnui/badge";
 import type { CommonSellingPriceListItemDTO } from "@subdomains/pricing/application/queries/dto/CommonSellingPriceListItemDTO";
-import { formatYenFromDecimal } from "./formatYen";
+import { formatYenFromDecimal } from "../../_shared/formatYen";
 
 /** 一覧行は BE 読みモデル DTO を素通しする（#473・変換層を挟まない）。 */
 export type CommonSellingPriceRow = CommonSellingPriceListItemDTO;
