@@ -1,5 +1,6 @@
 import { Prisma } from "@generated/prisma/client";
 import prisma from "@server/prisma";
+import { containsPattern } from "@server/shared/infrastructure/escapeLikePattern";
 import { CommonSellingPriceListQueryService } from "@subdomains/pricing/application/queries/CommonSellingPriceListQueryService";
 import {
   CommonSellingPriceListItemDTO,
@@ -32,10 +33,10 @@ export class PrismaCommonSellingPriceListQueryService implements CommonSellingPr
   }): Promise<CommonSellingPriceListItemDTO[]> {
     const conditions: Prisma.Sql[] = [];
     if (input.code) {
-      conditions.push(Prisma.sql`t."productCode" ILIKE ${`%${input.code}%`}`);
+      conditions.push(Prisma.sql`t."productCode" ILIKE ${containsPattern(input.code)} ESCAPE '\\'`);
     }
     if (input.name) {
-      conditions.push(Prisma.sql`t."productName" ILIKE ${`%${input.name}%`}`);
+      conditions.push(Prisma.sql`t."productName" ILIKE ${containsPattern(input.name)} ESCAPE '\\'`);
     }
     if (input.priceStatus) {
       conditions.push(Prisma.sql`t."priceStatus" = ${input.priceStatus}`);
