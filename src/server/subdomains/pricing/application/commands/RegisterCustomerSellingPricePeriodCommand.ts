@@ -5,6 +5,8 @@ import { CustomerId } from "@subdomains/customer/domain/values/CustomerId";
 import { CustomerSellingPrice } from "@subdomains/pricing/domain/entities";
 import { CustomerSellingPriceRepository } from "@subdomains/pricing/domain/repositories/CustomerSellingPriceRepository";
 import { SellingUnitPrice } from "@subdomains/pricing/domain/values/SellingUnitPrice";
+import { ProductQueryService } from "@subdomains/product/application/queries/ProductQueryService";
+import { ProductCategory } from "@subdomains/product/domain/values/ProductCategory";
 import { ProductId } from "@subdomains/product/domain/values/ProductId";
 
 export type RegisterCustomerSellingPricePeriodInput = {
@@ -31,7 +33,10 @@ export type RegisterCustomerSellingPricePeriodInput = {
  * （ADR-20260624-8tg）。
  */
 export class RegisterCustomerSellingPricePeriodCommand {
-  constructor(private readonly repository: CustomerSellingPriceRepository) {}
+  constructor(
+    private readonly repository: CustomerSellingPriceRepository,
+    private readonly productQueryService: ProductQueryService
+  ) {}
 
   async execute(input: RegisterCustomerSellingPricePeriodInput): Promise<CustomerSellingPrice> {
     const customerId = new CustomerId(input.customerId);
@@ -41,7 +46,18 @@ export class RegisterCustomerSellingPricePeriodCommand {
 
     const existing = await this.repository.findByCustomerIdAndProductId(customerId, productId);
     if (existing === null) {
-      const aggregate = CustomerSellingPrice.create(customerId, productId);
+      // 新規作成分岐でのみ商品区分をライブ取得する。区分不変ゆえ既存集約は必ず非セットで、
+      // 更新経路での取得は無駄なクエリになるため取得しない（ADR-0030）。セット商品拒否は
+      // 集約の構造的不変条件として `create` に置く（ファクトリガード・#515）。
+      const product = await this.productQueryService.findById(input.productId);
+      if (product === null) {
+        throw new ValidationError(`商品が存在しません: ${input.productId}`);
+      }
+      const aggregate = CustomerSellingPrice.create(
+        customerId,
+        productId,
+        ProductCategory.from(product.category)
+      );
       aggregate.addPeriod(period, price, input.referenceDate);
       await this.repository.insert(aggregate);
       return aggregate;

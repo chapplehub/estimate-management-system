@@ -108,7 +108,11 @@ describe("ResolveSellingPriceQuery", () => {
     common.addPeriod(period("2025-07-01", null), price(1000), "2025-07-01");
     await commonRepository.insert(common);
 
-    const customerPrice = CustomerSellingPrice.create(customerId, productId);
+    const customerPrice = CustomerSellingPrice.create(
+      customerId,
+      productId,
+      ProductCategory.INDIVIDUAL
+    );
     customerPrice.addPeriod(period("2025-07-01", null), price(800), "2025-07-01");
     await customerRepo.insert(customerPrice);
 

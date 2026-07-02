@@ -16,15 +16,19 @@ import { ProductId } from "@subdomains/product/domain/values/ProductId";
 import { ProductName } from "@subdomains/product/domain/values/ProductName";
 import { ProductUnit } from "@subdomains/product/domain/values/ProductUnit";
 import { PrismaProductRepository } from "@subdomains/product/infrastructure/prisma/PrismaProductRepository";
+import { PrismaProductQueryService } from "@subdomains/product/infrastructure/queries/PrismaProductQueryService";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { RegisterCustomerSellingPricePeriodCommand } from "../RegisterCustomerSellingPricePeriodCommand";
 
 const TEST_PRODUCT_CODE = "CUSPCMD10";
 const TEST_CUSTOMER_CODE = "CUSPCMD11";
+const TEST_SET_PRODUCT_CODE = "CUSPCMD12";
 const price = (yen: number) => SellingUnitPrice.fromMoney(Money.fromMajorUnits(yen));
 
 async function cleanup(): Promise<void> {
-  await prisma.product.deleteMany({ where: { code: TEST_PRODUCT_CODE } });
+  await prisma.product.deleteMany({
+    where: { code: { in: [TEST_PRODUCT_CODE, TEST_SET_PRODUCT_CODE] } },
+  });
   await prisma.customer.deleteMany({ where: { code: TEST_CUSTOMER_CODE } });
 }
 
@@ -33,11 +37,15 @@ describe("RegisterCustomerSellingPricePeriodCommand", () => {
   let repository: PrismaCustomerSellingPriceRepository;
   let customerId: CustomerId;
   let productId: ProductId;
+  let setProductId: ProductId;
 
   beforeEach(async () => {
     await cleanup();
     repository = new PrismaCustomerSellingPriceRepository();
-    command = new RegisterCustomerSellingPricePeriodCommand(repository);
+    command = new RegisterCustomerSellingPricePeriodCommand(
+      repository,
+      new PrismaProductQueryService()
+    );
 
     const customer = await new PrismaCustomerRepository().insert(
       Customer.create(
@@ -47,7 +55,8 @@ describe("RegisterCustomerSellingPricePeriodCommand", () => {
     );
     customerId = customer.id;
 
-    const product = await new PrismaProductRepository().insert(
+    const productRepository = new PrismaProductRepository();
+    const product = await productRepository.insert(
       Product.create(
         new ProductCode(TEST_PRODUCT_CODE),
         new ProductName(`登録コマンドテスト商品${TEST_PRODUCT_CODE}`),
@@ -56,6 +65,16 @@ describe("RegisterCustomerSellingPricePeriodCommand", () => {
       )
     );
     productId = product.id;
+
+    const setProduct = await productRepository.insert(
+      Product.create(
+        new ProductCode(TEST_SET_PRODUCT_CODE),
+        new ProductName(`登録コマンドテストセット商品${TEST_SET_PRODUCT_CODE}`),
+        ProductCategory.SET,
+        ProductUnit.UNIT
+      )
+    );
+    setProductId = setProduct.id;
   });
 
   afterEach(cleanup);
@@ -130,6 +149,33 @@ describe("RegisterCustomerSellingPricePeriodCommand", () => {
         start: "2030-06-01",
         end: null,
         price: "1200",
+        referenceDate: "2025-06-01",
+      })
+    ).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it("セット商品には販売単価を登録できない（ValidationError・ファクトリガード / #515）", async () => {
+    // セット商品は自前の売単価を持たず構成商品から導出されるため、生成入口で拒否する。
+    await expect(
+      command.execute({
+        customerId: customerId.value,
+        productId: setProductId.value,
+        start: "2030-01-01",
+        end: null,
+        price: "1000",
+        referenceDate: "2025-06-01",
+      })
+    ).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it("存在しない商品IDでは登録できない（ValidationError・入力契約違反 / #515）", async () => {
+    await expect(
+      command.execute({
+        customerId: customerId.value,
+        productId: ProductId.generate().value,
+        start: "2030-01-01",
+        end: null,
+        price: "1000",
         referenceDate: "2025-06-01",
       })
     ).rejects.toBeInstanceOf(ValidationError);
