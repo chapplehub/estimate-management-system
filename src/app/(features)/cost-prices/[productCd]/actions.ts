@@ -7,12 +7,14 @@ import { deleteCostPricePeriodCommandFactory } from "@subdomains/pricing/applica
 import { editCostPricePeriodCommandFactory } from "@subdomains/pricing/application/factories/editCostPricePeriodCommandFactory";
 import { endDateCostPricePeriodCommandFactory } from "@subdomains/pricing/application/factories/endDateCostPricePeriodCommandFactory";
 import { registerCostPricePeriodCommandFactory } from "@subdomains/pricing/application/factories/registerCostPricePeriodCommandFactory";
+import { reviseCostPricePeriodCommandFactory } from "@subdomains/pricing/application/factories/reviseCostPricePeriodCommandFactory";
 import { toJstCalendarDay } from "@server/shared/domain/values/toJstCalendarDay";
 import { handleCommandError } from "../../_shared/error-handler";
 import {
   addPeriodSchema,
   deletePeriodSchema,
   endDatePeriodSchema,
+  revisePeriodSchema,
   updateFuturePeriodSchema,
 } from "./schema";
 
@@ -27,7 +29,7 @@ import {
  * 宛先キー `productId`（コマンド宛先）と `productCode`（route／revalidate 用）は編集読みモデルが返した値を
  * `.bind()` で渡す（フォーム改竄で別商品を操作できないようにする・#502）。価格は10進文字列で運ぶ
  * （ADR-0022）。参照日は各 action でサーバー生成して注入する（ADR-20260627-86b）。
- * 単価改定（revisePeriodAction）は PR2 で追加する。共通売単価 actions.ts の同型ミラー。
+ * 共通売単価 actions.ts の同型ミラー。
  */
 
 /** 成功後に詳細＋一覧の両パスを再検証する（一覧の現在有効単価・ステータスも動くため）。 */
@@ -128,6 +130,44 @@ export async function endDatePeriodAction(
       productId,
       periodId,
       endDate,
+      referenceDate: toJstCalendarDay(new Date()),
+      expectedVersion: version,
+    });
+    revalidateBoth(productCode);
+  } catch (error) {
+    const result = handleCommandError(error);
+    const message = !result.success && result.error ? result.error : undefined;
+    return submission.reply({ formErrors: message ? [message] : [] });
+  }
+
+  return submission.reply();
+}
+
+/**
+ * 単価改定（ガイド付き）。現在有効行の適用終了（終了日＝改定日）＋改定日開始の新規追加を
+ * BE 単一コマンドが1ロード/1セーブで合成しアトミックに適用する。対象の現在有効行はコマンドが
+ * 参照日で特定するため periodId は送らない。据え置き（新単価＝現単価）も許容する。
+ */
+export async function revisePeriodAction(
+  productId: string,
+  productCode: string,
+  _prevState: unknown,
+  formData: FormData
+) {
+  await verifyAdmin();
+
+  const submission = parseWithZod(formData, { schema: revisePeriodSchema });
+  if (submission.status !== "success") {
+    return submission.reply();
+  }
+
+  const { version, revisionDate, price } = submission.value;
+
+  try {
+    await reviseCostPricePeriodCommandFactory().execute({
+      productId,
+      revisionDate,
+      price: String(price),
       referenceDate: toJstCalendarDay(new Date()),
       expectedVersion: version,
     });

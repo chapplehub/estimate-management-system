@@ -10,6 +10,7 @@ import { authorityFor } from "../../_shared/period-rules";
 import { formatYenFromDecimal } from "../../_shared/formatYen";
 import { PeriodDeleteConfirm } from "./PeriodDeleteConfirm";
 import { PeriodForm } from "./PeriodForm";
+import { ReviseForm } from "./ReviseForm";
 
 /** BE 時点状態のラベルと Badge variant（現在有効=active/将来=future/失効=expired）。 */
 const STATUS_BADGE: Record<
@@ -24,13 +25,13 @@ const STATUS_BADGE: Record<
 /**
  * パネルの開閉モード（決定2: URLに載せずクライアント状態で保持）。
  * 対象は periodId で保持し、revalidate後の最新 detail から都度引き直す（stale回避）。
- * 単価改定（revise）モードは PR2 で追加する。
  */
 type PanelMode =
   | { kind: "closed" }
   | { kind: "new" }
   | { kind: "edit"; periodId: string }
   | { kind: "endDate"; periodId: string }
+  | { kind: "revise"; periodId: string }
   | { kind: "delete"; periodId: string };
 
 type Props = {
@@ -44,8 +45,8 @@ type Props = {
  *
  * 時点状態（現在有効/将来/失効）に応じて各行の編集/適用終了/削除ボタンを出し分け
  * （use-cases.md §7・authorityFor）、登録/編集/適用終了は単一 PeriodForm をモードで
- * 切り替えて下部パネルに表示する。削除は行内2段階確認（決定5）。
- * 単価改定フォームとタイムライン帯は PR2 で追加する。共通売単価 PeriodDetailPanel の同型ミラー。
+ * 切り替えて下部パネルに表示する。単価改定は専用の ReviseForm、削除は行内2段階確認（決定5）。
+ * タイムライン帯は Step6 で追加する。共通売単価 PeriodDetailPanel の同型ミラー。
  */
 export function PeriodDetailPanel({ detail, isAdmin }: Props) {
   const [mode, setMode] = useState<PanelMode>({ kind: "closed" });
@@ -57,6 +58,12 @@ export function PeriodDetailPanel({ detail, isAdmin }: Props) {
   const formPeriod =
     formMode != null && formMode.kind !== "new"
       ? detail.periods.find((p) => p.periodId === formMode.periodId)
+      : undefined;
+
+  // 改定パネルの対象（現在有効行）を最新 detail から引く（状態が変わっていたら閉じる）。
+  const revisePeriod =
+    mode.kind === "revise"
+      ? detail.periods.find((p) => p.periodId === mode.periodId && p.status === "active")
       : undefined;
 
   return (
@@ -124,6 +131,15 @@ export function PeriodDetailPanel({ detail, isAdmin }: Props) {
                               編集
                             </button>
                           )}
+                          {auth.revisable && (
+                            <button
+                              type="button"
+                              onClick={() => setMode({ kind: "revise", periodId: period.periodId })}
+                              className="text-blue-600 hover:text-blue-800 hover:underline text-sm"
+                            >
+                              改定
+                            </button>
+                          )}
                           {auth.endDatable && (
                             <button
                               type="button"
@@ -170,6 +186,18 @@ export function PeriodDetailPanel({ detail, isAdmin }: Props) {
           version={detail.version}
           mode={formMode.kind}
           period={formPeriod}
+          onSuccess={close}
+          onCancel={close}
+        />
+      )}
+
+      {/* 単価改定の専用フォーム。現在有効行が在るときのみ。version は集約が在るため非null。 */}
+      {revisePeriod != null && detail.version != null && (
+        <ReviseForm
+          productId={detail.productId}
+          productCode={detail.productCode}
+          version={detail.version}
+          currentPrice={revisePeriod.costPrice}
           onSuccess={close}
           onCancel={close}
         />
