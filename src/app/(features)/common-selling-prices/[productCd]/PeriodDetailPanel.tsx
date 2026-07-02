@@ -6,7 +6,7 @@ import type {
   CommonSellingPriceEditDTO,
   CommonSellingPricePeriodStatus,
 } from "@subdomains/pricing/application/queries/dto/CommonSellingPriceEditDTO";
-import { authorityFor } from "../_data/period-rules";
+import { authorityFor } from "../../_shared/period-rules";
 import { computeTimelineLayout } from "../_data/timeline-layout";
 import { formatYenFromDecimal } from "../../_shared/formatYen";
 import { PeriodDeleteConfirm } from "./PeriodDeleteConfirm";

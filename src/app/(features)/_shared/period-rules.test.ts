@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 import { authorityFor } from "./period-rules";
 
 /**
- * 時点状態の派生（旧 classifyState）・重複判定（旧 overlaps/hasOverlap）は実BE接続（#473）で
- * BE（編集読みモデルの status 算出・集約の不変条件）へ移管したため、FE 側のテストは残置ヘルパ
- * `authorityFor`（BE status から操作可否を導く）のみを対象にする。
+ * 適用期間の状態別操作権限（純粋述語）の単体テスト。
+ *
+ * 時点状態の派生・重複判定は BE（編集読みモデルの status 算出・集約の不変条件）が担うため、
+ * FE 側には行ごとの操作可否（編集／改定／適用終了／削除ボタンの出し分け）を導く `authorityFor`
+ * だけを残す。入力は集約非依存の中立型 `PeriodStatus`（`future`/`active`/`expired`）で、
+ * 共通売単価・原価・得意先別販売単価のいずれの編集読みモデルからもそのまま渡せる（#503 で昇格）。
  */
 describe("authorityFor", () => {
   it("将来行（future）は全項目編集可・適用終了不可・削除可・改定不可", () => {
