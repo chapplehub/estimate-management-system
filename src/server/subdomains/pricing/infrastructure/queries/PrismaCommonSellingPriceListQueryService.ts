@@ -50,6 +50,8 @@ export class PrismaCommonSellingPriceListQueryService implements CommonSellingPr
                p.name                  AS "productName",
                p.is_active             AS "isActive",
                per.selling_price::text AS "currentSellingPrice",
+               lower(per.applicable_period)::text AS "currentPeriodStart",
+               upper(per.applicable_period)::text AS "currentPeriodEnd",
                CASE
                  WHEN per.id IS NOT NULL THEN 'active'
                  WHEN EXISTS (
