@@ -164,6 +164,22 @@ describe("PrismaCommonSellingPriceListQueryService", () => {
       expect(codes).not.toContain(CODES.active);
     });
 
+    it("name の LIKE メタ文字 _ はリテラルとして扱い、ワイルドカード解釈しない（#518）", async () => {
+      // 検索語 "SPECIAL_ITEM" の _ を ILIKE がワイルドカード解釈すると、任意1文字の
+      // "SPECIALXITEM" もヒットしてしまう。エスケープ済みならリテラル _ のみに一致する。
+      await makeProduct(CODES.active, "SPECIAL_ITEM"); // リテラル _ を含む→一致すべき
+      await makeProduct(CODES.unset, "SPECIALXITEM"); // _ をワイルドカード化した時のみ一致するデコイ
+
+      const items = await queryService.list({
+        referenceDate: "2025-06-15",
+        name: "SPECIAL_ITEM",
+      });
+      const codes = items.map((i) => i.productCode);
+
+      expect(codes).toContain(CODES.active);
+      expect(codes).not.toContain(CODES.unset);
+    });
+
     it("priceStatus=unset は未設定のみへ絞り込む", async () => {
       const activeId = await makeProduct(CODES.active, "現在有効商品");
       const aggregate = CommonSellingPrice.create(activeId);
