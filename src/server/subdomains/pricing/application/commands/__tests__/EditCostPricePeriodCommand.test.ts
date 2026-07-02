@@ -50,7 +50,7 @@ describe("EditCostPricePeriodCommand", () => {
 
   /** 将来行を1本持つ集約を用意し、その periodId を返す。 */
   async function seedFuturePeriod(): Promise<CostPricePeriodId> {
-    const aggregate = CostPrice.create(productId);
+    const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
     aggregate.addPeriod(period("2030-01-01", null), cost(1000), "2025-06-01");
     await repository.insert(aggregate);
     return (await repository.findByProductId(productId))!.periods[0].id;
@@ -89,7 +89,7 @@ describe("EditCostPricePeriodCommand", () => {
   });
 
   it("現在有効行の編集は BusinessRuleViolationError（参照日が domain まで素通しされる）", async () => {
-    const aggregate = CostPrice.create(productId);
+    const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
     aggregate.addPeriod(period("2025-05-01", "2030-01-01"), cost(1000), "2025-04-01");
     await repository.insert(aggregate);
     const periodId = (await repository.findByProductId(productId))!.periods[0].id;

@@ -47,7 +47,7 @@ describe("PrismaCostPriceEditQueryService", () => {
   afterEach(cleanup);
 
   it("identity・version・期間行配列を返し、各行に時点状態（将来/現在有効/失効）を算出する", async () => {
-    const aggregate = CostPrice.create(productId);
+    const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
     aggregate.addPeriod(period("2025-01-01", "2025-03-01"), price(800), "2025-01-01"); // 失効
     aggregate.addPeriod(period("2025-03-01", "2025-09-01"), price(1000), "2025-03-01"); // 現在有効
     aggregate.addPeriod(period("2030-01-01", null), price(1200), "2030-01-01"); // 将来
@@ -101,7 +101,7 @@ describe("PrismaCostPriceEditQueryService", () => {
   });
 
   it("update 後の version を反映する（楽観ロックトークン）", async () => {
-    const aggregate = CostPrice.create(productId);
+    const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
     aggregate.addPeriod(period("2030-01-01", "2030-06-01"), price(1000), "2030-01-01");
     await repository.insert(aggregate);
 

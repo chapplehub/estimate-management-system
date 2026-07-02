@@ -1,5 +1,6 @@
 import { ApplicablePeriod } from "@server/shared/domain/values/ApplicablePeriod";
-import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
+import { BusinessRuleViolationError, ValidationError } from "@server/shared/errors/DomainError";
+import { ProductCategory } from "@subdomains/product/domain/values/ProductCategory";
 import { ProductId } from "@subdomains/product/domain/values/ProductId";
 import { CostPricePeriodId } from "../values/CostPricePeriodId";
 import { CostUnitPrice } from "../values/CostUnitPrice";
@@ -29,8 +30,16 @@ export class CostPrice {
     private readonly _periods: CostPricePeriod[]
   ) {}
 
-  /** 空の集約を生成する。 */
-  static create(productId: ProductId): CostPrice {
+  /**
+   * 空の集約を生成する。セット商品は自前の原価を持たず常に構成商品から導出されるため、
+   * 生成入口で拒否する（#515）。区分不変ゆえ生成入口を塞げば以後の追加・改定・削除も
+   * 既存集約が存在しないことで構造的に到達不能になる。区分は集約越えの事実のため
+   * アプリ層が取得して引数で渡す（ADR-0030）。
+   */
+  static create(productId: ProductId, category: ProductCategory): CostPrice {
+    if (category.isSet()) {
+      throw new ValidationError(`セット商品には${CostPrice.ENTITY_NAME}を登録できません`);
+    }
     return new CostPrice(productId, []);
   }
 
