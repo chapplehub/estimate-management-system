@@ -9,6 +9,7 @@ import {
 import {
   appendPeriodRows,
   assertVersionBumped,
+  syncPeriodRows,
   translateInsertConflict,
   type Tx,
 } from "@subdomains/pricing/infrastructure/prisma/sellingPricePeriodPersistence";
@@ -21,8 +22,12 @@ import { ProductId } from "@subdomains/product/domain/values/ProductId";
  * 境界展開は共有フラグメント `applicablePeriodBounds` に委ねる（ADR-0067）。期間行の書き込み
  * （append-only INSERT）・P2002 の ConflictError 翻訳・楽観ロックの version 判定は、販売単価3層と
  * 共通の永続化ヘルパ `sellingPricePeriodPersistence` に委譲する（値列名は `cost_price` を渡す）。
- * 期間行の同期は append-only で、新規 id のみを挿入し既存行には触れない
- * （`ON CONFLICT (id) DO NOTHING`）。`PrismaCommonSellingPriceRepository` と同型（ADR-20260627-a5c）。
+ *
+ * insert は新規作成ゆえ衝突が無く append-only（`ON CONFLICT (id) DO NOTHING`）で足りる。update は
+ * 編集・適用終了・削除を伴うため差分 sync（`syncPeriodRows`）で DB を集約の現在状態へ収束させる:
+ * 既存 id は値が変わった行だけ in-place 更新し（無変更行は `updated_at` 据え置き＝監査保持）、
+ * 集約から消えた id の行は削除する（ADR-0032）。楽観ロックは親 version の条件付き更新（ADR-0039）。
+ * `PrismaCommonSellingPriceRepository` と同型（ADR-20260627-a5c）。
  */
 export class PrismaCostPriceRepository implements CostPriceRepository {
   async findByProductId(productId: ProductId): Promise<CostPrice | null> {
@@ -73,26 +78,36 @@ export class PrismaCostPriceRepository implements CostPriceRepository {
       });
       assertVersionBumped(result.count);
 
-      // 期間行は append-only で同期する。ドメインの変更操作は addPeriod（追加）のみで子は
-      // id 単位で内容不変ゆえ、集約は常に DB の id を包含し「DB にあって集約に無い id（=削除）」
-      // は発生しない。よって既存行に触れず新規 id のみ挿入すればよく、既存行の updated_at は
-      // まったく動かない（監査保持）。
-      await this.writePeriods(tx, aggregate);
+      // 期間行は差分 sync で集約の現在状態へ収束させる（編集の in-place 更新・適用終了・削除を反映）。
+      // 値が変わった行だけ updated_at が前進し、無変更行は据え置かれる（監査保持）。
+      await syncPeriodRows(
+        tx,
+        PrismaCostPriceRepository.PERIOD_TABLE,
+        [aggregate.productId.value],
+        this.toWriteRows(aggregate)
+      );
     });
   }
 
-  /** 集約の全期間行を append-only で同期する（共通ヘルパへ委譲）。 */
+  private static readonly PERIOD_TABLE = {
+    table: "cost_price_periods",
+    keyColumns: ["product_id"],
+    valueColumn: "cost_price",
+  } as const;
+
+  /** 集約の全期間行を append-only で挿入する（新規作成専用・共通ヘルパへ委譲）。 */
   private async writePeriods(tx: Tx, aggregate: CostPrice): Promise<void> {
-    await appendPeriodRows(
-      tx,
-      { table: "cost_price_periods", keyColumns: ["product_id"], valueColumn: "cost_price" },
-      CostPriceMapper.toPeriodWriteRows(aggregate).map((row) => ({
-        id: row.id,
-        keyValues: [row.productId],
-        value: row.costPrice,
-        start: row.start,
-        end: row.end,
-      }))
-    );
+    await appendPeriodRows(tx, PrismaCostPriceRepository.PERIOD_TABLE, this.toWriteRows(aggregate));
+  }
+
+  /** 集約の期間行を永続化ヘルパの行形式へ変換する。 */
+  private toWriteRows(aggregate: CostPrice) {
+    return CostPriceMapper.toPeriodWriteRows(aggregate).map((row) => ({
+      id: row.id,
+      keyValues: [row.productId],
+      value: row.costPrice,
+      start: row.start,
+      end: row.end,
+    }));
   }
 }

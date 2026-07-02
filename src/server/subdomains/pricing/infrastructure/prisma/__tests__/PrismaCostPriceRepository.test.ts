@@ -56,8 +56,8 @@ describe("PrismaCostPriceRepository", () => {
 
   it("insert して findByProductId で往復できる（有界＋無期限・銭精度）", async () => {
     const aggregate = CostPrice.create(productId);
-    aggregate.addPeriod(period("2026-04-01", "2026-10-01"), cost(600));
-    aggregate.addPeriod(period("2026-10-01", null), cost(1234.56));
+    aggregate.addPeriod(period("2026-04-01", "2026-10-01"), cost(600), "2026-04-01");
+    aggregate.addPeriod(period("2026-10-01", null), cost(1234.56), "2026-10-01");
     await repository.insert(aggregate);
 
     const found = await repository.findByProductId(productId);
@@ -76,7 +76,7 @@ describe("PrismaCostPriceRepository", () => {
 
   it("0円の原価も往復できる（非複合品の本物の0）", async () => {
     const aggregate = CostPrice.create(productId);
-    aggregate.addPeriod(period("2026-04-01", null), cost(0));
+    aggregate.addPeriod(period("2026-04-01", null), cost(0), "2026-04-01");
     await repository.insert(aggregate);
 
     const found = (await repository.findByProductId(productId))!;
@@ -85,12 +85,12 @@ describe("PrismaCostPriceRepository", () => {
 
   it("update で期間行を追加同期できる（version 一致時・append-only）", async () => {
     const aggregate = CostPrice.create(productId);
-    aggregate.addPeriod(period("2026-04-01", "2026-10-01"), cost(600));
+    aggregate.addPeriod(period("2026-04-01", "2026-10-01"), cost(600), "2026-04-01");
     await repository.insert(aggregate);
 
     // 画面表示時の version=1 を持ち回って改定（期間を1本追加）
     const reloaded = (await repository.findByProductId(productId))!;
-    reloaded.addPeriod(period("2026-10-01", null), cost(700));
+    reloaded.addPeriod(period("2026-10-01", null), cost(700), "2026-10-01");
     await repository.update(reloaded, 1);
 
     const found = (await repository.findByProductId(productId))!;
@@ -98,9 +98,9 @@ describe("PrismaCostPriceRepository", () => {
     expect(found.periods[1].price.equals(cost(700))).toBe(true);
   });
 
-  it("update は既存期間行の updated_at を変更しない（append-only・監査保持）", async () => {
+  it("update は無変更の既存行の updated_at を変更しない（監査保持）", async () => {
     const aggregate = CostPrice.create(productId);
-    aggregate.addPeriod(period("2026-04-01", "2026-10-01"), cost(600));
+    aggregate.addPeriod(period("2026-04-01", "2026-10-01"), cost(600), "2026-04-01");
     await repository.insert(aggregate);
 
     // 既存行の updated_at を既知の過去値に固定し、偶発的な現在時刻一致を排除する。
@@ -113,7 +113,7 @@ describe("PrismaCostPriceRepository", () => {
 
     // version=1 を持ち回り、期間を1本追加して改定する。
     const reloaded = (await repository.findByProductId(productId))!;
-    reloaded.addPeriod(period("2026-10-01", null), cost(700));
+    reloaded.addPeriod(period("2026-10-01", null), cost(700), "2026-10-01");
     await repository.update(reloaded, 1);
 
     const rows = await prisma.$queryRaw<{ updatedAt: Date; start: string }[]>`
@@ -130,9 +130,74 @@ describe("PrismaCostPriceRepository", () => {
     expect(rows[1].updatedAt.getTime()).toBeGreaterThan(frozen.getTime());
   });
 
+  it("update で将来行の単価改定が in-place 反映され、改定行の updated_at が進む（編集の永続化）", async () => {
+    const aggregate = CostPrice.create(productId);
+    aggregate.addPeriod(period("2030-01-01", null), cost(600), "2025-06-01");
+    await repository.insert(aggregate);
+
+    // 改定前の updated_at を既知の過去値へ固定し、in-place 更新で前進したことを検出可能にする。
+    const frozen = new Date("2020-01-01T00:00:00.000Z");
+    await prisma.$executeRaw`
+      UPDATE cost_price_periods
+      SET updated_at = ${frozen}
+      WHERE product_id = ${productId.value}::uuid
+    `;
+
+    const reloaded = (await repository.findByProductId(productId))!;
+    const id = reloaded.periods[0].id;
+    reloaded.editPeriod(id, { period: period("2030-01-01", null), price: cost(650) }, "2025-06-01");
+    await repository.update(reloaded, 1);
+
+    const found = (await repository.findByProductId(productId))!;
+    expect(found.periods).toHaveLength(1);
+    // id を保ったまま（差分 upsert・新規行を作らない）原価が改定される。
+    expect(found.periods[0].id.equals(id)).toBe(true);
+    expect(found.periods[0].price.equals(cost(650))).toBe(true);
+
+    const rows = await prisma.$queryRaw<{ updatedAt: Date }[]>`
+      SELECT updated_at AS "updatedAt"
+      FROM cost_price_periods
+      WHERE product_id = ${productId.value}::uuid
+    `;
+    // 改定した行は updated_at が前進する（監査）。
+    expect(rows[0].updatedAt.getTime()).toBeGreaterThan(frozen.getTime());
+  });
+
+  it("update で集約から消えた将来行は DB からも削除される（削除の永続化）", async () => {
+    const aggregate = CostPrice.create(productId);
+    aggregate.addPeriod(period("2030-01-01", "2030-06-01"), cost(600), "2025-06-01");
+    aggregate.addPeriod(period("2030-06-01", null), cost(700), "2025-06-01");
+    await repository.insert(aggregate);
+
+    const reloaded = (await repository.findByProductId(productId))!;
+    const firstId = reloaded.periods[0].id;
+    reloaded.deletePeriod(firstId, "2025-06-01");
+    await repository.update(reloaded, 1);
+
+    const found = (await repository.findByProductId(productId))!;
+    expect(found.periods).toHaveLength(1);
+    expect(found.periods[0].period.equals(period("2030-06-01", null))).toBe(true);
+  });
+
+  it("update で最後の将来行を削除すると期間行が0件になる（空集約 delete・空配列バインド）", async () => {
+    const aggregate = CostPrice.create(productId);
+    aggregate.addPeriod(period("2030-01-01", null), cost(600), "2025-06-01");
+    await repository.insert(aggregate);
+
+    // 唯一の将来行を削除 → syncPeriodRows が rows=[] で DELETE ... ANY('{}'::uuid[]) を走らせる経路。
+    const reloaded = (await repository.findByProductId(productId))!;
+    reloaded.deletePeriod(reloaded.periods[0].id, "2025-06-01");
+    await repository.update(reloaded, 1);
+
+    // 親（cost_prices）は残り、期間行だけ0件＝空集約として往復する（例外なく完了）。
+    const found = await repository.findByProductId(productId);
+    expect(found).not.toBeNull();
+    expect(found!.periods).toHaveLength(0);
+  });
+
   it("古い expectedVersion での update は ConflictError", async () => {
     const aggregate = CostPrice.create(productId);
-    aggregate.addPeriod(period("2026-04-01", null), cost(600));
+    aggregate.addPeriod(period("2026-04-01", null), cost(600), "2026-04-01");
     await repository.insert(aggregate);
 
     await expect(repository.update(aggregate, 999)).rejects.toBeInstanceOf(ConflictError);
@@ -140,18 +205,18 @@ describe("PrismaCostPriceRepository", () => {
 
   it("同一商品への二重 insert は ConflictError（親 PK 衝突の翻訳）", async () => {
     const first = CostPrice.create(productId);
-    first.addPeriod(period("2026-04-01", null), cost(600));
+    first.addPeriod(period("2026-04-01", null), cost(600), "2026-04-01");
     await repository.insert(first);
 
     // アプリ層の存在チェックをすり抜けた二重作成レースを模す。
     const second = CostPrice.create(productId);
-    second.addPeriod(period("2026-04-01", null), cost(700));
+    second.addPeriod(period("2026-04-01", null), cost(700), "2026-04-01");
     await expect(repository.insert(second)).rejects.toBeInstanceOf(ConflictError);
   });
 
   it("同一商品で適用期間が重複する行は EXCLUDE 制約で弾かれる", async () => {
     const aggregate = CostPrice.create(productId);
-    aggregate.addPeriod(period("2026-04-01", "2026-10-01"), cost(600));
+    aggregate.addPeriod(period("2026-04-01", "2026-10-01"), cost(600), "2026-04-01");
     await repository.insert(aggregate);
 
     // 並行 stale 書き込みを模して、ドメインのガードを迂回し重なる期間を直接 INSERT する。
