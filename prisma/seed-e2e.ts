@@ -455,6 +455,45 @@ const PRODUCTS = [
     isActive: true,
     description: "共通販売単価 E2E（ガイド付き単価改定 Chain・テスト内で期間生成）",
   },
+  // 原価 一覧 E2E 用（PRD84x 帯・#501）。costPrice は null とし PRODUCTS 由来の既定原価集約
+  // （2026-04-01 起点）を作らせず、seedCostPrices で today 相対 raw insert する。3状態＋適用期間列
+  // （有界／無期限）の検証用に、active（有界）・active（無期限）・lapsed・unset を用意する。
+  {
+    code: "PRD840",
+    name: "COST_現在有効有界テスト商品",
+    category: "INDIVIDUAL" as const,
+    unit: "UNIT" as const,
+    costPrice: null,
+    isActive: true,
+    description: "原価 一覧 E2E（現在有効・有界期間）",
+  },
+  {
+    code: "PRD841",
+    name: "COST_現在有効無期限テスト商品",
+    category: "INDIVIDUAL" as const,
+    unit: "UNIT" as const,
+    costPrice: null,
+    isActive: true,
+    description: "原価 一覧 E2E（現在有効・無期限）",
+  },
+  {
+    code: "PRD842",
+    name: "COST_失効のみテスト商品",
+    category: "INDIVIDUAL" as const,
+    unit: "UNIT" as const,
+    costPrice: null,
+    isActive: true,
+    description: "原価 一覧 E2E（失効期間のみ＝失効中）",
+  },
+  {
+    code: "PRD843",
+    name: "COST_未設定テスト商品",
+    category: "INDIVIDUAL" as const,
+    unit: "UNIT" as const,
+    costPrice: null,
+    isActive: true,
+    description: "原価 一覧 E2E（原価集約なし＝未設定）",
+  },
 ];
 
 // --- 共通販売単価 E2E フィクスチャ（#481・ADR-20260629-3x5）---
@@ -520,6 +559,59 @@ async function seedCommonSellingPrices(productIdByCode: Map<string, string>): Pr
   }
 
   console.log("Created common selling prices (PRD820: 3 periods / PRD823: 1 period)");
+}
+
+/**
+ * 原価の E2E フィクスチャを投入する（PRD84x 帯・today 相対・#501・ADR-20260629-3x5）。
+ * - PRD840: 現在有効・有界 `[today-30, today+30)` ¥1000（適用期間列＝開始〜終了の検証用）
+ * - PRD841: 現在有効・無期限 `[today-30, ∞)` ¥1500（適用期間列＝開始〜無期限の検証用）
+ * - PRD842: 失効のみ `[today-60, today-30)` ¥800（現在有効行なし＝失効中・期間列は空欄）
+ * - PRD843: 原価集約を作らない（未設定＝期間列は空欄）
+ *
+ * seedCommonSellingPrices と同型。過去開始（失効）は集約の assertStartNotPast を通せないため
+ * raw daterange insert で投入する。既存 PRD82x 帯（原価集約なし前提）には手を触れない。
+ */
+async function seedCostPrices(productIdByCode: Map<string, string>): Promise<void> {
+  const insertPeriod = async (
+    productId: string,
+    price: number,
+    lower: string,
+    upper: string | null
+  ): Promise<void> => {
+    await prisma.$executeRaw`
+      INSERT INTO cost_price_periods
+        (id, product_id, cost_price, applicable_period, updated_at)
+      VALUES (
+        ${generateId()}::uuid,
+        ${productId}::uuid,
+        ${price}::numeric,
+        daterange(${lower}::date, ${upper}::date, '[)'),
+        CURRENT_TIMESTAMP
+      )
+    `;
+  };
+
+  const prd840 = productIdByCode.get("PRD840");
+  if (prd840) {
+    await prisma.costPrice.create({ data: { productId: prd840 } });
+    await insertPeriod(prd840, 1000, jstRelativeDate(-30), jstRelativeDate(30)); // 現在有効・有界
+  }
+
+  const prd841 = productIdByCode.get("PRD841");
+  if (prd841) {
+    await prisma.costPrice.create({ data: { productId: prd841 } });
+    await insertPeriod(prd841, 1500, jstRelativeDate(-30), null); // 現在有効・無期限
+  }
+
+  const prd842 = productIdByCode.get("PRD842");
+  if (prd842) {
+    await prisma.costPrice.create({ data: { productId: prd842 } });
+    await insertPeriod(prd842, 800, jstRelativeDate(-60), jstRelativeDate(-30)); // 失効のみ
+  }
+
+  console.log(
+    "Created cost prices (PRD840: bounded active / PRD841: unbounded active / PRD842: expired)"
+  );
 }
 
 // 消費税率マスタ（§8.7 の保存時税率一致チェックが参照）。8%(2014-) / 10%(2019-)。
@@ -854,6 +946,11 @@ async function main() {
   // 期間を作り、状態を決定的に再現する。過去開始（expired）は集約の assertStartNotPast を通せない
   // ため、業務操作経路ではなく raw daterange insert で投入する。
   await seedCommonSellingPrices(productIdByCode);
+
+  // 原価 一覧 E2E フィクスチャ（PRD84x 帯・#501・ADR-20260629-3x5）。3状態（active/lapsed/unset）は
+  // 参照日由来の派生状態で、読みモデル SQL（daterange @> 参照日）の正しさはユニットでは検証できない
+  // ため today 相対で投入する。既存 PRD82x 帯（原価集約なし前提の CSP フィクスチャ）には触れない。
+  await seedCostPrices(productIdByCode);
 
   // S4 周辺商品サジェスト E2E 用の関連（本体 PRD810 → 周辺 PRD811・数量2）。
   const suggestParent = await prisma.product.findUniqueOrThrow({ where: { code: "PRD810" } });

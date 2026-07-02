@@ -30,4 +30,14 @@ export interface CostPriceListItemDTO {
   currentCostPrice: string | null;
   /** 単価設定状況（active／lapsed／unset）。null の `currentCostPrice` の内訳を区別する。 */
   priceStatus: CostPricePriceStatus;
+  /**
+   * 現在有効行の適用開始日（`"YYYY-MM-DD"`）。有効行が無い（lapsed／unset）なら null。
+   * `null` ＝有効行なし／`start` あり・`end` null ＝無期限、の2フィールドで多義を捌く（#501）。
+   */
+  currentPeriodStart: string | null;
+  /**
+   * 現在有効行の適用終了日（半開区間の排他上端の生値・`"YYYY-MM-DD"`）。無期限または有効行なしなら null
+   * （編集 DTO の `end: null`＝無期限と同一意味論。包含端への変換は一覧では行わない）。
+   */
+  currentPeriodEnd: string | null;
 }

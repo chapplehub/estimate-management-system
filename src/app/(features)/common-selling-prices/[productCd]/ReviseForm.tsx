@@ -3,7 +3,7 @@
 import { getFormProps, getInputProps } from "@conform-to/react";
 import { useEffect } from "react";
 import { useServerForm } from "@/app/_hooks/useServerForm";
-import { formatYenFromDecimal } from "../_components/formatYen";
+import { formatYenFromDecimal } from "../../_shared/formatYen";
 import { revisePeriodAction } from "./actions";
 import { revisePeriodSchema } from "./schema";
 

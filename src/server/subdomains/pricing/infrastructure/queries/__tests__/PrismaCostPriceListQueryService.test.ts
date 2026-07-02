@@ -67,6 +67,32 @@ describe("PrismaCostPriceListQueryService", () => {
     expect(item!.priceStatus).toBe("active");
   });
 
+  it("現在有効行が無期限なら currentPeriodStart は開始日・currentPeriodEnd は null", async () => {
+    const productId = await makeProduct(CODES.active, "現在有効・無期限商品");
+    const aggregate = CostPrice.create(productId);
+    aggregate.addPeriod(period("2025-01-01", null), price(1000));
+    await repository.insert(aggregate);
+
+    const items = await queryService.list({ referenceDate: "2025-06-15" });
+    const item = items.find((i) => i.productCode === CODES.active);
+
+    expect(item!.currentPeriodStart).toBe("2025-01-01");
+    expect(item!.currentPeriodEnd).toBeNull();
+  });
+
+  it("現在有効行が有界なら currentPeriodStart/End に半開区間の生値（排他上端）を返す", async () => {
+    const productId = await makeProduct(CODES.futureOnly, "現在有効・有界商品");
+    const aggregate = CostPrice.create(productId);
+    aggregate.addPeriod(period("2025-01-01", "2025-12-31"), price(1000));
+    await repository.insert(aggregate);
+
+    const items = await queryService.list({ referenceDate: "2025-06-15" });
+    const item = items.find((i) => i.productCode === CODES.futureOnly);
+
+    expect(item!.currentPeriodStart).toBe("2025-01-01");
+    expect(item!.currentPeriodEnd).toBe("2025-12-31");
+  });
+
   it("期間行が無い商品は currentCostPrice=null・priceStatus=unset（未設定）", async () => {
     await makeProduct(CODES.unset, "未設定商品");
 
@@ -76,6 +102,8 @@ describe("PrismaCostPriceListQueryService", () => {
     expect(item).toBeDefined();
     expect(item!.currentCostPrice).toBeNull();
     expect(item!.priceStatus).toBe("unset");
+    expect(item!.currentPeriodStart).toBeNull();
+    expect(item!.currentPeriodEnd).toBeNull();
   });
 
   it("将来行のみの商品は currentCostPrice=null・priceStatus=lapsed（失効中）", async () => {
@@ -102,6 +130,8 @@ describe("PrismaCostPriceListQueryService", () => {
 
     expect(item!.currentCostPrice).toBeNull();
     expect(item!.priceStatus).toBe("lapsed");
+    expect(item!.currentPeriodStart).toBeNull();
+    expect(item!.currentPeriodEnd).toBeNull();
   });
 
   describe("検索条件で絞り込む", () => {
