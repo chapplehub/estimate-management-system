@@ -81,6 +81,15 @@ export async function ensureApprovalFixtures(): Promise<ApprovalFixtureIds> {
     STEP_ROLE_CDS.map((roleCd) => prisma.role.findUniqueOrThrow({ where: { roleCd } }))
   );
 
+  // 承認者を全ステップ役割のメンバー（EmployeeRole）に登録する（承認/差戻ユースケースの
+  // 個人認可検証・#418）。承認者本人が当該役割のメンバーになることで hasMember=true となる。
+  // シード役割は既にメンバーを持つため「メンバー有無」判定は変わらず、承認チェーン構築
+  // （NO_APPROVER 検出）への影響はない。複合 PK のため skipDuplicates で冪等化する。
+  await prisma.employeeRole.createMany({
+    data: stepRoles.map((role) => ({ employeeId: approver.id, roleId: role.id })),
+    skipDuplicates: true,
+  });
+
   return {
     estimate,
     exempterEmployeeId: exempter.id,

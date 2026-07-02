@@ -10,3 +10,6 @@ export { adjustRevisedVariationCommandFactory } from "./adjustRevisedVariationCo
 export { getEstimateDetailQueryFactory } from "./estimateQueryFactory";
 export { previewApplicationQueryFactory } from "./previewApplicationQueryFactory";
 export { submitApplicationCommandFactory } from "./submitApplicationCommandFactory";
+export { approveStepCommandFactory } from "./approveStepCommandFactory";
+export { rejectStepCommandFactory } from "./rejectStepCommandFactory";
+export { withdrawApplicationCommandFactory } from "./withdrawApplicationCommandFactory";
