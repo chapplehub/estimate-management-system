@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
-import type { CommonSellingPricePeriodStatus } from "@subdomains/pricing/application/queries/dto/CommonSellingPriceEditDTO";
-import type { TimelineLayout } from "../_data/timeline-layout";
+import type { PeriodStatus } from "../../_shared/period-rules";
+import type { TimelineLayout } from "../../_shared/timeline-layout";
 
 /**
  * 適用期間タイムライン帯（#475・純プレゼンテーション）。
@@ -12,17 +12,14 @@ import type { TimelineLayout } from "../_data/timeline-layout";
  */
 
 /** 状態→帯のパレット（プロトの timeline bars と同一の配色）。 */
-const STATUS_PALETTE: Record<
-  CommonSellingPricePeriodStatus,
-  { bg: string; border: string; fg: string }
-> = {
+const STATUS_PALETTE: Record<PeriodStatus, { bg: string; border: string; fg: string }> = {
   active: { bg: "#CDEAD6", border: "#8FCFA4", fg: "#1E7A3D" },
   future: { bg: "#D6E2FB", border: "#A9C2F1", fg: "#2563EB" },
   expired: { bg: "#E5E8EB", border: "#C7CCD2", fg: "#6B7280" },
 };
 
 /** 凡例の並び（現在有効／失効／将来・プロトの並び順）。 */
-const LEGEND_ITEMS: { status: CommonSellingPricePeriodStatus; label: string }[] = [
+const LEGEND_ITEMS: { status: PeriodStatus; label: string }[] = [
   { status: "active", label: "現在有効" },
   { status: "expired", label: "失効" },
   { status: "future", label: "将来" },

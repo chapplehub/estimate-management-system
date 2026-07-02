@@ -1,21 +1,22 @@
 import { describe, expect, it } from "vitest";
-import type { CommonSellingPriceEditPeriodDTO } from "@subdomains/pricing/application/queries/dto/CommonSellingPriceEditDTO";
+import type { TimelinePeriod } from "./timeline-layout";
 import { computeTimelineLayout } from "./timeline-layout";
 
 /**
- * タイムライン帯レイアウト算出（#475）の単体テスト。
+ * タイムライン帯レイアウト算出（#475→#503 で _shared 昇格）の単体テスト。
  *
  * 半開区間の帯を軸へ線形マッピングする純関数の検証。%は軸範囲（両端に余白を含む）に対する相対位置で、
  * 具体値そのものより「順序・大小・境界（無期限は右端／最小幅／今日が範囲外でも軸内）」の不変を確かめる。
+ * 入力は集約非依存の中立構造型 `TimelinePeriod`（`price` は10進文字列）で、共通売単価・原価いずれの
+ * 編集読みモデルも呼び出し側で `price` へマップして渡す。
  */
 
 function period(
-  overrides: Partial<CommonSellingPriceEditPeriodDTO> &
-    Pick<CommonSellingPriceEditPeriodDTO, "periodId" | "start" | "status">
-): CommonSellingPriceEditPeriodDTO {
+  overrides: Partial<TimelinePeriod> & Pick<TimelinePeriod, "periodId" | "start" | "status">
+): TimelinePeriod {
   return {
     end: null,
-    sellingPrice: "1000.00",
+    price: "1000.00",
     ...overrides,
   };
 }
@@ -46,18 +47,8 @@ describe("computeTimelineLayout", () => {
   it("隙間のある2期間は帯が重ならず、後続の帯がより右に置かれる", () => {
     const layout = computeTimelineLayout(
       [
-        period({
-          periodId: "p1",
-          start: "2025-04-01",
-          end: "2025-07-01",
-          status: "expired",
-        }),
-        period({
-          periodId: "p2",
-          start: "2025-10-01",
-          end: "2026-01-01",
-          status: "expired",
-        }),
+        period({ periodId: "p1", start: "2025-04-01", end: "2025-07-01", status: "expired" }),
+        period({ periodId: "p2", start: "2025-10-01", end: "2026-01-01", status: "expired" }),
       ],
       "2026-06-27"
     );
@@ -69,19 +60,9 @@ describe("computeTimelineLayout", () => {
   it("幅が極小の期間でも最小幅 3% を確保する", () => {
     const layout = computeTimelineLayout(
       [
-        period({
-          periodId: "p1",
-          start: "2025-01-01",
-          end: "9999-12-31",
-          status: "active",
-        }),
+        period({ periodId: "p1", start: "2025-01-01", end: "9999-12-31", status: "active" }),
         // 1日だけの極短期間。
-        period({
-          periodId: "p2",
-          start: "2025-06-01",
-          end: "2025-06-02",
-          status: "expired",
-        }),
+        period({ periodId: "p2", start: "2025-06-01", end: "2025-06-02", status: "expired" }),
       ],
       "2026-06-27"
     );
@@ -91,14 +72,7 @@ describe("computeTimelineLayout", () => {
 
   it("今日が全期間より未来でも今日マーカーは軸内（0〜100%）に収まる", () => {
     const layout = computeTimelineLayout(
-      [
-        period({
-          periodId: "p1",
-          start: "2020-01-01",
-          end: "2020-12-31",
-          status: "expired",
-        }),
-      ],
+      [period({ periodId: "p1", start: "2020-01-01", end: "2020-12-31", status: "expired" })],
       "2026-06-27"
     );
     expect(layout.todayPct).toBeGreaterThanOrEqual(0);
@@ -107,21 +81,14 @@ describe("computeTimelineLayout", () => {
 
   it("今日が全期間より過去（全て将来）でも今日マーカーは軸内に収まる", () => {
     const layout = computeTimelineLayout(
-      [
-        period({
-          periodId: "p1",
-          start: "2030-01-01",
-          end: null,
-          status: "future",
-        }),
-      ],
+      [period({ periodId: "p1", start: "2030-01-01", end: null, status: "future" })],
       "2026-06-27"
     );
     expect(layout.todayPct).toBeGreaterThanOrEqual(0);
     expect(layout.todayPct).toBeLessThanOrEqual(100);
   });
 
-  it("BE 算出の状態（active/future/expired）と売単価ラベルを帯へそのまま載せる", () => {
+  it("BE 算出の状態（active/future/expired）と単価ラベルを帯へそのまま載せる", () => {
     const layout = computeTimelineLayout(
       [
         period({
@@ -129,21 +96,21 @@ describe("computeTimelineLayout", () => {
           start: "2025-01-01",
           end: "2025-06-01",
           status: "expired",
-          sellingPrice: "1000.00",
+          price: "1000.00",
         }),
         period({
           periodId: "p2",
           start: "2025-06-01",
           end: "2026-12-01",
           status: "active",
-          sellingPrice: "1200.50",
+          price: "1200.50",
         }),
         period({
           periodId: "p3",
           start: "2026-12-01",
           end: null,
           status: "future",
-          sellingPrice: "1500.00",
+          price: "1500.00",
         }),
       ],
       "2026-06-27"

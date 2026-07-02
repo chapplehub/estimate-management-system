@@ -1,18 +1,34 @@
 /**
- * 共通販売単価 適用期間のタイムライン帯レイアウト算出（純関数・#475）。
+ * 適用期間のタイムライン帯レイアウト算出（純関数・集約非依存）。
  *
  * 半開区間 `[開始, 終了)` の連なりを時間軸の帯として可視化するための位置（left%/width%）を計算する。
  * 副作用のないプレゼンテーション計算のため、描画（PriceTimeline）から分離して単体テスト可能にする
  * （FE 述語ヘルパ period-rules.ts と同じ配置慣習）。プロトタイプ
  * （docs/design/common-selling-price-maintenance/共通売単価 保守画面.dc.html）の線形マッピングを踏襲。
  *
+ * 共通売単価（#475）・原価（#503）の各編集読みモデルが同じ帯情報を持つため、集約 DTO へ依存させず
+ * 中立構造型 `TimelinePeriod`（`price` は10進文字列）を入力に取る（(features)/_shared 昇格・#503）。
+ * 各集約 DTO は呼び出し側で `sellingPrice`/`costPrice` を `price` へマップして渡す。
+ *
  * 状態（active/future/expired）は BE 編集読みモデルが参照日基準で算出済みの値をそのまま使う（#473）。
  * 今日マーカーの基準日（referenceDate）は status 算出と同一の基準日を呼び出し側から受け取り、帯の色分けと
  * マーカー位置を必ず整合させる（client で new Date() を再計算しない）。
  */
 
-import type { CommonSellingPriceEditPeriodDTO } from "@subdomains/pricing/application/queries/dto/CommonSellingPriceEditDTO";
-import { formatYenFromDecimal } from "../../_shared/formatYen";
+import type { PeriodStatus } from "./period-rules";
+import { formatYenFromDecimal } from "./formatYen";
+
+/** タイムライン算出の入力（集約非依存の中立構造型）。各編集読みモデルが `price` へマップして渡す。 */
+export interface TimelinePeriod {
+  periodId: string;
+  /** 適用開始日 `YYYY-MM-DD`。 */
+  start: string;
+  /** 適用終了日 `YYYY-MM-DD`。無期限は null（軸右端まで伸ばす）。 */
+  end: string | null;
+  status: PeriodStatus;
+  /** 10進文字列の単価（帯ラベルへ `formatYenFromDecimal` で整形）。 */
+  price: string;
+}
 
 /** 1本の帯の描画情報（%は 0–100 の数値・呼び出し側で `${leftPct}%` に整形）。 */
 export interface TimelineBar {
@@ -21,8 +37,8 @@ export interface TimelineBar {
   leftPct: number;
   /** 帯の幅（%・視認性のため最小 3%）。 */
   widthPct: number;
-  status: CommonSellingPriceEditPeriodDTO["status"];
-  /** 帯内に表示する売単価ラベル（テーブルと同じ整形）。 */
+  status: PeriodStatus;
+  /** 帯内に表示する単価ラベル（テーブルと同じ整形）。 */
   priceLabel: string;
 }
 
@@ -71,7 +87,7 @@ function round2(value: number): number {
  * lo/hi の双方を今日まで拡張する（プロトは hi のみ拡張だったが、参照日マーカーを常に可視にするため両端に拡張）。
  */
 export function computeTimelineLayout(
-  periods: CommonSellingPriceEditPeriodDTO[],
+  periods: TimelinePeriod[],
   referenceDate: string
 ): TimelineLayout {
   if (periods.length === 0) {
@@ -100,7 +116,7 @@ export function computeTimelineLayout(
       leftPct: round2(leftPct),
       widthPct: round2(widthPct),
       status: p.status,
-      priceLabel: formatYenFromDecimal(p.sellingPrice),
+      priceLabel: formatYenFromDecimal(p.price),
     };
   });
 

@@ -7,7 +7,7 @@ import type {
   CommonSellingPricePeriodStatus,
 } from "@subdomains/pricing/application/queries/dto/CommonSellingPriceEditDTO";
 import { authorityFor } from "../../_shared/period-rules";
-import { computeTimelineLayout } from "../_data/timeline-layout";
+import { computeTimelineLayout } from "../../_shared/timeline-layout";
 import { formatYenFromDecimal } from "../../_shared/formatYen";
 import { PeriodDeleteConfirm } from "./PeriodDeleteConfirm";
 import { PeriodForm } from "./PeriodForm";
@@ -114,7 +114,18 @@ export function PeriodDetailPanel({ detail, isAdmin, referenceDate }: Props) {
 
       {/* タイムライン帯（付加式・トグル ON 時のみ）。テーブルの上に重ねて期間の連続・隙間・無期限を可視化。 */}
       {showTimeline && (
-        <PriceTimeline layout={computeTimelineLayout(detail.periods, referenceDate)} />
+        <PriceTimeline
+          layout={computeTimelineLayout(
+            detail.periods.map((p) => ({
+              periodId: p.periodId,
+              start: p.start,
+              end: p.end,
+              status: p.status,
+              price: p.sellingPrice,
+            })),
+            referenceDate
+          )}
+        />
       )}
 
       {detail.periods.length > 0 ? (
