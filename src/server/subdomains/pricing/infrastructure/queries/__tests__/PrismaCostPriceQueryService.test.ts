@@ -54,7 +54,7 @@ describe("PrismaCostPriceQueryService", () => {
 
   it("区間内の暦日で有効な原価を引く", async () => {
     const aggregate = CostPrice.create(productId);
-    aggregate.addPeriod(period("2026-04-01", "2026-10-01"), cost(600));
+    aggregate.addPeriod(period("2026-04-01", "2026-10-01"), cost(600), "2026-04-01");
     await repository.insert(aggregate);
 
     const result = await queryService.resolve({ productId: productId.value, date: "2026-08-15" });
@@ -66,7 +66,7 @@ describe("PrismaCostPriceQueryService", () => {
 
   it("適用期間の開始日ちょうどは含む（半開 [) の下端）", async () => {
     const aggregate = CostPrice.create(productId);
-    aggregate.addPeriod(period("2026-04-01", "2026-10-01"), cost(600));
+    aggregate.addPeriod(period("2026-04-01", "2026-10-01"), cost(600), "2026-04-01");
     await repository.insert(aggregate);
 
     const result = await queryService.resolve({ productId: productId.value, date: "2026-04-01" });
@@ -76,7 +76,7 @@ describe("PrismaCostPriceQueryService", () => {
 
   it("適用期間の終了日ちょうどは含まない（半開 [) の上端）", async () => {
     const aggregate = CostPrice.create(productId);
-    aggregate.addPeriod(period("2026-04-01", "2026-10-01"), cost(600));
+    aggregate.addPeriod(period("2026-04-01", "2026-10-01"), cost(600), "2026-04-01");
     await repository.insert(aggregate);
 
     const result = await queryService.resolve({ productId: productId.value, date: "2026-10-01" });
@@ -86,7 +86,7 @@ describe("PrismaCostPriceQueryService", () => {
 
   it("どの適用期間にも覆われない暦日では null を返す", async () => {
     const aggregate = CostPrice.create(productId);
-    aggregate.addPeriod(period("2026-04-01", "2026-10-01"), cost(600));
+    aggregate.addPeriod(period("2026-04-01", "2026-10-01"), cost(600), "2026-04-01");
     await repository.insert(aggregate);
 
     const result = await queryService.resolve({ productId: productId.value, date: "2026-03-31" });
@@ -103,7 +103,7 @@ describe("PrismaCostPriceQueryService", () => {
 
   it("無期限上端（end=null）の期間は遠い未来の暦日でもヒットする", async () => {
     const aggregate = CostPrice.create(productId);
-    aggregate.addPeriod(period("2026-04-01", null), cost(1234.56));
+    aggregate.addPeriod(period("2026-04-01", null), cost(1234.56), "2026-04-01");
     await repository.insert(aggregate);
 
     const result = await queryService.resolve({ productId: productId.value, date: "2099-12-31" });

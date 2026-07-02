@@ -48,9 +48,9 @@ describe("PrismaCostPriceEditQueryService", () => {
 
   it("identity・version・期間行配列を返し、各行に時点状態（将来/現在有効/失効）を算出する", async () => {
     const aggregate = CostPrice.create(productId);
-    aggregate.addPeriod(period("2025-01-01", "2025-03-01"), price(800)); // 失効
-    aggregate.addPeriod(period("2025-03-01", "2025-09-01"), price(1000)); // 現在有効
-    aggregate.addPeriod(period("2030-01-01", null), price(1200)); // 将来
+    aggregate.addPeriod(period("2025-01-01", "2025-03-01"), price(800), "2025-01-01"); // 失効
+    aggregate.addPeriod(period("2025-03-01", "2025-09-01"), price(1000), "2025-03-01"); // 現在有効
+    aggregate.addPeriod(period("2030-01-01", null), price(1200), "2030-01-01"); // 将来
     await repository.insert(aggregate);
 
     const dto = await queryService.find({
@@ -102,11 +102,11 @@ describe("PrismaCostPriceEditQueryService", () => {
 
   it("update 後の version を反映する（楽観ロックトークン）", async () => {
     const aggregate = CostPrice.create(productId);
-    aggregate.addPeriod(period("2030-01-01", "2030-06-01"), price(1000));
+    aggregate.addPeriod(period("2030-01-01", "2030-06-01"), price(1000), "2030-01-01");
     await repository.insert(aggregate);
 
     const reloaded = (await repository.findByProductId(productId))!;
-    reloaded.addPeriod(period("2030-06-01", null), price(1200));
+    reloaded.addPeriod(period("2030-06-01", null), price(1200), "2030-06-01");
     await repository.update(reloaded, 1);
 
     const dto = await queryService.find({
