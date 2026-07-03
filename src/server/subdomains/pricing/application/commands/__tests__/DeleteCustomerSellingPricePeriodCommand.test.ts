@@ -89,6 +89,58 @@ describe("DeleteCustomerSellingPricePeriodCommand", () => {
     expect(found!.periods[0].period.equals(period("2030-06-01", null))).toBe(true);
   });
 
+  it("最後の1行を削除すると集約ごと消え、空シェルを残さない（#512・B案）", async () => {
+    const aggregate = CustomerSellingPrice.create(
+      customerId,
+      productId,
+      ProductCategory.INDIVIDUAL
+    );
+    aggregate.addPeriod(period("2030-01-01", null), price(1000), "2025-06-01");
+    await repository.insert(aggregate);
+    const onlyId = (await repository.findByCustomerIdAndProductId(customerId, productId))!
+      .periods[0].id;
+
+    await command.execute({
+      customerId: customerId.value,
+      productId: productId.value,
+      periodId: onlyId.value,
+      referenceDate: "2025-06-01",
+      expectedVersion: 1,
+    });
+
+    expect(await repository.findByCustomerIdAndProductId(customerId, productId)).toBeNull();
+  });
+
+  it("最後の1行を削除した後、同一の得意先×商品へ version 1 で再登録できる（再登録経路の回帰・#512）", async () => {
+    const aggregate = CustomerSellingPrice.create(
+      customerId,
+      productId,
+      ProductCategory.INDIVIDUAL
+    );
+    aggregate.addPeriod(period("2030-01-01", null), price(1000), "2025-06-01");
+    await repository.insert(aggregate);
+    const onlyId = (await repository.findByCustomerIdAndProductId(customerId, productId))!
+      .periods[0].id;
+    await command.execute({
+      customerId: customerId.value,
+      productId: productId.value,
+      periodId: onlyId.value,
+      referenceDate: "2025-06-01",
+      expectedVersion: 1,
+    });
+
+    const reregister = CustomerSellingPrice.create(
+      customerId,
+      productId,
+      ProductCategory.INDIVIDUAL
+    );
+    reregister.addPeriod(period("2030-02-01", null), price(2000), "2025-06-01");
+    await repository.insert(reregister);
+    const found = (await repository.findByCustomerIdAndProductId(customerId, productId))!;
+    expect(found.periods).toHaveLength(1);
+    expect(found.periods[0].price.equals(price(2000))).toBe(true);
+  });
+
   it("集約が無い得意先×商品では NotFoundEntityError", async () => {
     await expect(
       command.execute({

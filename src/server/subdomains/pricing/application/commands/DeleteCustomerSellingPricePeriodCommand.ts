@@ -32,7 +32,15 @@ export class DeleteCustomerSellingPricePeriodCommand {
 
     aggregate.deletePeriod(new CustomerSellingPricePeriodId(input.periodId), input.referenceDate);
 
-    await this.repository.update(aggregate, input.expectedVersion);
+    // 最終期間の削除で集約が空になったらルートごと削除し「空集約シェル」を残さない（#512・B案）。
+    // insert/update をアプリ層で選ぶ RegisterCommand の鏡像で、集約消滅のライフサイクル遷移をここに
+    // 可視化する。空シェルを残すと edit query が version:非null を返す一方 UI は0件を新規登録と見なし
+    // version を送らず ValidationError で詰まるため、DB状態を用語定義「未設定＝0件」に一致させる。
+    if (aggregate.isEmpty) {
+      await this.repository.delete(aggregate, input.expectedVersion);
+    } else {
+      await this.repository.update(aggregate, input.expectedVersion);
+    }
     return aggregate;
   }
 }
