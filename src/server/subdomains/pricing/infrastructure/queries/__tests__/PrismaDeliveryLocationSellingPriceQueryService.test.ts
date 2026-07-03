@@ -114,7 +114,11 @@ describe("PrismaDeliveryLocationSellingPriceQueryService", () => {
   });
 
   it("区間内の暦日で有効な納品先別単価を引く", async () => {
-    const aggregate = DeliveryLocationSellingPrice.create(deliveryLocationId, productId);
+    const aggregate = DeliveryLocationSellingPrice.create(
+      deliveryLocationId,
+      productId,
+      ProductCategory.INDIVIDUAL
+    );
     aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000));
     await repository.insert(aggregate);
 
@@ -128,7 +132,11 @@ describe("PrismaDeliveryLocationSellingPriceQueryService", () => {
   });
 
   it("同じ商品でも別の納品先では引かない（納品先キーの隔離）", async () => {
-    const aggregate = DeliveryLocationSellingPrice.create(deliveryLocationId, productId);
+    const aggregate = DeliveryLocationSellingPrice.create(
+      deliveryLocationId,
+      productId,
+      ProductCategory.INDIVIDUAL
+    );
     aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000));
     await repository.insert(aggregate);
 
@@ -142,7 +150,11 @@ describe("PrismaDeliveryLocationSellingPriceQueryService", () => {
   });
 
   it("同じ納品先でも別の商品では引かない（商品キーの隔離）", async () => {
-    const aggregate = DeliveryLocationSellingPrice.create(deliveryLocationId, productId);
+    const aggregate = DeliveryLocationSellingPrice.create(
+      deliveryLocationId,
+      productId,
+      ProductCategory.INDIVIDUAL
+    );
     aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000));
     await repository.insert(aggregate);
 
@@ -172,7 +184,11 @@ describe("PrismaDeliveryLocationSellingPriceQueryService", () => {
   });
 
   it("どの適用期間にも覆われない暦日では null を返す", async () => {
-    const aggregate = DeliveryLocationSellingPrice.create(deliveryLocationId, productId);
+    const aggregate = DeliveryLocationSellingPrice.create(
+      deliveryLocationId,
+      productId,
+      ProductCategory.INDIVIDUAL
+    );
     aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000));
     await repository.insert(aggregate);
 
