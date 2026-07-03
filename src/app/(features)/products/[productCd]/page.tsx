@@ -1,13 +1,18 @@
 import { verifySession } from "@/app/_lib/verifyAuthentication";
 import { Badge } from "@/app/_components/shadcnui/badge";
 import { isAdmin } from "@server/shared/auth";
+import { toJstCalendarDay } from "@server/shared/domain/values/toJstCalendarDay";
+import { commonSellingPricePriceStatusQueryFactory } from "@subdomains/pricing/application/factories/pricingQueryFactory";
+import type { CommonSellingPricePriceStatus } from "@subdomains/pricing/application/queries/dto/CommonSellingPriceListItemDTO";
 import {
   getProductByCodeQueryFactory,
   getProductReferencesQueryFactory,
 } from "@subdomains/product/application/factories/productQueryFactory";
+import { ProductCategory } from "@subdomains/product/domain/values/ProductCategory";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { CATEGORY_LABELS, UNIT_LABELS } from "../_shared/labels";
+import { CommonSellingPriceUnsetBanner } from "./CommonSellingPriceUnsetBanner";
 import { DeactivateWithReplacementDialog } from "./DeactivateWithReplacementDialog";
 import { ProductDeleteForm } from "./ProductDeleteForm";
 import { ProductStatusForms } from "./ProductStatusForms";
@@ -27,6 +32,17 @@ export default async function ProductDetailPage({
   }
 
   const canEdit = isAdmin(session);
+
+  // 共通販売単価の設定誘導（#487・ソフトなアナウンス）。
+  // 有効かつ価格を持ちうる商品（個別/消耗品）に限り、現在有効な単価の三状態を引く。無効商品・セット商品は
+  // 誘導対象外なので read すら叩かない（判断2）。参照日はアプリ層で注入（CURRENT_DATE 不使用）。
+  let priceStatus: CommonSellingPricePriceStatus | null = null;
+  if (product.isActive && ProductCategory.from(product.category).canHavePrice()) {
+    priceStatus = await commonSellingPricePriceStatusQueryFactory().find({
+      productCode: product.code,
+      referenceDate: toJstCalendarDay(new Date()),
+    });
+  }
 
   // 有効な商品の場合、参照元を取得（無効化時の入替ダイアログ用）
   let referencingProducts: { code: string; name: string; category: string }[] = [];
@@ -59,6 +75,11 @@ export default async function ProductDetailPage({
           </Link>
         )}
       </div>
+
+      {/* 共通販売単価 未設定/失効の設定誘導バナー（#487） */}
+      {priceStatus && (
+        <CommonSellingPriceUnsetBanner priceStatus={priceStatus} productCode={product.code} />
+      )}
 
       {/* 基本情報 */}
       <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-8">

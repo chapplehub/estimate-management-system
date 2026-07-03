@@ -61,6 +61,12 @@ const FLASH_MESSAGES: Record<RedirectReason, FlashMessage> = {
     type: FLASH_MESSAGE_TYPE.SUCCESS,
     message: "商品を登録しました。",
   },
+  [REDIRECT_REASON.PRODUCT_CREATED_PRICE_UNSET]: {
+    type: FLASH_MESSAGE_TYPE.INFO,
+    message: "商品を登録しました。共通販売単価が未設定です。商品詳細から設定してください。",
+    // 設定を促す誘導文のため読了時間を確保して長めに表示する（既定4秒→10秒・#487）。
+    durationMs: 10000,
+  },
   [REDIRECT_REASON.PRODUCT_UPDATED]: {
     type: FLASH_MESSAGE_TYPE.SUCCESS,
     message: "商品情報を更新しました。",
@@ -155,9 +161,9 @@ function RedirectReasonToastInner() {
   useEffect(() => {
     const reason = searchParams.get("reason");
     if (reason && isRedirectReason(reason)) {
-      const { type, message } = FLASH_MESSAGES[reason];
+      const { type, message, durationMs } = FLASH_MESSAGES[reason];
       // ブラケット記法でtoastオブジェクトを利用
-      toast[type](message);
+      toast[type](message, durationMs ? { duration: durationMs } : undefined);
 
       // URLからreasonパラメータを削除
       const newUrl = new URL(window.location.href);
