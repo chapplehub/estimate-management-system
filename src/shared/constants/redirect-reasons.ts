@@ -15,6 +15,7 @@ export const REDIRECT_REASON = {
   ROLE_UPDATED: "role_updated",
   ROLE_DELETED: "role_deleted",
   PRODUCT_CREATED: "product_created",
+  PRODUCT_CREATED_PRICE_UNSET: "product_created_price_unset",
   PRODUCT_UPDATED: "product_updated",
   PRODUCT_DELETED: "product_deleted",
   PRODUCT_ACTIVATED: "product_activated",

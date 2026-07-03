@@ -4,6 +4,7 @@ import { verifyAdmin } from "@/app/_lib/verifyAuthentication";
 import { parseWithZod } from "@conform-to/zod/v4";
 import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
 import { createProductCommandFactory } from "@subdomains/product/application/factories/createProductCommandFactory";
+import { ProductCategory } from "@subdomains/product/domain/values/ProductCategory";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { handleCommandError } from "../../_shared/error-handler";
@@ -42,5 +43,12 @@ export async function createProduct(prevState: unknown, formData: FormData) {
     });
   }
 
-  redirect(`/products?reason=${REDIRECT_REASON.PRODUCT_CREATED}`);
+  // 価格を持ちうる区分（個別/消耗品）は常に単価未設定で作成されるため、設定を促す INFO トーストへ分岐（#487）。
+  // セット商品はそれ自体が単価を持たないので従来どおり成功トースト。区分→canHavePrice の判定はドメイン値
+  // オブジェクトに委ね、presentation 層に業務判断を持ち込まない（判断3）。
+  const reason = ProductCategory.from(category).canHavePrice()
+    ? REDIRECT_REASON.PRODUCT_CREATED_PRICE_UNSET
+    : REDIRECT_REASON.PRODUCT_CREATED;
+
+  redirect(`/products?reason=${reason}`);
 }

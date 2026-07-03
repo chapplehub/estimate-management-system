@@ -61,6 +61,10 @@ const FLASH_MESSAGES: Record<RedirectReason, FlashMessage> = {
     type: FLASH_MESSAGE_TYPE.SUCCESS,
     message: "商品を登録しました。",
   },
+  [REDIRECT_REASON.PRODUCT_CREATED_PRICE_UNSET]: {
+    type: FLASH_MESSAGE_TYPE.INFO,
+    message: "商品を登録しました。共通販売単価が未設定です。商品詳細から設定してください。",
+  },
   [REDIRECT_REASON.PRODUCT_UPDATED]: {
     type: FLASH_MESSAGE_TYPE.SUCCESS,
     message: "商品情報を更新しました。",
