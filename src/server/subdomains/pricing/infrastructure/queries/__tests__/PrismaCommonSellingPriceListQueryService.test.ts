@@ -14,12 +14,13 @@ import { PrismaProductRepository } from "@subdomains/product/infrastructure/pris
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { PrismaCommonSellingPriceListQueryService } from "../PrismaCommonSellingPriceListQueryService";
 
-// CSPLST{01..04} = common-selling-price 一覧読みモデルのテスト用予約コード。
+// CSPLST{01..05} = common-selling-price 一覧読みモデルのテスト用予約コード。
 const CODES = {
   active: "CSPLST01",
   unset: "CSPLST02",
   futureOnly: "CSPLST03",
   expiredOnly: "CSPLST04",
+  set: "CSPLST05",
 } as const;
 
 const price = (yen: number) => SellingUnitPrice.fromMoney(Money.fromMajorUnits(yen));
@@ -29,13 +30,17 @@ async function cleanup(): Promise<void> {
   await prisma.product.deleteMany({ where: { code: { in: Object.values(CODES) } } });
 }
 
-async function makeProduct(code: string, name: string): Promise<ProductId> {
+async function makeProduct(
+  code: string,
+  name: string,
+  category: ProductCategory = ProductCategory.INDIVIDUAL
+): Promise<ProductId> {
   const product = await new PrismaProductRepository().insert(
     Product.create(
       new ProductCode(code),
       // products.name は @unique。他テストファイルとの並列実行衝突を code 接尾で防ぐ（#517）
       new ProductName(`${name}${code}`),
-      ProductCategory.INDIVIDUAL,
+      category,
       ProductUnit.UNIT
     )
   );
@@ -133,6 +138,17 @@ describe("PrismaCommonSellingPriceListQueryService", () => {
     expect(item!.priceStatus).toBe("lapsed");
     expect(item!.currentPeriodStart).toBeNull();
     expect(item!.currentPeriodEnd).toBeNull();
+  });
+
+  it("セット商品は価格保守対象外なので一覧に現れない（#514）", async () => {
+    // セット商品はそれ自体は単価を持たない（母集合＝価格保守対象商品に含めない）。
+    // 母集合が全商品だと unset として並んでしまうため、区分で除外することを担保する。
+    await makeProduct(CODES.set, "セット商品", ProductCategory.SET);
+
+    const items = await queryService.list({ referenceDate: "2025-06-15" });
+    const codes = items.map((i) => i.productCode);
+
+    expect(codes).not.toContain(CODES.set);
   });
 
   describe("検索条件で絞り込む", () => {
