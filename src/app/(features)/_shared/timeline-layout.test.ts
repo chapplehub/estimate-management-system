@@ -139,9 +139,9 @@ describe("computeTimelineLayout（複数レーン共有軸）", () => {
     );
 
     expect(layout.secondaryBars).toBeDefined();
-    expect(layout.secondaryBars?.map((b) => b.periodId)).toEqual(["common-1"]);
+    expect(layout.secondaryBars.map((b) => b.periodId)).toEqual(["common-1"]);
     const primary = layout.bars[0];
-    const secondary = layout.secondaryBars![0];
+    const secondary = layout.secondaryBars[0];
     // 共通（従）の開始 2020 は得意先別（主）の開始 2026 より過去 → より左に置かれる。
     expect(secondary.leftPct).toBeLessThan(primary.leftPct);
   });
@@ -153,7 +153,7 @@ describe("computeTimelineLayout（複数レーン共有軸）", () => {
       [period({ periodId: "common-1", start: "2026-03-01", end: null, status: "active" })]
     );
     const primary = layout.bars[0];
-    const secondary = layout.secondaryBars![0];
+    const secondary = layout.secondaryBars[0];
     expect(secondary.leftPct).toBeCloseTo(primary.leftPct, 5);
   });
 
@@ -162,7 +162,7 @@ describe("computeTimelineLayout（複数レーン共有軸）", () => {
       period({ periodId: "common-1", start: "2025-04-01", end: null, status: "active" }),
     ]);
     expect(layout.bars).toEqual([]);
-    expect(layout.secondaryBars?.map((b) => b.periodId)).toEqual(["common-1"]);
+    expect(layout.secondaryBars.map((b) => b.periodId)).toEqual(["common-1"]);
     expect(layout.axisStart).not.toBe("");
     expect(layout.axisEnd).not.toBe("");
   });
