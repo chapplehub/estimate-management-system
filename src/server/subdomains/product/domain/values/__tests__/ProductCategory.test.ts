@@ -115,6 +115,9 @@ describe("ProductCategory", () => {
 
   it("価格保守対象商品の区分値は個別商品・消耗品", () => {
     expect(ProductCategory.priceableValues()).toEqual(["INDIVIDUAL", "CONSUMABLE"]);
+  });
+
+  // ========================================
   // isSet: セット商品か（価格集約の生成ガードで使用・#515）
   // ========================================
 

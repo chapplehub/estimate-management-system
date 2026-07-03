@@ -88,6 +88,8 @@ export class ProductCategory extends ValueObject<string, "ProductCategory"> {
    */
   static priceableValues(): readonly string[] {
     return PRICEABLE_VALUES;
+  }
+
   /** セット商品か。価格集約（売単価・原価）の生成ガードで参照する（#515） */
   isSet(): boolean {
     return this._value === "SET";
