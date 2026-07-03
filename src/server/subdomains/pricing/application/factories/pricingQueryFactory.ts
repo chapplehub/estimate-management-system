@@ -3,6 +3,8 @@ import { CommonSellingPriceListQueryService } from "../queries/CommonSellingPric
 import { CommonSellingPricePriceStatusQueryService } from "../queries/CommonSellingPricePriceStatusQueryService";
 import { CostPriceEditQueryService } from "../queries/CostPriceEditQueryService";
 import { CostPriceListQueryService } from "../queries/CostPriceListQueryService";
+import { CustomerSellingPriceEditQueryService } from "../queries/CustomerSellingPriceEditQueryService";
+import { CustomerSellingPriceListQueryService } from "../queries/CustomerSellingPriceListQueryService";
 import { ResolveCommonSellingPriceQuery } from "../queries/ResolveCommonSellingPriceQuery";
 import { ResolveCostPriceQuery } from "../queries/ResolveCostPriceQuery";
 import { ResolveCustomerSellingPriceQuery } from "../queries/ResolveCustomerSellingPriceQuery";
@@ -15,6 +17,8 @@ import { PrismaCommonSellingPriceQueryService } from "../../infrastructure/queri
 import { PrismaCostPriceEditQueryService } from "../../infrastructure/queries/PrismaCostPriceEditQueryService";
 import { PrismaCostPriceListQueryService } from "../../infrastructure/queries/PrismaCostPriceListQueryService";
 import { PrismaCostPriceQueryService } from "../../infrastructure/queries/PrismaCostPriceQueryService";
+import { PrismaCustomerSellingPriceEditQueryService } from "../../infrastructure/queries/PrismaCustomerSellingPriceEditQueryService";
+import { PrismaCustomerSellingPriceListQueryService } from "../../infrastructure/queries/PrismaCustomerSellingPriceListQueryService";
 import { PrismaCustomerSellingPriceQueryService } from "../../infrastructure/queries/PrismaCustomerSellingPriceQueryService";
 import { PrismaDeliveryLocationSellingPriceQueryService } from "../../infrastructure/queries/PrismaDeliveryLocationSellingPriceQueryService";
 
@@ -37,6 +41,19 @@ export function commonSellingPriceEditQueryFactory(): CommonSellingPriceEditQuer
  */
 export function commonSellingPricePriceStatusQueryFactory(): CommonSellingPricePriceStatusQueryService {
   return new PrismaCommonSellingPricePriceStatusQueryService();
+}
+
+/**
+ * 得意先別販売単価 保守一覧の読みモデル（#506）を Prisma 実装から構築する。
+ * 読みモデルは Query ラッパを介さず QueryService インターフェースを直接返す（既存規約）。
+ */
+export function customerSellingPriceListQueryFactory(): CustomerSellingPriceListQueryService {
+  return new PrismaCustomerSellingPriceListQueryService();
+}
+
+/** 得意先別販売単価 編集の読みモデル（#506）を Prisma 実装から構築する。 */
+export function customerSellingPriceEditQueryFactory(): CustomerSellingPriceEditQueryService {
+  return new PrismaCustomerSellingPriceEditQueryService();
 }
 
 /**
