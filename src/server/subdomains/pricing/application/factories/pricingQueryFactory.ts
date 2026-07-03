@@ -47,12 +47,12 @@ export function commonSellingPricePriceStatusQueryFactory(): CommonSellingPriceP
  * 得意先別販売単価 保守一覧の読みモデル（#506）を Prisma 実装から構築する。
  * 読みモデルは Query ラッパを介さず QueryService インターフェースを直接返す（既存規約）。
  */
-export function customerSellingPriceListQueryServiceFactory(): CustomerSellingPriceListQueryService {
+export function customerSellingPriceListQueryFactory(): CustomerSellingPriceListQueryService {
   return new PrismaCustomerSellingPriceListQueryService();
 }
 
 /** 得意先別販売単価 編集の読みモデル（#506）を Prisma 実装から構築する。 */
-export function customerSellingPriceEditQueryServiceFactory(): CustomerSellingPriceEditQueryService {
+export function customerSellingPriceEditQueryFactory(): CustomerSellingPriceEditQueryService {
   return new PrismaCustomerSellingPriceEditQueryService();
 }
 
