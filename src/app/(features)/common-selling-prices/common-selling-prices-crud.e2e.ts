@@ -83,6 +83,30 @@ test.describe.serial("共通販売単価 Chain A（登録→編集→削除・PR
     await expect(page.getByText("適用期間が未設定です")).toBeVisible({ timeout: 10000 });
     await expect(page.locator("table tbody tr")).toHaveCount(0);
   });
+
+  test("#512 回帰: 最終行の削除後、詳細に留まったまま再登録できる（空集約シェルを残さない）", async ({
+    page,
+  }) => {
+    // UC-5 で最後の1行を削除済み。B案（親ごと削除）以前はここに空集約シェル（親あり・0件）が
+    // 残り、UI は0件を「未設定＝新規登録」と見なし version を送らないため再登録が ValidationError で
+    // 詰まった（#512）。親ごと消えていれば未設定商品と同じ insert 経路で再登録できる。
+    await page.goto("/common-selling-prices/PRD822");
+    await waitForAdminDetailReady(page);
+    await expect(page.getByText("適用期間が未設定です")).toBeVisible();
+
+    await page.getByRole("button", { name: "新規追加" }).click();
+    await expect(page.getByRole("heading", { name: "適用期間の登録" })).toBeVisible();
+
+    await page.getByLabel("適用開始日").fill(jstRelativeDate(60)); // 将来 [today+60, ∞)
+    await page.getByLabel("共通販売単価（円）").fill("7000");
+    await page.locator("form").getByRole("button", { name: "登録" }).click();
+
+    // ValidationError（alert）で詰まらず、将来行が新規登録される。
+    const row = page.locator("table tbody tr", { hasText: "将来" });
+    await expect(row).toBeVisible({ timeout: 10000 });
+    await expect(row.getByText("¥7,000")).toBeVisible();
+    await expect(row.getByText("無期限")).toBeVisible();
+  });
 });
 
 test.describe.serial("共通販売単価 Chain B（登録→適用終了→改定・PRD824）", () => {
