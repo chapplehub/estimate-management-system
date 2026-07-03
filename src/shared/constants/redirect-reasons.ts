@@ -61,4 +61,6 @@ export type FlashMessageType = (typeof FLASH_MESSAGE_TYPE)[keyof typeof FLASH_ME
 export type FlashMessage = {
   type: FlashMessageType;
   message: string;
+  /** トーストの表示時間（ミリ秒）。未指定なら sonner の既定（約4秒）。誘導系の長文で読了時間を確保する用途。 */
+  durationMs?: number;
 };
