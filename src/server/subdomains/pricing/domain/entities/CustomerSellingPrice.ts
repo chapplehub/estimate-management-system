@@ -223,6 +223,15 @@ export class CustomerSellingPrice {
     return this._productId;
   }
 
+  /**
+   * 期間行を1件も持たない空集約（＝未設定）か。CONTEXT.md の「未設定＝期間行0件」の派生状態を
+   * 集約自身の語彙で表す。最終期間の削除で 0 件になった器を「集約ごと片付ける」判断に使い、
+   * 不変条件「親行の存在 ⟺ 期間行≥1件」を回復する（#512・B案）。
+   */
+  get isEmpty(): boolean {
+    return this._periods.length === 0;
+  }
+
   /** 適用期間行（読み取り専用ビュー）。 */
   get periods(): readonly CustomerSellingPricePeriod[] {
     return this._periods;

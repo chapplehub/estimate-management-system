@@ -341,6 +341,24 @@ describe("CostPrice 集約", () => {
     });
   });
 
+  describe("isEmpty — 空集約の判定", () => {
+    it("期間行が0件なら true（未設定＝空集約シェル）", () => {
+      const aggregate = CostPrice.reconstruct(productId, []);
+      expect(aggregate.isEmpty).toBe(true);
+    });
+
+    it("期間行が1件以上あれば false", () => {
+      const aggregate = CostPrice.reconstruct(productId, [
+        {
+          id: CostPricePeriodId.generate(),
+          period: period("2026-04-01", null),
+          price: cost(600),
+        },
+      ]);
+      expect(aggregate.isEmpty).toBe(false);
+    });
+  });
+
   describe("reconstruct — 永続化からの再構成", () => {
     it("VO記述子から identity を保って再構成できる", () => {
       const id1 = CostPricePeriodId.generate();
