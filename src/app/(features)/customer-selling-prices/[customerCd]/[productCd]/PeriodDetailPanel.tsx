@@ -6,6 +6,7 @@ import type {
   CustomerSellingPriceEditDTO,
   CustomerSellingPricePeriodStatus,
 } from "@subdomains/pricing/application/queries/dto/CustomerSellingPriceEditDTO";
+import type { CommonSellingPriceEditPeriodDTO } from "@subdomains/pricing/application/queries/dto/CommonSellingPriceEditDTO";
 import { authorityFor } from "../../../_shared/period-rules";
 import { computeTimelineLayout } from "../../../_shared/timeline-layout";
 import { formatYenFromDecimal } from "../../../_shared/formatYen";
@@ -38,6 +39,12 @@ type PanelMode =
 
 type Props = {
   detail: CustomerSellingPriceEditDTO;
+  /**
+   * 共通販売単価の期間行（フォールバック層・#507）。タイムラインの従レーンとして重ねて対比する
+   * （表示専用）。共通が未設定なら空配列。得意先別レーンと同一の中立構造へマップして
+   * `computeTimelineLayout` の第2系列に渡す。
+   */
+  commonPeriods: CommonSellingPriceEditPeriodDTO[];
   /** 管理者のみミューテーション系UI（新規追加・編集・適用終了・削除）を描画する。認可の正本はサーバー側 verifyAdmin。 */
   isAdmin: boolean;
   /** 今日マーカーの基準日（`YYYY-MM-DD`）。status 算出と同一基準日をサーバーから受け取る（#475）。 */
@@ -54,7 +61,7 @@ type Props = {
  * 共通販売単価（`common-selling-prices/[productCd]/PeriodDetailPanel.tsx`）の同型写像で、宛先キーが
  * `(customerId, productId)` 複合になる点と、上書きなし（集約なし）が正常な既定状態である点が異なる。
  */
-export function PeriodDetailPanel({ detail, isAdmin, referenceDate }: Props) {
+export function PeriodDetailPanel({ detail, commonPeriods, isAdmin, referenceDate }: Props) {
   const [mode, setMode] = useState<PanelMode>({ kind: "closed" });
   const close = useCallback(() => setMode({ kind: "closed" }), []);
 
@@ -126,7 +133,15 @@ export function PeriodDetailPanel({ detail, isAdmin, referenceDate }: Props) {
               status: p.status,
               price: p.sellingPrice,
             })),
-            referenceDate
+            referenceDate,
+            // 従レーン（共通販売単価・フォールバック）。同一の中立構造へマップして重ねる（表示専用）。
+            commonPeriods.map((p) => ({
+              periodId: p.periodId,
+              start: p.start,
+              end: p.end,
+              status: p.status,
+              price: p.sellingPrice,
+            }))
           )}
         />
       )}

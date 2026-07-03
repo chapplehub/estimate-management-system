@@ -2,7 +2,10 @@ import { verifySession } from "@/app/_lib/verifyAuthentication";
 import { isAdmin } from "@server/shared/auth";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { customerSellingPriceEditQueryFactory } from "@subdomains/pricing/application/factories/pricingQueryFactory";
+import {
+  commonSellingPriceEditQueryFactory,
+  customerSellingPriceEditQueryFactory,
+} from "@subdomains/pricing/application/factories/pricingQueryFactory";
 import { toJstCalendarDay } from "@server/shared/domain/values/toJstCalendarDay";
 import { Badge } from "@/app/_components/shadcnui/badge";
 import { PeriodDetailPanel } from "./PeriodDetailPanel";
@@ -19,14 +22,26 @@ export default async function CustomerSellingPriceDetailPage({
   // status 算出とタイムラインの今日マーカーを同一基準日に揃えるため、参照日を一度だけ求めて共有する。
   const referenceDate = toJstCalendarDay(new Date());
 
-  const detail = await customerSellingPriceEditQueryFactory().find({
-    customerCode: customerCd,
-    productCode: productCd,
-    referenceDate,
-  });
+  // 得意先別（主）と共通販売単価（従＝タイムラインのフォールバックレーン・#507）を並行取得する。
+  // 共通は同一商品コードで引ける既存の編集読みモデルを再利用し BE 追加実装ゼロ。商品が在れば非 null で、
+  // 上書き／設定なしでも periods は空配列を返す（#506 と同型）。
+  const [detail, commonDetail] = await Promise.all([
+    customerSellingPriceEditQueryFactory().find({
+      customerCode: customerCd,
+      productCode: productCd,
+      referenceDate,
+    }),
+    commonSellingPriceEditQueryFactory().find({
+      productCode: productCd,
+      referenceDate,
+    }),
+  ]);
   if (detail == null) {
     notFound();
   }
+
+  // 共通が null（商品不在）でも得意先別が在れば描画は続行する。従レーンは空扱い（フォールバックも無い）。
+  const commonPeriods = commonDetail?.periods ?? [];
 
   return (
     <div className="container mx-auto p-8">
@@ -80,7 +95,12 @@ export default async function CustomerSellingPriceDetailPage({
       </div>
 
       {/* 適用期間明細＋操作（UC-2/3/4/5）。表示・操作はクライアント wrapper に委譲。 */}
-      <PeriodDetailPanel detail={detail} isAdmin={admin} referenceDate={referenceDate} />
+      <PeriodDetailPanel
+        detail={detail}
+        commonPeriods={commonPeriods}
+        isAdmin={admin}
+        referenceDate={referenceDate}
+      />
     </div>
   );
 }
