@@ -92,4 +92,20 @@ describe("ProductCategory", () => {
   it("SETは構成商品になれない", () => {
     expect(ProductCategory.SET.canBeComponent()).toBe(false);
   });
+
+  // ========================================
+  // isSet: セット商品か（価格集約の生成ガードで使用・#515）
+  // ========================================
+
+  it("SETはセット商品である", () => {
+    expect(ProductCategory.SET.isSet()).toBe(true);
+  });
+
+  it("INDIVIDUALはセット商品ではない", () => {
+    expect(ProductCategory.INDIVIDUAL.isSet()).toBe(false);
+  });
+
+  it("CONSUMABLEはセット商品ではない", () => {
+    expect(ProductCategory.CONSUMABLE.isSet()).toBe(false);
+  });
 });

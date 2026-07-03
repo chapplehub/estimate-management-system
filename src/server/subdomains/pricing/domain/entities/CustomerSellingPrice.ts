@@ -1,6 +1,7 @@
 import { ApplicablePeriod } from "@server/shared/domain/values/ApplicablePeriod";
-import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
+import { BusinessRuleViolationError, ValidationError } from "@server/shared/errors/DomainError";
 import { CustomerId } from "@subdomains/customer/domain/values/CustomerId";
+import { ProductCategory } from "@subdomains/product/domain/values/ProductCategory";
 import { ProductId } from "@subdomains/product/domain/values/ProductId";
 import { CustomerSellingPricePeriodId } from "../values/CustomerSellingPricePeriodId";
 import { SellingUnitPrice } from "../values/SellingUnitPrice";
@@ -31,8 +32,22 @@ export class CustomerSellingPrice {
     private readonly _periods: CustomerSellingPricePeriod[]
   ) {}
 
-  /** 空の集約を生成する。 */
-  static create(customerId: CustomerId, productId: ProductId): CustomerSellingPrice {
+  /**
+   * 空の集約を生成する。セット商品は自前の売単価を持たず常に構成商品から導出されるため、
+   * 生成入口で拒否する（#515）。区分不変ゆえ生成入口を塞げば以後の追加・改定・削除も
+   * 既存集約が存在しないことで構造的に到達不能になる。区分は集約越えの事実のため
+   * アプリ層が取得して引数で渡す（ADR-0030）。customerId は複合自然キーの先頭のため維持する。
+   */
+  static create(
+    customerId: CustomerId,
+    productId: ProductId,
+    category: ProductCategory
+  ): CustomerSellingPrice {
+    if (category.isSet()) {
+      throw new ValidationError(
+        `セット商品には${CustomerSellingPrice.ENTITY_NAME}を登録できません`
+      );
+    }
     return new CustomerSellingPrice(customerId, productId, []);
   }
 

@@ -52,7 +52,7 @@ describe("ResolveCostPriceQuery", () => {
   });
 
   it("基準暦日に有効な原価を解決する", async () => {
-    const aggregate = CostPrice.create(productId);
+    const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
     aggregate.addPeriod(period("2026-04-01", "2026-10-01"), cost(600), "2026-04-01");
     await repository.insert(aggregate);
 

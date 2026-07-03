@@ -66,4 +66,9 @@ export class ProductCategory extends ValueObject<string, "ProductCategory"> {
   canBeComponent(): boolean {
     return this._value !== "SET";
   }
+
+  /** セット商品か。価格集約（売単価・原価）の生成ガードで参照する（#515） */
+  isSet(): boolean {
+    return this._value === "SET";
+  }
 }

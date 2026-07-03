@@ -52,7 +52,7 @@ describe("ResolveCommonSellingPriceQuery", () => {
   });
 
   it("基準暦日に有効な共通販売単価を解決する", async () => {
-    const aggregate = CommonSellingPrice.create(productId);
+    const aggregate = CommonSellingPrice.create(productId, ProductCategory.INDIVIDUAL);
     aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000), "2025-07-01");
     await repository.insert(aggregate);
 

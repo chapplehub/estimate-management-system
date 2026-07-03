@@ -55,7 +55,7 @@ describe("PrismaCommonSellingPriceRepository", () => {
   });
 
   it("insert して findByProductId で往復できる（有界＋無期限・銭精度）", async () => {
-    const aggregate = CommonSellingPrice.create(productId);
+    const aggregate = CommonSellingPrice.create(productId, ProductCategory.INDIVIDUAL);
     aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000), "2025-07-01");
     aggregate.addPeriod(period("2025-10-01", null), price(1234.56), "2025-10-01");
     await repository.insert(aggregate);
@@ -75,7 +75,7 @@ describe("PrismaCommonSellingPriceRepository", () => {
   });
 
   it("update で期間行を追加同期できる（version 一致時・append-only）", async () => {
-    const aggregate = CommonSellingPrice.create(productId);
+    const aggregate = CommonSellingPrice.create(productId, ProductCategory.INDIVIDUAL);
     aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000), "2025-07-01");
     await repository.insert(aggregate);
 
@@ -90,7 +90,7 @@ describe("PrismaCommonSellingPriceRepository", () => {
   });
 
   it("update は無変更の既存行の updated_at を変更しない（監査保持）", async () => {
-    const aggregate = CommonSellingPrice.create(productId);
+    const aggregate = CommonSellingPrice.create(productId, ProductCategory.INDIVIDUAL);
     aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000), "2025-07-01");
     await repository.insert(aggregate);
 
@@ -122,7 +122,7 @@ describe("PrismaCommonSellingPriceRepository", () => {
   });
 
   it("update で将来行の単価改定が in-place 反映され、改定行の updated_at が進む（編集の永続化）", async () => {
-    const aggregate = CommonSellingPrice.create(productId);
+    const aggregate = CommonSellingPrice.create(productId, ProductCategory.INDIVIDUAL);
     aggregate.addPeriod(period("2030-01-01", null), price(1000), "2025-06-01");
     await repository.insert(aggregate);
 
@@ -159,7 +159,7 @@ describe("PrismaCommonSellingPriceRepository", () => {
   });
 
   it("update で集約から消えた将来行は DB からも削除される（削除の永続化）", async () => {
-    const aggregate = CommonSellingPrice.create(productId);
+    const aggregate = CommonSellingPrice.create(productId, ProductCategory.INDIVIDUAL);
     aggregate.addPeriod(period("2030-01-01", "2030-06-01"), price(1000), "2025-06-01");
     aggregate.addPeriod(period("2030-06-01", null), price(1200), "2025-06-01");
     await repository.insert(aggregate);
@@ -175,7 +175,7 @@ describe("PrismaCommonSellingPriceRepository", () => {
   });
 
   it("update で最後の将来行を削除すると期間行が0件になる（空集約 delete・空配列バインド）", async () => {
-    const aggregate = CommonSellingPrice.create(productId);
+    const aggregate = CommonSellingPrice.create(productId, ProductCategory.INDIVIDUAL);
     aggregate.addPeriod(period("2030-01-01", null), price(1000), "2025-06-01");
     await repository.insert(aggregate);
 
@@ -191,7 +191,7 @@ describe("PrismaCommonSellingPriceRepository", () => {
   });
 
   it("古い expectedVersion での update は ConflictError", async () => {
-    const aggregate = CommonSellingPrice.create(productId);
+    const aggregate = CommonSellingPrice.create(productId, ProductCategory.INDIVIDUAL);
     aggregate.addPeriod(period("2025-07-01", null), price(1000), "2025-07-01");
     await repository.insert(aggregate);
 
@@ -199,18 +199,18 @@ describe("PrismaCommonSellingPriceRepository", () => {
   });
 
   it("同一商品への二重 insert は ConflictError（親 PK 衝突の翻訳）", async () => {
-    const first = CommonSellingPrice.create(productId);
+    const first = CommonSellingPrice.create(productId, ProductCategory.INDIVIDUAL);
     first.addPeriod(period("2025-07-01", null), price(1000), "2025-07-01");
     await repository.insert(first);
 
     // アプリ層の存在チェックをすり抜けた二重作成レースを模す。
-    const second = CommonSellingPrice.create(productId);
+    const second = CommonSellingPrice.create(productId, ProductCategory.INDIVIDUAL);
     second.addPeriod(period("2025-07-01", null), price(2000), "2025-07-01");
     await expect(repository.insert(second)).rejects.toBeInstanceOf(ConflictError);
   });
 
   it("同一商品で適用期間が重複する行は EXCLUDE 制約で弾かれる", async () => {
-    const aggregate = CommonSellingPrice.create(productId);
+    const aggregate = CommonSellingPrice.create(productId, ProductCategory.INDIVIDUAL);
     aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000), "2025-07-01");
     await repository.insert(aggregate);
 

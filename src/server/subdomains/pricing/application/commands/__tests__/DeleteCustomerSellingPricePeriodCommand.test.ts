@@ -65,7 +65,11 @@ describe("DeleteCustomerSellingPricePeriodCommand", () => {
   afterEach(cleanup);
 
   it("将来行を削除できる", async () => {
-    const aggregate = CustomerSellingPrice.create(customerId, productId);
+    const aggregate = CustomerSellingPrice.create(
+      customerId,
+      productId,
+      ProductCategory.INDIVIDUAL
+    );
     aggregate.addPeriod(period("2030-01-01", "2030-06-01"), price(1000), "2025-06-01");
     aggregate.addPeriod(period("2030-06-01", null), price(1200), "2025-06-01");
     await repository.insert(aggregate);
@@ -98,7 +102,11 @@ describe("DeleteCustomerSellingPricePeriodCommand", () => {
   });
 
   it("現在有効行の削除は BusinessRuleViolationError（参照日が domain まで素通しされる）", async () => {
-    const aggregate = CustomerSellingPrice.create(customerId, productId);
+    const aggregate = CustomerSellingPrice.create(
+      customerId,
+      productId,
+      ProductCategory.INDIVIDUAL
+    );
     aggregate.addPeriod(period("2025-04-01", null), price(1000), "2025-03-01");
     await repository.insert(aggregate);
     const periodId = (await repository.findByCustomerIdAndProductId(customerId, productId))!
@@ -116,7 +124,11 @@ describe("DeleteCustomerSellingPricePeriodCommand", () => {
   });
 
   it("expectedVersion が古いと ConflictError", async () => {
-    const aggregate = CustomerSellingPrice.create(customerId, productId);
+    const aggregate = CustomerSellingPrice.create(
+      customerId,
+      productId,
+      ProductCategory.INDIVIDUAL
+    );
     aggregate.addPeriod(period("2030-01-01", null), price(1000), "2025-06-01");
     await repository.insert(aggregate);
     const periodId = (await repository.findByCustomerIdAndProductId(customerId, productId))!

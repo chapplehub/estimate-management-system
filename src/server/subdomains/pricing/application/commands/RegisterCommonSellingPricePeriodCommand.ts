@@ -4,6 +4,8 @@ import { ValidationError } from "@server/shared/errors/DomainError";
 import { CommonSellingPrice } from "@subdomains/pricing/domain/entities";
 import { CommonSellingPriceRepository } from "@subdomains/pricing/domain/repositories/CommonSellingPriceRepository";
 import { SellingUnitPrice } from "@subdomains/pricing/domain/values/SellingUnitPrice";
+import { ProductQueryService } from "@subdomains/product/application/queries/ProductQueryService";
+import { ProductCategory } from "@subdomains/product/domain/values/ProductCategory";
 import { ProductId } from "@subdomains/product/domain/values/ProductId";
 
 export type RegisterCommonSellingPricePeriodInput = {
@@ -27,7 +29,10 @@ export type RegisterCommonSellingPricePeriodInput = {
  * 集約の `addPeriod` が参照日を使って強制する。戻り値は登録後の集約（ADR-0038）。
  */
 export class RegisterCommonSellingPricePeriodCommand {
-  constructor(private readonly repository: CommonSellingPriceRepository) {}
+  constructor(
+    private readonly repository: CommonSellingPriceRepository,
+    private readonly productQueryService: ProductQueryService
+  ) {}
 
   async execute(input: RegisterCommonSellingPricePeriodInput): Promise<CommonSellingPrice> {
     const productId = new ProductId(input.productId);
@@ -36,7 +41,17 @@ export class RegisterCommonSellingPricePeriodCommand {
 
     const existing = await this.repository.findByProductId(productId);
     if (existing === null) {
-      const aggregate = CommonSellingPrice.create(productId);
+      // 新規作成分岐でのみ商品区分をライブ取得する。区分不変ゆえ既存集約は必ず非セットで、
+      // 更新経路での取得は無駄なクエリになるため取得しない（ADR-0030）。セット商品拒否は
+      // 集約の構造的不変条件として `create` に置く（ファクトリガード・#515）。
+      const product = await this.productQueryService.findById(input.productId);
+      if (product === null) {
+        throw new ValidationError(`商品が存在しません: ${input.productId}`);
+      }
+      const aggregate = CommonSellingPrice.create(
+        productId,
+        ProductCategory.from(product.category)
+      );
       aggregate.addPeriod(period, price, input.referenceDate);
       await this.repository.insert(aggregate);
       return aggregate;
