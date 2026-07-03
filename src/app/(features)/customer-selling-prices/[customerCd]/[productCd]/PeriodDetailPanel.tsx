@@ -7,8 +7,8 @@ import type {
   CustomerSellingPricePeriodStatus,
 } from "@subdomains/pricing/application/queries/dto/CustomerSellingPriceEditDTO";
 import type { CommonSellingPriceEditPeriodDTO } from "@subdomains/pricing/application/queries/dto/CommonSellingPriceEditDTO";
-import { authorityFor } from "../../../_shared/period-rules";
-import { computeTimelineLayout } from "../../../_shared/timeline-layout";
+import { authorityFor, type PeriodStatus } from "../../../_shared/period-rules";
+import { computeTimelineLayout, type TimelinePeriod } from "../../../_shared/timeline-layout";
 import { formatYenFromDecimal } from "../../../_shared/formatYen";
 import { PeriodDeleteConfirm } from "./PeriodDeleteConfirm";
 import { PeriodForm } from "./PeriodForm";
@@ -24,6 +24,27 @@ const STATUS_BADGE: Record<
   future: { label: "将来", variant: "outline" },
   expired: { label: "失効", variant: "secondary" },
 };
+
+/**
+ * 得意先別・共通いずれの期間 DTO も持つ最小フィールド。`toTimelinePeriod` の入力に使う
+ * （主レーン＝得意先別 / 従レーン＝共通 を同一の中立構造へ写像するため）。
+ */
+type TimelinePeriodSource = {
+  periodId: string;
+  start: string;
+  end: string | null;
+  status: PeriodStatus;
+  sellingPrice: string;
+};
+
+/** 期間 DTO を `computeTimelineLayout` の中立構造 `TimelinePeriod` へ写像（主・従レーン共通・`sellingPrice`→`price`）。 */
+const toTimelinePeriod = (p: TimelinePeriodSource): TimelinePeriod => ({
+  periodId: p.periodId,
+  start: p.start,
+  end: p.end,
+  status: p.status,
+  price: p.sellingPrice,
+});
 
 /**
  * パネルの開閉モード（決定2: URLに載せずクライアント状態で保持）。
@@ -126,22 +147,10 @@ export function PeriodDetailPanel({ detail, commonPeriods, isAdmin, referenceDat
       {showTimeline && (
         <PriceTimeline
           layout={computeTimelineLayout(
-            detail.periods.map((p) => ({
-              periodId: p.periodId,
-              start: p.start,
-              end: p.end,
-              status: p.status,
-              price: p.sellingPrice,
-            })),
+            detail.periods.map(toTimelinePeriod),
             referenceDate,
             // 従レーン（共通販売単価・フォールバック）。同一の中立構造へマップして重ねる（表示専用）。
-            commonPeriods.map((p) => ({
-              periodId: p.periodId,
-              start: p.start,
-              end: p.end,
-              status: p.status,
-              price: p.sellingPrice,
-            }))
+            commonPeriods.map(toTimelinePeriod)
           )}
         />
       )}
