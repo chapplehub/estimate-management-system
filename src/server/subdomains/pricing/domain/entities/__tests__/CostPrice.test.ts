@@ -1,6 +1,7 @@
 import { ApplicablePeriod } from "@server/shared/domain/values/ApplicablePeriod";
 import { Money } from "@server/shared/domain/values/Money";
 import { BusinessRuleViolationError, ValidationError } from "@server/shared/errors/DomainError";
+import { ProductCategory } from "@subdomains/product/domain/values/ProductCategory";
 import { ProductId } from "@subdomains/product/domain/values/ProductId";
 import { describe, expect, it } from "vitest";
 import { CostPricePeriodId } from "../../values/CostPricePeriodId";
@@ -14,9 +15,20 @@ const cost = (yen: number) => CostUnitPrice.fromMoney(Money.fromMajorUnits(yen))
 describe("CostPrice 集約", () => {
   describe("生成", () => {
     it("商品IDで空の集約を生成できる", () => {
-      const aggregate = CostPrice.create(productId);
+      const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
       expect(aggregate.productId.equals(productId)).toBe(true);
       expect(aggregate.periods).toHaveLength(0);
+    });
+
+    it("消耗品でも空の集約を生成できる（価格保守対象商品・#515）", () => {
+      const aggregate = CostPrice.create(productId, ProductCategory.CONSUMABLE);
+      expect(aggregate.periods).toHaveLength(0);
+    });
+
+    it("セット商品区分では原価集約を生成できない（ValidationError・#515）", () => {
+      // セット商品は自前の原価を持たず常に構成商品から導出されるため、原価集約の生成入口で拒否する。
+      // 区分不変ゆえ生成入口を塞げば以後の全操作（追加・改定・削除）も構造的に到達不能になる。
+      expect(() => CostPrice.create(productId, ProductCategory.SET)).toThrow(ValidationError);
     });
   });
 
@@ -24,7 +36,7 @@ describe("CostPrice 集約", () => {
     const today = "2026-01-01";
 
     it("期間行を追加でき、期間と原価が保持される", () => {
-      const aggregate = CostPrice.create(productId);
+      const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
       aggregate.addPeriod(period("2026-04-01", "2026-10-01"), cost(600), today);
 
       expect(aggregate.periods).toHaveLength(1);
@@ -34,7 +46,7 @@ describe("CostPrice 集約", () => {
     });
 
     it("採番された identity が各行に付与される", () => {
-      const aggregate = CostPrice.create(productId);
+      const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
       aggregate.addPeriod(period("2026-04-01", "2026-10-01"), cost(600), today);
       aggregate.addPeriod(period("2026-10-01", null), cost(700), today);
 
@@ -43,7 +55,7 @@ describe("CostPrice 集約", () => {
     });
 
     it("重ならない期間は複数追加できる（隣接含む）", () => {
-      const aggregate = CostPrice.create(productId);
+      const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
       aggregate.addPeriod(period("2026-04-01", "2026-10-01"), cost(600), today);
       aggregate.addPeriod(period("2026-10-01", null), cost(700), today);
 
@@ -51,14 +63,14 @@ describe("CostPrice 集約", () => {
     });
 
     it("0円の原価も保存できる（非複合品の本物の0）", () => {
-      const aggregate = CostPrice.create(productId);
+      const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
       aggregate.addPeriod(period("2026-04-01", null), cost(0), today);
 
       expect(aggregate.periods[0].price.equals(cost(0))).toBe(true);
     });
 
     it("既存期間と重複する期間は BusinessRuleViolationError", () => {
-      const aggregate = CostPrice.create(productId);
+      const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
       aggregate.addPeriod(period("2026-04-01", "2026-10-01"), cost(600), today);
 
       expect(() =>
@@ -69,7 +81,7 @@ describe("CostPrice 集約", () => {
     });
 
     it("無期限行があるとき、その開始日以降に重なる期間は弾く", () => {
-      const aggregate = CostPrice.create(productId);
+      const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
       aggregate.addPeriod(period("2026-04-01", null), cost(600), today);
 
       expect(() =>
@@ -78,14 +90,14 @@ describe("CostPrice 集約", () => {
     });
 
     it("開始日が今日と同じなら追加できる（境界・以上）", () => {
-      const aggregate = CostPrice.create(productId);
+      const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
       aggregate.addPeriod(period(today, null), cost(600), today);
 
       expect(aggregate.periods).toHaveLength(1);
     });
 
     it("開始日が今日より前なら BusinessRuleViolationError（過去への後付け登録を禁止）", () => {
-      const aggregate = CostPrice.create(productId);
+      const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
 
       expect(() => aggregate.addPeriod(period("2025-12-31", null), cost(600), today)).toThrow(
         BusinessRuleViolationError
@@ -98,7 +110,7 @@ describe("CostPrice 集約", () => {
     const today = "2025-06-01";
 
     it("将来行の期間と単価を差し替えられる（identity は保持）", () => {
-      const aggregate = CostPrice.create(productId);
+      const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
       aggregate.addPeriod(period("2025-07-01", "2025-10-01"), cost(1000), today);
       const id = aggregate.periods[0].id;
 
@@ -115,7 +127,7 @@ describe("CostPrice 集約", () => {
     });
 
     it("現在有効行は編集できない（BusinessRuleViolationError・単価ロック）", () => {
-      const aggregate = CostPrice.create(productId);
+      const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
       // 開始 ≤ 今日 < 終了 = 現在有効
       aggregate.addPeriod(period("2025-05-01", "2025-12-01"), cost(1000), "2025-04-01");
       const id = aggregate.periods[0].id;
@@ -129,7 +141,7 @@ describe("CostPrice 集約", () => {
     });
 
     it("失効行は編集できない（BusinessRuleViolationError）", () => {
-      const aggregate = CostPrice.create(productId);
+      const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
       // 今日 ≥ 終了 = 失効
       aggregate.addPeriod(period("2025-01-01", "2025-04-01"), cost(1000), "2024-12-01");
       const id = aggregate.periods[0].id;
@@ -140,7 +152,7 @@ describe("CostPrice 集約", () => {
     });
 
     it("存在しない periodId は BusinessRuleViolationError", () => {
-      const aggregate = CostPrice.create(productId);
+      const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
       aggregate.addPeriod(period("2025-07-01", null), cost(1000), today);
 
       expect(() =>
@@ -157,7 +169,7 @@ describe("CostPrice 集約", () => {
     const today = "2025-06-01";
 
     it("現在有効行に終了日を設定でき、開始日・単価は変わらない", () => {
-      const aggregate = CostPrice.create(productId);
+      const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
       aggregate.addPeriod(period("2025-04-01", null), cost(1000), "2025-03-01");
       const id = aggregate.periods[0].id;
 
@@ -170,7 +182,7 @@ describe("CostPrice 集約", () => {
     });
 
     it("終了日が今日以前なら不可（過去の被覆を遡及削除させない）", () => {
-      const aggregate = CostPrice.create(productId);
+      const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
       aggregate.addPeriod(period("2025-04-01", null), cost(1000), "2025-03-01");
       const id = aggregate.periods[0].id;
 
@@ -179,7 +191,7 @@ describe("CostPrice 集約", () => {
     });
 
     it("将来行には適用終了できない（編集で対応する）", () => {
-      const aggregate = CostPrice.create(productId);
+      const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
       aggregate.addPeriod(period("2025-07-01", null), cost(1000), today);
       const id = aggregate.periods[0].id;
 
@@ -189,7 +201,7 @@ describe("CostPrice 集約", () => {
     });
 
     it("失効行には適用終了できない", () => {
-      const aggregate = CostPrice.create(productId);
+      const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
       aggregate.addPeriod(period("2025-01-01", "2025-04-01"), cost(1000), "2024-12-01");
       const id = aggregate.periods[0].id;
 
@@ -199,7 +211,7 @@ describe("CostPrice 集約", () => {
     });
 
     it("有界の現在有効行を既存終了日より後へは延長できない（短縮のみ許可）", () => {
-      const aggregate = CostPrice.create(productId);
+      const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
       aggregate.addPeriod(period("2025-04-01", "2025-07-01"), cost(1000), "2025-03-01");
       const id = aggregate.periods[0].id;
 
@@ -210,7 +222,7 @@ describe("CostPrice 集約", () => {
     });
 
     it("有界の現在有効行で既存終了日と同一の終了日は不可（短縮になっていない）", () => {
-      const aggregate = CostPrice.create(productId);
+      const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
       aggregate.addPeriod(period("2025-04-01", "2025-07-01"), cost(1000), "2025-03-01");
       const id = aggregate.periods[0].id;
 
@@ -220,7 +232,7 @@ describe("CostPrice 集約", () => {
     });
 
     it("有界の現在有効行を既存終了日より手前へは短縮できる", () => {
-      const aggregate = CostPrice.create(productId);
+      const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
       aggregate.addPeriod(period("2025-04-01", "2025-07-01"), cost(1000), "2025-03-01");
       const id = aggregate.periods[0].id;
 
@@ -230,7 +242,7 @@ describe("CostPrice 集約", () => {
     });
 
     it("実在しない日付の終了日は形式エラー（短縮判定より前に弾く）", () => {
-      const aggregate = CostPrice.create(productId);
+      const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
       aggregate.addPeriod(period("2025-04-01", "2025-07-01"), cost(1000), "2025-03-01");
       const id = aggregate.periods[0].id;
 
@@ -240,7 +252,7 @@ describe("CostPrice 集約", () => {
     });
 
     it("空文字の終了日は形式エラー（今日比較より前に弾く）", () => {
-      const aggregate = CostPrice.create(productId);
+      const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
       aggregate.addPeriod(period("2025-04-01", "2025-07-01"), cost(1000), "2025-03-01");
       const id = aggregate.periods[0].id;
 
@@ -253,7 +265,7 @@ describe("CostPrice 集約", () => {
     const today = "2025-06-01";
 
     it("将来行を削除できる（誤入力訂正）", () => {
-      const aggregate = CostPrice.create(productId);
+      const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
       aggregate.addPeriod(period("2025-07-01", "2025-10-01"), cost(1000), today);
       aggregate.addPeriod(period("2025-10-01", null), cost(1200), today);
       const id = aggregate.periods[0].id;
@@ -265,7 +277,7 @@ describe("CostPrice 集約", () => {
     });
 
     it("現在有効行は削除できない（BusinessRuleViolationError）", () => {
-      const aggregate = CostPrice.create(productId);
+      const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
       aggregate.addPeriod(period("2025-04-01", null), cost(1000), "2025-03-01");
       const id = aggregate.periods[0].id;
 
@@ -274,7 +286,7 @@ describe("CostPrice 集約", () => {
     });
 
     it("失効行は削除できない（BusinessRuleViolationError）", () => {
-      const aggregate = CostPrice.create(productId);
+      const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
       aggregate.addPeriod(period("2025-01-01", "2025-04-01"), cost(1000), "2024-12-01");
       const id = aggregate.periods[0].id;
 
@@ -283,7 +295,7 @@ describe("CostPrice 集約", () => {
     });
 
     it("存在しない periodId は BusinessRuleViolationError", () => {
-      const aggregate = CostPrice.create(productId);
+      const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
       aggregate.addPeriod(period("2025-07-01", null), cost(1000), today);
 
       expect(() => aggregate.deletePeriod(CostPricePeriodId.generate(), today)).toThrow(
@@ -296,7 +308,7 @@ describe("CostPrice 集約", () => {
     const today = "2025-06-01";
 
     it("現在有効行（開始 ≤ 今日 < 終了）を返す", () => {
-      const aggregate = CostPrice.create(productId);
+      const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
       aggregate.addPeriod(period("2025-04-01", "2025-12-01"), cost(1000), "2025-03-01");
 
       const row = aggregate.currentValidPeriod(today);
@@ -307,7 +319,7 @@ describe("CostPrice 集約", () => {
     });
 
     it("無期限の現在有効行（開始 ≤ 今日・終了なし）を返す", () => {
-      const aggregate = CostPrice.create(productId);
+      const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
       aggregate.addPeriod(period("2025-04-01", null), cost(1000), "2025-03-01");
 
       const row = aggregate.currentValidPeriod(today);
@@ -316,7 +328,7 @@ describe("CostPrice 集約", () => {
     });
 
     it("現在有効行が無ければ undefined（将来行・失効行のみ）", () => {
-      const aggregate = CostPrice.create(productId);
+      const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
       aggregate.addPeriod(period("2025-01-01", "2025-04-01"), cost(1000), "2024-12-01"); // 失効
       aggregate.addPeriod(period("2025-07-01", null), cost(1200), today); // 将来
 
@@ -324,7 +336,7 @@ describe("CostPrice 集約", () => {
     });
 
     it("空集約では undefined", () => {
-      const aggregate = CostPrice.create(productId);
+      const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
       expect(aggregate.currentValidPeriod(today)).toBeUndefined();
     });
   });

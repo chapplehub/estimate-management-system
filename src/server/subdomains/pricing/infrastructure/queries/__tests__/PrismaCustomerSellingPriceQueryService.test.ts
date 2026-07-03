@@ -95,7 +95,11 @@ describe("PrismaCustomerSellingPriceQueryService", () => {
   });
 
   it("区間内の暦日で有効な得意先別単価を引く", async () => {
-    const aggregate = CustomerSellingPrice.create(customerId, productId);
+    const aggregate = CustomerSellingPrice.create(
+      customerId,
+      productId,
+      ProductCategory.INDIVIDUAL
+    );
     aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000), "2025-07-01");
     await repository.insert(aggregate);
 
@@ -109,7 +113,11 @@ describe("PrismaCustomerSellingPriceQueryService", () => {
   });
 
   it("同じ商品でも別の得意先では引かない（得意先キーの隔離）", async () => {
-    const aggregate = CustomerSellingPrice.create(customerId, productId);
+    const aggregate = CustomerSellingPrice.create(
+      customerId,
+      productId,
+      ProductCategory.INDIVIDUAL
+    );
     aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000), "2025-07-01");
     await repository.insert(aggregate);
 
@@ -123,7 +131,11 @@ describe("PrismaCustomerSellingPriceQueryService", () => {
   });
 
   it("同じ得意先でも別の商品では引かない（商品キーの隔離）", async () => {
-    const aggregate = CustomerSellingPrice.create(customerId, productId);
+    const aggregate = CustomerSellingPrice.create(
+      customerId,
+      productId,
+      ProductCategory.INDIVIDUAL
+    );
     aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000), "2025-07-01");
     await repository.insert(aggregate);
 
@@ -139,7 +151,7 @@ describe("PrismaCustomerSellingPriceQueryService", () => {
   it("同じ商品に共通販売単価があっても得意先別としては引かない（層の隔離）", async () => {
     // 共通販売単価だけを登録し、得意先別は1件も登録しない。
     // 得意先別 QueryService は customer_selling_price_periods のみを見るため null になる。
-    const common = CommonSellingPrice.create(productId);
+    const common = CommonSellingPrice.create(productId, ProductCategory.INDIVIDUAL);
     common.addPeriod(period("2025-07-01", "2025-10-01"), price(1000), "2025-07-01");
     await new PrismaCommonSellingPriceRepository().insert(common);
 
@@ -153,7 +165,11 @@ describe("PrismaCustomerSellingPriceQueryService", () => {
   });
 
   it("どの適用期間にも覆われない暦日では null を返す", async () => {
-    const aggregate = CustomerSellingPrice.create(customerId, productId);
+    const aggregate = CustomerSellingPrice.create(
+      customerId,
+      productId,
+      ProductCategory.INDIVIDUAL
+    );
     aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000), "2025-07-01");
     await repository.insert(aggregate);
 

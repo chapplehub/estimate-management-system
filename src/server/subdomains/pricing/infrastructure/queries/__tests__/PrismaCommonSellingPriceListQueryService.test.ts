@@ -61,7 +61,7 @@ describe("PrismaCommonSellingPriceListQueryService", () => {
 
   it("現在有効な単価がある商品は currentSellingPrice を値で返し priceStatus=active", async () => {
     const productId = await makeProduct(CODES.active, "現在有効商品");
-    const aggregate = CommonSellingPrice.create(productId);
+    const aggregate = CommonSellingPrice.create(productId, ProductCategory.INDIVIDUAL);
     aggregate.addPeriod(period("2025-01-01", null), price(1000), "2025-01-01");
     await repository.insert(aggregate);
 
@@ -75,7 +75,7 @@ describe("PrismaCommonSellingPriceListQueryService", () => {
 
   it("現在有効行が無期限なら currentPeriodStart は開始日・currentPeriodEnd は null", async () => {
     const productId = await makeProduct(CODES.active, "現在有効・無期限商品");
-    const aggregate = CommonSellingPrice.create(productId);
+    const aggregate = CommonSellingPrice.create(productId, ProductCategory.INDIVIDUAL);
     aggregate.addPeriod(period("2025-01-01", null), price(1000), "2025-01-01");
     await repository.insert(aggregate);
 
@@ -88,7 +88,7 @@ describe("PrismaCommonSellingPriceListQueryService", () => {
 
   it("現在有効行が有界なら currentPeriodStart/End に半開区間の生値（排他上端）を返す", async () => {
     const productId = await makeProduct(CODES.futureOnly, "現在有効・有界商品");
-    const aggregate = CommonSellingPrice.create(productId);
+    const aggregate = CommonSellingPrice.create(productId, ProductCategory.INDIVIDUAL);
     aggregate.addPeriod(period("2025-01-01", "2025-12-31"), price(1000), "2025-01-01");
     await repository.insert(aggregate);
 
@@ -114,7 +114,7 @@ describe("PrismaCommonSellingPriceListQueryService", () => {
 
   it("将来行のみの商品は currentSellingPrice=null・priceStatus=lapsed（失効中）", async () => {
     const productId = await makeProduct(CODES.futureOnly, "将来のみ商品");
-    const aggregate = CommonSellingPrice.create(productId);
+    const aggregate = CommonSellingPrice.create(productId, ProductCategory.INDIVIDUAL);
     aggregate.addPeriod(period("2030-01-01", null), price(1000), "2025-01-01");
     await repository.insert(aggregate);
 
@@ -127,7 +127,7 @@ describe("PrismaCommonSellingPriceListQueryService", () => {
 
   it("失効行のみの商品は currentSellingPrice=null・priceStatus=lapsed（失効中）", async () => {
     const productId = await makeProduct(CODES.expiredOnly, "失効のみ商品");
-    const aggregate = CommonSellingPrice.create(productId);
+    const aggregate = CommonSellingPrice.create(productId, ProductCategory.INDIVIDUAL);
     aggregate.addPeriod(period("2025-01-01", "2025-03-01"), price(1000), "2025-01-01");
     await repository.insert(aggregate);
 
@@ -198,7 +198,7 @@ describe("PrismaCommonSellingPriceListQueryService", () => {
 
     it("priceStatus=unset は未設定のみへ絞り込む", async () => {
       const activeId = await makeProduct(CODES.active, "現在有効商品");
-      const aggregate = CommonSellingPrice.create(activeId);
+      const aggregate = CommonSellingPrice.create(activeId, ProductCategory.INDIVIDUAL);
       aggregate.addPeriod(period("2025-01-01", null), price(1000), "2025-01-01");
       await repository.insert(aggregate);
       await makeProduct(CODES.unset, "未設定商品");

@@ -11,27 +11,33 @@ import { ProductId } from "@subdomains/product/domain/values/ProductId";
 import { ProductName } from "@subdomains/product/domain/values/ProductName";
 import { ProductUnit } from "@subdomains/product/domain/values/ProductUnit";
 import { PrismaProductRepository } from "@subdomains/product/infrastructure/prisma/PrismaProductRepository";
+import { PrismaProductQueryService } from "@subdomains/product/infrastructure/queries/PrismaProductQueryService";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { RegisterCostPricePeriodCommand } from "../RegisterCostPricePeriodCommand";
 
 const TEST_PRODUCT_CODE = "CPCMD10";
+const TEST_SET_PRODUCT_CODE = "CPCMD11";
 const cost = (yen: number) => CostUnitPrice.fromMoney(Money.fromMajorUnits(yen));
 
 async function cleanup(): Promise<void> {
-  await prisma.product.deleteMany({ where: { code: TEST_PRODUCT_CODE } });
+  await prisma.product.deleteMany({
+    where: { code: { in: [TEST_PRODUCT_CODE, TEST_SET_PRODUCT_CODE] } },
+  });
 }
 
 describe("RegisterCostPricePeriodCommand", () => {
   let command: RegisterCostPricePeriodCommand;
   let repository: PrismaCostPriceRepository;
   let productId: ProductId;
+  let setProductId: ProductId;
 
   beforeEach(async () => {
     await cleanup();
     repository = new PrismaCostPriceRepository();
-    command = new RegisterCostPricePeriodCommand(repository);
+    command = new RegisterCostPricePeriodCommand(repository, new PrismaProductQueryService());
 
-    const product = await new PrismaProductRepository().insert(
+    const productRepository = new PrismaProductRepository();
+    const product = await productRepository.insert(
       Product.create(
         new ProductCode(TEST_PRODUCT_CODE),
         new ProductName(`登録コマンドテスト商品${TEST_PRODUCT_CODE}`),
@@ -40,6 +46,16 @@ describe("RegisterCostPricePeriodCommand", () => {
       )
     );
     productId = product.id;
+
+    const setProduct = await productRepository.insert(
+      Product.create(
+        new ProductCode(TEST_SET_PRODUCT_CODE),
+        new ProductName(`登録コマンドテストセット商品${TEST_SET_PRODUCT_CODE}`),
+        ProductCategory.SET,
+        ProductUnit.UNIT
+      )
+    );
+    setProductId = setProduct.id;
   });
 
   afterEach(cleanup);
@@ -110,6 +126,31 @@ describe("RegisterCostPricePeriodCommand", () => {
         start: "2030-06-01",
         end: null,
         price: "1200",
+        referenceDate: "2025-06-01",
+      })
+    ).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it("セット商品には原価を登録できない（ValidationError・ファクトリガード / #515）", async () => {
+    // セット商品は自前の原価を持たず構成商品から導出されるため、生成入口で拒否する。
+    await expect(
+      command.execute({
+        productId: setProductId.value,
+        start: "2030-01-01",
+        end: null,
+        price: "1000",
+        referenceDate: "2025-06-01",
+      })
+    ).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it("存在しない商品IDでは登録できない（ValidationError・入力契約違反 / #515）", async () => {
+    await expect(
+      command.execute({
+        productId: ProductId.generate().value,
+        start: "2030-01-01",
+        end: null,
+        price: "1000",
         referenceDate: "2025-06-01",
       })
     ).rejects.toBeInstanceOf(ValidationError);

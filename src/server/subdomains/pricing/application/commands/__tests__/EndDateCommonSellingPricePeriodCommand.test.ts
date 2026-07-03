@@ -50,7 +50,7 @@ describe("EndDateCommonSellingPricePeriodCommand", () => {
 
   /** 現在有効な無期限行を1本持つ集約を用意し、その periodId を返す。 */
   async function seedActivePeriod(): Promise<CommonSellingPricePeriodId> {
-    const aggregate = CommonSellingPrice.create(productId);
+    const aggregate = CommonSellingPrice.create(productId, ProductCategory.INDIVIDUAL);
     aggregate.addPeriod(period("2025-04-01", null), price(1000), "2025-03-01");
     await repository.insert(aggregate);
     return (await repository.findByProductId(productId))!.periods[0].id;
@@ -84,7 +84,7 @@ describe("EndDateCommonSellingPricePeriodCommand", () => {
   });
 
   it("将来行への適用終了は BusinessRuleViolationError（参照日が domain まで素通しされる）", async () => {
-    const aggregate = CommonSellingPrice.create(productId);
+    const aggregate = CommonSellingPrice.create(productId, ProductCategory.INDIVIDUAL);
     aggregate.addPeriod(period("2030-01-01", null), price(1000), "2025-06-01");
     await repository.insert(aggregate);
     const periodId = (await repository.findByProductId(productId))!.periods[0].id;

@@ -50,7 +50,7 @@ describe("ReviseCostPricePeriodCommand", () => {
 
   /** 現在有効な無期限行（2025-04-01〜・1000円）を1本持つ集約を用意する。 */
   async function seedActivePeriod(): Promise<void> {
-    const aggregate = CostPrice.create(productId);
+    const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
     aggregate.addPeriod(period("2025-04-01", null), cost(1000), "2025-03-01");
     await repository.insert(aggregate);
   }
@@ -79,7 +79,7 @@ describe("ReviseCostPricePeriodCommand", () => {
 
   it("現在有効行が無い商品（将来行のみ）は BusinessRuleViolationError", async () => {
     // 集約は在るが現在有効行が無い（将来開始のみ）。loadOrThrow は通り改定対象が無いことで弾く。
-    const aggregate = CostPrice.create(productId);
+    const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
     aggregate.addPeriod(period("2025-12-01", null), cost(1000), "2025-06-01");
     await repository.insert(aggregate);
 
@@ -162,7 +162,7 @@ describe("ReviseCostPricePeriodCommand", () => {
 
   it("改定日開始の新行が既存の将来行と重複すると BusinessRuleViolationError", async () => {
     // 現在有効行＋将来行（2025-10-01〜）。改定日2025-09-01開始の無期限新行が将来行と重なる。
-    const aggregate = CostPrice.create(productId);
+    const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
     aggregate.addPeriod(period("2025-04-01", "2025-10-01"), cost(1000), "2025-03-01");
     aggregate.addPeriod(period("2025-10-01", null), cost(1100), "2025-03-01");
     await repository.insert(aggregate);

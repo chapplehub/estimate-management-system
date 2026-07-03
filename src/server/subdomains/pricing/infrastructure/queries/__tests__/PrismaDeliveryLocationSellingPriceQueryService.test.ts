@@ -158,7 +158,7 @@ describe("PrismaDeliveryLocationSellingPriceQueryService", () => {
   it("同じ商品に共通販売単価があっても納品先別としては引かない（層の隔離）", async () => {
     // 共通販売単価だけを登録し、納品先別は1件も登録しない。
     // 納品先別 QueryService は delivery_location_selling_price_periods のみを見るため null になる。
-    const common = CommonSellingPrice.create(productId);
+    const common = CommonSellingPrice.create(productId, ProductCategory.INDIVIDUAL);
     common.addPeriod(period("2025-07-01", "2025-10-01"), price(1000), "2025-07-01");
     await new PrismaCommonSellingPriceRepository().insert(common);
 

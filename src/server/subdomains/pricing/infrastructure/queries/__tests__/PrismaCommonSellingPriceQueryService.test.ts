@@ -53,7 +53,7 @@ describe("PrismaCommonSellingPriceQueryService", () => {
   });
 
   it("区間内の暦日で有効な単価を引く", async () => {
-    const aggregate = CommonSellingPrice.create(productId);
+    const aggregate = CommonSellingPrice.create(productId, ProductCategory.INDIVIDUAL);
     aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000), "2025-07-01");
     await repository.insert(aggregate);
 
@@ -65,7 +65,7 @@ describe("PrismaCommonSellingPriceQueryService", () => {
   });
 
   it("適用期間の開始日ちょうどは含む（半開 [) の下端）", async () => {
-    const aggregate = CommonSellingPrice.create(productId);
+    const aggregate = CommonSellingPrice.create(productId, ProductCategory.INDIVIDUAL);
     aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000), "2025-07-01");
     await repository.insert(aggregate);
 
@@ -75,7 +75,7 @@ describe("PrismaCommonSellingPriceQueryService", () => {
   });
 
   it("適用期間の終了日ちょうどは含まない（半開 [) の上端）", async () => {
-    const aggregate = CommonSellingPrice.create(productId);
+    const aggregate = CommonSellingPrice.create(productId, ProductCategory.INDIVIDUAL);
     aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000), "2025-07-01");
     await repository.insert(aggregate);
 
@@ -85,7 +85,7 @@ describe("PrismaCommonSellingPriceQueryService", () => {
   });
 
   it("どの適用期間にも覆われない暦日では null を返す", async () => {
-    const aggregate = CommonSellingPrice.create(productId);
+    const aggregate = CommonSellingPrice.create(productId, ProductCategory.INDIVIDUAL);
     aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000), "2025-07-01");
     await repository.insert(aggregate);
 
@@ -102,7 +102,7 @@ describe("PrismaCommonSellingPriceQueryService", () => {
   });
 
   it("無期限上端（end=null）の期間は遠い未来の暦日でもヒットする", async () => {
-    const aggregate = CommonSellingPrice.create(productId);
+    const aggregate = CommonSellingPrice.create(productId, ProductCategory.INDIVIDUAL);
     aggregate.addPeriod(period("2025-10-01", null), price(1234.56), "2025-10-01");
     await repository.insert(aggregate);
 
