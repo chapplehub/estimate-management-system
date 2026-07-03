@@ -31,4 +31,17 @@ export interface CustomerSellingPriceRepository {
    *   保存時点の version と一致しない場合は ConflictError を throw し、後勝ちの変更喪失を防ぐ。
    */
   update(aggregate: CustomerSellingPrice, expectedVersion: number): Promise<void>;
+
+  /**
+   * 空になった集約をルート行ごと削除する（insert の対・#512 B案）。
+   *
+   * 最終期間の削除で期間行が0件になったとき、アプリ層がこれを呼び「空集約シェル」を残さず
+   * 不変条件「親行の存在 ⟺ 期間行≥1件」を回復する。親（customer_selling_prices）を1本消せば
+   * FK `onDelete: Cascade` で残りの期間行も掃かれるため、子の明示削除は不要。
+   *
+   * @param expectedVersion 編集画面表示時に取得した version（楽観ロック・ADR-0039）。保存時点の
+   *   version と一致しない場合は ConflictError を throw し、「A が最終行削除中に B が期間追加」の
+   *   競合を握り潰さない。
+   */
+  delete(aggregate: CustomerSellingPrice, expectedVersion: number): Promise<void>;
 }

@@ -89,6 +89,16 @@ export class PrismaCostPriceRepository implements CostPriceRepository {
     });
   }
 
+  async delete(aggregate: CostPrice, expectedVersion: number): Promise<void> {
+    // WHERE productId AND version の条件付き削除で「比較→削除」を原子化する。count = 0 は
+    // version 不一致（並行更新・例: 最終行削除中の期間追加）と行消失の両方を覆い ConflictError
+    // へ翻訳する（ADR-0039）。親 1 行の削除で FK onDelete: Cascade が期間行も掃くため子は書かない。
+    const result = await prisma.costPrice.deleteMany({
+      where: { productId: aggregate.productId.value, version: expectedVersion },
+    });
+    assertVersionBumped(result.count);
+  }
+
   private static readonly PERIOD_TABLE = {
     table: "cost_price_periods",
     keyColumns: ["product_id"],
