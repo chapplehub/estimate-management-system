@@ -67,6 +67,44 @@ describe("DeleteCommonSellingPricePeriodCommand", () => {
     expect(found!.periods[0].period.equals(period("2030-06-01", null))).toBe(true);
   });
 
+  it("最後の1行を削除すると集約ごと消え、空シェルを残さない（#512・B案）", async () => {
+    const aggregate = CommonSellingPrice.create(productId, ProductCategory.INDIVIDUAL);
+    aggregate.addPeriod(period("2030-01-01", null), price(1000), "2025-06-01");
+    await repository.insert(aggregate);
+    const onlyId = (await repository.findByProductId(productId))!.periods[0].id;
+
+    await command.execute({
+      productId: productId.value,
+      periodId: onlyId.value,
+      referenceDate: "2025-06-01",
+      expectedVersion: 1,
+    });
+
+    // 空集約シェル（親あり・期間0件）ではなく、未設定（親なし）へ戻る。
+    expect(await repository.findByProductId(productId)).toBeNull();
+  });
+
+  it("最後の1行を削除した後、同一商品へ version 1 で再登録できる（再登録経路の回帰・#512）", async () => {
+    const aggregate = CommonSellingPrice.create(productId, ProductCategory.INDIVIDUAL);
+    aggregate.addPeriod(period("2030-01-01", null), price(1000), "2025-06-01");
+    await repository.insert(aggregate);
+    const onlyId = (await repository.findByProductId(productId))!.periods[0].id;
+    await command.execute({
+      productId: productId.value,
+      periodId: onlyId.value,
+      referenceDate: "2025-06-01",
+      expectedVersion: 1,
+    });
+
+    // 空シェルが残らないため、未設定商品と同じ insert 経路で再登録できる（ValidationError で詰まらない）。
+    const reregister = CommonSellingPrice.create(productId, ProductCategory.INDIVIDUAL);
+    reregister.addPeriod(period("2030-02-01", null), price(2000), "2025-06-01");
+    await repository.insert(reregister);
+    const found = (await repository.findByProductId(productId))!;
+    expect(found.periods).toHaveLength(1);
+    expect(found.periods[0].price.equals(price(2000))).toBe(true);
+  });
+
   it("集約が無い商品では NotFoundEntityError", async () => {
     await expect(
       command.execute({

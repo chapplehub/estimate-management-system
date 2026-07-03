@@ -102,6 +102,20 @@ export class PrismaCustomerSellingPriceRepository implements CustomerSellingPric
     });
   }
 
+  async delete(aggregate: CustomerSellingPrice, expectedVersion: number): Promise<void> {
+    // WHERE 複合キー AND version の条件付き削除で「比較→削除」を原子化する。count = 0 は
+    // version 不一致（並行更新・例: 最終行削除中の期間追加）と行消失の両方を覆い ConflictError
+    // へ翻訳する（ADR-0039）。親 1 行の削除で FK onDelete: Cascade が期間行も掃くため子は書かない。
+    const result = await prisma.customerSellingPrice.deleteMany({
+      where: {
+        customerId: aggregate.customerId.value,
+        productId: aggregate.productId.value,
+        version: expectedVersion,
+      },
+    });
+    assertVersionBumped(result.count);
+  }
+
   private static readonly PERIOD_TABLE = {
     table: "customer_selling_price_periods",
     keyColumns: ["customer_id", "product_id"],

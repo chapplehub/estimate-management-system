@@ -190,6 +190,55 @@ describe("PrismaCommonSellingPriceRepository", () => {
     expect(found!.periods).toHaveLength(0);
   });
 
+  it("delete で親行を削除すると期間行も cascade で消える（空集約の後始末・#512）", async () => {
+    const aggregate = CommonSellingPrice.create(productId, ProductCategory.INDIVIDUAL);
+    aggregate.addPeriod(period("2030-01-01", null), price(1000), "2025-06-01");
+    await repository.insert(aggregate);
+
+    // 唯一の将来行を削除して集約を空にし、集約ごと削除する（B案）。
+    const reloaded = (await repository.findByProductId(productId))!;
+    reloaded.deletePeriod(reloaded.periods[0].id, "2025-06-01");
+    await repository.delete(reloaded, 1);
+
+    // 親（common_selling_prices）が消え findByProductId は null。空シェルを残さない。
+    expect(await repository.findByProductId(productId)).toBeNull();
+    // 期間行も cascade で0件。
+    const remaining = await prisma.$queryRaw<{ count: bigint }[]>`
+      SELECT count(*)::bigint AS count
+      FROM common_selling_price_periods
+      WHERE product_id = ${productId.value}::uuid
+    `;
+    expect(Number(remaining[0].count)).toBe(0);
+  });
+
+  it("delete で expectedVersion が古いと ConflictError（最終行削除中の並行追加を握り潰さない）", async () => {
+    const aggregate = CommonSellingPrice.create(productId, ProductCategory.INDIVIDUAL);
+    aggregate.addPeriod(period("2030-01-01", null), price(1000), "2025-06-01");
+    await repository.insert(aggregate);
+
+    await expect(repository.delete(aggregate, 999)).rejects.toBeInstanceOf(ConflictError);
+    // 競合時は親も期間行も消えない。
+    expect(await repository.findByProductId(productId)).not.toBeNull();
+  });
+
+  it("delete 後に同一商品で insert が成功する（version 1・再登録経路の回帰・#512）", async () => {
+    const first = CommonSellingPrice.create(productId, ProductCategory.INDIVIDUAL);
+    first.addPeriod(period("2030-01-01", null), price(1000), "2025-06-01");
+    await repository.insert(first);
+    const reloaded = (await repository.findByProductId(productId))!;
+    reloaded.deletePeriod(reloaded.periods[0].id, "2025-06-01");
+    await repository.delete(reloaded, 1);
+
+    // 空シェルが残らないため、未設定商品への新規登録と同じ insert 経路（version 1）で再登録できる。
+    const reregister = CommonSellingPrice.create(productId, ProductCategory.INDIVIDUAL);
+    reregister.addPeriod(period("2030-02-01", null), price(2000), "2025-06-01");
+    await repository.insert(reregister);
+
+    const found = (await repository.findByProductId(productId))!;
+    expect(found.periods).toHaveLength(1);
+    expect(found.periods[0].price.equals(price(2000))).toBe(true);
+  });
+
   it("古い expectedVersion での update は ConflictError", async () => {
     const aggregate = CommonSellingPrice.create(productId, ProductCategory.INDIVIDUAL);
     aggregate.addPeriod(period("2025-07-01", null), price(1000), "2025-07-01");

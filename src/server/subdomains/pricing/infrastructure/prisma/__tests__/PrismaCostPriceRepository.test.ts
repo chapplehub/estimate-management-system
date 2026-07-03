@@ -195,6 +195,50 @@ describe("PrismaCostPriceRepository", () => {
     expect(found!.periods).toHaveLength(0);
   });
 
+  it("delete で親行を削除すると期間行も cascade で消える（空集約の後始末・#512）", async () => {
+    const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
+    aggregate.addPeriod(period("2030-01-01", null), cost(600), "2026-04-01");
+    await repository.insert(aggregate);
+
+    const reloaded = (await repository.findByProductId(productId))!;
+    reloaded.deletePeriod(reloaded.periods[0].id, "2026-04-01");
+    await repository.delete(reloaded, 1);
+
+    expect(await repository.findByProductId(productId)).toBeNull();
+    const remaining = await prisma.$queryRaw<{ count: bigint }[]>`
+      SELECT count(*)::bigint AS count
+      FROM cost_price_periods
+      WHERE product_id = ${productId.value}::uuid
+    `;
+    expect(Number(remaining[0].count)).toBe(0);
+  });
+
+  it("delete で expectedVersion が古いと ConflictError（最終行削除中の並行追加を握り潰さない）", async () => {
+    const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
+    aggregate.addPeriod(period("2030-01-01", null), cost(600), "2026-04-01");
+    await repository.insert(aggregate);
+
+    await expect(repository.delete(aggregate, 999)).rejects.toBeInstanceOf(ConflictError);
+    expect(await repository.findByProductId(productId)).not.toBeNull();
+  });
+
+  it("delete 後に同一商品で insert が成功する（version 1・再登録経路の回帰・#512）", async () => {
+    const first = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
+    first.addPeriod(period("2030-01-01", null), cost(600), "2026-04-01");
+    await repository.insert(first);
+    const reloaded = (await repository.findByProductId(productId))!;
+    reloaded.deletePeriod(reloaded.periods[0].id, "2026-04-01");
+    await repository.delete(reloaded, 1);
+
+    const reregister = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
+    reregister.addPeriod(period("2030-02-01", null), cost(700), "2026-04-01");
+    await repository.insert(reregister);
+
+    const found = (await repository.findByProductId(productId))!;
+    expect(found.periods).toHaveLength(1);
+    expect(found.periods[0].price.equals(cost(700))).toBe(true);
+  });
+
   it("古い expectedVersion での update は ConflictError", async () => {
     const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
     aggregate.addPeriod(period("2026-04-01", null), cost(600), "2026-04-01");

@@ -231,6 +231,62 @@ describe("PrismaCustomerSellingPriceRepository", () => {
     expect(found!.periods).toHaveLength(0);
   });
 
+  it("delete で親行を削除すると期間行も cascade で消える（空集約の後始末・#512）", async () => {
+    const aggregate = CustomerSellingPrice.create(
+      customerId,
+      productId,
+      ProductCategory.INDIVIDUAL
+    );
+    aggregate.addPeriod(period("2030-01-01", null), price(1000), "2025-06-01");
+    await repository.insert(aggregate);
+
+    const reloaded = (await repository.findByCustomerIdAndProductId(customerId, productId))!;
+    reloaded.deletePeriod(reloaded.periods[0].id, "2025-06-01");
+    await repository.delete(reloaded, 1);
+
+    expect(await repository.findByCustomerIdAndProductId(customerId, productId)).toBeNull();
+    const remaining = await prisma.$queryRaw<{ count: bigint }[]>`
+      SELECT count(*)::bigint AS count
+      FROM customer_selling_price_periods
+      WHERE customer_id = ${customerId.value}::uuid AND product_id = ${productId.value}::uuid
+    `;
+    expect(Number(remaining[0].count)).toBe(0);
+  });
+
+  it("delete で expectedVersion が古いと ConflictError（最終行削除中の並行追加を握り潰さない）", async () => {
+    const aggregate = CustomerSellingPrice.create(
+      customerId,
+      productId,
+      ProductCategory.INDIVIDUAL
+    );
+    aggregate.addPeriod(period("2030-01-01", null), price(1000), "2025-06-01");
+    await repository.insert(aggregate);
+
+    await expect(repository.delete(aggregate, 999)).rejects.toBeInstanceOf(ConflictError);
+    expect(await repository.findByCustomerIdAndProductId(customerId, productId)).not.toBeNull();
+  });
+
+  it("delete 後に同一の得意先×商品で insert が成功する（version 1・再登録経路の回帰・#512）", async () => {
+    const first = CustomerSellingPrice.create(customerId, productId, ProductCategory.INDIVIDUAL);
+    first.addPeriod(period("2030-01-01", null), price(1000), "2025-06-01");
+    await repository.insert(first);
+    const reloaded = (await repository.findByCustomerIdAndProductId(customerId, productId))!;
+    reloaded.deletePeriod(reloaded.periods[0].id, "2025-06-01");
+    await repository.delete(reloaded, 1);
+
+    const reregister = CustomerSellingPrice.create(
+      customerId,
+      productId,
+      ProductCategory.INDIVIDUAL
+    );
+    reregister.addPeriod(period("2030-02-01", null), price(2000), "2025-06-01");
+    await repository.insert(reregister);
+
+    const found = (await repository.findByCustomerIdAndProductId(customerId, productId))!;
+    expect(found.periods).toHaveLength(1);
+    expect(found.periods[0].price.equals(price(2000))).toBe(true);
+  });
+
   it("古い expectedVersion での update は ConflictError", async () => {
     const aggregate = CustomerSellingPrice.create(
       customerId,
