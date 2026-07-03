@@ -84,7 +84,11 @@ describe("ResolveDeliveryLocationSellingPriceQuery", () => {
   });
 
   it("基準暦日に有効な納品先別販売単価を解決する", async () => {
-    const aggregate = DeliveryLocationSellingPrice.create(deliveryLocationId, productId);
+    const aggregate = DeliveryLocationSellingPrice.create(
+      deliveryLocationId,
+      productId,
+      ProductCategory.INDIVIDUAL
+    );
     aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000));
     await repository.insert(aggregate);
 

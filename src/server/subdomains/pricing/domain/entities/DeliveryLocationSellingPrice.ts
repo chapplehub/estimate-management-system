@@ -1,6 +1,7 @@
 import { ApplicablePeriod } from "@server/shared/domain/values/ApplicablePeriod";
-import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
+import { BusinessRuleViolationError, ValidationError } from "@server/shared/errors/DomainError";
 import { DeliveryLocationId } from "@subdomains/delivery-location/domain/values/DeliveryLocationId";
+import { ProductCategory } from "@subdomains/product/domain/values/ProductCategory";
 import { ProductId } from "@subdomains/product/domain/values/ProductId";
 import { DeliveryLocationSellingPricePeriodId } from "../values/DeliveryLocationSellingPricePeriodId";
 import { SellingUnitPrice } from "../values/SellingUnitPrice";
@@ -31,11 +32,23 @@ export class DeliveryLocationSellingPrice {
     private readonly _periods: DeliveryLocationSellingPricePeriod[]
   ) {}
 
-  /** 空の集約を生成する。 */
+  /**
+   * 空の集約を生成する。価格を持てない商品（現状はセット商品。自前の売単価を持たず常に
+   * 構成商品から導出される）を生成入口で拒否する（#515/#531）。判定は「価格を持てるか」
+   * という責務そのものを表す canHavePrice に委ねる。区分不変ゆえ生成入口を塞げば以後の
+   * 追加・改定・削除も既存集約が存在しないことで構造的に到達不能になる。区分は集約越えの
+   * 事実のためアプリ層が取得して引数で渡す（ADR-0030）。
+   */
   static create(
     deliveryLocationId: DeliveryLocationId,
-    productId: ProductId
+    productId: ProductId,
+    category: ProductCategory
   ): DeliveryLocationSellingPrice {
+    if (!category.canHavePrice()) {
+      throw new ValidationError(
+        `セット商品には${DeliveryLocationSellingPrice.ENTITY_NAME}を登録できません`
+      );
+    }
     return new DeliveryLocationSellingPrice(deliveryLocationId, productId, []);
   }
 

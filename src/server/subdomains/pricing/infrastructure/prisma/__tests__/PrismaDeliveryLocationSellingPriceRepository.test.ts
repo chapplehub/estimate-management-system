@@ -88,7 +88,11 @@ describe("PrismaDeliveryLocationSellingPriceRepository", () => {
   });
 
   it("insert して findByDeliveryLocationIdAndProductId で往復できる（有界＋無期限・銭精度）", async () => {
-    const aggregate = DeliveryLocationSellingPrice.create(deliveryLocationId, productId);
+    const aggregate = DeliveryLocationSellingPrice.create(
+      deliveryLocationId,
+      productId,
+      ProductCategory.INDIVIDUAL
+    );
     aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000));
     aggregate.addPeriod(period("2025-10-01", null), price(1234.56));
     await repository.insert(aggregate);
@@ -111,7 +115,11 @@ describe("PrismaDeliveryLocationSellingPriceRepository", () => {
   });
 
   it("update で期間行を追加同期できる（version 一致時・append-only）", async () => {
-    const aggregate = DeliveryLocationSellingPrice.create(deliveryLocationId, productId);
+    const aggregate = DeliveryLocationSellingPrice.create(
+      deliveryLocationId,
+      productId,
+      ProductCategory.INDIVIDUAL
+    );
     aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000));
     await repository.insert(aggregate);
 
@@ -132,7 +140,11 @@ describe("PrismaDeliveryLocationSellingPriceRepository", () => {
   });
 
   it("update は既存期間行の updated_at を変更しない（append-only・監査保持）", async () => {
-    const aggregate = DeliveryLocationSellingPrice.create(deliveryLocationId, productId);
+    const aggregate = DeliveryLocationSellingPrice.create(
+      deliveryLocationId,
+      productId,
+      ProductCategory.INDIVIDUAL
+    );
     aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000));
     await repository.insert(aggregate);
 
@@ -167,7 +179,11 @@ describe("PrismaDeliveryLocationSellingPriceRepository", () => {
   });
 
   it("古い expectedVersion での update は ConflictError", async () => {
-    const aggregate = DeliveryLocationSellingPrice.create(deliveryLocationId, productId);
+    const aggregate = DeliveryLocationSellingPrice.create(
+      deliveryLocationId,
+      productId,
+      ProductCategory.INDIVIDUAL
+    );
     aggregate.addPeriod(period("2025-07-01", null), price(1000));
     await repository.insert(aggregate);
 
@@ -175,18 +191,30 @@ describe("PrismaDeliveryLocationSellingPriceRepository", () => {
   });
 
   it("同一の納品先×商品への二重 insert は ConflictError（親 複合PK 衝突の翻訳）", async () => {
-    const first = DeliveryLocationSellingPrice.create(deliveryLocationId, productId);
+    const first = DeliveryLocationSellingPrice.create(
+      deliveryLocationId,
+      productId,
+      ProductCategory.INDIVIDUAL
+    );
     first.addPeriod(period("2025-07-01", null), price(1000));
     await repository.insert(first);
 
     // アプリ層の存在チェックをすり抜けた二重作成レースを模す。
-    const second = DeliveryLocationSellingPrice.create(deliveryLocationId, productId);
+    const second = DeliveryLocationSellingPrice.create(
+      deliveryLocationId,
+      productId,
+      ProductCategory.INDIVIDUAL
+    );
     second.addPeriod(period("2025-07-01", null), price(2000));
     await expect(repository.insert(second)).rejects.toBeInstanceOf(ConflictError);
   });
 
   it("同一の納品先×商品で適用期間が重複する行は EXCLUDE 制約で弾かれる", async () => {
-    const aggregate = DeliveryLocationSellingPrice.create(deliveryLocationId, productId);
+    const aggregate = DeliveryLocationSellingPrice.create(
+      deliveryLocationId,
+      productId,
+      ProductCategory.INDIVIDUAL
+    );
     aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000));
     await repository.insert(aggregate);
 
