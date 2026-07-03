@@ -1,5 +1,6 @@
 import { CommonSellingPriceEditQueryService } from "../queries/CommonSellingPriceEditQueryService";
 import { CommonSellingPriceListQueryService } from "../queries/CommonSellingPriceListQueryService";
+import { CommonSellingPricePriceStatusQueryService } from "../queries/CommonSellingPricePriceStatusQueryService";
 import { CostPriceEditQueryService } from "../queries/CostPriceEditQueryService";
 import { CostPriceListQueryService } from "../queries/CostPriceListQueryService";
 import { ResolveCommonSellingPriceQuery } from "../queries/ResolveCommonSellingPriceQuery";
@@ -9,6 +10,7 @@ import { ResolveDeliveryLocationSellingPriceQuery } from "../queries/ResolveDeli
 import { ResolveSellingPriceQuery } from "../queries/ResolveSellingPriceQuery";
 import { PrismaCommonSellingPriceEditQueryService } from "../../infrastructure/queries/PrismaCommonSellingPriceEditQueryService";
 import { PrismaCommonSellingPriceListQueryService } from "../../infrastructure/queries/PrismaCommonSellingPriceListQueryService";
+import { PrismaCommonSellingPricePriceStatusQueryService } from "../../infrastructure/queries/PrismaCommonSellingPricePriceStatusQueryService";
 import { PrismaCommonSellingPriceQueryService } from "../../infrastructure/queries/PrismaCommonSellingPriceQueryService";
 import { PrismaCostPriceEditQueryService } from "../../infrastructure/queries/PrismaCostPriceEditQueryService";
 import { PrismaCostPriceListQueryService } from "../../infrastructure/queries/PrismaCostPriceListQueryService";
@@ -27,6 +29,14 @@ export function commonSellingPriceListQueryFactory(): CommonSellingPriceListQuer
 /** 共通売単価 編集の読みモデル（#429・#473）を Prisma 実装から構築する。 */
 export function commonSellingPriceEditQueryFactory(): CommonSellingPriceEditQueryService {
   return new PrismaCommonSellingPriceEditQueryService();
+}
+
+/**
+ * 単一商品 priceStatus の読みモデル（#487・商品詳細のアナウンス）を Prisma 実装から構築する。
+ * 読みモデルは Query ラッパを介さず QueryService インターフェースを直接返す（既存規約）。
+ */
+export function commonSellingPricePriceStatusQueryFactory(): CommonSellingPricePriceStatusQueryService {
+  return new PrismaCommonSellingPricePriceStatusQueryService();
 }
 
 /**
