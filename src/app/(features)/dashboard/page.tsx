@@ -33,6 +33,11 @@ const navigationItems = [
     description: "共通販売単価の一覧表示・編集を行います。",
   },
   {
+    href: "/customer-selling-prices",
+    title: "得意先別販売単価管理",
+    description: "得意先別販売単価の一覧表示・編集を行います。",
+  },
+  {
     href: "/cost-prices",
     title: "原価管理",
     description: "原価の一覧表示・編集を行います。",
