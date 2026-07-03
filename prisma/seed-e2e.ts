@@ -558,7 +558,7 @@ const PRODUCTS = [
     description: "原価 保守 E2E（ガイド付き単価改定 Chain・テスト内で期間生成）",
   },
   // 得意先別販売単価 E2E 用（PRD86x 帯・#508）。costPrice は null とし原価集約を作らない。
-  // 得意先 C901 に対する上書き期間・共通単価は seedCustomerSellingPrices で today 相対 raw insert する。
+  // 得意先 C902 に対する上書き期間・共通単価は seedCustomerSellingPrices で today 相対 raw insert する。
   // 商品名は「得意先単価」前置で統一し、E2E の商品名部分一致検索で帯全体に絞り込めるようにする。
   {
     code: "PRD860",
