@@ -13,14 +13,14 @@ import { type Page, expect, test } from "@playwright/test";
  * 得意先列で解消する（得意先別 #508 の唯一の実質差）。封筒 DTO は親得意先 identity を同梱し、
  * ヘッダに納品先名・コード＋親得意先名・コードを併記する。
  *
- * シードは専用得意先 C903 × 専用納品先 DL903 × PRD87x 帯（ADR-20260629-3x5・today 相対）:
+ * シードは専用得意先 C903 × 専用納品先 D902 × PRD87x 帯（ADR-20260629-3x5・today 相対）:
  * - PRD870: 上書き有効・有界 ¥1,800 ＋ 共通 ¥2,000
  * - PRD871: 上書き有効・無期限 ¥900 ＋ 共通なし
  * - PRD872: 上書き失効のみ ＋ 共通 ¥1,200
  * - PRD873: 上書きなし ＋ 共通 ¥1,100
  * - PRD874: 上書きなし ＋ 共通なし
  * - PRD875: 無効商品 ＋ 上書き有効 ¥700
- * 無効納品先ヘッダバッジは DL904（無効・上書きなし）への直接 URL で検証する。
+ * 無効納品先ヘッダバッジは D903（無効・上書きなし）への直接 URL で検証する。
  * 閲覧のみ（DB 不変）のため直列化は不要。
  */
 
@@ -85,15 +85,15 @@ test.describe("納品先別販売単価一覧（#548）", () => {
     await row.getByRole("checkbox").click();
     await page.getByRole("button", { name: /件を追加/ }).click();
 
-    await expect(page).toHaveURL(/\/delivery-location-selling-prices\/DL903$/, { timeout: 10000 });
+    await expect(page).toHaveURL(/\/delivery-location-selling-prices\/D902$/, { timeout: 10000 });
     // ヘッダに納品先名・コード＋親得意先名・コードを併記する。
-    await expect(page.getByText("E2E専用_納品先別単価テスト納品先（DL903）")).toBeVisible();
+    await expect(page.getByText("E2E専用_納品先別単価テスト納品先（D902）")).toBeVisible();
     await expect(page.getByText("E2E専用_納品先別単価テスト商事（C903）")).toBeVisible();
   });
 
   test("状態に応じて金額／失効中／上書きなしが表示され共通単価が並記される", async ({ page }) => {
     // PRD87x 帯に商品名で絞り込み、3状態＋共通単価並記を1画面で確認する。
-    await page.goto("/delivery-location-selling-prices/DL903?name=納品先単価");
+    await page.goto("/delivery-location-selling-prices/D902?name=納品先単価");
     await waitForListReady(page);
 
     const priceCol = await getColumnIndex(page, "納品先別単価");
@@ -123,7 +123,7 @@ test.describe("納品先別販売単価一覧（#548）", () => {
   test("適用期間列に現在有効な上書き期間（有界・無期限）を表示し失効/上書きなしは空欄", async ({
     page,
   }) => {
-    await page.goto("/delivery-location-selling-prices/DL903?name=納品先単価");
+    await page.goto("/delivery-location-selling-prices/D902?name=納品先単価");
     await waitForListReady(page);
 
     const periodCol = await getColumnIndex(page, "適用期間");
@@ -142,7 +142,7 @@ test.describe("納品先別販売単価一覧（#548）", () => {
   });
 
   test("商品コードで部分一致検索できる", async ({ page }) => {
-    await page.goto("/delivery-location-selling-prices/DL903");
+    await page.goto("/delivery-location-selling-prices/D902");
     await waitForListReady(page);
 
     await page.getByLabel("商品コード").fill("PRD870");
@@ -155,7 +155,7 @@ test.describe("納品先別販売単価一覧（#548）", () => {
 
   test("単価状態で絞り込める（上書きなし・失効中）", async ({ page }) => {
     // PRD87x 帯に絞り、さらに上書きなしのみ。PRD873/874 が残り、active/lapsed は除外される。
-    await page.goto("/delivery-location-selling-prices/DL903");
+    await page.goto("/delivery-location-selling-prices/D902");
     await waitForListReady(page);
 
     await page.getByLabel("商品コード").fill("PRD87");
@@ -179,17 +179,17 @@ test.describe("納品先別販売単価一覧（#548）", () => {
 
   test("商品コードリンクは管理画面（#547）の URL を指す", async ({ page }) => {
     // #547 未着地の間は遷移先が一時 404 のため、リンクの宛先のみを検証する（親 #544 の順序依存）。
-    await page.goto("/delivery-location-selling-prices/DL903?code=PRD870");
+    await page.goto("/delivery-location-selling-prices/D902?code=PRD870");
     await waitForListReady(page);
 
     await expect(page.getByRole("link", { name: "PRD870" })).toHaveAttribute(
       "href",
-      "/delivery-location-selling-prices/DL903/PRD870"
+      "/delivery-location-selling-prices/D902/PRD870"
     );
   });
 
   test("無効商品は弾かれずバッジ付きで表示される", async ({ page }) => {
-    await page.goto("/delivery-location-selling-prices/DL903?code=PRD875");
+    await page.goto("/delivery-location-selling-prices/D902?code=PRD875");
     await waitForListReady(page);
 
     const row = page.locator("table tbody tr").first();
@@ -201,10 +201,10 @@ test.describe("納品先別販売単価一覧（#548）", () => {
   test("無効納品先は弾かれずヘッダにバッジ付きで表示される", async ({ page }) => {
     // 無効納品先はセレクタ検索（有効のみ）に出ないため直接 URL で到達する。
     // 商品名で無効商品行を除外し、ページ上の「無効」バッジがヘッダのものだけになるようにする。
-    await page.goto("/delivery-location-selling-prices/DL904?name=納品先単価_有効有界");
+    await page.goto("/delivery-location-selling-prices/D903?name=納品先単価_有効有界");
     await waitForListReady(page);
 
-    await expect(page.getByText("E2E専用_納品先別単価テスト無効納品先（DL904）")).toBeVisible();
+    await expect(page.getByText("E2E専用_納品先別単価テスト無効納品先（D903）")).toBeVisible();
     await expect(page.getByText("無効", { exact: true })).toBeVisible();
   });
 

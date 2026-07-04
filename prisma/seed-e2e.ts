@@ -337,9 +337,9 @@ const CUSTOMERS = [
     isActive: true,
     deliveryLocations: [],
   },
-  // C903: 納品先別販売単価 一覧 E2E 用（#548）。DL903（有効）× PRD87x 帯への納品先別上書き期間は
+  // C903: 納品先別販売単価 一覧 E2E 用（#548）。D902（有効）× PRD87x 帯への納品先別上書き期間は
   // seedDeliveryLocationSellingPrices で today 相対 raw insert する。得意先別 C902 帯と分離し、
-  // 納品先別フィクスチャの影響が他テストへ波及しないようにする。DL904 は無効納品先ヘッダバッジ検証用
+  // 納品先別フィクスチャの影響が他テストへ波及しないようにする。D903 は無効納品先ヘッダバッジ検証用
   // （セレクタ検索は有効のみのため直接 URL でのみ到達＝新規に選ぶ動線には出さないが状況確認は拒まない）。
   {
     code: "C903",
@@ -353,7 +353,7 @@ const CUSTOMERS = [
     isActive: true,
     deliveryLocations: [
       {
-        code: "DL903",
+        code: "D902",
         name: "E2E専用_納品先別単価テスト納品先",
         postalCode: "1000007",
         prefecture: "東京都",
@@ -362,7 +362,7 @@ const CUSTOMERS = [
         deliveryNotes: "E2E専用_納品先別単価テスト（有効・グローバル検索の対象）",
       },
       {
-        code: "DL904",
+        code: "D903",
         name: "E2E専用_納品先別単価テスト無効納品先",
         postalCode: "1000007",
         prefecture: "東京都",
@@ -654,7 +654,7 @@ const PRODUCTS = [
     description: "得意先別販売単価 一覧 E2E（無効商品＋上書き有効＝行の無効バッジ・弾かず可視化）",
   },
   // 納品先別販売単価 E2E 用（PRD87x 帯・#548）。costPrice は null とし原価集約を作らない。
-  // 納品先 DL903 に対する納品先別上書き期間・共通単価は seedDeliveryLocationSellingPrices で
+  // 納品先 D902 に対する納品先別上書き期間・共通単価は seedDeliveryLocationSellingPrices で
   // today 相対 raw insert する。商品名は「納品先単価」前置で統一し、E2E の商品名部分一致検索で
   // 帯全体に絞り込めるようにする（得意先別 PRD86x 帯とは別帯にして結合汚染を避ける）。
   {
@@ -966,7 +966,7 @@ async function seedCustomerSellingPrices(productIdByCode: Map<string, string>): 
 }
 
 /**
- * 納品先別販売単価の E2E フィクスチャを投入する（納品先 DL903 × PRD87x 帯・today 相対・#548）。
+ * 納品先別販売単価の E2E フィクスチャを投入する（納品先 D902 × PRD87x 帯・today 相対・#548）。
  * 一覧画面の3状態（active/lapsed/none）と共通単価並記カラムの表示分岐を全て踏めるよう、
  * 上書き（納品先層）× 共通（フォールバック層）の組み合わせを商品ごとに変える:
  * - PRD870: 上書き有効・有界 `[today-30, today+30)` ¥1800 ＋ 共通 `[today-30, ∞)` ¥2000（並記の基準ケース）
@@ -979,14 +979,14 @@ async function seedCustomerSellingPrices(productIdByCode: Map<string, string>): 
  * 納品先宛の価格解決連鎖は `納品先別 ?? 共通`（得意先別は連鎖外）なので、並記するフォールバックは
  * 共通単価のみ。得意先別期間は一切投入しない。seedCustomerSellingPrices と同型で、過去開始（失効）は
  * 集約の assertStartNotPast を通せないため raw daterange insert で投入する。期間行は親集約
- * （delivery_location_selling_prices・複合PK）を先に作る。無効納品先ヘッダバッジの検証は DL904
+ * （delivery_location_selling_prices・複合PK）を先に作る。無効納品先ヘッダバッジの検証は D903
  * （無効・上書きなし）への直接 URL で行うため上書き投入なし。
  */
 async function seedDeliveryLocationSellingPrices(
   productIdByCode: Map<string, string>
 ): Promise<void> {
   const deliveryLocation = await prisma.deliveryLocation.findUniqueOrThrow({
-    where: { code: "DL903" },
+    where: { code: "D902" },
     select: { id: true },
   });
 
@@ -1074,7 +1074,7 @@ async function seedDeliveryLocationSellingPrices(
   }
 
   console.log(
-    "Created delivery location selling prices (DL903 × PRD870: active+common / PRD871: active unbounded / PRD872: lapsed+common / PRD873: common only / PRD875: inactive product)"
+    "Created delivery location selling prices (D902 × PRD870: active+common / PRD871: active unbounded / PRD872: lapsed+common / PRD873: common only / PRD875: inactive product)"
   );
 }
 
@@ -1421,9 +1421,9 @@ async function main() {
   // 専用得意先 C902 に閉じるため、既存の得意先・商品フィクスチャには影響しない。
   await seedCustomerSellingPrices(productIdByCode);
 
-  // 納品先別販売単価 一覧 E2E フィクスチャ（DL903 × PRD87x 帯・#548・ADR-20260629-3x5）。
+  // 納品先別販売単価 一覧 E2E フィクスチャ（D902 × PRD87x 帯・#548・ADR-20260629-3x5）。
   // 3状態（active/lapsed/none）は参照日由来の派生状態のため today 相対で投入する。
-  // 専用得意先 C903・専用納品先 DL903 に閉じるため、既存フィクスチャには影響しない。
+  // 専用得意先 C903・専用納品先 D902 に閉じるため、既存フィクスチャには影響しない。
   await seedDeliveryLocationSellingPrices(productIdByCode);
 
   // S4 周辺商品サジェスト E2E 用の関連（本体 PRD810 → 周辺 PRD811・数量2）。
