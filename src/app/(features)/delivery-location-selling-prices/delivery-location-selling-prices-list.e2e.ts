@@ -177,8 +177,8 @@ test.describe("納品先別販売単価一覧（#548）", () => {
     await expect(page.getByRole("link", { name: "PRD873" })).not.toBeVisible();
   });
 
-  test("商品コードリンクは管理画面（#547）の URL を指す", async ({ page }) => {
-    // #547 未着地の間は遷移先が一時 404 のため、リンクの宛先のみを検証する（親 #544 の順序依存）。
+  test("商品コードリンクから管理画面（#547/#555）へ遷移できる", async ({ page }) => {
+    // #547/#555 着地済み。リンクの宛先検証に留めず、実クリックで管理画面へ着地することまで確認する。
     await page.goto("/delivery-location-selling-prices/D902?code=PRD870");
     await waitForListReady(page);
 
@@ -186,6 +186,18 @@ test.describe("納品先別販売単価一覧（#548）", () => {
       "href",
       "/delivery-location-selling-prices/D902/PRD870"
     );
+
+    await page.getByRole("link", { name: "PRD870" }).click();
+
+    // 管理画面（詳細）に着地: 見出し・適用期間・商品情報が揃う。
+    await expect(page).toHaveURL(/\/delivery-location-selling-prices\/D902\/PRD870$/, {
+      timeout: 10000,
+    });
+    await expect(
+      page.getByRole("heading", { name: "納品先別販売単価", exact: true })
+    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "適用期間" })).toBeVisible();
+    await expect(page.getByText("納品先単価_有効有界テスト商品")).toBeVisible();
   });
 
   test("無効商品は弾かれずバッジ付きで表示される", async ({ page }) => {
