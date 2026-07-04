@@ -104,14 +104,17 @@ test.describe("納品先一覧（管理者）", () => {
 
     await expect(page).toHaveURL(/isActive=false/, { timeout: 10000 });
 
-    const rows = page.locator("table tbody tr");
-    await expect(rows).toHaveCount(1);
-    await expect(page.getByRole("link", { name: "D007" })).toBeVisible();
-
-    // 状態バッジが「無効」であること
+    // 表示されている状態バッジがすべて「無効」であること。件数はシード件数に結合させず
+    // 絞り込み不変条件（全行が条件一致）で検証する（無効フィクスチャ追加に耐える・有効検索と同型）。
     const statusCol = await getColumnIndex(page, "状態");
-    const statusBadge = page.locator(`table tbody tr td:nth-child(${statusCol}) span`);
-    await expect(statusBadge).toHaveText("無効");
+    const statusBadges = page.locator(`table tbody tr td:nth-child(${statusCol}) span`);
+    const count = await statusBadges.count();
+    expect(count).toBeGreaterThan(0);
+    for (let i = 0; i < count; i++) {
+      await expect(statusBadges.nth(i)).toHaveText("無効");
+    }
+    // 代表的な無効納品先（シード既定）が結果に含まれること
+    await expect(page.getByRole("link", { name: "D007" })).toBeVisible();
   });
 
   test("複数条件を組み合わせて検索できる", async ({ page }) => {

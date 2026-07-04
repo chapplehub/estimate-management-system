@@ -38,6 +38,11 @@ const navigationItems = [
     description: "得意先別販売単価の一覧表示・編集を行います。",
   },
   {
+    href: "/delivery-location-selling-prices",
+    title: "納品先別販売単価管理",
+    description: "納品先別販売単価の一覧表示・編集を行います。",
+  },
+  {
     href: "/cost-prices",
     title: "原価管理",
     description: "原価の一覧表示・編集を行います。",
