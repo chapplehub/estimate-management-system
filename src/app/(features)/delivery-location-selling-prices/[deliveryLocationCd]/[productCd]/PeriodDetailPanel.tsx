@@ -7,6 +7,7 @@ import type {
   DeliveryLocationSellingPricePeriodStatus,
 } from "@subdomains/pricing/application/queries/dto/DeliveryLocationSellingPriceEditDTO";
 import type { CommonSellingPriceEditPeriodDTO } from "@subdomains/pricing/application/queries/dto/CommonSellingPriceEditDTO";
+import type { CustomerSellingPriceEditPeriodDTO } from "@subdomains/pricing/application/queries/dto/CustomerSellingPriceEditDTO";
 import { authorityFor, type PeriodStatus } from "../../../_shared/period-rules";
 import { computeTimelineLayout, type TimelinePeriod } from "../../../_shared/timeline-layout";
 import { formatYenFromDecimal } from "../../../_shared/formatYen";
@@ -61,9 +62,15 @@ type PanelMode =
 type Props = {
   detail: DeliveryLocationSellingPriceEditDTO;
   /**
-   * 共通販売単価の期間行（フォールバック層・#547）。タイムラインの従レーンとして重ねて対比する
-   * （表示専用）。共通が未設定なら空配列。納品先別レーンと同一の中立構造へマップして
-   * `computeTimelineLayout` の第2系列に渡す（Step 3-2 で得意先別レーンを加えた3レーンへ拡張）。
+   * 得意先別販売単価の期間行（フォールバック層・従1・#547）。納品先別の価格決定は
+   * 「納品先別 → 得意先別 → 共通」の3段フォールバックで、その中間層を表示専用の従レーンとして重ねる。
+   * 当該親得意先×商品に得意先別の上書きが無ければ空配列。
+   */
+  customerPeriods: CustomerSellingPriceEditPeriodDTO[];
+  /**
+   * 共通販売単価の期間行（フォールバック層・従2・#547）。3段フォールバックの最下層。
+   * 共通が未設定なら空配列。得意先別・共通とも納品先別レーンと同一の中立構造へマップして
+   * `computeTimelineLayout` の従レーン配列（[得意先別, 共通]）に渡す。
    */
   commonPeriods: CommonSellingPriceEditPeriodDTO[];
   /** 管理者のみミューテーション系UI（新規追加・編集・適用終了・削除）を描画する。認可の正本はサーバー側 verifyAdmin。 */
@@ -82,7 +89,13 @@ type Props = {
  * 得意先別販売単価（`customer-selling-prices/[customerCd]/[productCd]/PeriodDetailPanel.tsx`）の同型写像で、
  * 宛先軸が得意先から納品先へ替わる点が異なる（上書きなし＝集約なしが正常な既定状態である点は共通）。
  */
-export function PeriodDetailPanel({ detail, commonPeriods, isAdmin, referenceDate }: Props) {
+export function PeriodDetailPanel({
+  detail,
+  customerPeriods,
+  commonPeriods,
+  isAdmin,
+  referenceDate,
+}: Props) {
   const [mode, setMode] = useState<PanelMode>({ kind: "closed" });
   const close = useCallback(() => setMode({ kind: "closed" }), []);
 
@@ -149,9 +162,9 @@ export function PeriodDetailPanel({ detail, commonPeriods, isAdmin, referenceDat
           layout={computeTimelineLayout(
             detail.periods.map(toTimelinePeriod),
             referenceDate,
-            // 従レーン（共通販売単価・フォールバック）を1本重ねる（表示専用）。複数従レーンの配列で渡す。
-            // Step 3-2 で得意先別レーンを加えた2従レーンへ拡張する。
-            [commonPeriods.map(toTimelinePeriod)]
+            // 従レーンは2本：[得意先別, 共通]（3段フォールバックの中間・最下層・いずれも表示専用）。
+            // 同一の中立構造へマップし同一軸へ重ねる。順序が PriceTimeline のレーン描画順と対応する。
+            [customerPeriods.map(toTimelinePeriod), commonPeriods.map(toTimelinePeriod)]
           )}
         />
       )}

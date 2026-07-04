@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
   commonSellingPriceEditQueryFactory,
+  customerSellingPriceEditQueryFactory,
   deliveryLocationSellingPriceEditQueryFactory,
 } from "@subdomains/pricing/application/factories/pricingQueryFactory";
 import { toJstCalendarDay } from "@server/shared/domain/values/toJstCalendarDay";
@@ -22,10 +23,10 @@ export default async function DeliveryLocationSellingPriceDetailPage({
   // status 算出とタイムラインの今日マーカーを同一基準日に揃えるため、参照日を一度だけ求めて共有する。
   const referenceDate = toJstCalendarDay(new Date());
 
-  // 納品先別（主）と共通販売単価（従＝タイムラインのフォールバックレーン）を並行取得する。
-  // 共通は同一商品コードで引ける既存の編集読みモデルを再利用し BE 追加実装ゼロ。商品が在れば非 null で、
-  // 上書き／設定なしでも periods は空配列を返す（#506 と同型）。
-  // 得意先別レーンは親得意先コードが detail 取得後に判明するため Step 3-2 で追加取得する（今は共通のみ）。
+  // タイムラインは「納品先別 → 得意先別 → 共通」の3段フォールバックを主＋2従レーンで対比する。
+  // ①納品先別 detail と共通（商品コードのみで引ける）を並行取得する。共通は同一商品コードで引ける
+  // 既存の編集読みモデルを再利用し BE 追加実装ゼロ。商品が在れば非 null で、上書き／設定なしでも periods は
+  // 空配列を返す（#506 と同型）。
   const [detail, commonDetail] = await Promise.all([
     deliveryLocationSellingPriceEditQueryFactory().find({
       deliveryLocationCode: deliveryLocationCd,
@@ -41,8 +42,17 @@ export default async function DeliveryLocationSellingPriceDetailPage({
     notFound();
   }
 
-  // 共通が null（商品不在）でも納品先別が在れば描画は続行する。従レーンは空扱い（フォールバックも無い）。
+  // ②得意先別レーンは親得意先コードが detail 取得後に判明するため2段目で引く（detail 依存）。
+  // 得意先別が null（当該得意先×商品に得意先別集約が無い等）でも従レーンを空扱いで描画継続する。
+  const customerDetail = await customerSellingPriceEditQueryFactory().find({
+    customerCode: detail.customerCode,
+    productCode: productCd,
+    referenceDate,
+  });
+
+  // 共通・得意先別が null（商品不在等）でも納品先別が在れば描画は続行する。従レーンは空扱い。
   const commonPeriods = commonDetail?.periods ?? [];
+  const customerPeriods = customerDetail?.periods ?? [];
 
   return (
     <div className="container mx-auto p-8">
@@ -115,6 +125,7 @@ export default async function DeliveryLocationSellingPriceDetailPage({
       {/* 適用期間明細＋操作（UC-2/3/4/5）。表示・操作はクライアント wrapper に委譲。 */}
       <PeriodDetailPanel
         detail={detail}
+        customerPeriods={customerPeriods}
         commonPeriods={commonPeriods}
         isAdmin={admin}
         referenceDate={referenceDate}
