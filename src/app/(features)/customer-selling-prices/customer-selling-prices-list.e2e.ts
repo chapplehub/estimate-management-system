@@ -167,15 +167,18 @@ test.describe("得意先別販売単価一覧（#508）", () => {
     await expect(page.getByRole("link", { name: "PRD863" })).not.toBeVisible();
   });
 
-  test("商品コードリンクは管理画面（#507）の URL を指す", async ({ page }) => {
-    // #507 未着地の間は遷移先が一時 404 のため、リンクの宛先のみを検証する（親 #492 の順序依存）。
+  test("商品コードリンクから管理画面へ遷移できる", async ({ page }) => {
+    // 一覧→管理画面（#507）の画面間結合を実クリックで検証する。href 一致だけでは動的ルート
+    // ([customerCd]/[productCd]) の 404 を捕まえられないため、遷移先の描画まで確認する（#509 の主眼）。
     await page.goto("/customer-selling-prices/C902?code=PRD860");
     await waitForListReady(page);
 
-    await expect(page.getByRole("link", { name: "PRD860" })).toHaveAttribute(
-      "href",
-      "/customer-selling-prices/C902/PRD860"
-    );
+    await page.getByRole("link", { name: "PRD860" }).click();
+
+    await expect(page).toHaveURL(/\/customer-selling-prices\/C902\/PRD860$/, { timeout: 10000 });
+    // 得意先・商品コンテキストを引き継いだ管理画面（適用期間パネル）が描画される。
+    await expect(page.getByRole("heading", { name: "適用期間" })).toBeVisible();
+    await expect(page.getByText("PRD860")).toBeVisible();
   });
 
   test("無効商品は弾かれずバッジ付きで表示される", async ({ page }) => {
