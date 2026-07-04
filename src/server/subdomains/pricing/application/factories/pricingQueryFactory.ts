@@ -5,6 +5,8 @@ import { CostPriceEditQueryService } from "../queries/CostPriceEditQueryService"
 import { CostPriceListQueryService } from "../queries/CostPriceListQueryService";
 import { CustomerSellingPriceEditQueryService } from "../queries/CustomerSellingPriceEditQueryService";
 import { CustomerSellingPriceListQueryService } from "../queries/CustomerSellingPriceListQueryService";
+import { DeliveryLocationSellingPriceEditQueryService } from "../queries/DeliveryLocationSellingPriceEditQueryService";
+import { DeliveryLocationSellingPriceListQueryService } from "../queries/DeliveryLocationSellingPriceListQueryService";
 import { ResolveCommonSellingPriceQuery } from "../queries/ResolveCommonSellingPriceQuery";
 import { ResolveCostPriceQuery } from "../queries/ResolveCostPriceQuery";
 import { ResolveCustomerSellingPriceQuery } from "../queries/ResolveCustomerSellingPriceQuery";
@@ -20,6 +22,8 @@ import { PrismaCostPriceQueryService } from "../../infrastructure/queries/Prisma
 import { PrismaCustomerSellingPriceEditQueryService } from "../../infrastructure/queries/PrismaCustomerSellingPriceEditQueryService";
 import { PrismaCustomerSellingPriceListQueryService } from "../../infrastructure/queries/PrismaCustomerSellingPriceListQueryService";
 import { PrismaCustomerSellingPriceQueryService } from "../../infrastructure/queries/PrismaCustomerSellingPriceQueryService";
+import { PrismaDeliveryLocationSellingPriceEditQueryService } from "../../infrastructure/queries/PrismaDeliveryLocationSellingPriceEditQueryService";
+import { PrismaDeliveryLocationSellingPriceListQueryService } from "../../infrastructure/queries/PrismaDeliveryLocationSellingPriceListQueryService";
 import { PrismaDeliveryLocationSellingPriceQueryService } from "../../infrastructure/queries/PrismaDeliveryLocationSellingPriceQueryService";
 
 /**
@@ -54,6 +58,19 @@ export function customerSellingPriceListQueryFactory(): CustomerSellingPriceList
 /** 得意先別販売単価 編集の読みモデル（#506）を Prisma 実装から構築する。 */
 export function customerSellingPriceEditQueryFactory(): CustomerSellingPriceEditQueryService {
   return new PrismaCustomerSellingPriceEditQueryService();
+}
+
+/**
+ * 納品先別販売単価 保守一覧の読みモデル（#546）を Prisma 実装から構築する。
+ * 読みモデルは Query ラッパを介さず QueryService インターフェースを直接返す（既存規約）。
+ */
+export function deliveryLocationSellingPriceListQueryFactory(): DeliveryLocationSellingPriceListQueryService {
+  return new PrismaDeliveryLocationSellingPriceListQueryService();
+}
+
+/** 納品先別販売単価 編集の読みモデル（#546）を Prisma 実装から構築する。 */
+export function deliveryLocationSellingPriceEditQueryFactory(): DeliveryLocationSellingPriceEditQueryService {
+  return new PrismaDeliveryLocationSellingPriceEditQueryService();
 }
 
 /**

@@ -151,7 +151,7 @@ describe("ResolveSellingPriceQuery", () => {
       productId,
       ProductCategory.INDIVIDUAL
     );
-    deliveryLocationPrice.addPeriod(period("2025-07-01", null), price(700));
+    deliveryLocationPrice.addPeriod(period("2025-07-01", null), price(700), "2025-07-01");
     await deliveryLocationRepo.insert(deliveryLocationPrice);
 
     const resolved = await query.execute({

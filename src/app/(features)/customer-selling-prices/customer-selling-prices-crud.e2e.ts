@@ -3,7 +3,7 @@ import { type Page, expect, test } from "@playwright/test";
 /**
  * 得意先別販売単価 CRUD/権限（UC-3/4/5/6＋ドメインエラー＋権限）の E2E。
  *
- * DB 変更系は専用得意先 C903 × 専用商品（PRD867=Chain A・PRD868=Chain B・PRD869=Chain C）に隔離し、
+ * DB 変更系は専用得意先 C904 × 専用商品（PRD867=Chain A・PRD868=Chain B・PRD869=Chain C）に隔離し、
  * 関心ごとに serial chain へ分割する（ADR-0020 判断1）。隔離の自然な単位は商品ではなく得意先で、
  * 閲覧系 C902 帯とは物理的に分離する。入力日付は today（JST 暦日）相対で生成し、新規期間は不変条件上
  * 開始 ≥ 今日とする（ADR-20260629-3x5）。重複拒否は登録が拒否され DB を変えないため閲覧系 C902×PRD866
@@ -42,9 +42,9 @@ async function waitForAdminDetailReady(page: Page) {
 const NO_OVERRIDE_MESSAGE =
   "この得意先×商品の上書きはありません。価格決定は共通販売単価を適用します。";
 
-test.describe.serial("得意先別販売単価 Chain A（登録→編集→削除・C903×PRD867）", () => {
+test.describe.serial("得意先別販売単価 Chain A（登録→編集→削除・C904×PRD867）", () => {
   test("UC-3: 将来期間を新規登録できる", async ({ page }) => {
-    await page.goto("/customer-selling-prices/C903/PRD867");
+    await page.goto("/customer-selling-prices/C904/PRD867");
     await waitForAdminDetailReady(page);
     // 初期は上書きなし（CSP 集約なし＝共通へフォールバックする正常状態）。
     await expect(page.getByText(NO_OVERRIDE_MESSAGE)).toBeVisible();
@@ -63,7 +63,7 @@ test.describe.serial("得意先別販売単価 Chain A（登録→編集→削�
   });
 
   test("UC-4: 将来行の単価・適用開始日を編集できる", async ({ page }) => {
-    await page.goto("/customer-selling-prices/C903/PRD867");
+    await page.goto("/customer-selling-prices/C904/PRD867");
     await waitForAdminDetailReady(page);
 
     const row = page.locator("table tbody tr", { hasText: "将来" });
@@ -80,7 +80,7 @@ test.describe.serial("得意先別販売単価 Chain A（登録→編集→削�
   });
 
   test("UC-5: 将来行を削除すると上書きなしに戻る", async ({ page }) => {
-    await page.goto("/customer-selling-prices/C903/PRD867");
+    await page.goto("/customer-selling-prices/C904/PRD867");
     await waitForAdminDetailReady(page);
 
     const row = page.locator("table tbody tr", { hasText: "将来" });
@@ -100,7 +100,7 @@ test.describe.serial("得意先別販売単価 Chain A（登録→編集→削�
     // UC-5 で最後の1行を削除済み。B案（親ごと削除）以前はここに空集約シェル（親あり・0件）が
     // 残り、UI は0件を「上書きなし＝新規登録」と見なし version を送らないため再登録が ValidationError で
     // 詰まった（#512 同型）。親ごと消えていれば上書きなし商品と同じ insert 経路で再登録できる。
-    await page.goto("/customer-selling-prices/C903/PRD867");
+    await page.goto("/customer-selling-prices/C904/PRD867");
     await waitForAdminDetailReady(page);
     await expect(page.getByText(NO_OVERRIDE_MESSAGE)).toBeVisible();
 
@@ -119,9 +119,9 @@ test.describe.serial("得意先別販売単価 Chain A（登録→編集→削�
   });
 });
 
-test.describe.serial("得意先別販売単価 Chain B（登録→適用終了→改定・C903×PRD868）", () => {
+test.describe.serial("得意先別販売単価 Chain B（登録→適用終了→改定・C904×PRD868）", () => {
   test("UC-3: 現在有効期間を新規登録できる", async ({ page }) => {
-    await page.goto("/customer-selling-prices/C903/PRD868");
+    await page.goto("/customer-selling-prices/C904/PRD868");
     await waitForAdminDetailReady(page);
 
     await page.getByRole("button", { name: "新規追加" }).click();
@@ -137,7 +137,7 @@ test.describe.serial("得意先別販売単価 Chain B（登録→適用終了�
   });
 
   test("UC-4: 現在有効行に適用終了日を設定できる", async ({ page }) => {
-    await page.goto("/customer-selling-prices/C903/PRD868");
+    await page.goto("/customer-selling-prices/C904/PRD868");
     await waitForAdminDetailReady(page);
 
     const row = page.locator("table tbody tr", { hasText: "現在有効" });
@@ -154,7 +154,7 @@ test.describe.serial("得意先別販売単価 Chain B（登録→適用終了�
   });
 
   test("UC-3: 改定として新たな将来期間を追加できる", async ({ page }) => {
-    await page.goto("/customer-selling-prices/C903/PRD868");
+    await page.goto("/customer-selling-prices/C904/PRD868");
     await waitForAdminDetailReady(page);
 
     await page.getByRole("button", { name: "新規追加" }).click();
@@ -171,9 +171,9 @@ test.describe.serial("得意先別販売単価 Chain B（登録→適用終了�
   });
 });
 
-test.describe.serial("得意先別販売単価 Chain C（ガイド付き単価改定・C903×PRD869）", () => {
+test.describe.serial("得意先別販売単価 Chain C（ガイド付き単価改定・C904×PRD869）", () => {
   test("UC-3: 改定の起点となる現在有効期間を新規登録できる", async ({ page }) => {
-    await page.goto("/customer-selling-prices/C903/PRD869");
+    await page.goto("/customer-selling-prices/C904/PRD869");
     await waitForAdminDetailReady(page);
     await expect(page.getByText(NO_OVERRIDE_MESSAGE)).toBeVisible();
 
@@ -190,7 +190,7 @@ test.describe.serial("得意先別販売単価 Chain C（ガイド付き単価�
   });
 
   test("UC-6: 改定ボタンから現在有効単価を改定日で新単価へ切り替える", async ({ page }) => {
-    await page.goto("/customer-selling-prices/C903/PRD869");
+    await page.goto("/customer-selling-prices/C904/PRD869");
     await waitForAdminDetailReady(page);
 
     const active = page.locator("table tbody tr", { hasText: "現在有効" });

@@ -337,11 +337,12 @@ const CUSTOMERS = [
     isActive: true,
     deliveryLocations: [],
   },
-  // C903: 得意先別販売単価 管理画面 CRUD E2E 用（#509）。閲覧系 C902 と分離した変更系専用得意先。
+  // C904: 得意先別販売単価 管理画面 CRUD E2E 用（#509）。閲覧系 C902 と分離した変更系専用得意先。
   // PRD867〜869 への上書きは seed せず、CRUD chain がテスト内で登録→編集→適用終了→改定→削除する。
   // 隔離の自然な単位は商品ではなく得意先（一覧画面が得意先スコープのビューのため）。
+  // 得意先コードは develop 側 #548 が C903 を納品先別テストで先取りしたため C904 に退避（マージ解決）。
   {
-    code: "C903",
+    code: "C904",
     name: "E2E専用_得意先別単価CRUD商事",
     postalCode: "1000007",
     prefecture: "東京都",
@@ -351,6 +352,42 @@ const CUSTOMERS = [
     contactPerson: null,
     isActive: true,
     deliveryLocations: [],
+  },
+  // C903: 納品先別販売単価 一覧 E2E 用（#548）。D902（有効）× PRD87x 帯への納品先別上書き期間は
+  // seedDeliveryLocationSellingPrices で today 相対 raw insert する。得意先別 C902 帯と分離し、
+  // 納品先別フィクスチャの影響が他テストへ波及しないようにする。D903 は無効納品先ヘッダバッジ検証用
+  // （セレクタ検索は有効のみのため直接 URL でのみ到達＝新規に選ぶ動線には出さないが状況確認は拒まない）。
+  {
+    code: "C903",
+    name: "E2E専用_納品先別単価テスト商事",
+    postalCode: "1000007",
+    prefecture: "東京都",
+    address: "千代田区有楽町1-1-3",
+    phoneNumber: "0399990904",
+    faxNumber: null,
+    contactPerson: null,
+    isActive: true,
+    deliveryLocations: [
+      {
+        code: "D902",
+        name: "E2E専用_納品先別単価テスト納品先",
+        postalCode: "1000007",
+        prefecture: "東京都",
+        address: "千代田区有楽町1-1-3 1F",
+        phoneNumber: "0399990905",
+        deliveryNotes: "E2E専用_納品先別単価テスト（有効・グローバル検索の対象）",
+      },
+      {
+        code: "D903",
+        name: "E2E専用_納品先別単価テスト無効納品先",
+        postalCode: "1000007",
+        prefecture: "東京都",
+        address: "千代田区有楽町1-1-3 2F",
+        phoneNumber: "0399990906",
+        deliveryNotes: "E2E専用_納品先別単価テスト（無効・ヘッダバッジ検証用・直接 URL 到達）",
+        isActive: false,
+      },
+    ],
   },
 ];
 
@@ -647,7 +684,7 @@ const PRODUCTS = [
     description:
       "得意先別販売単価 詳細 E2E（失効/現在有効/将来の3状態＋共通1本＝バッジ・出し分け・タイムライン従レーン）",
   },
-  // PRD867〜869: 得意先別販売単価 管理画面 CRUD E2E 用（#509）。得意先 C903 に閉じ、上書き期間は
+  // PRD867〜869: 得意先別販売単価 管理画面 CRUD E2E 用（#509）。得意先 C904 に閉じ、上書き期間は
   // seed せず CRUD chain がテスト内で構築する（登録→編集→適用終了→改定→削除）。costPrice は null。
   // 商品名の「得意先単価CRUD_」前置は C902 帯（得意先単価_）との視認上の区別であり、一覧テストの
   // name=得意先単価 部分一致検索には PRD866 帯と同様にヒットする。一覧の assertion は行スコープ
@@ -678,6 +715,67 @@ const PRODUCTS = [
     costPrice: null,
     isActive: true,
     description: "得意先別販売単価 CRUD E2E Chain C（現在有効 登録→ガイド付き単価改定）",
+  },
+  // 納品先別販売単価 E2E 用（PRD87x 帯・#548）。costPrice は null とし原価集約を作らない。
+  // 納品先 D902 に対する納品先別上書き期間・共通単価は seedDeliveryLocationSellingPrices で
+  // today 相対 raw insert する。商品名は「納品先単価」前置で統一し、E2E の商品名部分一致検索で
+  // 帯全体に絞り込めるようにする（得意先別 PRD86x 帯とは別帯にして結合汚染を避ける）。
+  {
+    code: "PRD870",
+    name: "納品先単価_有効有界テスト商品",
+    category: "INDIVIDUAL" as const,
+    unit: "UNIT" as const,
+    costPrice: null,
+    isActive: true,
+    description: "納品先別販売単価 一覧 E2E（上書き有効・有界期間＋共通単価あり＝並記の検証用）",
+  },
+  {
+    code: "PRD871",
+    name: "納品先単価_有効無期限テスト商品",
+    category: "INDIVIDUAL" as const,
+    unit: "UNIT" as const,
+    costPrice: null,
+    isActive: true,
+    description:
+      "納品先別販売単価 一覧 E2E（上書き有効・無期限＋共通単価なし＝期間列 開始〜無期限）",
+  },
+  {
+    code: "PRD872",
+    name: "納品先単価_失効テスト商品",
+    category: "INDIVIDUAL" as const,
+    unit: "UNIT" as const,
+    costPrice: null,
+    isActive: true,
+    description:
+      "納品先別販売単価 一覧 E2E（上書き失効のみ＋共通単価あり＝失効中でも共通は生きる対比）",
+  },
+  {
+    code: "PRD873",
+    name: "納品先単価_上書きなしテスト商品",
+    category: "INDIVIDUAL" as const,
+    unit: "UNIT" as const,
+    costPrice: null,
+    isActive: true,
+    description:
+      "納品先別販売単価 一覧 E2E（上書きなし＋共通単価あり＝既定価格の読める上書きなし行）",
+  },
+  {
+    code: "PRD874",
+    name: "納品先単価_上書きなし共通なしテスト商品",
+    category: "INDIVIDUAL" as const,
+    unit: "UNIT" as const,
+    costPrice: null,
+    isActive: true,
+    description: "納品先別販売単価 一覧 E2E（上書きなし＋共通単価なし＝両列空欄）",
+  },
+  {
+    code: "PRD875",
+    name: "納品先単価_無効商品テスト商品",
+    category: "INDIVIDUAL" as const,
+    unit: "UNIT" as const,
+    costPrice: null,
+    isActive: false,
+    description: "納品先別販売単価 一覧 E2E（無効商品＋上書き有効＝行の無効バッジ・弾かず可視化）",
   },
 ];
 
@@ -943,6 +1041,119 @@ async function seedCustomerSellingPrices(productIdByCode: Map<string, string>): 
 
   console.log(
     "Created customer selling prices (C902 × PRD860: active+common / PRD861: active unbounded / PRD862: lapsed+common / PRD863: common only / PRD865: inactive product / PRD866: 3-state+common detail)"
+  );
+}
+
+/**
+ * 納品先別販売単価の E2E フィクスチャを投入する（納品先 D902 × PRD87x 帯・today 相対・#548）。
+ * 一覧画面の3状態（active/lapsed/none）と共通単価並記カラムの表示分岐を全て踏めるよう、
+ * 上書き（納品先層）× 共通（フォールバック層）の組み合わせを商品ごとに変える:
+ * - PRD870: 上書き有効・有界 `[today-30, today+30)` ¥1800 ＋ 共通 `[today-30, ∞)` ¥2000（並記の基準ケース）
+ * - PRD871: 上書き有効・無期限 `[today-30, ∞)` ¥900 ＋ 共通なし（期間列 開始〜無期限・共通列空欄）
+ * - PRD872: 上書き失効のみ `[today-60, today-30)` ¥1400 ＋ 共通 `[today-30, ∞)` ¥1200（失効中でも共通は生きる対比）
+ * - PRD873: 上書きなし ＋ 共通 `[today-30, ∞)` ¥1100（none 行で既定価格が読めるケース）
+ * - PRD874: 上書きなし ＋ 共通なし（両列空欄）
+ * - PRD875: 無効商品 ＋ 上書き有効 `[today-30, today+30)` ¥700（行の無効バッジ・弾かず可視化）
+ *
+ * 納品先宛の価格解決連鎖は `納品先別 ?? 共通`（得意先別は連鎖外）なので、並記するフォールバックは
+ * 共通単価のみ。得意先別期間は一切投入しない。seedCustomerSellingPrices と同型で、過去開始（失効）は
+ * 集約の assertStartNotPast を通せないため raw daterange insert で投入する。期間行は親集約
+ * （delivery_location_selling_prices・複合PK）を先に作る。無効納品先ヘッダバッジの検証は D903
+ * （無効・上書きなし）への直接 URL で行うため上書き投入なし。
+ */
+async function seedDeliveryLocationSellingPrices(
+  productIdByCode: Map<string, string>
+): Promise<void> {
+  const deliveryLocation = await prisma.deliveryLocation.findUniqueOrThrow({
+    where: { code: "D902" },
+    select: { id: true },
+  });
+
+  const insertDeliveryLocationPeriod = async (
+    productId: string,
+    price: number,
+    lower: string,
+    upper: string | null
+  ): Promise<void> => {
+    await prisma.$executeRaw`
+      INSERT INTO delivery_location_selling_price_periods
+        (id, delivery_location_id, product_id, selling_price, applicable_period, updated_at)
+      VALUES (
+        ${generateId()}::uuid,
+        ${deliveryLocation.id}::uuid,
+        ${productId}::uuid,
+        ${price}::numeric,
+        daterange(${lower}::date, ${upper}::date, '[)'),
+        CURRENT_TIMESTAMP
+      )
+    `;
+  };
+
+  const insertCommonPeriod = async (
+    productId: string,
+    price: number,
+    lower: string,
+    upper: string | null
+  ): Promise<void> => {
+    await prisma.$executeRaw`
+      INSERT INTO common_selling_price_periods
+        (id, product_id, selling_price, applicable_period, updated_at)
+      VALUES (
+        ${generateId()}::uuid,
+        ${productId}::uuid,
+        ${price}::numeric,
+        daterange(${lower}::date, ${upper}::date, '[)'),
+        CURRENT_TIMESTAMP
+      )
+    `;
+  };
+
+  const prd870 = productIdByCode.get("PRD870");
+  if (prd870) {
+    await prisma.deliveryLocationSellingPrice.create({
+      data: { deliveryLocationId: deliveryLocation.id, productId: prd870 },
+    });
+    await insertDeliveryLocationPeriod(prd870, 1800, jstRelativeDate(-30), jstRelativeDate(30)); // 上書き有効・有界
+    await prisma.commonSellingPrice.create({ data: { productId: prd870 } });
+    await insertCommonPeriod(prd870, 2000, jstRelativeDate(-30), null); // 共通・現在有効
+  }
+
+  const prd871 = productIdByCode.get("PRD871");
+  if (prd871) {
+    await prisma.deliveryLocationSellingPrice.create({
+      data: { deliveryLocationId: deliveryLocation.id, productId: prd871 },
+    });
+    await insertDeliveryLocationPeriod(prd871, 900, jstRelativeDate(-30), null); // 上書き有効・無期限（共通なし）
+  }
+
+  const prd872 = productIdByCode.get("PRD872");
+  if (prd872) {
+    await prisma.deliveryLocationSellingPrice.create({
+      data: { deliveryLocationId: deliveryLocation.id, productId: prd872 },
+    });
+    await insertDeliveryLocationPeriod(prd872, 1400, jstRelativeDate(-60), jstRelativeDate(-30)); // 上書き失効のみ
+    await prisma.commonSellingPrice.create({ data: { productId: prd872 } });
+    await insertCommonPeriod(prd872, 1200, jstRelativeDate(-30), null); // 共通・現在有効
+  }
+
+  const prd873 = productIdByCode.get("PRD873");
+  if (prd873) {
+    await prisma.commonSellingPrice.create({ data: { productId: prd873 } });
+    await insertCommonPeriod(prd873, 1100, jstRelativeDate(-30), null); // 上書きなし＋共通のみ
+  }
+
+  // PRD874: 上書きなし＋共通なし（投入なし）
+
+  const prd875 = productIdByCode.get("PRD875");
+  if (prd875) {
+    await prisma.deliveryLocationSellingPrice.create({
+      data: { deliveryLocationId: deliveryLocation.id, productId: prd875 },
+    });
+    await insertDeliveryLocationPeriod(prd875, 700, jstRelativeDate(-30), jstRelativeDate(30)); // 無効商品＋上書き有効
+  }
+
+  console.log(
+    "Created delivery location selling prices (D902 × PRD870: active+common / PRD871: active unbounded / PRD872: lapsed+common / PRD873: common only / PRD875: inactive product)"
   );
 }
 
@@ -1288,6 +1499,11 @@ async function main() {
   // 3状態（active/lapsed/none）は参照日由来の派生状態のため today 相対で投入する。
   // 専用得意先 C902 に閉じるため、既存の得意先・商品フィクスチャには影響しない。
   await seedCustomerSellingPrices(productIdByCode);
+
+  // 納品先別販売単価 一覧 E2E フィクスチャ（D902 × PRD87x 帯・#548・ADR-20260629-3x5）。
+  // 3状態（active/lapsed/none）は参照日由来の派生状態のため today 相対で投入する。
+  // 専用得意先 C903・専用納品先 D902 に閉じるため、既存フィクスチャには影響しない。
+  await seedDeliveryLocationSellingPrices(productIdByCode);
 
   // S4 周辺商品サジェスト E2E 用の関連（本体 PRD810 → 周辺 PRD811・数量2）。
   const suggestParent = await prisma.product.findUniqueOrThrow({ where: { code: "PRD810" } });

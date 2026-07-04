@@ -121,27 +121,27 @@ describe("computeTimelineLayout", () => {
 });
 
 /**
- * 複数レーン共有軸対応（#507・得意先別販売単価）。
+ * 複数レーン共有軸対応（#507・得意先別販売単価 → #547 で複数従レーンへ一般化）。
  *
- * 得意先別レーン（主・操作対象）と共通販売単価レーン（従・フォールバック・表示専用）を同一の時間軸に
- * 重ねて対比するための拡張。第3引数 `secondaryPeriods` はオプションで、既存の単レーン呼び出し（共通売単価・
- * 原価）は後方互換のまま影響を受けない。両系列の和集合から軸範囲（axisStart/axisEnd/todayPct）を決め、
- * 各系列の bars を同一の pct 写像に載せる（同じ日付は両レーンで同じ left% に揃う）。
+ * 主レーン（操作対象）と従レーン（フォールバック・表示専用）を同一の時間軸に重ねて対比するための拡張。
+ * 第3引数 `secondaryLanes`（従レーンの配列）はオプションで、既存の単レーン呼び出し（共通売単価・原価）は
+ * 後方互換のまま影響を受けない。全系列の和集合から軸範囲（axisStart/axisEnd/todayPct）を決め、各系列の
+ * bars を同一の pct 写像に載せる（同じ日付は全レーンで同じ left% に揃う）。`secondaryBars` はレーンごとの配列。
  */
 describe("computeTimelineLayout（複数レーン共有軸）", () => {
-  it("従レーンを渡すと secondaryBars を返し、軸は両系列の和集合から決まる", () => {
+  it("従レーンを1本渡すと secondaryBars[0] を返し、軸は両系列の和集合から決まる", () => {
     // 主（得意先別）は 2026 に1本、従（共通）は 2020 に1本。従の開始が主より過去にあるため、
     // 和集合を取れば従の開始位置は主の開始位置より左（小さい left%）になる。
     const layout = computeTimelineLayout(
       [period({ periodId: "cust-1", start: "2026-01-01", end: null, status: "active" })],
       "2026-06-27",
-      [period({ periodId: "common-1", start: "2020-01-01", end: null, status: "active" })]
+      [[period({ periodId: "common-1", start: "2020-01-01", end: null, status: "active" })]]
     );
 
-    expect(layout.secondaryBars).toBeDefined();
-    expect(layout.secondaryBars.map((b) => b.periodId)).toEqual(["common-1"]);
+    expect(layout.secondaryBars).toHaveLength(1);
+    expect(layout.secondaryBars[0].map((b) => b.periodId)).toEqual(["common-1"]);
     const primary = layout.bars[0];
-    const secondary = layout.secondaryBars[0];
+    const secondary = layout.secondaryBars[0][0];
     // 共通（従）の開始 2020 は得意先別（主）の開始 2026 より過去 → より左に置かれる。
     expect(secondary.leftPct).toBeLessThan(primary.leftPct);
   });
@@ -150,19 +150,19 @@ describe("computeTimelineLayout（複数レーン共有軸）", () => {
     const layout = computeTimelineLayout(
       [period({ periodId: "cust-1", start: "2026-03-01", end: "2026-09-01", status: "active" })],
       "2026-06-27",
-      [period({ periodId: "common-1", start: "2026-03-01", end: null, status: "active" })]
+      [[period({ periodId: "common-1", start: "2026-03-01", end: null, status: "active" })]]
     );
     const primary = layout.bars[0];
-    const secondary = layout.secondaryBars[0];
+    const secondary = layout.secondaryBars[0][0];
     expect(secondary.leftPct).toBeCloseTo(primary.leftPct, 5);
   });
 
   it("主レーンが空でも従レーンがあれば軸を描く（上書きなしのフォールバック表示）", () => {
     const layout = computeTimelineLayout([], "2026-06-27", [
-      period({ periodId: "common-1", start: "2025-04-01", end: null, status: "active" }),
+      [period({ periodId: "common-1", start: "2025-04-01", end: null, status: "active" })],
     ]);
     expect(layout.bars).toEqual([]);
-    expect(layout.secondaryBars.map((b) => b.periodId)).toEqual(["common-1"]);
+    expect(layout.secondaryBars[0].map((b) => b.periodId)).toEqual(["common-1"]);
     expect(layout.axisStart).not.toBe("");
     expect(layout.axisEnd).not.toBe("");
   });
@@ -173,5 +173,30 @@ describe("computeTimelineLayout（複数レーン共有軸）", () => {
     expect(layout.secondaryBars).toEqual([]);
     expect(layout.axisStart).toBe("");
     expect(layout.axisEnd).toBe("");
+  });
+});
+
+/**
+ * 複数従レーンの一般化（#547・納品先別販売単価）。
+ *
+ * 納品先別の価格決定は「納品先別 → 得意先別 → 共通」の3段フォールバック。タイムラインは主＝納品先別に
+ * 従レーンを2本（得意先別・共通）重ねて対比する。第3引数を単一従レーンから**従レーンの配列**
+ * `secondaryLanes: TimelinePeriod[][]` へ一般化し、`secondaryBars: TimelineBar[][]` をレーンごとに返す。
+ * 軸範囲は主＋全従レーンの和集合から決め、全系列を同一の pct 写像に載せる（同じ日付は全レーンで同じ left%）。
+ */
+describe("computeTimelineLayout（複数従レーンの一般化）", () => {
+  it("複数の従レーンを渡すと secondaryBars をレーンごとの配列で返す", () => {
+    // 主=納品先別、従1=得意先別、従2=共通の3段フォールバックを同一軸へ重ねる。
+    const layout = computeTimelineLayout(
+      [period({ periodId: "loc-1", start: "2026-01-01", end: null, status: "active" })],
+      "2026-06-27",
+      [
+        [period({ periodId: "cust-1", start: "2025-01-01", end: null, status: "active" })],
+        [period({ periodId: "common-1", start: "2020-01-01", end: null, status: "active" })],
+      ]
+    );
+    expect(layout.secondaryBars).toHaveLength(2);
+    expect(layout.secondaryBars[0].map((b) => b.periodId)).toEqual(["cust-1"]);
+    expect(layout.secondaryBars[1].map((b) => b.periodId)).toEqual(["common-1"]);
   });
 });
