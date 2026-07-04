@@ -93,8 +93,8 @@ describe("PrismaDeliveryLocationSellingPriceRepository", () => {
       productId,
       ProductCategory.INDIVIDUAL
     );
-    aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000));
-    aggregate.addPeriod(period("2025-10-01", null), price(1234.56));
+    aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000), "2025-07-01");
+    aggregate.addPeriod(period("2025-10-01", null), price(1234.56), "2025-07-01");
     await repository.insert(aggregate);
 
     const found = await repository.findByDeliveryLocationIdAndProductId(
@@ -120,7 +120,7 @@ describe("PrismaDeliveryLocationSellingPriceRepository", () => {
       productId,
       ProductCategory.INDIVIDUAL
     );
-    aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000));
+    aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000), "2025-07-01");
     await repository.insert(aggregate);
 
     // 画面表示時の version=1 を持ち回って改定（期間を1本追加）
@@ -128,7 +128,7 @@ describe("PrismaDeliveryLocationSellingPriceRepository", () => {
       deliveryLocationId,
       productId
     ))!;
-    reloaded.addPeriod(period("2025-10-01", null), price(1200));
+    reloaded.addPeriod(period("2025-10-01", null), price(1200), "2025-07-01");
     await repository.update(reloaded, 1);
 
     const found = (await repository.findByDeliveryLocationIdAndProductId(
@@ -145,7 +145,7 @@ describe("PrismaDeliveryLocationSellingPriceRepository", () => {
       productId,
       ProductCategory.INDIVIDUAL
     );
-    aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000));
+    aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000), "2025-07-01");
     await repository.insert(aggregate);
 
     // 既存行の updated_at を既知の過去値に固定し、偶発的な現在時刻一致を排除する。
@@ -161,7 +161,7 @@ describe("PrismaDeliveryLocationSellingPriceRepository", () => {
       deliveryLocationId,
       productId
     ))!;
-    reloaded.addPeriod(period("2025-10-01", null), price(1200));
+    reloaded.addPeriod(period("2025-10-01", null), price(1200), "2025-07-01");
     await repository.update(reloaded, 1);
 
     const rows = await prisma.$queryRaw<{ updatedAt: Date; start: string }[]>`
@@ -184,7 +184,7 @@ describe("PrismaDeliveryLocationSellingPriceRepository", () => {
       productId,
       ProductCategory.INDIVIDUAL
     );
-    aggregate.addPeriod(period("2025-07-01", null), price(1000));
+    aggregate.addPeriod(period("2025-07-01", null), price(1000), "2025-07-01");
     await repository.insert(aggregate);
 
     await expect(repository.update(aggregate, 999)).rejects.toBeInstanceOf(ConflictError);
@@ -196,7 +196,7 @@ describe("PrismaDeliveryLocationSellingPriceRepository", () => {
       productId,
       ProductCategory.INDIVIDUAL
     );
-    first.addPeriod(period("2025-07-01", null), price(1000));
+    first.addPeriod(period("2025-07-01", null), price(1000), "2025-07-01");
     await repository.insert(first);
 
     // アプリ層の存在チェックをすり抜けた二重作成レースを模す。
@@ -205,7 +205,7 @@ describe("PrismaDeliveryLocationSellingPriceRepository", () => {
       productId,
       ProductCategory.INDIVIDUAL
     );
-    second.addPeriod(period("2025-07-01", null), price(2000));
+    second.addPeriod(period("2025-07-01", null), price(2000), "2025-07-01");
     await expect(repository.insert(second)).rejects.toBeInstanceOf(ConflictError);
   });
 
@@ -215,7 +215,7 @@ describe("PrismaDeliveryLocationSellingPriceRepository", () => {
       productId,
       ProductCategory.INDIVIDUAL
     );
-    aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000));
+    aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000), "2025-07-01");
     await repository.insert(aggregate);
 
     // 並行 stale 書き込みを模して、ドメインのガードを迂回し重なる期間を直接 INSERT する。

@@ -12,8 +12,8 @@ import { SellingUnitPrice } from "../values/SellingUnitPrice";
 export class DeliveryLocationSellingPricePeriod {
   private constructor(
     private readonly _id: DeliveryLocationSellingPricePeriodId,
-    private readonly _period: ApplicablePeriod,
-    private readonly _price: SellingUnitPrice
+    private _period: ApplicablePeriod,
+    private _price: SellingUnitPrice
   ) {}
 
   /** 新規の期間行を生成する（identity を採番）。 */
@@ -35,6 +35,23 @@ export class DeliveryLocationSellingPricePeriod {
     price: SellingUnitPrice
   ): DeliveryLocationSellingPricePeriod {
     return new DeliveryLocationSellingPricePeriod(id, period, price);
+  }
+
+  /**
+   * 期間と単価を差し替える（将来行の編集用・集約ルートからのみ呼ぶ）。
+   * 行状態ガード（将来行限定）は集約ルート側の不変条件で守るため、ここでは状態を見ない。
+   */
+  changeTo(period: ApplicablePeriod, price: SellingUnitPrice): void {
+    this._period = period;
+    this._price = price;
+  }
+
+  /**
+   * 終了日のみを差し替える（適用終了用・集約ルートからのみ呼ぶ）。
+   * 開始日・単価は変えない。状態ガード（現在有効行限定）は集約ルート側で守る。
+   */
+  endDateOn(endDate: string): void {
+    this._period = ApplicablePeriod.create({ start: this._period.start, end: endDate });
   }
 
   get id(): DeliveryLocationSellingPricePeriodId {
