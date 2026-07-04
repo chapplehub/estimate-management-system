@@ -85,9 +85,10 @@ test.describe("納品先別販売単価 詳細（閲覧・#547）", () => {
   test("上書きなしは404にならず、得意先別／共通適用の正常メッセージが表示される", async ({
     page,
   }) => {
-    // D904×PRD877 は上書きが無い（集約なし）。納品先別固有: これは異常ではなく既定状態で、
-    // 404 ではなく「得意先別販売単価を、無ければ共通販売単価を適用します」の案内を出す。
-    await page.goto("/delivery-location-selling-prices/D904/PRD877");
+    // D902×PRD873 は納品先別上書きが無い（集約なし・共通のみの読取専用帯）。納品先別固有: これは
+    // 異常ではなく既定状態で、404 ではなく「得意先別販売単価を、無ければ共通販売単価を適用します」の
+    // 案内を出す。変更系 D904×PRD87x は CRUD chain の残余行と衝突するため読取専用帯 D902 を使う。
+    await page.goto("/delivery-location-selling-prices/D902/PRD873");
     await expect(page.getByRole("heading", { name: "適用期間" })).toBeVisible();
 
     await expect(
