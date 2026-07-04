@@ -94,7 +94,7 @@ describe("PrismaDeliveryLocationSellingPriceRepository", () => {
       ProductCategory.INDIVIDUAL
     );
     aggregate.addPeriod(period("2025-07-01", "2025-10-01"), price(1000), "2025-07-01");
-    aggregate.addPeriod(period("2025-10-01", null), price(1234.56), "2025-07-01");
+    aggregate.addPeriod(period("2025-10-01", null), price(1234.56), "2025-10-01");
     await repository.insert(aggregate);
 
     const found = await repository.findByDeliveryLocationIdAndProductId(
@@ -128,7 +128,7 @@ describe("PrismaDeliveryLocationSellingPriceRepository", () => {
       deliveryLocationId,
       productId
     ))!;
-    reloaded.addPeriod(period("2025-10-01", null), price(1200), "2025-07-01");
+    reloaded.addPeriod(period("2025-10-01", null), price(1200), "2025-10-01");
     await repository.update(reloaded, 1);
 
     const found = (await repository.findByDeliveryLocationIdAndProductId(
@@ -139,7 +139,7 @@ describe("PrismaDeliveryLocationSellingPriceRepository", () => {
     expect(found.periods[1].price.equals(price(1200))).toBe(true);
   });
 
-  it("update は既存期間行の updated_at を変更しない（append-only・監査保持）", async () => {
+  it("update は無変更の既存行の updated_at を変更しない（監査保持）", async () => {
     const aggregate = DeliveryLocationSellingPrice.create(
       deliveryLocationId,
       productId,
@@ -161,7 +161,7 @@ describe("PrismaDeliveryLocationSellingPriceRepository", () => {
       deliveryLocationId,
       productId
     ))!;
-    reloaded.addPeriod(period("2025-10-01", null), price(1200), "2025-07-01");
+    reloaded.addPeriod(period("2025-10-01", null), price(1200), "2025-10-01");
     await repository.update(reloaded, 1);
 
     const rows = await prisma.$queryRaw<{ updatedAt: Date; start: string }[]>`
@@ -176,6 +176,178 @@ describe("PrismaDeliveryLocationSellingPriceRepository", () => {
     expect(rows[0].updatedAt.toISOString()).toBe(frozen.toISOString());
     // 追加行（2025-10-01 始まり）は今回の挿入なので過去値ではない。
     expect(rows[1].updatedAt.getTime()).toBeGreaterThan(frozen.getTime());
+  });
+
+  it("update で将来行の単価改定が in-place 反映され、改定行の updated_at が進む（編集の永続化）", async () => {
+    const aggregate = DeliveryLocationSellingPrice.create(
+      deliveryLocationId,
+      productId,
+      ProductCategory.INDIVIDUAL
+    );
+    aggregate.addPeriod(period("2030-01-01", null), price(1000), "2025-06-01");
+    await repository.insert(aggregate);
+
+    // 改定前の updated_at を既知の過去値へ固定し、in-place 更新で前進したことを検出可能にする。
+    const frozen = new Date("2020-01-01T00:00:00.000Z");
+    await prisma.$executeRaw`
+      UPDATE delivery_location_selling_price_periods
+      SET updated_at = ${frozen}
+      WHERE delivery_location_id = ${deliveryLocationId.value}::uuid AND product_id = ${productId.value}::uuid
+    `;
+
+    const reloaded = (await repository.findByDeliveryLocationIdAndProductId(
+      deliveryLocationId,
+      productId
+    ))!;
+    const id = reloaded.periods[0].id;
+    reloaded.editPeriod(
+      id,
+      { period: period("2030-01-01", null), price: price(1500) },
+      "2025-06-01"
+    );
+    await repository.update(reloaded, 1);
+
+    const found = (await repository.findByDeliveryLocationIdAndProductId(
+      deliveryLocationId,
+      productId
+    ))!;
+    expect(found.periods).toHaveLength(1);
+    // id を保ったまま（差分 upsert・新規行を作らない）単価が改定される。
+    expect(found.periods[0].id.equals(id)).toBe(true);
+    expect(found.periods[0].price.equals(price(1500))).toBe(true);
+
+    const rows = await prisma.$queryRaw<{ updatedAt: Date }[]>`
+      SELECT updated_at AS "updatedAt"
+      FROM delivery_location_selling_price_periods
+      WHERE delivery_location_id = ${deliveryLocationId.value}::uuid AND product_id = ${productId.value}::uuid
+    `;
+    // 改定した行は updated_at が前進する（監査）。
+    expect(rows[0].updatedAt.getTime()).toBeGreaterThan(frozen.getTime());
+  });
+
+  it("update で集約から消えた将来行は DB からも削除される（削除の永続化）", async () => {
+    const aggregate = DeliveryLocationSellingPrice.create(
+      deliveryLocationId,
+      productId,
+      ProductCategory.INDIVIDUAL
+    );
+    aggregate.addPeriod(period("2030-01-01", "2030-06-01"), price(1000), "2025-06-01");
+    aggregate.addPeriod(period("2030-06-01", null), price(1200), "2025-06-01");
+    await repository.insert(aggregate);
+
+    const reloaded = (await repository.findByDeliveryLocationIdAndProductId(
+      deliveryLocationId,
+      productId
+    ))!;
+    const firstId = reloaded.periods[0].id;
+    reloaded.deletePeriod(firstId, "2025-06-01");
+    await repository.update(reloaded, 1);
+
+    const found = (await repository.findByDeliveryLocationIdAndProductId(
+      deliveryLocationId,
+      productId
+    ))!;
+    expect(found.periods).toHaveLength(1);
+    expect(found.periods[0].period.equals(period("2030-06-01", null))).toBe(true);
+  });
+
+  it("update で最後の将来行を削除すると期間行が0件になる（空集約 delete・空配列バインド）", async () => {
+    const aggregate = DeliveryLocationSellingPrice.create(
+      deliveryLocationId,
+      productId,
+      ProductCategory.INDIVIDUAL
+    );
+    aggregate.addPeriod(period("2030-01-01", null), price(1000), "2025-06-01");
+    await repository.insert(aggregate);
+
+    // 唯一の将来行を削除 → syncPeriodRows が rows=[] で DELETE ... ANY('{}'::uuid[]) を走らせる経路。
+    const reloaded = (await repository.findByDeliveryLocationIdAndProductId(
+      deliveryLocationId,
+      productId
+    ))!;
+    reloaded.deletePeriod(reloaded.periods[0].id, "2025-06-01");
+    await repository.update(reloaded, 1);
+
+    // 親（delivery_location_selling_prices）は残り、期間行だけ0件＝空集約として往復する（例外なく完了）。
+    const found = await repository.findByDeliveryLocationIdAndProductId(
+      deliveryLocationId,
+      productId
+    );
+    expect(found).not.toBeNull();
+    expect(found!.periods).toHaveLength(0);
+  });
+
+  it("delete で親行を削除すると期間行も cascade で消える（空集約の後始末・#512）", async () => {
+    const aggregate = DeliveryLocationSellingPrice.create(
+      deliveryLocationId,
+      productId,
+      ProductCategory.INDIVIDUAL
+    );
+    aggregate.addPeriod(period("2030-01-01", null), price(1000), "2025-06-01");
+    await repository.insert(aggregate);
+
+    const reloaded = (await repository.findByDeliveryLocationIdAndProductId(
+      deliveryLocationId,
+      productId
+    ))!;
+    reloaded.deletePeriod(reloaded.periods[0].id, "2025-06-01");
+    await repository.delete(reloaded, 1);
+
+    expect(
+      await repository.findByDeliveryLocationIdAndProductId(deliveryLocationId, productId)
+    ).toBeNull();
+    const remaining = await prisma.$queryRaw<{ count: bigint }[]>`
+      SELECT count(*)::bigint AS count
+      FROM delivery_location_selling_price_periods
+      WHERE delivery_location_id = ${deliveryLocationId.value}::uuid AND product_id = ${productId.value}::uuid
+    `;
+    expect(Number(remaining[0].count)).toBe(0);
+  });
+
+  it("delete で expectedVersion が古いと ConflictError（最終行削除中の並行追加を握り潰さない）", async () => {
+    const aggregate = DeliveryLocationSellingPrice.create(
+      deliveryLocationId,
+      productId,
+      ProductCategory.INDIVIDUAL
+    );
+    aggregate.addPeriod(period("2030-01-01", null), price(1000), "2025-06-01");
+    await repository.insert(aggregate);
+
+    await expect(repository.delete(aggregate, 999)).rejects.toBeInstanceOf(ConflictError);
+    expect(
+      await repository.findByDeliveryLocationIdAndProductId(deliveryLocationId, productId)
+    ).not.toBeNull();
+  });
+
+  it("delete 後に同一の納品先×商品で insert が成功する（version 1・再登録経路の回帰・#512）", async () => {
+    const first = DeliveryLocationSellingPrice.create(
+      deliveryLocationId,
+      productId,
+      ProductCategory.INDIVIDUAL
+    );
+    first.addPeriod(period("2030-01-01", null), price(1000), "2025-06-01");
+    await repository.insert(first);
+    const reloaded = (await repository.findByDeliveryLocationIdAndProductId(
+      deliveryLocationId,
+      productId
+    ))!;
+    reloaded.deletePeriod(reloaded.periods[0].id, "2025-06-01");
+    await repository.delete(reloaded, 1);
+
+    const reregister = DeliveryLocationSellingPrice.create(
+      deliveryLocationId,
+      productId,
+      ProductCategory.INDIVIDUAL
+    );
+    reregister.addPeriod(period("2030-02-01", null), price(2000), "2025-06-01");
+    await repository.insert(reregister);
+
+    const found = (await repository.findByDeliveryLocationIdAndProductId(
+      deliveryLocationId,
+      productId
+    ))!;
+    expect(found.periods).toHaveLength(1);
+    expect(found.periods[0].price.equals(price(2000))).toBe(true);
   });
 
   it("古い expectedVersion での update は ConflictError", async () => {
