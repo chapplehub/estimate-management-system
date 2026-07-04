@@ -46,10 +46,11 @@ export interface TimelineBar {
 export interface TimelineLayout {
   bars: TimelineBar[];
   /**
-   * 従レーンの帯（複数レーン共有軸・#507）。得意先別販売単価画面が共通販売単価を
-   * フォールバック層として重ねる従属レーン。単レーン呼び出し（従を渡さない）では空配列。
+   * 従レーンごとの帯（複数レーン共有軸・#507→#547 で複数レーンへ一般化）。得意先別販売単価画面は
+   * 共通販売単価を1レーン、納品先別販売単価画面は得意先別＋共通の2レーンを主レーンへ重ねる。
+   * 外側の配列がレーン、内側が各レーンの帯。従レーンを渡さない単レーン呼び出しでは空配列。
    */
-  secondaryBars: TimelineBar[];
+  secondaryBars: TimelineBar[][];
   /** 今日マーカーの軸位置（%）。 */
   todayPct: number;
   /** 軸左端の日付ラベル `YYYY/MM/DD`（periods 空なら空文字）。 */
@@ -91,19 +92,20 @@ function round2(value: number): number {
  * 無期限（end === null）の帯は軸右端まで伸ばす。今日が全期間の外にあっても軸内に収まるよう、
  * lo/hi の双方を今日まで拡張する（プロトは hi のみ拡張だったが、参照日マーカーを常に可視にするため両端に拡張）。
  *
- * 複数レーン共有軸（#507）: 第3引数 `secondaryPeriods` を渡すと従レーンの帯を `secondaryBars` に返す。
- * 軸範囲は主・従の**和集合**から決め、両系列を同一の pct 写像に載せる（同じ日付は両レーンで同じ left% に
- * 揃う＝対比が成立する）。既存の単レーン呼び出し（共通売単価・原価）は第3引数省略で後方互換のまま動き、
- * `secondaryBars` は空配列を返す。主レーンが空でも従レーンがあれば軸を描く（得意先別の「上書きなし」で
- * 共通レーンだけをフォールバック表示する要件・決定）。主・従の双方が空のときのみ空レイアウトを返す。
+ * 複数レーン共有軸（#507→#547 で複数従レーンへ一般化）: 第3引数 `secondaryLanes`（従レーンの配列）を
+ * 渡すと、各レーンの帯を `secondaryBars`（レーンごとの配列）に返す。軸範囲は主・全従レーンの**和集合**から
+ * 決め、全系列を同一の pct 写像に載せる（同じ日付は全レーンで同じ left% に揃う＝対比が成立する）。既存の
+ * 単レーン呼び出し（共通売単価・原価）は第3引数省略で後方互換のまま動き、`secondaryBars` は空配列を返す。
+ * 主レーンが空でも従レーンがあれば軸を描く（納品先別／得意先別の「上書きなし」で従レーンだけをフォールバック
+ * 表示する要件・決定）。主・全従レーンが空のときのみ空レイアウトを返す。
  */
 export function computeTimelineLayout(
   periods: TimelinePeriod[],
   referenceDate: string,
-  secondaryPeriods: TimelinePeriod[] = []
+  secondaryLanes: TimelinePeriod[][] = []
 ): TimelineLayout {
-  // 軸範囲は主・従の和集合から決める（従レーンだけでも軸を描けるようにする）。
-  const axisPeriods = [...periods, ...secondaryPeriods];
+  // 軸範囲は主・全従レーンの和集合から決める（従レーンだけでも軸を描けるようにする）。
+  const axisPeriods = [...periods, ...secondaryLanes.flat()];
   if (axisPeriods.length === 0) {
     return { bars: [], secondaryBars: [], todayPct: 50, axisStart: "", axisEnd: "" };
   }
@@ -137,7 +139,7 @@ export function computeTimelineLayout(
 
   return {
     bars: periods.map(toBar),
-    secondaryBars: secondaryPeriods.map(toBar),
+    secondaryBars: secondaryLanes.map((lane) => lane.map(toBar)),
     todayPct: round2(pct(today)),
     axisStart: formatDay(lo),
     axisEnd: formatDay(hi),

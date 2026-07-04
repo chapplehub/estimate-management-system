@@ -149,8 +149,9 @@ export function PeriodDetailPanel({ detail, commonPeriods, isAdmin, referenceDat
           layout={computeTimelineLayout(
             detail.periods.map(toTimelinePeriod),
             referenceDate,
-            // 従レーン（共通販売単価・フォールバック）。同一の中立構造へマップして重ねる（表示専用）。
-            commonPeriods.map(toTimelinePeriod)
+            // 従レーン（共通販売単価・フォールバック）を1本重ねる（表示専用）。複数従レーンの配列で渡す。
+            // Step 3-2 で得意先別レーンを加えた2従レーンへ拡張する。
+            [commonPeriods.map(toTimelinePeriod)]
           )}
         />
       )}

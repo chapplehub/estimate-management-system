@@ -83,7 +83,9 @@ function SecondaryBar({ bar }: { bar: TimelineBar }) {
 }
 
 export function PriceTimeline({ layout }: Props) {
-  const { bars, secondaryBars, todayPct, axisStart, axisEnd } = layout;
+  const { bars, todayPct, axisStart, axisEnd } = layout;
+  // 従レーンは1本（共通販売単価）。Step 3-2 で得意先別レーンを加えた3レーンへ拡張する。
+  const secondaryBars = layout.secondaryBars[0] ?? [];
 
   if (bars.length === 0 && secondaryBars.length === 0) {
     return (
