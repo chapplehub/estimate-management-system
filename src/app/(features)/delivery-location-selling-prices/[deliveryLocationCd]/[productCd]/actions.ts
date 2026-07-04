@@ -7,12 +7,14 @@ import { deleteDeliveryLocationSellingPricePeriodCommandFactory } from "@subdoma
 import { editDeliveryLocationSellingPricePeriodCommandFactory } from "@subdomains/pricing/application/factories/editDeliveryLocationSellingPricePeriodCommandFactory";
 import { endDateDeliveryLocationSellingPricePeriodCommandFactory } from "@subdomains/pricing/application/factories/endDateDeliveryLocationSellingPricePeriodCommandFactory";
 import { registerDeliveryLocationSellingPricePeriodCommandFactory } from "@subdomains/pricing/application/factories/registerDeliveryLocationSellingPricePeriodCommandFactory";
+import { reviseDeliveryLocationSellingPricePeriodCommandFactory } from "@subdomains/pricing/application/factories/reviseDeliveryLocationSellingPricePeriodCommandFactory";
 import { toJstCalendarDay } from "@server/shared/domain/values/toJstCalendarDay";
 import { handleCommandError } from "../../../_shared/error-handler";
 import {
   addPeriodSchema,
   deletePeriodSchema,
   endDatePeriodSchema,
+  revisePeriodSchema,
   updateFuturePeriodSchema,
 } from "./schema";
 
@@ -138,6 +140,47 @@ export async function endDatePeriodAction(
       productId,
       periodId,
       endDate,
+      referenceDate: toJstCalendarDay(new Date()),
+      expectedVersion: version,
+    });
+    revalidateBoth(deliveryLocationCode, productCode);
+  } catch (error) {
+    const result = handleCommandError(error);
+    const message = !result.success && result.error ? result.error : undefined;
+    return submission.reply({ formErrors: message ? [message] : [] });
+  }
+
+  return submission.reply();
+}
+
+/**
+ * 単価改定（ガイド付き・#474）。現在有効行の適用終了（終了日＝改定日）＋改定日開始の新規追加を
+ * BE 単一コマンドが1ロード/1セーブで合成しアトミックに適用する。対象の現在有効行はコマンドが
+ * 参照日で特定するため periodId は送らない（決定2）。据え置き（新単価＝現単価）も許容する。
+ */
+export async function revisePeriodAction(
+  deliveryLocationId: string,
+  productId: string,
+  deliveryLocationCode: string,
+  productCode: string,
+  _prevState: unknown,
+  formData: FormData
+) {
+  await verifyAdmin();
+
+  const submission = parseWithZod(formData, { schema: revisePeriodSchema });
+  if (submission.status !== "success") {
+    return submission.reply();
+  }
+
+  const { version, revisionDate, price } = submission.value;
+
+  try {
+    await reviseDeliveryLocationSellingPricePeriodCommandFactory().execute({
+      deliveryLocationId,
+      productId,
+      revisionDate,
+      price: String(price),
       referenceDate: toJstCalendarDay(new Date()),
       expectedVersion: version,
     });
