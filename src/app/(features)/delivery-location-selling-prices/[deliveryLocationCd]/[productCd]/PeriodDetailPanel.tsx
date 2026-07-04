@@ -3,10 +3,11 @@
 import { useCallback, useState } from "react";
 import { Badge } from "@/app/_components/shadcnui/badge";
 import type {
-  CustomerSellingPriceEditDTO,
-  CustomerSellingPricePeriodStatus,
-} from "@subdomains/pricing/application/queries/dto/CustomerSellingPriceEditDTO";
+  DeliveryLocationSellingPriceEditDTO,
+  DeliveryLocationSellingPricePeriodStatus,
+} from "@subdomains/pricing/application/queries/dto/DeliveryLocationSellingPriceEditDTO";
 import type { CommonSellingPriceEditPeriodDTO } from "@subdomains/pricing/application/queries/dto/CommonSellingPriceEditDTO";
+import type { CustomerSellingPriceEditPeriodDTO } from "@subdomains/pricing/application/queries/dto/CustomerSellingPriceEditDTO";
 import { authorityFor, type PeriodStatus } from "../../../_shared/period-rules";
 import { computeTimelineLayout, type TimelinePeriod } from "../../../_shared/timeline-layout";
 import { formatYenFromDecimal } from "../../../_shared/formatYen";
@@ -17,7 +18,7 @@ import { ReviseForm } from "./ReviseForm";
 
 /** BE 時点状態のラベルと Badge variant（現在有効=active/将来=future/失効=expired）。 */
 const STATUS_BADGE: Record<
-  CustomerSellingPricePeriodStatus,
+  DeliveryLocationSellingPricePeriodStatus,
   { label: string; variant: "default" | "outline" | "secondary" }
 > = {
   active: { label: "現在有効", variant: "default" },
@@ -26,8 +27,8 @@ const STATUS_BADGE: Record<
 };
 
 /**
- * 得意先別・共通いずれの期間 DTO も持つ最小フィールド。`toTimelinePeriod` の入力に使う
- * （主レーン＝得意先別 / 従レーン＝共通 を同一の中立構造へ写像するため）。
+ * 納品先別・共通いずれの期間 DTO も持つ最小フィールド。`toTimelinePeriod` の入力に使う
+ * （主レーン＝納品先別 / 従レーン＝共通 を同一の中立構造へ写像するため）。
  */
 type TimelinePeriodSource = {
   periodId: string;
@@ -59,11 +60,17 @@ type PanelMode =
   | { kind: "delete"; periodId: string };
 
 type Props = {
-  detail: CustomerSellingPriceEditDTO;
+  detail: DeliveryLocationSellingPriceEditDTO;
   /**
-   * 共通販売単価の期間行（フォールバック層・#507）。タイムラインの従レーンとして重ねて対比する
-   * （表示専用）。共通が未設定なら空配列。得意先別レーンと同一の中立構造へマップして
-   * `computeTimelineLayout` の第2系列に渡す。
+   * 得意先別販売単価の期間行（フォールバック層・従1・#547）。納品先別の価格決定は
+   * 「納品先別 → 得意先別 → 共通」の3段フォールバックで、その中間層を表示専用の従レーンとして重ねる。
+   * 当該親得意先×商品に得意先別の上書きが無ければ空配列。
+   */
+  customerPeriods: CustomerSellingPriceEditPeriodDTO[];
+  /**
+   * 共通販売単価の期間行（フォールバック層・従2・#547）。3段フォールバックの最下層。
+   * 共通が未設定なら空配列。得意先別・共通とも納品先別レーンと同一の中立構造へマップして
+   * `computeTimelineLayout` の従レーン配列（[得意先別, 共通]）に渡す。
    */
   commonPeriods: CommonSellingPriceEditPeriodDTO[];
   /** 管理者のみミューテーション系UI（新規追加・編集・適用終了・削除）を描画する。認可の正本はサーバー側 verifyAdmin。 */
@@ -79,10 +86,16 @@ type Props = {
  * （use-cases.md §7・authorityFor）、登録/編集/適用終了は単一 PeriodForm をモードで
  * 切り替えて下部パネルに表示する。削除は行内2段階確認（決定5）。
  *
- * 共通販売単価（`common-selling-prices/[productCd]/PeriodDetailPanel.tsx`）の同型写像で、宛先キーが
- * `(customerId, productId)` 複合になる点と、上書きなし（集約なし）が正常な既定状態である点が異なる。
+ * 得意先別販売単価（`customer-selling-prices/[customerCd]/[productCd]/PeriodDetailPanel.tsx`）の同型写像で、
+ * 宛先軸が得意先から納品先へ替わる点が異なる（上書きなし＝集約なしが正常な既定状態である点は共通）。
  */
-export function PeriodDetailPanel({ detail, commonPeriods, isAdmin, referenceDate }: Props) {
+export function PeriodDetailPanel({
+  detail,
+  customerPeriods,
+  commonPeriods,
+  isAdmin,
+  referenceDate,
+}: Props) {
   const [mode, setMode] = useState<PanelMode>({ kind: "closed" });
   const close = useCallback(() => setMode({ kind: "closed" }), []);
 
@@ -149,9 +162,9 @@ export function PeriodDetailPanel({ detail, commonPeriods, isAdmin, referenceDat
           layout={computeTimelineLayout(
             detail.periods.map(toTimelinePeriod),
             referenceDate,
-            // 従レーン（共通販売単価・フォールバック）を1本重ねる。複数従レーン一般化（#547）に伴い
-            // 従レーンの配列で渡す（本画面は共通1本のみ）。同一の中立構造へマップする（表示専用）。
-            [commonPeriods.map(toTimelinePeriod)]
+            // 従レーンは2本：[得意先別, 共通]（3段フォールバックの中間・最下層・いずれも表示専用）。
+            // 同一の中立構造へマップし同一軸へ重ねる。順序が PriceTimeline のレーン描画順と対応する。
+            [customerPeriods.map(toTimelinePeriod), commonPeriods.map(toTimelinePeriod)]
           )}
         />
       )}
@@ -162,7 +175,7 @@ export function PeriodDetailPanel({ detail, commonPeriods, isAdmin, referenceDat
             <tr className="border-b">
               <th className="py-2 text-sm font-bold text-gray-700">適用開始日</th>
               <th className="py-2 text-sm font-bold text-gray-700">適用終了日</th>
-              <th className="py-2 text-sm font-bold text-gray-700 text-right">得意先別販売単価</th>
+              <th className="py-2 text-sm font-bold text-gray-700 text-right">納品先別販売単価</th>
               <th className="py-2 text-sm font-bold text-gray-700">状態</th>
               {isAdmin && <th className="py-2 text-sm font-bold text-gray-700 text-right">操作</th>}
             </tr>
@@ -188,9 +201,9 @@ export function PeriodDetailPanel({ detail, commonPeriods, isAdmin, referenceDat
                     <td className="py-2">
                       {isDeleting ? (
                         <PeriodDeleteConfirm
-                          customerId={detail.customerId}
+                          deliveryLocationId={detail.deliveryLocationId}
                           productId={detail.productId}
-                          customerCode={detail.customerCode}
+                          deliveryLocationCode={detail.deliveryLocationCode}
                           productCode={detail.productCode}
                           periodId={period.periodId}
                           version={detail.version ?? 0}
@@ -251,16 +264,16 @@ export function PeriodDetailPanel({ detail, commonPeriods, isAdmin, referenceDat
         </table>
       ) : (
         <p className="text-gray-500">
-          この得意先×商品の上書きはありません。価格決定は共通販売単価を適用します。
+          この納品先×商品の上書きはありません。価格決定は得意先別販売単価を、無ければ共通販売単価を適用します。
         </p>
       )}
 
       {/* 登録／編集／適用終了の単一フォーム（決定3）。編集系で対象行が消えていたら表示しない。 */}
       {formMode != null && (formMode.kind === "new" || formPeriod != null) && (
         <PeriodForm
-          customerId={detail.customerId}
+          deliveryLocationId={detail.deliveryLocationId}
           productId={detail.productId}
-          customerCode={detail.customerCode}
+          deliveryLocationCode={detail.deliveryLocationCode}
           productCode={detail.productCode}
           version={detail.version}
           mode={formMode.kind}
@@ -273,9 +286,9 @@ export function PeriodDetailPanel({ detail, commonPeriods, isAdmin, referenceDat
       {/* 単価改定の専用フォーム（#474）。現在有効行が在るときのみ。version は集約が在るため非null。 */}
       {revisePeriod != null && detail.version != null && (
         <ReviseForm
-          customerId={detail.customerId}
+          deliveryLocationId={detail.deliveryLocationId}
           productId={detail.productId}
-          customerCode={detail.customerCode}
+          deliveryLocationCode={detail.deliveryLocationCode}
           productCode={detail.productCode}
           version={detail.version}
           currentPrice={revisePeriod.sellingPrice}
