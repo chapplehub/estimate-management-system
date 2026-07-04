@@ -337,6 +337,21 @@ const CUSTOMERS = [
     isActive: true,
     deliveryLocations: [],
   },
+  // C903: 得意先別販売単価 管理画面 CRUD E2E 用（#509）。閲覧系 C902 と分離した変更系専用得意先。
+  // PRD867〜869 への上書きは seed せず、CRUD chain がテスト内で登録→編集→適用終了→改定→削除する。
+  // 隔離の自然な単位は商品ではなく得意先（一覧画面が得意先スコープのビューのため）。
+  {
+    code: "C903",
+    name: "E2E専用_得意先別単価CRUD商事",
+    postalCode: "1000007",
+    prefecture: "東京都",
+    address: "千代田区有楽町1-1-3",
+    phoneNumber: "0399990904",
+    faxNumber: null,
+    contactPerson: null,
+    isActive: true,
+    deliveryLocations: [],
+  },
 ];
 
 // 商品データ（各区分 + 有効/無効を含む）
@@ -631,6 +646,36 @@ const PRODUCTS = [
     isActive: true,
     description:
       "得意先別販売単価 詳細 E2E（失効/現在有効/将来の3状態＋共通1本＝バッジ・出し分け・タイムライン従レーン）",
+  },
+  // PRD867〜869: 得意先別販売単価 管理画面 CRUD E2E 用（#509）。得意先 C903 に閉じ、上書き期間は
+  // seed せず CRUD chain がテスト内で構築する（登録→編集→適用終了→改定→削除）。costPrice は null。
+  // 商品名は「得意先単価CRUD_」前置で C902 帯（得意先単価_）と区別し、名前検索の相互干渉を避ける。
+  {
+    code: "PRD867",
+    name: "得意先単価CRUD_登録編集削除テスト商品",
+    category: "INDIVIDUAL" as const,
+    unit: "UNIT" as const,
+    costPrice: null,
+    isActive: true,
+    description: "得意先別販売単価 CRUD E2E Chain A（将来期間 登録→編集→削除→#512同型再登録）",
+  },
+  {
+    code: "PRD868",
+    name: "得意先単価CRUD_適用終了改定テスト商品",
+    category: "INDIVIDUAL" as const,
+    unit: "UNIT" as const,
+    costPrice: null,
+    isActive: true,
+    description: "得意先別販売単価 CRUD E2E Chain B（現在有効 登録→適用終了→隣接将来追加）",
+  },
+  {
+    code: "PRD869",
+    name: "得意先単価CRUD_ガイド改定テスト商品",
+    category: "INDIVIDUAL" as const,
+    unit: "UNIT" as const,
+    costPrice: null,
+    isActive: true,
+    description: "得意先別販売単価 CRUD E2E Chain C（現在有効 登録→ガイド付き単価改定）",
   },
 ];
 
