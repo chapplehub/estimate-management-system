@@ -60,3 +60,23 @@
   success/warning/info 相当の配色を補った。
 - **逸脱の理由**: shadcn Badge の variant は default/secondary/destructive/outline のみで、申請状態の 4 tone を
   表現できない。tone→className の写像を既存バッジ消費ファイルに co-locate した（網羅 switch＋never ガード）。
+
+## 自動レビュー＆修正（PR562・ラウンド1）での逸脱
+
+### ⑧ 修正の「①②先→③後」原則に対する指摘3+7の統合コミット
+- **元の計画（auto-review-fix スキル）**: ①correctness を先に直して落ち着かせてから、③cleanup を最後に当てる
+  （③が①②で触った箇所に被る事故を避けるため）。
+- **実際の実装**: 指摘3（①: getEstimateDetail が try/catch 外で reject 握り潰し）と指摘7（③: preview/submit の
+  共通プロローグ二重化）は**完全に同一の約8行**を対象とするため、`resolveApplicationContext` 抽出として1コミットに
+  統合した（`fix:`）。
+- **逸脱の理由**: 同一箇所を①→③の2段階で別コミットにすると、抽出で作り直す二度手間かつ競合事故を招く。原則の狙い
+  （被り事故の回避）はむしろ統合で満たされる。
+
+### ⑨ 指摘6「catch のエラー整形は `return handleCommandError(error)` と等価」は型レベルで不成立
+- **指摘内容**: catch 内の `errorMessage` 計算は死コードで `return handleCommandError(error)` に置換可能（③cleanup）。
+- **実際の対応**: `return handleCommandError(error)` は型が通らない。`handleCommandError` の戻り型は `ActionResult<void>`
+  で、`success:true` アームの `data:void` がジェネリック T（PreviewApplicationResultDTO 等）と不一致になるため。
+  元の冗長コードは失敗アームを組み直す**型ブリッジ**だった。`toActionError(error)` private ヘルパーに集約し、
+  失敗アーム（T 非依存）だけを返す形で重複を正しく解消した。
+- **逸脱の理由**: レビュー指摘の「等価」判断がジェネリック分散を見落としていた。挙動不変・単一ソース化という指摘の
+  意図は toActionError で達成しつつ、型健全性を保った。
