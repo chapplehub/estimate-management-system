@@ -51,6 +51,20 @@ export type ApprovalChainBuildInput = {
 export type ApprovalChainBlockedReason = "NO_SUPERIOR_ROLE" | "GOAL_UNREACHABLE" | "NO_APPROVER";
 
 /**
+ * BLOCKED 理由のユーザー向け表示文言（単一ソース・ADR-0069 原則#2）。
+ *
+ * EXEMPT の label 源が VO（{@link EstimateExemptionReason}）に code＋label を同梱するのと対称に、
+ * BLOCKED も理由 code の隣で文言を持つ。`ApprovalChainBlockedReason` は永続化されない判別子のため
+ * full-VO は過剰で、`Record` の軽量 map で足りる。Preview（reasonLabel）と Submit（業務例外 message）が
+ * ともにここから引き、文言のドリフトを防ぐ。内部参照（§記号）はユーザー向け文言には載せない。
+ */
+export const BLOCKED_REASON_LABELS: Record<ApprovalChainBlockedReason, string> = {
+  NO_SUPERIOR_ROLE: "申請者に上位役割が設定されていないため申請できません",
+  GOAL_UNREACHABLE: "必要な承認職位まで組織が届かないため申請できません",
+  NO_APPROVER: "承認対象役割に承認者が存在しないため申請できません",
+};
+
+/**
  * 承認チェーン構築の結果（判別共用体）。
  *
  * `BUILT` は構築済みの VO 計画を持ち、`BLOCKED` は構築不能の業務理由を持つ。組織グラフの
