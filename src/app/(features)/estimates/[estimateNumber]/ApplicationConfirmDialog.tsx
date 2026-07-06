@@ -33,6 +33,11 @@ type Props = {
    * パネル上部の永続バナーで「最新ではない」旨を告知させる（auto-refresh しない・#494）。
    */
   onSubmitFailure: (message: string) => void;
+  /**
+   * submit 成功時にパネルへ通知するコールバック。直前の失敗で立った永続バナーを消すために使う
+   * （「失敗→再申請成功」でバナーが残り続ける誤表示を防ぐ・#494・自動レビュー R1）。
+   */
+  onSubmitSuccess?: () => void;
 };
 
 /** トリガー無効時のツールチップ文言（無効化は canApply 単一ゲート・文言だけ状態で選ぶ）。 */
@@ -68,6 +73,7 @@ export function ApplicationConfirmDialog({
   canApply,
   variationStatus,
   onSubmitFailure,
+  onSubmitSuccess,
 }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -95,6 +101,8 @@ export function ApplicationConfirmDialog({
       const result = await submitApplication(estimateNumber, variationId, version);
       if (result.success) {
         setOpen(false);
+        // 直前の失敗で立った永続バナーを消す（成功でパネルは最新化される・#494・R1）。
+        onSubmitSuccess?.();
         router.refresh();
       } else {
         // 競合・業務例外は強制クローズしてパネルのバナーへ委譲する（画面全体をユーザーに確認させる）。
@@ -229,9 +237,11 @@ function PreviewBody({
         </div>
       );
     default: {
-      // 網羅漏れ（DTO に kind が増えた等）をコンパイル時に検出する（ADR-0069）。
+      // 網羅漏れ（DTO に kind が増えた等）をコンパイル時に検出する（ADR-0069）。実行時に版スキュー等で
+      // 未知 kind が届いても、オブジェクトを React child として返さず null を描く（描画クラッシュ防止・R1）。
       const _exhaustive: never = preview;
-      return _exhaustive;
+      void _exhaustive;
+      return null;
     }
   }
 }

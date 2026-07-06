@@ -289,6 +289,7 @@ export function VariationPanel({
                   canApply={activeApplicationState?.canApply ?? false}
                   variationStatus={active.status}
                   onSubmitFailure={setApplyFailure}
+                  onSubmitSuccess={() => setApplyFailure(null)}
                 />
                 <button
                   type="button"
