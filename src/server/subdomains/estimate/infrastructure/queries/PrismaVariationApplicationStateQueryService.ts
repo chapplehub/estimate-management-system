@@ -57,19 +57,22 @@ export class PrismaVariationApplicationStateQueryService implements VariationApp
       select: VARIATION_APPLICATION_STATE_SELECT,
     });
 
-    // 各バリを申請状態へ還元する（バッジ表示と見積単位ゲートで同じ states を1回だけ使う）。
-    const states = variations.map((variation) =>
-      PrismaVariationApplicationStateQueryService.reduceVariationState(variation)
-    );
+    // 各バリを申請状態へ還元し、バリと state をペアで保持する（位置インデックス結合を避ける）。
+    const pairs = variations.map((variation) => ({
+      variation,
+      state: PrismaVariationApplicationStateQueryService.reduceVariationState(variation),
+    }));
 
     // 見積単位の前進ゲート（1見積1前進）。前進バリが1つでもあれば全 ACTIVE バリが申請不可。
-    const hasAdvancing = AdvancingVariationPolicy.hasAdvancingVariation(states);
+    const hasAdvancing = AdvancingVariationPolicy.hasAdvancingVariation(
+      pairs.map((pair) => pair.state)
+    );
 
-    return variations.map((variation, index) => ({
+    return pairs.map(({ variation, state }) => ({
       variationId: variation.id,
       applicationState: {
-        code: states[index].code,
-        label: states[index].label,
+        code: state.code,
+        label: state.label,
       },
       canApply: variation.status === "ACTIVE" && !hasAdvancing,
     }));
