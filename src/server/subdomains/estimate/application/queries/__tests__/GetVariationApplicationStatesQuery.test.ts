@@ -1,3 +1,4 @@
+import { APPROVAL_TEST_BANDS } from "@server/__tests__/helpers/approvalTestBands";
 import {
   cleanupApprovalFixtures,
   ensureApprovalFixtures,
@@ -24,18 +25,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { GetVariationApplicationStatesQuery } from "../GetVariationApplicationStatesQuery";
 
-// 承認系 query テスト帯（N9907030+。免除 001-003・申請リポジトリ 010-018 と分離）。
-const EN = {
-  none: "N9907030",
-  pending: "N9907031",
-  rejected: "N9907032",
-  withdrawn: "N9907033",
-  approved: "N9907034",
-  exempted: "N9907035",
-  siblings: "N9907036",
-  inactive: "N9907037",
-  missing: "N9907039",
-} as const;
+// 承認系 query テスト帯（05x = N9907050-058）。レジストリが単一ソース（#493・approvalTestBands）。
+const EN = APPROVAL_TEST_BANDS.variationQuery;
 const ALL_NUMBERS = Object.values(EN);
 
 describe("GetVariationApplicationStatesQuery", () => {
