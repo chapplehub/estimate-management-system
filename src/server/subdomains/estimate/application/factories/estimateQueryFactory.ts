@@ -1,12 +1,23 @@
 import { GetEstimateDetailQuery } from "../queries/GetEstimateDetailQuery";
+import { GetVariationApplicationStatesQuery } from "../queries/GetVariationApplicationStatesQuery";
 import { ResolveEffectiveTaxRateQuery } from "../queries/ResolveEffectiveTaxRateQuery";
 import { SearchEstimatesQuery } from "../queries/SearchEstimatesQuery";
 import { PrismaEstimateQueryService } from "../../infrastructure/queries/PrismaEstimateQueryService";
+import { PrismaVariationApplicationStateQueryService } from "../../infrastructure/queries/PrismaVariationApplicationStateQueryService";
 import { PrismaTaxRateRepository } from "../../infrastructure/prisma/PrismaTaxRateRepository";
 
 /** 見積詳細取得クエリ（Q1）を組み立てる。読み取りは PrismaEstimateQueryService 実装に閉じる。 */
 export function getEstimateDetailQueryFactory(): GetEstimateDetailQuery {
   return new GetEstimateDetailQuery(new PrismaEstimateQueryService());
+}
+
+/**
+ * バリエーション別 申請状態参照クエリ（S2・#493）を組み立てる。
+ * 読み取りは PrismaVariationApplicationStateQueryService に閉じ、還元・前進判定は
+ * ドメイン共有関数（書き込みとドリフトしない）を使う。
+ */
+export function getVariationApplicationStatesQueryFactory(): GetVariationApplicationStatesQuery {
+  return new GetVariationApplicationStatesQuery(new PrismaVariationApplicationStateQueryService());
 }
 
 /** 見積一覧取得クエリを組み立てる。代表選択・名前解決は PrismaEstimateQueryService に閉じる（ADR-0051）。 */
