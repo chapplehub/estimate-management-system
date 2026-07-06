@@ -14,7 +14,9 @@ import { EstimateRepository } from "@subdomains/estimate/domain/repositories/Est
 import { EstimateApplicationRepository } from "@subdomains/estimate/domain/repositories/approval/EstimateApplicationRepository";
 import { EstimateApprovalExemptionRepository } from "@subdomains/estimate/domain/repositories/approval/EstimateApprovalExemptionRepository";
 import { type ApprovalChainBlockedReason } from "@subdomains/estimate/domain/services/approval/ApprovalChainBuilder";
+import { AdvancingVariationPolicy } from "@subdomains/estimate/domain/policies/approval/AdvancingVariationPolicy";
 import { EstimateVariationId } from "@subdomains/estimate/domain/values/EstimateVariationId";
+import { VariationApplicationState } from "@subdomains/estimate/domain/values/approval/VariationApplicationState";
 import { assembleApprovalChain } from "../shared/approval/assembleApprovalChain";
 import { loadApprovalChainInputs } from "../shared/approval/loadApprovalChainInputs";
 
@@ -142,23 +144,32 @@ export class SubmitApplicationCommand {
 
   /** 見積配下のいずれかのバリエーションが前進中（免除済み or 申請中/承認済）なら拒否する。 */
   private async assertNoAdvancingVariation(estimate: Estimate): Promise<void> {
-    for (const variation of estimate.variations) {
-      const exemption = await this.exemptionRepository.findByVariationId(variation.id);
-      if (exemption !== null) {
-        throw new BusinessRuleViolationError(
-          "既に前進しているバリエーションがあります（1見積1前進）"
-        );
-      }
-      const applications = await this.applicationRepository.findByVariationId(variation.id);
-      const hasAdvancing = applications.some((application) =>
-        application.applicationStatus.isAdvancing()
+    // 各バリを VariationApplicationState へ還元（免除／申請を単一状態に畳み込む）し、見積単位の
+    // 前進ゲート（共有ポリシー）で判定する。免除 throw と申請 throw の二重判定を1つに統一し、
+    // 読み取り側（GetVariationApplicationStatesQuery の canApply）と同一述語を共有する（#493）。
+    const states = await Promise.all(
+      estimate.variations.map((variation) => this.reduceVariationState(variation.id))
+    );
+    if (AdvancingVariationPolicy.hasAdvancingVariation(states)) {
+      throw new BusinessRuleViolationError(
+        "既に前進しているバリエーションがあります（1見積1前進）"
       );
-      if (hasAdvancing) {
-        throw new BusinessRuleViolationError(
-          "既に前進しているバリエーションがあります（1見積1前進）"
-        );
-      }
     }
+  }
+
+  /** バリエーションの免除有無・全申請の §3.6 導出状態を読み、申請状態へ畳み込み還元する。 */
+  private async reduceVariationState(
+    variationId: EstimateVariationId
+  ): Promise<VariationApplicationState> {
+    const exemption = await this.exemptionRepository.findByVariationId(variationId);
+    const applications = await this.applicationRepository.findByVariationId(variationId);
+    return VariationApplicationState.reduce({
+      isExempted: exemption !== null,
+      applications: applications.map((application) => ({
+        attempt: application.attempt,
+        status: application.applicationStatus,
+      })),
+    });
   }
 
   /** 同一バリエーションの申請回数（初回1・差戻後は最大+1）。 */
