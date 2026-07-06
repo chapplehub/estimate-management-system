@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Badge } from "@/app/_components/shadcnui/badge";
 import type { VariationDTO } from "@subdomains/estimate/application/queries/dto/EstimateDetailDTO";
 import type { VariationApplicationStateDTO } from "@subdomains/estimate/application/queries/dto/VariationApplicationStateDTO";
@@ -96,15 +96,13 @@ export function VariationPanel({
   // submit 失敗（競合・業務例外）の永続バナー（#494）。auto-refresh せずユーザーに画面確認を委ねる。
   const [applyFailure, setApplyFailure] = useState<string | null>(null);
 
-  // variationId → 申請状態 の索引（申請ボタンの canApply とバッジ label を join で引く・#493）。
-  const applicationStateById = useMemo(
-    () => new Map(applicationStates.map((state) => [state.variationId, state])),
-    [applicationStates]
-  );
-
   const allInactive = variations.every((v) => v.status !== "ACTIVE");
   const active = variations[activeIndex];
-  const activeApplicationState = active ? applicationStateById.get(active.variationId) : undefined;
+  // active バリの申請状態を join で引く（canApply とバッジ label に使う・#493）。読み出しは active の
+  // 1 キーのみのため全件 Map 索引は作らず find で直接引く（自動レビュー R1）。
+  const activeApplicationState = active
+    ? applicationStates.find((state) => state.variationId === active.variationId)
+    : undefined;
 
   function selectVariation(index: number): void {
     if (index === activeIndex) return;
