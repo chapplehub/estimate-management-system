@@ -52,6 +52,12 @@ export const SEED_ESTIMATE_NUMBERS = {
   reviseSource: "N9905006",
   /** S7 無効化/有効化（C5）の E2E 用（V1・V2 とも ACTIVE。トグルで状態を往復させる）。 */
   s7Toggle: "N9905007",
+  /** 申請（承認免除・#494）の E2E 用（税込10万円未満＝BELOW_THRESHOLD→EXEMPT）。 */
+  applyExempt: "N9905008",
+  /** 申請（承認必要・#494）の E2E 用（税込10万〜100万＝ゴール課長→REQUIRED）。 */
+  applyRequired: "N9905009",
+  /** 申請ボタン出し分け（#494）の E2E 用（V1 ACTIVE＝申請可・V2 INACTIVE＝申請不可）。 */
+  applyInactive: "N9905010",
 } as const;
 
 /** 見積が参照する FK マスタ（呼び出し側 seed の作成済みデータから解決した ID）。 */
@@ -273,6 +279,69 @@ function buildS7ToggleEstimate(fk: EstimateSeedFk) {
 }
 
 /**
+ * 申請（承認免除）E2E 用の見積（#494）。V1 は ACTIVE・税込 5.5 万円（< 10 万＝BELOW_THRESHOLD）。
+ * プレビューは operator の上位役割に依らず EXEMPT を返す（judge が chain 構築前に免除確定）。
+ */
+function buildApplyExemptEstimate(fk: EstimateSeedFk) {
+  return EstimateFactory.create({
+    ...header(fk),
+    estimateNumber: EstimateNumber.parse(SEED_ESTIMATE_NUMBERS.applyExempt),
+    variations: [
+      {
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        items: [mkItem(fk.productAId, 1, "免除対象明細", 1, 50000)],
+      },
+    ],
+  });
+}
+
+/**
+ * 申請（承認必要）E2E 用の見積（#494）。V1 は ACTIVE・税込 33 万円（10 万〜100 万＝ゴール課長）。
+ * プレビューは REQUIRED を返す。E2E は operator=user（営業本部長・上位=社長）で実行し、起点＝社長が
+ * ゴール段階（課長）以上のため 1 段のチェーンが組める（社長は承認者を持つ）。
+ */
+function buildApplyRequiredEstimate(fk: EstimateSeedFk) {
+  return EstimateFactory.create({
+    ...header(fk),
+    estimateNumber: EstimateNumber.parse(SEED_ESTIMATE_NUMBERS.applyRequired),
+    variations: [
+      {
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        items: [mkItem(fk.productAId, 1, "承認必要明細", 1, 300000)],
+      },
+    ],
+  });
+}
+
+/**
+ * 申請ボタン出し分け E2E 用の見積（#494）。V1 ACTIVE（申請可）・V2 INACTIVE（申請不可）。
+ * submit はせず、INACTIVE バリの申請ボタン無効化＋ツールチップだけを read-only で観測する。
+ */
+function buildApplyInactiveEstimate(fk: EstimateSeedFk) {
+  const estimate = EstimateFactory.create({
+    ...header(fk),
+    estimateNumber: EstimateNumber.parse(SEED_ESTIMATE_NUMBERS.applyInactive),
+    variations: [
+      {
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        items: [mkItem(fk.productAId, 1, "申請可明細", 1, 50000)],
+      },
+      {
+        variationNumber: 2,
+        submissionType: SubmissionType.DELIVERY_LOCATION,
+        items: [mkItem(fk.productBId, 1, "無効バリ明細", 1, 60000)],
+      },
+    ],
+  });
+  // V2 を無効化（申請ボタンが canApply=false で無効になることの確認用）。
+  estimate.deactivateVariation(estimate.variations[1].id);
+  return estimate;
+}
+
+/**
  * S5 セット群編集 E2E 用の NEW 見積（ADR-0047）。構成2件のセット群1つ＋通常明細1件。非改訂 ACTIVE。
  * 群ヘッダは SET 商品、構成は個別商品（productA/B）。表示位置・金額は構成から導出される。
  */
@@ -343,6 +412,9 @@ export async function seedEstimates(prisma: PrismaClient): Promise<number> {
     buildRepairSeedEstimate(fk),
     buildReviseSourceEstimate(fk),
     buildS7ToggleEstimate(fk),
+    buildApplyExemptEstimate(fk),
+    buildApplyRequiredEstimate(fk),
+    buildApplyInactiveEstimate(fk),
   ];
   for (const estimate of estimates) {
     // 上記はセット群なし → 所属交差表の createMany は不要。
