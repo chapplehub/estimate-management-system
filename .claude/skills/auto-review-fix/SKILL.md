@@ -25,8 +25,7 @@ user-invocable: true
 - **対象ブランチの worktree 内から実行する**（feat/fix 等の作業ブランチ）。`develop` / `main` / `master` では実行しない。
 - 自動 push は **作業ブランチのみ**。`pre-bash-branch-safety.sh` フックと整合させる。
 - ユーザーへの逐次確認は行わない（ループ全体を自動実行する）が、**終了条件に到達したら必ず止まる**。
-- **レビューは必ず組み込み `/code-review` を使う**（`SlashCommand` ツール経由）。独自レビューで代替しない。
-  - 事前に許可リストへ `SlashCommand(/code-review*)` が必要な場合がある。拒否されたらユーザーに許可を依頼する。
+- **レビューは必ず組み込みの `code-review` スキルを使う**（`Skill` ツール経由。`skill: code-review` で起動する）。独自レビューで代替しない。
 
 ---
 
@@ -85,7 +84,7 @@ ls docs/claude-plans/issue-{番号}/
 
 ### Phase 1: レビュー（組み込み `/code-review` を確実に使う）
 
-**`SlashCommand` ツールで `/code-review {深さ} --comment` を実行する。** ここはメイン文脈で実行する（スラッシュコマンドはサブエージェント内では動かないため）。
+**`Skill` ツールで `code-review` スキルを起動する（`skill: code-review`、`args: {深さ} --comment`）。** ここはメイン文脈で実行する（`Skill` ツールはサブエージェント内では起動できないため）。
 
 - **`--comment` を付ける**: レビュー結果を PR に残すため。生の `/code-review` 指摘が PR の記録として残る。
 - `--fix` は **付けない**（評価前に勝手に直させない）。修正は評価（judge）を通ったバケツ①②③だけに限定する。
