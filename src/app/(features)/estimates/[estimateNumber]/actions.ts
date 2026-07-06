@@ -373,6 +373,50 @@ const OPERATOR_UNRESOLVED_MESSAGE =
   "申請者の従業員情報が取得できないため申請できません。管理者にお問い合わせください。";
 
 /**
+ * `handleCommandError` を ActionResult<T> の失敗アームへブリッジする（#494・自動レビュー R1）。
+ *
+ * `handleCommandError` の戻り型は `ActionResult<void>` で、`success:true` アームの `data:void` が
+ * ジェネリック T と不一致になり `return handleCommandError(error)` は型が通らない。失敗アーム
+ * （T 非依存）だけを組み直して任意の ActionResult<T> に代入可能な形へ落とす。
+ */
+function toActionError(error: unknown): { success: false; error?: string } {
+  const result = handleCommandError(error);
+  return { success: false, error: result.success ? undefined : result.error };
+}
+
+/**
+ * 申請系 Server Action（preview / submit）の共通前処理を解決する（#494）。
+ *
+ * 認証セッションの operator（null は申請不可）と、estimateNumber から再解決した estimateId
+ * （client を信頼しない）を返す。`getEstimateDetail` はインフラ例外で reject しうるため try/catch で
+ * 囲み ActionResult 化する。呼び出し元は plain await でモーダルへ resolve する契約のため、ここで
+ * reject を漏らすと失敗導線（バナー・エラー文言）を握り潰す（#494・自動レビュー R1）。
+ */
+async function resolveApplicationContext(
+  estimateNumber: string
+): Promise<
+  | { success: true; operatorEmployeeId: string; estimateId: string }
+  | { success: false; error?: string }
+> {
+  const session = await verifySession();
+
+  const operatorEmployeeId = session.user.employeeId;
+  if (!operatorEmployeeId) {
+    return { success: false, error: OPERATOR_UNRESOLVED_MESSAGE };
+  }
+
+  try {
+    const dto = await getEstimateDetailQueryFactory().execute({ estimateNumber });
+    if (!dto) {
+      return { success: false, error: "見積が見つかりません" };
+    }
+    return { success: true, operatorEmployeeId, estimateId: dto.estimateId };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+/**
  * 見積申請のプレビュー（S2・確認モーダル用・§6.2・#494）の Server Action。
  *
  * 確認モーダルを開いた時点で呼ばれる副作用なしの読み取り。フォーム送信ではないため conform を
@@ -386,29 +430,20 @@ export async function previewApplication(
   estimateNumber: string,
   variationId: string
 ): Promise<ActionResult<PreviewApplicationResultDTO>> {
-  const session = await verifySession();
-
-  const operatorEmployeeId = session.user.employeeId;
-  if (!operatorEmployeeId) {
-    return { success: false, error: OPERATOR_UNRESOLVED_MESSAGE };
-  }
-
-  const dto = await getEstimateDetailQueryFactory().execute({ estimateNumber });
-  if (!dto) {
-    return { success: false, error: "見積が見つかりません" };
+  const ctx = await resolveApplicationContext(estimateNumber);
+  if (!ctx.success) {
+    return ctx;
   }
 
   try {
     const preview = await previewApplicationQueryFactory().execute({
-      estimateId: dto.estimateId,
+      estimateId: ctx.estimateId,
       variationId,
-      operatorEmployeeId,
+      operatorEmployeeId: ctx.operatorEmployeeId,
     });
     return { success: true, data: preview };
   } catch (error) {
-    const errorResult = handleCommandError(error);
-    const errorMessage = !errorResult.success && errorResult.error ? errorResult.error : undefined;
-    return { success: false, error: errorMessage };
+    return toActionError(error);
   }
 }
 
@@ -427,30 +462,21 @@ export async function submitApplication(
   variationId: string,
   version: number
 ): Promise<ActionResult<SubmitApplicationResult>> {
-  const session = await verifySession();
-
-  const operatorEmployeeId = session.user.employeeId;
-  if (!operatorEmployeeId) {
-    return { success: false, error: OPERATOR_UNRESOLVED_MESSAGE };
-  }
-
-  const dto = await getEstimateDetailQueryFactory().execute({ estimateNumber });
-  if (!dto) {
-    return { success: false, error: "見積が見つかりません" };
+  const ctx = await resolveApplicationContext(estimateNumber);
+  if (!ctx.success) {
+    return ctx;
   }
 
   try {
     const result = await submitApplicationCommandFactory().execute({
-      estimateId: dto.estimateId,
+      estimateId: ctx.estimateId,
       variationId,
-      operatorEmployeeId,
+      operatorEmployeeId: ctx.operatorEmployeeId,
       version,
     });
     return { success: true, data: result };
   } catch (error) {
-    const errorResult = handleCommandError(error);
-    const errorMessage = !errorResult.success && errorResult.error ? errorResult.error : undefined;
-    return { success: false, error: errorMessage };
+    return toActionError(error);
   }
 }
 
