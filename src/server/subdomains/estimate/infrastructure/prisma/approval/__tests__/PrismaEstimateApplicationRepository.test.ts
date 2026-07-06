@@ -1,3 +1,4 @@
+import { APPROVAL_TEST_BANDS } from "@server/__tests__/helpers/approvalTestBands";
 import {
   cleanupApprovalFixtures,
   ensureApprovalFixtures,
@@ -19,18 +20,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { PrismaEstimateRepository } from "../../PrismaEstimateRepository";
 import { PrismaEstimateApplicationRepository } from "../PrismaEstimateApplicationRepository";
 
-// 承認系テスト見積番号（N9907xxx 帯。免除テストの 001/002 と分けて 01x を使う）。
-const EN = {
-  roundtrip: "N9907010",
-  byStep: "N9907011",
-  history: "N9907012",
-  conflict: "N9907013",
-  approve: "N9907014",
-  reject: "N9907015",
-  withdraw: "N9907016",
-  stale: "N9907017",
-  txRollback: "N9907018",
-} as const;
+// 01x 帯（見積申請リポジトリ）。番号帯はレジストリが単一ソース（#493・approvalTestBands）。
+const EN = APPROVAL_TEST_BANDS.applicationRepository;
 const ALL_NUMBERS = Object.values(EN);
 
 describe("PrismaEstimateApplicationRepository", () => {
