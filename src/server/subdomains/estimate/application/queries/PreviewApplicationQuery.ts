@@ -4,6 +4,7 @@ import { PositionQueryService } from "@subdomains/position/application/queries/P
 import { ProductQueryService } from "@subdomains/product/application/queries/ProductQueryService";
 import { RoleQueryService } from "@subdomains/role/application/queries/RoleQueryService";
 import { EstimateRepository } from "@subdomains/estimate/domain/repositories/EstimateRepository";
+import { BLOCKED_REASON_LABELS } from "@subdomains/estimate/domain/services/approval/ApprovalChainBuilder";
 import { assembleApprovalChain } from "../shared/approval/assembleApprovalChain";
 import { loadApprovalChainInputs } from "../shared/approval/loadApprovalChainInputs";
 import {
@@ -49,7 +50,12 @@ export class PreviewApplicationQuery {
     // `targetVariationIsActive` を判定の起点に置き、judge＋チェーン組立ての前に弾く。これを
     // 怠ると Preview だけが INACTIVE でも EXEMPT/REQUIRED を見せ、Submit と可否が食い違う（#442）。
     if (!loaded.targetVariationIsActive) {
-      return { kind: "INACTIVE" };
+      // canApply ゲートが INACTIVE を弾くため、ここへ到達する＝表示後に無効化されたレース。
+      // ユーザーに画面更新を促す固定文言を BE から載せる（表示文言は BE 所有・ADR-0069）。
+      return {
+        kind: "INACTIVE",
+        label: "このバリエーションは無効化されています。画面を更新して最新の状態をご確認ください。",
+      };
     }
 
     const result = assembleApprovalChain(loaded.assemblerInput);
@@ -58,7 +64,11 @@ export class PreviewApplicationQuery {
       return { kind: "EXEMPT", reason: result.reason.value, reasonLabel: result.reason.label };
     }
     if (result.kind === "BLOCKED") {
-      return { kind: "BLOCKED", reason: result.reason };
+      return {
+        kind: "BLOCKED",
+        reason: result.reason,
+        reasonLabel: BLOCKED_REASON_LABELS[result.reason],
+      };
     }
 
     // REQUIRED: 役割 ID 列を表示名へ解決する（起点→ゴール順）。
