@@ -30,6 +30,8 @@ export class EmployeeMapper {
       email,
       name,
       new DepartmentId(prismaEmployee.departmentId),
+      // 担当役割は Step 2 で EmployeeRole 子行から導出する（暫定 null）
+      null,
       prismaEmployee.createdAt,
       prismaEmployee.updatedAt
     );

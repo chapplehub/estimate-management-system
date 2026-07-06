@@ -3,6 +3,7 @@ import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
 import { EmployeeName } from "@subdomains/employee/domain/values/EmployeeName";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
 import { DepartmentId } from "@subdomains/department/domain/values/DepartmentId";
+import { RoleId } from "@subdomains/role/domain/values/RoleId";
 import { describe, expect, it, beforeEach } from "vitest";
 import { Employee } from "../Employee";
 
@@ -11,12 +12,14 @@ describe("Employee エンティティ", () => {
   let email: MailAddress;
   let name: EmployeeName;
   let departmentId: DepartmentId;
+  let roleId: RoleId;
 
   beforeEach(() => {
     employeeCd = new EmployeeCd("EMP000001");
     email = new MailAddress("test@example.com");
     name = new EmployeeName("山田太郎");
     departmentId = DepartmentId.generate();
+    roleId = RoleId.generate();
   });
 
   describe("ファクトリメソッド", () => {
@@ -59,6 +62,7 @@ describe("Employee エンティティ", () => {
           email,
           name,
           departmentId,
+          roleId,
           createdAt,
           updatedAt
         );
@@ -68,6 +72,7 @@ describe("Employee エンティティ", () => {
         expect(employee.email.value).toBe("test@example.com");
         expect(employee.name.value).toBe("山田太郎");
         expect(employee.departmentId).toBe(departmentId);
+        expect(employee.assignedRoleId).toBe(roleId);
         expect(employee.createdAt).toEqual(createdAt);
         expect(employee.updatedAt).toEqual(updatedAt);
       });
@@ -140,6 +145,55 @@ describe("Employee エンティティ", () => {
     });
   });
 
+  describe("担当役割", () => {
+    it("createで担当役割を指定できる", () => {
+      const employee = Employee.create(employeeCd, email, name, departmentId, roleId);
+
+      expect(employee.assignedRoleId).toBe(roleId);
+    });
+
+    it("createで担当役割を省略すると役割なし（null）になる", () => {
+      const employee = Employee.create(employeeCd, email, name, departmentId);
+
+      expect(employee.assignedRoleId).toBeNull();
+    });
+
+    it("changeRoleで担当役割を割り当てられる", () => {
+      const employee = Employee.create(employeeCd, email, name, departmentId);
+
+      employee.changeRole(roleId);
+
+      expect(employee.assignedRoleId).toBe(roleId);
+    });
+
+    it("changeRoleで担当役割を別の役割に置換できる", () => {
+      const employee = Employee.create(employeeCd, email, name, departmentId, roleId);
+      const newRoleId = RoleId.generate();
+
+      employee.changeRole(newRoleId);
+
+      expect(employee.assignedRoleId).toBe(newRoleId);
+    });
+
+    it("changeRole(null)で担当役割を解除できる", () => {
+      const employee = Employee.create(employeeCd, email, name, departmentId, roleId);
+
+      employee.changeRole(null);
+
+      expect(employee.assignedRoleId).toBeNull();
+    });
+
+    it("changeRoleで更新日時が更新される", () => {
+      const employee = Employee.create(employeeCd, email, name, departmentId);
+      const oldUpdatedAt = employee.updatedAt;
+
+      setTimeout(() => {
+        employee.changeRole(roleId);
+        expect(employee.updatedAt.getTime()).toBeGreaterThanOrEqual(oldUpdatedAt.getTime());
+      }, 10);
+    });
+  });
+
   describe("ゲッター", () => {
     it("すべてのフィールドにアクセスできる", () => {
       const id = EmployeeId.generate();
@@ -152,6 +206,7 @@ describe("Employee エンティティ", () => {
         email,
         name,
         departmentId,
+        roleId,
         createdAt,
         updatedAt
       );
@@ -161,6 +216,7 @@ describe("Employee エンティティ", () => {
       expect(employee.email).toBe(email);
       expect(employee.name).toBe(name);
       expect(employee.departmentId).toBe(departmentId);
+      expect(employee.assignedRoleId).toBe(roleId);
       expect(employee.createdAt).toEqual(createdAt);
       expect(employee.updatedAt).toEqual(updatedAt);
     });
