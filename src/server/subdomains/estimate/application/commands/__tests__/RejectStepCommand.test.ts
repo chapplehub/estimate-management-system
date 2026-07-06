@@ -1,3 +1,4 @@
+import { APPROVAL_TEST_BANDS } from "@server/__tests__/helpers/approvalTestBands";
 import {
   cleanupApprovalFixtures,
   ensureApprovalFixtures,
@@ -19,13 +20,8 @@ import { PrismaEstimateApplicationRepository } from "../../../infrastructure/pri
 import { PrismaEstimateRepository } from "../../../infrastructure/prisma/PrismaEstimateRepository";
 import { RejectStepCommand } from "../RejectStepCommand";
 
-// 承認コマンド系テスト見積番号（approve の 03x と分けて 04x を使う）。
-const EN = {
-  reject: "N9907040",
-  notMember: "N9907041",
-  emptyComment: "N9907042",
-  stale: "N9907043",
-} as const;
+// 04x 帯（ステップ差戻コマンド）。番号帯はレジストリが単一ソース（#493・approvalTestBands）。
+const EN = APPROVAL_TEST_BANDS.rejectStepCommand;
 const ALL_NUMBERS = Object.values(EN);
 
 describe("RejectStepCommand", () => {

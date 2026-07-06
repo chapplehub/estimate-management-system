@@ -2,6 +2,7 @@ import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
 import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
 import { PositionId } from "@subdomains/position/domain/values/PositionId";
 import { ApplicationStatus } from "../../values/approval/ApplicationStatus";
+import { deriveApplicationStatus } from "../../values/approval/deriveApplicationStatus";
 import { ApprovalChainPlan } from "../../values/approval/ApprovalChainPlan";
 import { ApprovalStepStatus } from "../../values/approval/ApprovalStepStatus";
 import { ApplicationWithdrawal } from "../../values/approval/ApplicationWithdrawal";
@@ -146,16 +147,11 @@ export class EstimateApplication {
    * ステップ状態導出（{@link stepStatus}）には依存しないため循環しない。
    */
   get applicationStatus(): ApplicationStatus {
-    if (this._withdrawal !== null) {
-      return ApplicationStatus.WITHDRAWN;
-    }
-    if (this._steps.some((step) => step.isRejected())) {
-      return ApplicationStatus.REJECTED;
-    }
-    if (this._steps.every((step) => step.isApproved())) {
-      return ApplicationStatus.APPROVED;
-    }
-    return ApplicationStatus.PENDING;
+    return deriveApplicationStatus({
+      hasWithdrawal: this._withdrawal !== null,
+      hasAnyRejection: this._steps.some((step) => step.isRejected()),
+      allStepsApproved: this._steps.every((step) => step.isApproved()),
+    });
   }
 
   /**
