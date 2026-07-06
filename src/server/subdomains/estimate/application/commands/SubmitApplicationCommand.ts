@@ -161,8 +161,11 @@ export class SubmitApplicationCommand {
   private async reduceVariationState(
     variationId: EstimateVariationId
   ): Promise<VariationApplicationState> {
-    const exemption = await this.exemptionRepository.findByVariationId(variationId);
-    const applications = await this.applicationRepository.findByVariationId(variationId);
+    // 免除有無と全申請は互いに独立な読み取りなので並列取得する。
+    const [exemption, applications] = await Promise.all([
+      this.exemptionRepository.findByVariationId(variationId),
+      this.applicationRepository.findByVariationId(variationId),
+    ]);
     return VariationApplicationState.reduce({
       isExempted: exemption !== null,
       applications: applications.map((application) => ({
