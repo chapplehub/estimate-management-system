@@ -13,7 +13,7 @@ import {
 import { EstimateRepository } from "@subdomains/estimate/domain/repositories/EstimateRepository";
 import { EstimateApplicationRepository } from "@subdomains/estimate/domain/repositories/approval/EstimateApplicationRepository";
 import { EstimateApprovalExemptionRepository } from "@subdomains/estimate/domain/repositories/approval/EstimateApprovalExemptionRepository";
-import { type ApprovalChainBlockedReason } from "@subdomains/estimate/domain/services/approval/ApprovalChainBuilder";
+import { BLOCKED_REASON_LABELS } from "@subdomains/estimate/domain/services/approval/ApprovalChainBuilder";
 import { AdvancingVariationPolicy } from "@subdomains/estimate/domain/policies/approval/AdvancingVariationPolicy";
 import { EstimateVariationId } from "@subdomains/estimate/domain/values/EstimateVariationId";
 import { VariationApplicationState } from "@subdomains/estimate/domain/values/approval/VariationApplicationState";
@@ -37,17 +37,6 @@ export type SubmitApplicationResult =
       attempt: number;
     }
   | { kind: "ApprovalExempted"; exemptionId: string; reason: string };
-
-function blockedMessage(reason: ApprovalChainBlockedReason): string {
-  switch (reason) {
-    case "NO_SUPERIOR_ROLE":
-      return "申請者に上位役割が設定されていないため申請できません（§5.2）";
-    case "GOAL_UNREACHABLE":
-      return "必要な承認職位まで組織が届かないため申請できません（§5.2）";
-    case "NO_APPROVER":
-      return "承認対象役割に承認者が存在しないため申請できません（§5.2）";
-  }
-}
 
 /**
  * 見積申請コマンド（version 関門で「1見積1前進」を直列化・ADR-0068・ADR-20260626-dee・#417・§6.3）
@@ -99,7 +88,7 @@ export class SubmitApplicationCommand {
 
     // 4. BLOCKED は Preview にとっては正常結果だが、Submit は境界で業務例外へ昇格する。
     if (result.kind === "BLOCKED") {
-      throw new BusinessRuleViolationError(blockedMessage(result.reason));
+      throw new BusinessRuleViolationError(BLOCKED_REASON_LABELS[result.reason]);
     }
 
     // 5-6. version 関門と挿入を単一トランザクションで原子化する（atomic submit・ADR-20260626-dee）。

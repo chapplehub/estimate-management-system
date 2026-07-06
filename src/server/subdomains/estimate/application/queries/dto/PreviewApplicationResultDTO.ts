@@ -20,6 +20,11 @@ export type PreviewApplicationStepDTO = {
  * `INACTIVE` はチェーン構築以前の「バリエーション状態」の事実で、`BLOCKED`（承認チェーンが
  * 組めない業務理由）とは原因が異なるため専用 kind に分ける。Submit が `targetVariationIsActive`
  * を判定の起点に置くのと同じく、Preview も judge を走らせる前にこれを返す（#442）。
+ *
+ * 実行不可の3分岐（EXEMPT は確認可・BLOCKED/INACTIVE は不可）の表示文言はすべて BE 所有とし、
+ * モーダルは受け取った label をそのまま描く（ADR-0069）。`BLOCKED` は理由 code に対応する
+ * `reasonLabel`（{@link BLOCKED_REASON_LABELS} 由来）、`INACTIVE` は code 集合を持たない単一 kind
+ * ゆえ `reason` を持たず固定の `label` 単体を載せる。
  */
 export type PreviewApplicationResultDTO =
   | { kind: "EXEMPT"; reason: string; reasonLabel: string }
@@ -29,5 +34,5 @@ export type PreviewApplicationResultDTO =
       goalPositionName: string;
       steps: PreviewApplicationStepDTO[];
     }
-  | { kind: "BLOCKED"; reason: ApprovalChainBlockedReason }
-  | { kind: "INACTIVE" };
+  | { kind: "BLOCKED"; reason: ApprovalChainBlockedReason; reasonLabel: string }
+  | { kind: "INACTIVE"; label: string };

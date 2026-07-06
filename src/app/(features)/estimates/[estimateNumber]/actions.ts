@@ -4,6 +4,8 @@ import { verifySession } from "@/app/_lib/verifyAuthentication";
 import { parseWithZod } from "@conform-to/zod/v4";
 import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
 import { getEstimateDetailQueryFactory } from "@subdomains/estimate/application/factories/estimateQueryFactory";
+import { previewApplicationQueryFactory } from "@subdomains/estimate/application/factories/previewApplicationQueryFactory";
+import { submitApplicationCommandFactory } from "@subdomains/estimate/application/factories/submitApplicationCommandFactory";
 import { updateEstimateCommandFactory } from "@subdomains/estimate/application/factories/updateEstimateCommandFactory";
 import { updateVariationCommandFactory } from "@subdomains/estimate/application/factories/updateVariationCommandFactory";
 import { updateVariationMemosCommandFactory } from "@subdomains/estimate/application/factories/updateVariationMemosCommandFactory";
@@ -20,6 +22,9 @@ import type { UpdateVariationMemosInput } from "@subdomains/estimate/application
 import type { AddVariationInput } from "@subdomains/estimate/application/commands/AddVariationCommand";
 import type { ReviseForCustomerInput } from "@subdomains/estimate/application/commands/ReviseForCustomerCommand";
 import type { AdjustRevisedVariationInput } from "@subdomains/estimate/application/commands/AdjustRevisedVariationCommand";
+import type { SubmitApplicationResult } from "@subdomains/estimate/application/commands/SubmitApplicationCommand";
+import type { PreviewApplicationResultDTO } from "@subdomains/estimate/application/queries/dto/PreviewApplicationResultDTO";
+import type { ActionResult } from "@shared/types/ActionResult";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { handleCommandError } from "../../_shared/error-handler";
@@ -361,6 +366,118 @@ export async function updateVariationContent(
 
   revalidatePath(`/estimates/${estimateNumber}`);
   redirect(`/estimates/${estimateNumber}?reason=${REDIRECT_REASON.ESTIMATE_UPDATED}`);
+}
+
+/** 申請者の従業員情報が取得できない場合の共通文言（前例: 複製の作成者 null）。 */
+const OPERATOR_UNRESOLVED_MESSAGE =
+  "申請者の従業員情報が取得できないため申請できません。管理者にお問い合わせください。";
+
+/**
+ * `handleCommandError` を ActionResult<T> の失敗アームへブリッジする（#494・自動レビュー R1）。
+ *
+ * `handleCommandError` の戻り型は `ActionResult<void>` で、`success:true` アームの `data:void` が
+ * ジェネリック T と不一致になり `return handleCommandError(error)` は型が通らない。失敗アーム
+ * （T 非依存）だけを組み直して任意の ActionResult<T> に代入可能な形へ落とす。
+ */
+function toActionError(error: unknown): { success: false; error?: string } {
+  const result = handleCommandError(error);
+  return { success: false, error: result.success ? undefined : result.error };
+}
+
+/**
+ * 申請系 Server Action（preview / submit）の共通前処理を解決する（#494）。
+ *
+ * 認証セッションの operator（null は申請不可）と、estimateNumber から再解決した estimateId
+ * （client を信頼しない）を返す。`getEstimateDetail` はインフラ例外で reject しうるため try/catch で
+ * 囲み ActionResult 化する。呼び出し元は plain await でモーダルへ resolve する契約のため、ここで
+ * reject を漏らすと失敗導線（バナー・エラー文言）を握り潰す（#494・自動レビュー R1）。
+ */
+async function resolveApplicationContext(
+  estimateNumber: string
+): Promise<
+  | { success: true; operatorEmployeeId: string; estimateId: string }
+  | { success: false; error?: string }
+> {
+  const session = await verifySession();
+
+  const operatorEmployeeId = session.user.employeeId;
+  if (!operatorEmployeeId) {
+    return { success: false, error: OPERATOR_UNRESOLVED_MESSAGE };
+  }
+
+  try {
+    const dto = await getEstimateDetailQueryFactory().execute({ estimateNumber });
+    if (!dto) {
+      return { success: false, error: "見積が見つかりません" };
+    }
+    return { success: true, operatorEmployeeId, estimateId: dto.estimateId };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+/**
+ * 見積申請のプレビュー（S2・確認モーダル用・§6.2・#494）の Server Action。
+ *
+ * 確認モーダルを開いた時点で呼ばれる副作用なしの読み取り。フォーム送信ではないため conform を
+ * 通さず plain 引数を取り、`PreviewApplicationResultDTO` を {@link ActionResult} で包んで返す。
+ * operator は認証セッションの employeeId（null は申請不可）、estimateId は estimateNumber から DTO
+ * 再解決（client を信頼しない）、variationId は client エコー。preview は version を取らない
+ * （version 関門は submit 専任・ADR-0068）。BLOCKED/INACTIVE は業務例外ではなく preview の正常結果
+ * のため、これらは success:true の DTO として返す（モーダルが文言を描く・ADR-0069）。
+ */
+export async function previewApplication(
+  estimateNumber: string,
+  variationId: string
+): Promise<ActionResult<PreviewApplicationResultDTO>> {
+  const ctx = await resolveApplicationContext(estimateNumber);
+  if (!ctx.success) {
+    return ctx;
+  }
+
+  try {
+    const preview = await previewApplicationQueryFactory().execute({
+      estimateId: ctx.estimateId,
+      variationId,
+      operatorEmployeeId: ctx.operatorEmployeeId,
+    });
+    return { success: true, data: preview };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+/**
+ * 見積申請の実行（S2・確認モーダルの確定・§6.3・#494・ADR-0068）の Server Action。
+ *
+ * operator は認証セッションの employeeId（null は申請不可）、estimateId は estimateNumber から DTO
+ * 再解決。version は preview 時に client が読んだ楽観ロックトークンをそのままエコーし、サーバでは
+ * 読み直さない（TOCTOU 防御の関門トークン・ADR-0068）。成功結末（申請 or 免除）は union を
+ * {@link ActionResult} で包んで返し、競合（ConflictError）・業務例外（BusinessRuleViolationError）は
+ * handleCommandError でメッセージ化する。redirect はせず、成功時のパネル更新・失敗時のバナー表示は
+ * 呼び出し元（VariationPanel）に委ねる（画面状態をユーザーから奪わない・#494）。
+ */
+export async function submitApplication(
+  estimateNumber: string,
+  variationId: string,
+  version: number
+): Promise<ActionResult<SubmitApplicationResult>> {
+  const ctx = await resolveApplicationContext(estimateNumber);
+  if (!ctx.success) {
+    return ctx;
+  }
+
+  try {
+    const result = await submitApplicationCommandFactory().execute({
+      estimateId: ctx.estimateId,
+      variationId,
+      operatorEmployeeId: ctx.operatorEmployeeId,
+      version,
+    });
+    return { success: true, data: result };
+  } catch (error) {
+    return toActionError(error);
+  }
 }
 
 /**

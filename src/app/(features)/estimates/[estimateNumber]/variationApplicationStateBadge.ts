@@ -43,6 +43,24 @@ export function badgeToneOf(
   }
 }
 
+/** バッジ色調を Tailwind クラスへ写す（shadcn Badge に success/warning/info variant が無いため）。 */
+export function badgeToneClassName(tone: VariationApplicationStateBadgeTone): string {
+  switch (tone) {
+    case "neutral":
+      return "bg-gray-100 text-gray-700 border-gray-300";
+    case "info":
+      return "bg-blue-100 text-blue-800 border-blue-300";
+    case "success":
+      return "bg-green-100 text-green-800 border-green-300";
+    case "warning":
+      return "bg-amber-100 text-amber-800 border-amber-300";
+    default: {
+      const _exhaustive: never = tone;
+      return _exhaustive;
+    }
+  }
+}
+
 /** DTO の全フィールド（variationId / applicationState.code / label / canApply）を読む消費例。 */
 export type VariationApplicationStateBadge = {
   variationId: string;

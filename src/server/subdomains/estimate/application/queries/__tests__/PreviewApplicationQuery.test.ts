@@ -131,7 +131,11 @@ describe("PreviewApplicationQuery", () => {
       operatorEmployeeId: ids.estimate.employeeId,
     });
 
-    expect(result).toEqual({ kind: "BLOCKED", reason: "NO_SUPERIOR_ROLE" });
+    expect(result).toEqual({
+      kind: "BLOCKED",
+      reason: "NO_SUPERIOR_ROLE",
+      reasonLabel: "申請者に上位役割が設定されていないため申請できません",
+    });
   });
 
   it("INACTIVE バリエーションは judge を走らせず INACTIVE を返す（Submit と可否一致）", async () => {
@@ -150,7 +154,10 @@ describe("PreviewApplicationQuery", () => {
     });
 
     // Submit（無効なバリエーションには申請できない）と可否が一致する。
-    expect(result).toEqual({ kind: "INACTIVE" });
+    expect(result).toEqual({
+      kind: "INACTIVE",
+      label: "このバリエーションは無効化されています。画面を更新して最新の状態をご確認ください。",
+    });
 
     // 副作用なし（クエリのため申請行・免除行を作らない）。
     const applications = await prisma.estimateApplication.count({ where: { variationId } });

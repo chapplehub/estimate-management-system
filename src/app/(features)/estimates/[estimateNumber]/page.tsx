@@ -3,6 +3,7 @@ import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
 import { getActiveDepartmentsQueryFactory } from "@subdomains/department/application/factories/departmentQueryFactory";
 import {
   getEstimateDetailQueryFactory,
+  getVariationApplicationStatesQueryFactory,
   resolveEffectiveTaxRateQueryFactory,
 } from "@subdomains/estimate/application/factories/estimateQueryFactory";
 import { notFound } from "next/navigation";
@@ -43,9 +44,11 @@ export default async function EstimateDetailPage({
   // 部署プルダウン（編集フォーム・複製モーダル用・有効な部署のみ Q6）と既定日付の有効税率
   // （複製モーダルの read-only 初期値）は互いに独立なため並列解決する（詳細はホットパスで
   // 逐次 I/O を避ける）。
-  const [departments, initialTaxRate] = await Promise.all([
+  // 申請状態（#493・#494）も見積 ID が定まれば独立に読めるため同じ並列束で解決する。
+  const [departments, initialTaxRate, applicationStates] = await Promise.all([
     getActiveDepartmentsQueryFactory().execute({}),
     resolveEffectiveTaxRateQueryFactory().execute({ date: fromDateInputValue(today) }),
+    getVariationApplicationStatesQueryFactory().execute({ estimateId: estimate.estimateId }),
   ]);
   const departmentOptions = departments.map((d) => ({ id: d.id, name: d.name }));
 
@@ -78,6 +81,7 @@ export default async function EstimateDetailPage({
         estimateNumber={estimate.estimateNumber}
         version={estimate.version}
         variations={estimate.variations}
+        applicationStates={applicationStates}
         taxRate={estimate.taxRate}
         taxRoundingType={estimate.taxRoundingType}
         hasRevision={estimate.hasRevision}

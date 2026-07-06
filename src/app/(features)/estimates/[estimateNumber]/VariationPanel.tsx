@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { Badge } from "@/app/_components/shadcnui/badge";
 import type { VariationDTO } from "@subdomains/estimate/application/queries/dto/EstimateDetailDTO";
+import type { VariationApplicationStateDTO } from "@subdomains/estimate/application/queries/dto/VariationApplicationStateDTO";
 import { SUBMISSION_TYPE_LABELS, formatYen } from "../_shared/labels";
+import { ApplicationConfirmDialog } from "./ApplicationConfirmDialog";
+import { badgeToneClassName, badgeToneOf } from "./variationApplicationStateBadge";
 import { LineTable } from "./components/LineTable";
 import {
   isVariationAdjustable,
@@ -28,6 +31,11 @@ type Props = {
   /** 集約ルートの楽観ロックトークン（ADR-0039）。編集フォームへ往復させる。 */
   version: number;
   variations: VariationDTO[];
+  /**
+   * バリエーション別 申請状態（#493・#494）。申請ボタンの出し分け（canApply）とバッジ（label）を
+   * 駆動する。variationId で {@link VariationDTO} と join する（INACTIVE 含む全件・variationNumber 昇順）。
+   */
+  applicationStates: VariationApplicationStateDTO[];
   /** 消費税率（金額プレビュー用・見積時点スナップショット）。 */
   taxRate: number;
   /** 税端数区分（金額プレビュー用）。 */
@@ -70,6 +78,7 @@ export function VariationPanel({
   estimateNumber,
   version,
   variations,
+  applicationStates,
   taxRate,
   taxRoundingType,
   hasRevision,
@@ -84,9 +93,16 @@ export function VariationPanel({
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
   // 閲覧／編集（C4）／新規追加・複製（C3）を 1 つの判別共用体で排他管理する（計画§起点）。
   const [mode, setMode] = useState<PanelMode>({ kind: "view" });
+  // submit 失敗（競合・業務例外）の永続バナー（#494）。auto-refresh せずユーザーに画面確認を委ねる。
+  const [applyFailure, setApplyFailure] = useState<string | null>(null);
 
   const allInactive = variations.every((v) => v.status !== "ACTIVE");
   const active = variations[activeIndex];
+  // active バリの申請状態を join で引く（canApply とバッジ label に使う・#493）。読み出しは active の
+  // 1 キーのみのため全件 Map 索引は作らず find で直接引く（自動レビュー R1）。
+  const activeApplicationState = active
+    ? applicationStates.find((state) => state.variationId === active.variationId)
+    : undefined;
 
   function selectVariation(index: number): void {
     if (index === activeIndex) return;
@@ -117,6 +133,30 @@ export function VariationPanel({
 
   return (
     <div>
+      {/* 申請失敗（競合・業務例外）の永続バナー（#494）。パネルの canApply・バッジ・金額は古いままの
+          ため「最新ではない」と明示し、更新タイミングはユーザーに委ねる（auto-refresh しない）。 */}
+      {applyFailure && (
+        <div
+          role="alert"
+          className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 flex items-start justify-between gap-4"
+        >
+          <p>
+            {applyFailure}
+            <br />
+            この画面の表示は最新ではありません。必要な情報を控えたうえで、一覧に戻るか F5 で画面を
+            更新してください。
+          </p>
+          <button
+            type="button"
+            onClick={() => setApplyFailure(null)}
+            className="shrink-0 text-red-700 hover:text-red-900 font-bold"
+            aria-label="バナーを閉じる"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {/* 全無効警告（presentation 導出。DTO に専用フラグは持たせない） */}
       {allInactive && (
         <div
@@ -163,6 +203,17 @@ export function VariationPanel({
             <span className="text-sm text-gray-600">
               {active.status === "ACTIVE" ? "● 有効" : "○ 無効"}
             </span>
+            {/* 申請状態バッジ（label は VO 単一ソース・ADR-0069。tone は code から導出）。 */}
+            {activeApplicationState && (
+              <Badge
+                variant="outline"
+                className={badgeToneClassName(
+                  badgeToneOf(activeApplicationState.applicationState.code)
+                )}
+              >
+                {activeApplicationState.applicationState.label}
+              </Badge>
+            )}
             {mode.kind === "view" && (
               <div className="ml-auto flex gap-2">
                 {isVariationEditable(active) && (
@@ -224,6 +275,20 @@ export function VariationPanel({
                     hasRevision={hasRevision}
                   />
                 )}
+                {/* 申請（S2・§6・#494）。ボタンは常時表示し、無効化は canApply 単一ゲート。
+                    activeApplicationState が無いのは申請状態の取得漏れ（バグ）だが、UI は防御的に
+                    「申請不可」で描く（canApply=false）。 */}
+                <ApplicationConfirmDialog
+                  estimateNumber={estimateNumber}
+                  variationId={active.variationId}
+                  variationNumber={active.variationNumber}
+                  version={version}
+                  finalTotal={active.finalTotal}
+                  canApply={activeApplicationState?.canApply ?? false}
+                  variationStatus={active.status}
+                  onSubmitFailure={setApplyFailure}
+                  onSubmitSuccess={() => setApplyFailure(null)}
+                />
                 <button
                   type="button"
                   onClick={startNew}

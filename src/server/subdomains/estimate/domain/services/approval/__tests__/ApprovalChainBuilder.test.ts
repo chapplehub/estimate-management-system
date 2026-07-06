@@ -2,7 +2,12 @@ import { InvalidArgumentError } from "@server/shared/errors/DomainError";
 import { PositionId } from "@subdomains/position/domain/values/PositionId";
 import { RoleId } from "@subdomains/role/domain/values/RoleId";
 import { describe, expect, it } from "vitest";
-import { ApprovalChainBuilder, type ApprovalChainOrgRole } from "../ApprovalChainBuilder";
+import {
+  ApprovalChainBuilder,
+  BLOCKED_REASON_LABELS,
+  type ApprovalChainBlockedReason,
+  type ApprovalChainOrgRole,
+} from "../ApprovalChainBuilder";
 import { ApprovalGoalTier } from "../../../values/approval/ApprovalGoalTier";
 
 /** 上位リンクで連なる役割ノード列を作る（index 昇順で下位→上位）。tiers の順に役職段階を割り当てる。 */
@@ -162,6 +167,26 @@ describe("ApprovalChainBuilder", () => {
           snapshot: { applicantSuperiorRoleId: RoleId.generate(), roles },
         })
       ).toThrow(InvalidArgumentError);
+    });
+  });
+
+  describe("BLOCKED_REASON_LABELS（ユーザー向け文言の単一ソース）", () => {
+    const REASONS: ApprovalChainBlockedReason[] = [
+      "NO_SUPERIOR_ROLE",
+      "GOAL_UNREACHABLE",
+      "NO_APPROVER",
+    ];
+
+    it("全ての BLOCKED 理由に対しユーザー向け文言を持つ", () => {
+      for (const reason of REASONS) {
+        expect(BLOCKED_REASON_LABELS[reason]).toBeTruthy();
+      }
+    });
+
+    it("ユーザー向け文言に内部参照（§記号）を含めない", () => {
+      for (const reason of REASONS) {
+        expect(BLOCKED_REASON_LABELS[reason]).not.toContain("§");
+      }
     });
   });
 });
