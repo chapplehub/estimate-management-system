@@ -2,9 +2,17 @@ import { ValidationError } from "@server/shared/errors/DomainError";
 import { ValueObject } from "@server/shared/ValueObject";
 
 const VALID_VALUES = ["PENDING", "APPROVED", "REJECTED", "WITHDRAWN"] as const;
-type ApplicationStatusValue = (typeof VALID_VALUES)[number];
 
-const LABEL_MAP: Record<ApplicationStatusValue, string> = {
+/**
+ * 申請の導出状態の code 集合（4値）。
+ *
+ * ADR-0069 に従い、状態語彙の code 集合はドメイン VO を単一ソースとする。バリエーション
+ * 申請状態 VO（{@link VariationApplicationState}・6値）は申請と重なる4値をこの型で参照し、
+ * label もこの VO の `label` へ委譲することでドリフトを防ぐ。
+ */
+export type ApplicationStatusCode = (typeof VALID_VALUES)[number];
+
+const LABEL_MAP: Record<ApplicationStatusCode, string> = {
   PENDING: "申請中",
   APPROVED: "承認済",
   REJECTED: "差戻",
@@ -41,7 +49,7 @@ export class ApplicationStatus extends ValueObject<string, "ApplicationStatus"> 
 
   /** 業務表示名（「申請中」/「承認済」/「差戻」/「取下」）。 */
   get label(): string {
-    return LABEL_MAP[this._value as ApplicationStatusValue];
+    return LABEL_MAP[this._value as ApplicationStatusCode];
   }
 
   /** 承認待ち（取下可能な状態・§7.3）。 */
@@ -60,7 +68,7 @@ export class ApplicationStatus extends ValueObject<string, "ApplicationStatus"> 
   }
 
   protected validate(value: string): void {
-    if (!VALID_VALUES.includes(value as ApplicationStatusValue)) {
+    if (!VALID_VALUES.includes(value as ApplicationStatusCode)) {
       throw new ValidationError(
         `不正な申請状態です: ${value}（有効値: ${VALID_VALUES.join(", ")}）`
       );
