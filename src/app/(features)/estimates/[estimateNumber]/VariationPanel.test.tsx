@@ -5,10 +5,11 @@ import type {
   LineDTO,
   VariationDTO,
 } from "@subdomains/estimate/application/queries/dto/EstimateDetailDTO";
+import type { VariationApplicationStateDTO } from "@subdomains/estimate/application/queries/dto/VariationApplicationStateDTO";
 import { VariationPanel } from "./VariationPanel";
-import { addVariation } from "./actions";
+import { addVariation, previewApplication, submitApplication } from "./actions";
 
-// Server Action をモック（VariationCreateForm / VariationEditForm が依存）。
+// Server Action をモック（VariationCreateForm / VariationEditForm / ApplicationConfirmDialog が依存）。
 vi.mock("./actions", () => ({
   addVariation: vi.fn(),
   updateVariationContent: vi.fn(),
@@ -16,9 +17,31 @@ vi.mock("./actions", () => ({
   updateVariationAdjustment: vi.fn(),
   activateVariation: vi.fn(),
   deactivateVariation: vi.fn(),
+  previewApplication: vi.fn(),
+  submitApplication: vi.fn(),
+}));
+
+// ApplicationConfirmDialog が submit 成功時に router.refresh() を呼ぶためモックする。
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn() }),
 }));
 
 const mockAddVariation = addVariation as unknown as Mock;
+const mockPreview = previewApplication as unknown as Mock;
+const mockSubmit = submitApplication as unknown as Mock;
+
+/** テスト用 申請状態 DTO ビルダ（既定: 未申請・申請可）。 */
+function appState(
+  variationId: string,
+  overrides: Partial<VariationApplicationStateDTO> = {}
+): VariationApplicationStateDTO {
+  return {
+    variationId,
+    applicationState: { code: "NONE", label: "未申請" },
+    canApply: true,
+    ...overrides,
+  };
+}
 
 /** テスト用 LineDTO ビルダ（改訂列なし＝編集可・複製可）。 */
 function line(overrides: Partial<LineDTO> = {}): LineDTO {
@@ -66,13 +89,20 @@ function variation(overrides: Partial<VariationDTO> = {}): VariationDTO {
   };
 }
 
-/** VariationPanel の共通 props（バリエーション群だけ差し替える）。 */
-function renderPanel(variations: VariationDTO[]) {
+/** VariationPanel の共通 props（バリエーション群だけ差し替える）。申請状態は既定で全件申請可。 */
+function renderPanel(
+  variations: VariationDTO[],
+  applicationStates?: VariationApplicationStateDTO[]
+) {
   return render(
     <VariationPanel
       estimateNumber="EST-0001"
       version={1}
       variations={variations}
+      applicationStates={
+        applicationStates ??
+        variations.map((v) => appState(v.variationId, { canApply: v.status === "ACTIVE" }))
+      }
       taxRate={0.1}
       taxRoundingType="ROUND_DOWN"
       hasRevision={false}
@@ -189,13 +219,16 @@ describe("VariationPanel（改訂先の部分編集・#390）", () => {
     const { rerender } = renderPanel([variation({ revisionRole: "NONE" })]);
     expect(screen.queryByRole("button", { name: "価格を調整" })).toBeNull();
 
+    const revisionSource = variation({
+      revisionRole: "REVISION_SOURCE",
+      submissionType: "DELIVERY_LOCATION",
+    });
     rerender(
       <VariationPanel
         estimateNumber="EST-0001"
         version={1}
-        variations={[
-          variation({ revisionRole: "REVISION_SOURCE", submissionType: "DELIVERY_LOCATION" }),
-        ]}
+        variations={[revisionSource]}
+        applicationStates={[appState(revisionSource.variationId)]}
         taxRate={0.1}
         taxRoundingType="ROUND_DOWN"
         hasRevision={false}
@@ -215,5 +248,61 @@ describe("VariationPanel（改訂先の部分編集・#390）", () => {
     expect(screen.getByLabelText("単価（通常明細）")).toBeInTheDocument();
     // 合計粗利が表示される。
     expect(screen.getByLabelText("合計粗利")).toBeInTheDocument();
+  });
+});
+
+describe("VariationPanel（申請ボタン・状態バッジ・失敗バナー・#494）", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("申請ボタンを常に表示し、canApply=false のバリでは無効化する", () => {
+    const v = variation({ variationId: "v1", status: "ACTIVE" });
+    renderPanel([v], [appState("v1", { canApply: false })]);
+
+    const applyButton = screen.getByRole("button", { name: "申請" });
+    expect(applyButton).toBeInTheDocument();
+    expect(applyButton).toBeDisabled();
+  });
+
+  test("canApply=true のバリでは申請ボタンが活性", () => {
+    const v = variation({ variationId: "v1", status: "ACTIVE" });
+    renderPanel([v], [appState("v1", { canApply: true })]);
+
+    expect(screen.getByRole("button", { name: "申請" })).toBeEnabled();
+  });
+
+  test("アクティブなバリの申請状態 label をバッジ表示する", () => {
+    const v = variation({ variationId: "v1", status: "ACTIVE" });
+    renderPanel(
+      [v],
+      [appState("v1", { applicationState: { code: "PENDING", label: "申請中" }, canApply: false })]
+    );
+
+    expect(screen.getByText("申請中")).toBeInTheDocument();
+  });
+
+  test("submit 失敗でパネル上部に永続バナーを表示し、refresh はしない", async () => {
+    const user = userEvent.setup();
+    const v = variation({ variationId: "v1", status: "ACTIVE" });
+    mockPreview.mockResolvedValue({
+      success: true,
+      data: {
+        kind: "REQUIRED",
+        goalPositionId: "p9",
+        goalPositionName: "部長",
+        steps: [{ order: 1, roleName: "営業一課長", positionName: "課長" }],
+      },
+    });
+    mockSubmit.mockResolvedValue({ success: false, error: "他の操作で見積が更新されました" });
+    renderPanel([v], [appState("v1", { canApply: true })]);
+
+    await user.click(screen.getByRole("button", { name: "申請" }));
+    await user.click(await screen.findByRole("button", { name: "申請する" }));
+
+    const banner = await screen.findByRole("alert");
+    expect(banner).toHaveTextContent("他の操作で見積が更新されました");
+    // モーダルは強制クローズされる（確認ボタンが消える）。
+    await waitFor(() => expect(screen.queryByRole("button", { name: "申請する" })).toBeNull());
   });
 });
