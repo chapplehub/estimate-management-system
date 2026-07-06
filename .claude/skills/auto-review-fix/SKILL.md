@@ -70,7 +70,7 @@ ls docs/claude-plans/issue-{番号}/
 
 ## ループ本体（最大 3 ラウンド）
 
-以下の Phase 1〜5 を、**終了条件に達するまで**繰り返す。ラウンド番号を `R`（1 始まり）とする。
+以下の Phase 1 → 1.5 → 2〜5 を、**終了条件に達するまで**繰り返す。ラウンド番号を `R`（1 始まり）とする。
 
 ### 終了条件（いずれか満たしたら停止）
 
@@ -84,12 +84,36 @@ ls docs/claude-plans/issue-{番号}/
 
 ### Phase 1: レビュー（組み込み `/code-review` を確実に使う）
 
-**`Skill` ツールで `code-review` スキルを起動する（`skill: code-review`、`args: {深さ} --comment`）。** ここはメイン文脈で実行する（`Skill` ツールはサブエージェント内では起動できないため）。
+**`Skill` ツールで `code-review` スキルを起動する（`skill: code-review`、`args: {深さ} {base}...HEAD`）。** ここはメイン文脈で実行する（`Skill` ツールはサブエージェント内では起動できないため）。
 
-- **`--comment` を付ける**: レビュー結果を PR に残すため。生の `/code-review` 指摘が PR の記録として残る。
+- **/code-review は「検出専用」として使う**（PR への記録は Phase 1.5 に一本化する）。`--comment` は **付けない**: インライン投稿はアンカー不能分が黙って落ちる不確実な経路であり、Phase 1.5 のトップレベル投稿と重複するため。
+- **レビュー対象を PR の ref 範囲に固定する（`{base}...HEAD`）**: `{base}` は PR のベースブランチ（通常 `develop`。Phase 0.2 の `gh pr view --json baseRefName` で確認し、`develop` でなければそれを使う）。
+  - 理由: `/code-review` の既定スコープは「upstream より先行しているコミット＋未コミット変更」であり、push 直後やトラッキング設定次第で **レビューした diff が PR の diff と食い違う**。ref 範囲形式は upstream 設定に依らず「その PR が持つコミット差分」をレビューするため、スコープが PR と一致する。未コミット変更（PR に無い）を拾う事故も防ぐ。
 - `--fix` は **付けない**（評価前に勝手に直させない）。修正は評価（judge）を通ったバケツ①②③だけに限定する。
-- findings はセッション内にも表示されるので、それを次の評価ステージへ渡す。
-- `/code-review` が指摘ゼロを返したら「収束」。Phase 6 へ。
+- **findings はセッション内に必ず表示される**ので、それを丸ごと控えて Phase 1.5・Phase 2 へ渡す。判定と記録の一次情報は **この セッション findings**。
+
+### Phase 1.5: findings の記録（トップレベル投稿）と Phase 2 ゲート
+
+**生 findings を auto-review-fix 側（メイン文脈）が決定的に PR へ記録する。** これを通してからでないと Phase 2 に進まない。
+
+1. **findings 0 件の判定（収束ゲート）**: Phase 1 のセッション findings が空（`/code-review` が指摘ゼロ）なら「収束」。**Phase 2 に進まず Phase 6 へ**。
+2. **findings ≥1 件なら、生 findings をトップレベルコメントとして必ず投稿する**（行アンカー不要なので 100% 残る）:
+
+```bash
+gh pr comment {PR番号} --body "$(cat <<'EOF'
+## 🔍 /code-review 生レビュー ラウンド {R}（深さ {深さ} / 対象 {base}...HEAD）
+
+Phase 1 の `/code-review` が返した指摘（judge 評価前の一次情報）:
+
+- [severity参考:{severity}] {file:line} {問題}
+EOF
+)"
+```
+
+3. 投稿の成否を確認する（`gh pr comment` の終了コード）。**投稿できなければ Phase 2 に進まない**（原因を記録して停止する）。
+4. 投稿できたら、そのセッション findings を持って Phase 2 へ。
+
+> これにより「Phase 1 の結果が PR に載らないまま Phase 2 に進む」が構造的に起きなくなる。PR には「Phase 1.5 の生レビュー（トップレベル）」「Phase 2 の judge 判定」の 2 層が記録として残る。
 
 ### Phase 2: 評価（fresh subagent で妥当性を judge）— **鵜呑みにしない**
 
@@ -100,7 +124,7 @@ ls docs/claude-plans/issue-{番号}/
 
 judge サブエージェントへのプロンプトに以下を**すべて**渡す:
 
-1. **`/code-review` の指摘リスト**（Phase 1 の出力そのまま）
+1. **`/code-review` の指摘リスト**（**Phase 1 のセッション findings をそのまま**。Phase 1.5 でトップレベル投稿したものと同一の一次情報。PR のインラインコメントを読み直すのではなく、この findings を判定材料にする）
 2. **実装の変更内容**: `git diff develop..HEAD`
 3. **計画ファイルの中身**: `docs/claude-plans/issue-{番号}/*.md`（`deviations.md` 含む。無い場合はその旨）
 4. 下記「バケツ分類基準」と「③ cleanup の採用基準」
