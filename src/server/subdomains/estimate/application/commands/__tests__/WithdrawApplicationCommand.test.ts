@@ -1,3 +1,4 @@
+import { APPROVAL_TEST_BANDS } from "@server/__tests__/helpers/approvalTestBands";
 import {
   cleanupApprovalFixtures,
   ensureApprovalFixtures,
@@ -18,12 +19,8 @@ import { PrismaEstimateApplicationRepository } from "../../../infrastructure/pri
 import { PrismaEstimateRepository } from "../../../infrastructure/prisma/PrismaEstimateRepository";
 import { WithdrawApplicationCommand } from "../WithdrawApplicationCommand";
 
-// 承認コマンド系テスト見積番号（リポジトリテストの 01x と分けて 02x を使う）。
-const EN = {
-  withdraw: "N9907020",
-  notApplicant: "N9907021",
-  stale: "N9907022",
-} as const;
+// 02x 帯（申請取下コマンド）。番号帯はレジストリが単一ソース（#493・approvalTestBands）。
+const EN = APPROVAL_TEST_BANDS.withdrawCommand;
 const ALL_NUMBERS = Object.values(EN);
 
 describe("WithdrawApplicationCommand", () => {
