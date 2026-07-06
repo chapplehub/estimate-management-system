@@ -83,6 +83,18 @@ export class PrismaRoleQueryService implements RoleQueryService {
     return count > 0;
   }
 
+  async isSoleMember(roleId: string, employeeId: string): Promise<boolean> {
+    // メンバー総数がちょうど1で、かつその1人が当該従業員のときだけ true。
+    // 総数が1でない時点で偽なので、まず総数を数え、1件のときのみ本人確認を1本足す。
+    const total = await prisma.employeeRole.count({ where: { roleId } });
+    if (total !== 1) {
+      return false;
+    }
+
+    const isThisEmployee = await prisma.employeeRole.count({ where: { roleId, employeeId } });
+    return isThisEmployee === 1;
+  }
+
   async findByPositionId(positionId: string, options?: RoleListOptions): Promise<RoleDTO[]> {
     const orderBy = this.buildOrderBy(options) ?? { roleCd: "asc" as const };
 
