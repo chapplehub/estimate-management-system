@@ -27,6 +27,11 @@ type Props = {
   departmentSelectSlot: React.ReactNode;
   /** 担当役割の選択肢（page.tsx が findAll で取得し roleCd 昇順で供給） */
   roleOptions: { id: string; name: string }[];
+  /**
+   * 現在の担当役割において本人が唯一のメンバーか（page.tsx で1回スナップショット・#565 isSoleMember）。
+   * 担当役割なし（assignedRoleId==null）のときは false。承認者不在ワーニングの反応表示に使う。
+   */
+  isSoleMemberOfCurrentRole: boolean;
 };
 
 export function EmployeeUpdateForm({
@@ -34,6 +39,7 @@ export function EmployeeUpdateForm({
   canUpdate,
   departmentSelectSlot,
   roleOptions,
+  isSoleMemberOfCurrentRole,
 }: Props) {
   // LEARN: bind()でemployeeCdを事前にバインド(server-action-bind-vs-formdata.md)
   const updateEmployeeWithEmployeeCd = updateEmployee.bind(null, employee.employeeCd);
@@ -51,6 +57,15 @@ export function EmployeeUpdateForm({
       version: String(employee.version),
     },
   });
+
+  // 承認者不在ワーニングの反応判定（非ブロッキング）:
+  // 本人が現在の担当役割の唯一メンバーで、かつセレクトの値が現在値から変わった（変更 or 解除）とき表示。
+  // fields.roleId.value を反応的に読むため conform 配線の getSelectProps が前提。
+  // スナップショット（isSoleMemberOfCurrentRole）で十分：陳腐化しても最終整合は承認時の NO_APPROVER が担保。
+  const currentRoleId = employee.assignedRoleId;
+  const willLeaveCurrentRole =
+    currentRoleId != null && isSoleMemberOfCurrentRole && fields.roleId.value !== currentRoleId;
+  const currentRoleName = roleOptions.find((role) => role.id === currentRoleId)?.name;
 
   return (
     <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-8">
@@ -175,6 +190,17 @@ export function EmployeeUpdateForm({
             <p className="text-red-500 text-xs mt-1" id={fields.roleId.errorId}>
               {fields.roleId.errors[0]}
             </p>
+          )}
+          {/* 承認者不在ワーニング（非ブロッキング）。エラーの role="alert" とは別扱いの role="status"。 */}
+          {willLeaveCurrentRole && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="mt-2 rounded border border-yellow-400 bg-yellow-50 px-4 py-3 text-sm text-yellow-800"
+            >
+              ⚠️ この従業員は現在「{currentRoleName}
+              」の唯一の担当者です。担当役割を変更・解除しても更新はできますが、この役割の承認が承認者不在になる可能性があります。
+            </div>
           )}
         </div>
 

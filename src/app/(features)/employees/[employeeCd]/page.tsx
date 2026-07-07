@@ -32,6 +32,12 @@ export default async function Page({ params }: { params: Promise<{ employeeCd: s
   });
   const roleOptions = roles.map((role) => ({ id: role.id, name: role.name }));
 
+  // 承認者不在ワーニング用に、現在の担当役割で本人が唯一メンバーかを1回スナップショット（#565 isSoleMember）。
+  // 担当役割なし（assignedRoleId==null）ならクエリせず false。
+  const isSoleMemberOfCurrentRole = employee.assignedRoleId
+    ? await roleQueryService.isSoleMember(employee.assignedRoleId, employee.id)
+    : false;
+
   return (
     <div className="container mx-auto p-8">
       <h1 className="text-3xl font-bold mb-8">従業員管理</h1>
@@ -41,6 +47,7 @@ export default async function Page({ params }: { params: Promise<{ employeeCd: s
         employee={employee}
         canUpdate={canUpdate}
         roleOptions={roleOptions}
+        isSoleMemberOfCurrentRole={isSoleMemberOfCurrentRole}
         departmentSelectSlot={
           <DepartmentSelectField
             name="departmentId"

@@ -63,6 +63,7 @@ describe("EmployeeUpdateForm", () => {
           canUpdate={true}
           departmentSelectSlot={mockDepartmentSelectSlot}
           roleOptions={mockRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
@@ -84,6 +85,7 @@ describe("EmployeeUpdateForm", () => {
           canUpdate={true}
           departmentSelectSlot={mockDepartmentSelectSlot}
           roleOptions={mockRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
@@ -100,6 +102,7 @@ describe("EmployeeUpdateForm", () => {
           canUpdate={true}
           departmentSelectSlot={mockDepartmentSelectSlot}
           roleOptions={mockRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
@@ -115,6 +118,7 @@ describe("EmployeeUpdateForm", () => {
           canUpdate={true}
           departmentSelectSlot={mockDepartmentSelectSlot}
           roleOptions={mockRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
@@ -128,6 +132,7 @@ describe("EmployeeUpdateForm", () => {
           canUpdate={true}
           departmentSelectSlot={mockDepartmentSelectSlot}
           roleOptions={mockRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
@@ -144,6 +149,7 @@ describe("EmployeeUpdateForm", () => {
           canUpdate={true}
           departmentSelectSlot={mockDepartmentSelectSlot}
           roleOptions={mockRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
@@ -160,6 +166,7 @@ describe("EmployeeUpdateForm", () => {
           canUpdate={true}
           departmentSelectSlot={mockDepartmentSelectSlot}
           roleOptions={mockRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
@@ -173,6 +180,7 @@ describe("EmployeeUpdateForm", () => {
           canUpdate={true}
           departmentSelectSlot={mockDepartmentSelectSlot}
           roleOptions={mockRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
@@ -186,10 +194,127 @@ describe("EmployeeUpdateForm", () => {
           canUpdate={false}
           departmentSelectSlot={mockDepartmentSelectSlot}
           roleOptions={mockRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
       expect(screen.getByLabelText("担当役割")).toBeDisabled();
+    });
+  });
+
+  describe("承認者不在ワーニング（非ブロッキング）", () => {
+    // 唯一メンバー（isSoleMemberOfCurrentRole=true）が現在の担当役割「開発部長」(role-2) から
+    // 抜けるケース。旧役割名を明示した警告を反応的に表示する。
+    const soleMemberEmployee = { ...mockEmployee, assignedRoleId: "role-2" };
+
+    test("初期状態（現在の役割のまま）では警告は表示されない", () => {
+      render(
+        <EmployeeUpdateForm
+          employee={soleMemberEmployee}
+          canUpdate={true}
+          departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          isSoleMemberOfCurrentRole={true}
+        />
+      );
+
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+
+    test("唯一メンバーが別の担当役割へ変更すると旧役割名入りの警告が表示される", async () => {
+      const user = userEvent.setup();
+      render(
+        <EmployeeUpdateForm
+          employee={soleMemberEmployee}
+          canUpdate={true}
+          departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          isSoleMemberOfCurrentRole={true}
+        />
+      );
+
+      await user.selectOptions(screen.getByLabelText("担当役割"), "role-1");
+
+      const warning = await screen.findByRole("status");
+      expect(warning).toBeInTheDocument();
+      // 旧役割名を明示
+      expect(warning).toHaveTextContent("開発部長");
+    });
+
+    test("唯一メンバーが担当役割を解除しても警告が表示される", async () => {
+      const user = userEvent.setup();
+      render(
+        <EmployeeUpdateForm
+          employee={soleMemberEmployee}
+          canUpdate={true}
+          departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          isSoleMemberOfCurrentRole={true}
+        />
+      );
+
+      await user.selectOptions(screen.getByLabelText("担当役割"), "");
+
+      expect(await screen.findByRole("status")).toBeInTheDocument();
+    });
+
+    test("変更後に元の担当役割へ戻すと警告は消える", async () => {
+      const user = userEvent.setup();
+      render(
+        <EmployeeUpdateForm
+          employee={soleMemberEmployee}
+          canUpdate={true}
+          departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          isSoleMemberOfCurrentRole={true}
+        />
+      );
+
+      await user.selectOptions(screen.getByLabelText("担当役割"), "role-1");
+      expect(await screen.findByRole("status")).toBeInTheDocument();
+
+      await user.selectOptions(screen.getByLabelText("担当役割"), "role-2");
+      await waitFor(() => {
+        expect(screen.queryByRole("status")).not.toBeInTheDocument();
+      });
+    });
+
+    test("唯一メンバーでなければ担当役割を変更しても警告は出ない", async () => {
+      const user = userEvent.setup();
+      render(
+        <EmployeeUpdateForm
+          employee={soleMemberEmployee}
+          canUpdate={true}
+          departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          isSoleMemberOfCurrentRole={false}
+        />
+      );
+
+      await user.selectOptions(screen.getByLabelText("担当役割"), "role-1");
+
+      await waitFor(() => {
+        expect(screen.queryByRole("status")).not.toBeInTheDocument();
+      });
+    });
+
+    test("担当役割が未設定の従業員では変更しても警告は出ない", async () => {
+      const user = userEvent.setup();
+      render(
+        <EmployeeUpdateForm
+          employee={{ ...mockEmployee, assignedRoleId: null }}
+          canUpdate={true}
+          departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          isSoleMemberOfCurrentRole={false}
+        />
+      );
+
+      await user.selectOptions(screen.getByLabelText("担当役割"), "role-1");
+
+      await waitFor(() => {
+        expect(screen.queryByRole("status")).not.toBeInTheDocument();
+      });
     });
   });
 
@@ -201,6 +326,7 @@ describe("EmployeeUpdateForm", () => {
           canUpdate={true}
           departmentSelectSlot={mockDepartmentSelectSlot}
           roleOptions={mockRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
@@ -214,6 +340,7 @@ describe("EmployeeUpdateForm", () => {
           canUpdate={true}
           departmentSelectSlot={mockDepartmentSelectSlot}
           roleOptions={mockRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
@@ -227,6 +354,7 @@ describe("EmployeeUpdateForm", () => {
           canUpdate={true}
           departmentSelectSlot={mockDepartmentSelectSlot}
           roleOptions={mockRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
@@ -244,6 +372,7 @@ describe("EmployeeUpdateForm", () => {
           canUpdate={false}
           departmentSelectSlot={mockDepartmentSelectSlot}
           roleOptions={mockRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
@@ -257,6 +386,7 @@ describe("EmployeeUpdateForm", () => {
           canUpdate={false}
           departmentSelectSlot={mockDepartmentSelectSlot}
           roleOptions={mockRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
@@ -270,6 +400,7 @@ describe("EmployeeUpdateForm", () => {
           canUpdate={false}
           departmentSelectSlot={mockDepartmentSelectSlot}
           roleOptions={mockRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
@@ -288,6 +419,7 @@ describe("EmployeeUpdateForm", () => {
           canUpdate={true}
           departmentSelectSlot={mockDepartmentSelectSlot}
           roleOptions={mockRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
@@ -312,6 +444,7 @@ describe("EmployeeUpdateForm", () => {
           canUpdate={true}
           departmentSelectSlot={mockDepartmentSelectSlot}
           roleOptions={mockRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
@@ -334,6 +467,7 @@ describe("EmployeeUpdateForm", () => {
           canUpdate={true}
           departmentSelectSlot={mockDepartmentSelectSlot}
           roleOptions={mockRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
@@ -357,6 +491,7 @@ describe("EmployeeUpdateForm", () => {
           canUpdate={true}
           departmentSelectSlot={mockDepartmentSelectSlot}
           roleOptions={mockRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
@@ -402,6 +537,7 @@ describe("EmployeeUpdateForm", () => {
           canUpdate={true}
           departmentSelectSlot={mockDepartmentSelectSlot}
           roleOptions={mockRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
@@ -441,6 +577,7 @@ describe("EmployeeUpdateForm", () => {
           canUpdate={true}
           departmentSelectSlot={mockDepartmentSelectSlot}
           roleOptions={mockRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
@@ -476,6 +613,7 @@ describe("EmployeeUpdateForm", () => {
           canUpdate={true}
           departmentSelectSlot={mockDepartmentSelectSlot}
           roleOptions={mockRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
