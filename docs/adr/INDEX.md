@@ -112,6 +112,7 @@
 |---|---------|-----------|--------|
 | [0013](0013-list-dto-includes-related-names.md) | 一覧画面の DTO にリレーション先の名前を含める | 採用 | 2026-04-10 |
 | [0051](0051-list-representative-variation-selection-as-read-model-concern.md) | 見積一覧の代表バリエーションを「ACTIVE 優先の最小 → 全体の最小」で選び、read model に閉じる | 採用 | 2026-06-15 |
+| [20260707-b36](20260707-b36-application-list-search-derived-filters-in-app-layer.md) | 見積申請一覧の検索は不変事実だけをSQLで絞り、導出条件はアプリ層で畳んでから絞る（limitはフィルタ後適用） | 採用 | 2026-07-07 |
 
 ## テスト基盤
 
