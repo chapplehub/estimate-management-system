@@ -5,7 +5,9 @@ import { USER_ROLES } from "@server/shared/auth/types";
 import { ConflictError, NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { ValidationError } from "@server/shared/errors/DomainError";
 import { MailAddressDuplicationCheckDomainService } from "@subdomains/employee/domain/services/MailAddressDuplicationCheckDomainService";
+import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
 import { PrismaEmployeeRepository } from "@subdomains/employee/infrastructure/prisma/PrismaEmployeeRepository";
+import { generateId } from "@server/shared/generateId";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { UpdateEmployeeCommand } from "../UpdateEmployeeCommand";
 
@@ -17,20 +19,37 @@ describe("UpdateEmployeeCommand", () => {
 
   const TEST_EMPLOYEE_ID = "00000000-0000-7000-8000-100000000001";
   const ANOTHER_EMPLOYEE_ID = "00000000-0000-7000-8000-100000000002";
+  const TEST_EMP_CDS = ["EMP999912", "EMP999913"];
+  const TEST_ROLE_CDS = ["ROLE954", "ROLE955"];
   let TEST_DEPT_ID: string;
+  let roleAId: string;
+  let roleBId: string;
+
+  async function cleanupRolesAndChildren() {
+    await prisma.employeeRole.deleteMany({
+      where: { employee: { employeeCd: { in: TEST_EMP_CDS } } },
+    });
+    await prisma.employee.deleteMany({ where: { employeeCd: { in: TEST_EMP_CDS } } });
+    await prisma.role.deleteMany({ where: { roleCd: { in: TEST_ROLE_CDS } } });
+  }
 
   beforeEach(async () => {
-    // 1. テストデータクリーンアップ
-    await prisma.employee.deleteMany({
-      where: {
-        employeeCd: {
-          in: ["EMP999912", "EMP999913"],
-        },
-      },
-    });
+    // 1. テストデータクリーンアップ（子行→従業員→役割）
+    await cleanupRolesAndChildren();
 
     // 2. テスト用部署を確保
     TEST_DEPT_ID = await ensureTestDepartment();
+
+    // 2-1. 担当役割 FK 用の役割を用意（POS001=課長はシード済み）
+    const kachou = await prisma.position.findUnique({ where: { positionCd: "POS001" } });
+    roleAId = generateId();
+    roleBId = generateId();
+    await prisma.role.createMany({
+      data: [
+        { id: roleAId, roleCd: TEST_ROLE_CDS[0], name: "担当役割A", positionId: kachou!.id },
+        { id: roleBId, roleCd: TEST_ROLE_CDS[1], name: "担当役割B", positionId: kachou!.id },
+      ],
+    });
 
     // 3. 更新対象の既存従業員を作成
     await prisma.employee.create({
@@ -76,13 +95,7 @@ describe("UpdateEmployeeCommand", () => {
   });
 
   afterEach(async () => {
-    await prisma.employee.deleteMany({
-      where: {
-        employeeCd: {
-          in: ["EMP999912", "EMP999913"],
-        },
-      },
-    });
+    await cleanupRolesAndChildren();
     fakeUserManagementService.reset();
   });
 
@@ -237,5 +250,65 @@ describe("UpdateEmployeeCommand", () => {
       where: { id: TEST_EMPLOYEE_ID },
     });
     expect(employee?.email).toBe("existing@example.com");
+  });
+
+  it("担当役割を割り当て、別の役割へ置換できる", async () => {
+    // roleA を割り当て（version 1 → 2）
+    await command.execute({
+      id: TEST_EMPLOYEE_ID,
+      employeeCd: "EMP999912",
+      email: "existing@example.com",
+      name: "既存従業員",
+      departmentId: TEST_DEPT_ID,
+      role: USER_ROLES.USER,
+      expectedVersion: 1,
+      roleId: roleAId,
+    });
+
+    const afterAssign = await repository.findById(new EmployeeId(TEST_EMPLOYEE_ID));
+    expect(afterAssign?.assignedRoleId?.value).toBe(roleAId);
+
+    // roleB へ置換（version 2 → 3）
+    await command.execute({
+      id: TEST_EMPLOYEE_ID,
+      employeeCd: "EMP999912",
+      email: "existing@example.com",
+      name: "既存従業員",
+      departmentId: TEST_DEPT_ID,
+      role: USER_ROLES.USER,
+      expectedVersion: 2,
+      roleId: roleBId,
+    });
+
+    const afterReplace = await repository.findById(new EmployeeId(TEST_EMPLOYEE_ID));
+    expect(afterReplace?.assignedRoleId?.value).toBe(roleBId);
+  });
+
+  it("担当役割を省略して更新すると役割なし（解除）になる", async () => {
+    // まず roleA を割り当て
+    await command.execute({
+      id: TEST_EMPLOYEE_ID,
+      employeeCd: "EMP999912",
+      email: "existing@example.com",
+      name: "既存従業員",
+      departmentId: TEST_DEPT_ID,
+      role: USER_ROLES.USER,
+      expectedVersion: 1,
+      roleId: roleAId,
+    });
+
+    // roleId 省略で更新 → 解除（次の状態で上書き）
+    await command.execute({
+      id: TEST_EMPLOYEE_ID,
+      employeeCd: "EMP999912",
+      email: "existing@example.com",
+      name: "既存従業員",
+      departmentId: TEST_DEPT_ID,
+      role: USER_ROLES.USER,
+      expectedVersion: 2,
+    });
+
+    const afterClear = await repository.findById(new EmployeeId(TEST_EMPLOYEE_ID));
+    expect(afterClear?.assignedRoleId).toBeNull();
   });
 });

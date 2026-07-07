@@ -17,6 +17,11 @@ export type EmployeeDTO = {
   departmentName: string;
   /** ユーザーロール（User.roleから取得、Userが存在しない場合はnull） */
   role: UserRole | null;
+  /**
+   * 担当役割ID（EmployeeRole から導出、役割なし＝課員は null）。
+   * 編集画面の現在値復元に用いる。役割名はフォーム供給の一覧から解決するため持たない。
+   */
+  assignedRoleId: string | null;
   /** 楽観ロックトークン（ADR-0039）。編集画面表示時の値をフォームで往復させる */
   version: number;
   createdAt: Date;

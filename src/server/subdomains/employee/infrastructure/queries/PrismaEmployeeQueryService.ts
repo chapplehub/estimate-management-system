@@ -139,6 +139,12 @@ export class PrismaEmployeeQueryService implements EmployeeQueryService {
           role: true,
         },
       },
+      // 担当役割（高々1件・ADR-20260706-c89）を取得
+      employeeRoles: {
+        select: {
+          roleId: true,
+        },
+      },
     } as const;
   }
 
@@ -156,6 +162,7 @@ export class PrismaEmployeeQueryService implements EmployeeQueryService {
     createdAt: Date;
     updatedAt: Date;
     user: { role: string | null } | null;
+    employeeRoles: { roleId: string }[];
   }): EmployeeDTO {
     return {
       id: employee.id,
@@ -166,6 +173,8 @@ export class PrismaEmployeeQueryService implements EmployeeQueryService {
       departmentName: employee.department.name,
       // User.roleを使用（"admin" | "user" | null）
       role: (employee.user?.role as UserRole) ?? null,
+      // 高々1件の担当役割を導出（0件＝役割なし＝課員）
+      assignedRoleId: employee.employeeRoles[0]?.roleId ?? null,
       version: employee.version,
       createdAt: employee.createdAt,
       updatedAt: employee.updatedAt,

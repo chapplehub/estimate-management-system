@@ -56,4 +56,18 @@ export interface RoleQueryService {
    * @returns メンバーであれば true
    */
   hasMember(roleId: string, employeeId: string): Promise<boolean>;
+
+  /**
+   * 指定役割の唯一のメンバー（`EmployeeRole`）が指定従業員かを判定する（#565）。
+   *
+   * 「この役割の唯一のメンバーを外すと承認チェーンが承認者不在になる」ケースを
+   * 従業員更新前に警告するための読み取り事実（#568 FE で非ブロッキング表示）。
+   * メンバーが 0 人・2 人以上、あるいは唯一のメンバーが別従業員のときは false。
+   * 拒否には用いない（承認整合は承認時の NO_APPROVER が担保）。
+   *
+   * @param roleId 判定対象の役割ID
+   * @param employeeId 判定対象の従業員ID
+   * @returns 当該従業員が唯一のメンバーであれば true
+   */
+  isSoleMember(roleId: string, employeeId: string): Promise<boolean>;
 }

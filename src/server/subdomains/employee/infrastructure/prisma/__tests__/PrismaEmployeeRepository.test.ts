@@ -5,40 +5,52 @@ import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
 import { EmployeeName } from "@subdomains/employee/domain/values/EmployeeName";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
 import { DepartmentId } from "@subdomains/department/domain/values/DepartmentId";
+import { RoleId } from "@subdomains/role/domain/values/RoleId";
 import { PrismaEmployeeRepository } from "../PrismaEmployeeRepository";
 import prisma from "@server/prisma";
+import { generateId } from "@server/shared/generateId";
 import { ConflictError } from "@server/shared/errors/ApplicationError";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 describe("PrismaEmployeeRepository", () => {
+  // ファイル別プレフィックスで並列実行の P2002 を避ける（#327）。roleCd は VarChar(7)。
+  const TEST_EMP_CDS = ["EMP999001", "EMP999002", "EMP999003"];
+  const TEST_ROLE_CDS = ["ROLE951", "ROLE952"];
+
   let repository: PrismaEmployeeRepository;
   let TEST_DEPT_ID: DepartmentId;
+  let roleAId: string;
+  let roleBId: string;
+
+  async function cleanup() {
+    // 子行（employeeRole）→ 従業員 → 役割 の順で FK 制約を満たしながら削除する。
+    await prisma.employeeRole.deleteMany({
+      where: { employee: { employeeCd: { in: TEST_EMP_CDS } } },
+    });
+    await prisma.employee.deleteMany({ where: { employeeCd: { in: TEST_EMP_CDS } } });
+    await prisma.role.deleteMany({ where: { roleCd: { in: TEST_ROLE_CDS } } });
+  }
 
   beforeEach(async () => {
     repository = new PrismaEmployeeRepository();
-    // テストデータのクリーンアップ
-    await prisma.employee.deleteMany({
-      where: {
-        employeeCd: {
-          in: ["EMP999001", "EMP999002", "EMP999003"],
-        },
-      },
-    });
+    await cleanup();
 
     // テスト用部署を確保
     TEST_DEPT_ID = new DepartmentId(await ensureTestDepartment());
-  });
 
-  afterEach(async () => {
-    // テストデータのクリーンアップ
-    await prisma.employee.deleteMany({
-      where: {
-        employeeCd: {
-          in: ["EMP999001", "EMP999002", "EMP999003"],
-        },
-      },
+    // 担当役割テスト用の役割を用意（FK 参照先。POS001=課長はシード済み）
+    const kachou = await prisma.position.findUnique({ where: { positionCd: "POS001" } });
+    roleAId = generateId();
+    roleBId = generateId();
+    await prisma.role.createMany({
+      data: [
+        { id: roleAId, roleCd: TEST_ROLE_CDS[0], name: "担当役割A", positionId: kachou!.id },
+        { id: roleBId, roleCd: TEST_ROLE_CDS[1], name: "担当役割B", positionId: kachou!.id },
+      ],
     });
   });
+
+  afterEach(cleanup);
 
   describe("insert", () => {
     it("新規従業員を保存でき、version は 1 で始まる", async () => {
@@ -152,6 +164,38 @@ describe("PrismaEmployeeRepository", () => {
       });
       expect(deleted).toBeNull();
     });
+
+    it("担当役割を持つ従業員を削除でき、EmployeeRole 子行も一緒に消える（FK CASCADE 回帰）", async () => {
+      // 役割保有従業員を保存（insert で EmployeeRole 子行が 1 件作られる）
+      const employee = Employee.create(
+        new EmployeeCd("EMP999001"),
+        new MailAddress("role-delete@example.com"),
+        new EmployeeName("役割あり削除テスト"),
+        TEST_DEPT_ID,
+        new RoleId(roleAId)
+      );
+      const savedEmployee = await repository.insert(employee);
+
+      // 前提: 子行が存在すること（RESTRICT 時代はここで delete が FK 違反 P2003 になっていた）
+      const before = await prisma.employeeRole.findMany({
+        where: { employeeId: savedEmployee.id.value },
+      });
+      expect(before).toHaveLength(1);
+
+      // 削除は例外なく成功する
+      await repository.delete(savedEmployee.id);
+
+      // 従業員本体と EmployeeRole 子行の両方が消えていること（ON DELETE CASCADE）
+      const deleted = await prisma.employee.findUnique({
+        where: { id: savedEmployee.id.value },
+      });
+      expect(deleted).toBeNull();
+
+      const afterRows = await prisma.employeeRole.findMany({
+        where: { employeeId: savedEmployee.id.value },
+      });
+      expect(afterRows).toHaveLength(0);
+    });
   });
 
   describe("findById", () => {
@@ -234,6 +278,93 @@ describe("PrismaEmployeeRepository", () => {
       expect(found).not.toBeNull();
       expect(found?.employeeCd.value).toBe("EMP999003");
       expect(found?.name.value).toBe("テスト2");
+    });
+  });
+
+  describe("担当役割の永続化（EmployeeRole 子行の 0/1 件同期）", () => {
+    it("担当役割ありで保存すると EmployeeRole 子行が 1 件作られ、findById で復元される", async () => {
+      const employee = Employee.create(
+        new EmployeeCd("EMP999001"),
+        new MailAddress("role-insert@example.com"),
+        new EmployeeName("役割あり従業員"),
+        TEST_DEPT_ID,
+        new RoleId(roleAId)
+      );
+
+      const saved = await repository.insert(employee);
+
+      const rows = await prisma.employeeRole.findMany({
+        where: { employeeId: saved.id.value },
+      });
+      expect(rows).toHaveLength(1);
+      expect(rows[0].roleId).toBe(roleAId);
+
+      const found = await repository.findById(saved.id);
+      expect(found?.assignedRoleId?.value).toBe(roleAId);
+    });
+
+    it("担当役割なしで保存すると EmployeeRole 子行は作られず、assignedRoleId は null になる", async () => {
+      const employee = Employee.create(
+        new EmployeeCd("EMP999001"),
+        new MailAddress("role-none@example.com"),
+        new EmployeeName("役割なし従業員"),
+        TEST_DEPT_ID
+      );
+
+      const saved = await repository.insert(employee);
+
+      const rows = await prisma.employeeRole.findMany({
+        where: { employeeId: saved.id.value },
+      });
+      expect(rows).toHaveLength(0);
+
+      const found = await repository.findById(saved.id);
+      expect(found?.assignedRoleId).toBeNull();
+    });
+
+    it("更新で担当役割を別の役割に置換すると、旧行が消え新行だけが残る", async () => {
+      const saved = await repository.insert(
+        Employee.create(
+          new EmployeeCd("EMP999001"),
+          new MailAddress("role-replace@example.com"),
+          new EmployeeName("役割置換従業員"),
+          TEST_DEPT_ID,
+          new RoleId(roleAId)
+        )
+      );
+
+      saved.changeRole(new RoleId(roleBId));
+      const updated = await repository.update(saved, 1);
+
+      expect(updated.assignedRoleId?.value).toBe(roleBId);
+
+      const rows = await prisma.employeeRole.findMany({
+        where: { employeeId: saved.id.value },
+      });
+      expect(rows).toHaveLength(1);
+      expect(rows[0].roleId).toBe(roleBId);
+    });
+
+    it("更新で担当役割を解除すると、EmployeeRole 子行が消える", async () => {
+      const saved = await repository.insert(
+        Employee.create(
+          new EmployeeCd("EMP999001"),
+          new MailAddress("role-clear@example.com"),
+          new EmployeeName("役割解除従業員"),
+          TEST_DEPT_ID,
+          new RoleId(roleAId)
+        )
+      );
+
+      saved.changeRole(null);
+      const updated = await repository.update(saved, 1);
+
+      expect(updated.assignedRoleId).toBeNull();
+
+      const rows = await prisma.employeeRole.findMany({
+        where: { employeeId: saved.id.value },
+      });
+      expect(rows).toHaveLength(0);
     });
   });
 
