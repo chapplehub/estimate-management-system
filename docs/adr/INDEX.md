@@ -85,6 +85,7 @@
 | [0060](0060-revised-variation-fixes-quantity-to-preserve-gross-profit-snapshot.md) | 改訂先バリエーションは数量も固定する（粗利スナップショット保全） | 採用（単価→0064 で改訂） | 2026-06-19 |
 | [0061](0061-unify-variation-operation-guard-as-display-status-progress-lock-passing-through-memo.md) | バリエーション操作ガードを表示ステータス由来の進行ロックに統一しメモを貫通させる | 採用 | 2026-06-19 |
 | [20260624-8f5](20260624-8f5-immutable-temporal-vo-epoch-millis.md) | 不変な時刻概念は epoch ミリ秒保持の不変VOでラップし raw Date を境界で締め出す | 採用 | 2026-06-24 |
+| [20260706-c89](20260706-c89-employee-assigned-role-single-in-app-layer-keep-mn-schema.md) | 従業員の担当役割は多対多スキーマ(EmployeeRole)を維持しつつアプリ層で高々1件に制約する | 採用 | 2026-07-06 |
 
 ## ドメイン（価格決定）
 

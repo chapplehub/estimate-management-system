@@ -9,6 +9,7 @@ import { EmployeeCdDuplicationCheckDomainService } from "@subdomains/employee/do
 import { MailAddressDuplicationCheckDomainService } from "@subdomains/employee/domain/services/MailAddressDuplicationCheckDomainService";
 import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
 import { EmployeeName } from "@subdomains/employee/domain/values/EmployeeName";
+import { RoleId } from "@subdomains/role/domain/values/RoleId";
 
 export type CreateEmployeeInput = {
   employeeCd: string;
@@ -20,6 +21,8 @@ export type CreateEmployeeInput = {
   role: UserRole;
   /** 認証用パスワード（better-auth User作成用） */
   password: string;
+  /** 担当役割ID（省略時は役割なし＝課員）。割当先の存在検証は行わず FK に委ねる。 */
+  roleId?: string;
 };
 
 /**
@@ -55,7 +58,14 @@ export class CreateEmployeeCommand {
 
     const employeeName = new EmployeeName(input.name);
     const departmentId = new DepartmentId(input.departmentId);
-    const newEmployee = Employee.create(employeeCd, mailAddress, employeeName, departmentId);
+    const assignedRoleId = input.roleId ? new RoleId(input.roleId) : null;
+    const newEmployee = Employee.create(
+      employeeCd,
+      mailAddress,
+      employeeName,
+      departmentId,
+      assignedRoleId
+    );
 
     // Employee を保存
     await this.employeeRepository.insert(newEmployee);

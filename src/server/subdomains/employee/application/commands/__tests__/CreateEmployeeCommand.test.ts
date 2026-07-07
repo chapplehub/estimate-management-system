@@ -7,6 +7,7 @@ import { EmployeeCdDuplicationCheckDomainService } from "@subdomains/employee/do
 import { MailAddressDuplicationCheckDomainService } from "@subdomains/employee/domain/services/MailAddressDuplicationCheckDomainService";
 import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
 import { PrismaEmployeeRepository } from "@subdomains/employee/infrastructure/prisma/PrismaEmployeeRepository";
+import { generateId } from "@server/shared/generateId";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { CreateEmployeeCommand } from "../CreateEmployeeCommand";
 
@@ -18,14 +19,29 @@ describe("CreateEmployeeCommand", () => {
   let fakeUserManagementService: FakeUserManagementService;
 
   const TEST_CODES = ["EMP999911", "EMP999914"];
+  const TEST_ROLE_CDS = ["ROLE953"];
   let TEST_DEPT_ID: string;
+  let roleId: string;
+
+  async function cleanup() {
+    await prisma.employeeRole.deleteMany({
+      where: { employee: { employeeCd: { in: TEST_CODES } } },
+    });
+    await prisma.employee.deleteMany({ where: { employeeCd: { in: TEST_CODES } } });
+    await prisma.role.deleteMany({ where: { roleCd: { in: TEST_ROLE_CDS } } });
+  }
 
   beforeEach(async () => {
-    await prisma.employee.deleteMany({
-      where: { employeeCd: { in: TEST_CODES } },
-    });
+    await cleanup();
 
     TEST_DEPT_ID = await ensureTestDepartment();
+
+    // 担当役割 FK 用の役割を用意（POS001=課長はシード済み）
+    const kachou = await prisma.position.findUnique({ where: { positionCd: "POS001" } });
+    roleId = generateId();
+    await prisma.role.create({
+      data: { id: roleId, roleCd: TEST_ROLE_CDS[0], name: "担当役割", positionId: kachou!.id },
+    });
 
     repository = new PrismaEmployeeRepository();
     cdDuplicationCheckService = new EmployeeCdDuplicationCheckDomainService(repository);
@@ -40,11 +56,7 @@ describe("CreateEmployeeCommand", () => {
     );
   });
 
-  afterEach(async () => {
-    await prisma.employee.deleteMany({
-      where: { employeeCd: { in: TEST_CODES } },
-    });
-  });
+  afterEach(cleanup);
 
   it("従業員を新規登録できる", async () => {
     await command.execute({
@@ -61,6 +73,35 @@ describe("CreateEmployeeCommand", () => {
     expect(saved?.email.value).toBe("test-create-cmd@example.com");
     expect(saved?.name.value).toBe("テスト太郎");
     expect(saved?.departmentId.value).toBe(TEST_DEPT_ID);
+  });
+
+  it("担当役割を指定して新規登録できる", async () => {
+    await command.execute({
+      employeeCd: TEST_CODES[0],
+      email: "test-create-role@example.com",
+      name: "役割あり太郎",
+      departmentId: TEST_DEPT_ID,
+      role: USER_ROLES.USER,
+      password: "Password1!",
+      roleId,
+    });
+
+    const saved = await repository.findByEmployeeCd(new EmployeeCd(TEST_CODES[0]));
+    expect(saved?.assignedRoleId?.value).toBe(roleId);
+  });
+
+  it("担当役割を省略すると役割なし（課員）で登録される", async () => {
+    await command.execute({
+      employeeCd: TEST_CODES[0],
+      email: "test-create-norole@example.com",
+      name: "役割なし太郎",
+      departmentId: TEST_DEPT_ID,
+      role: USER_ROLES.USER,
+      password: "Password1!",
+    });
+
+    const saved = await repository.findByEmployeeCd(new EmployeeCd(TEST_CODES[0]));
+    expect(saved?.assignedRoleId).toBeNull();
   });
 
   it("社員コードが重複している場合はエラー", async () => {

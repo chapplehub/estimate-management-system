@@ -13,10 +13,13 @@ export class PrismaEmployeeRepository implements EmployeeRepository {
 
   /**
    * 従業員を新規作成（version は @default(1)）
+   *
+   * 担当役割ありの場合は EmployeeRole 子行をネスト作成で同時に作る（原子性）。
    */
   async insert(employee: Employee): Promise<Employee> {
     const prismaEmployee = await prisma.employee.create({
       data: EmployeeMapper.toPrismaCreate(employee),
+      include: { employeeRoles: true },
     });
 
     return EmployeeMapper.toDomain(prismaEmployee);
@@ -33,27 +36,42 @@ export class PrismaEmployeeRepository implements EmployeeRepository {
    * @param expectedVersion 編集画面表示時のトークン（フォーム往復で持ち回った値）
    */
   async update(employee: Employee, expectedVersion: number): Promise<Employee> {
-    const result = await prisma.employee.updateMany({
-      where: { id: employee.id.value, version: expectedVersion },
-      data: {
-        ...EmployeeMapper.toPrismaUpdate(employee),
-        version: { increment: 1 },
-      },
+    // 担当役割（EmployeeRole 子行）の同期を versioned update と同一トランザクションで行い、
+    // Employee.version（ADR-0039）で直列化する。子行の置換は「旧行全削除 → 必要なら新行作成」。
+    return prisma.$transaction(async (tx) => {
+      const result = await tx.employee.updateMany({
+        where: { id: employee.id.value, version: expectedVersion },
+        data: {
+          ...EmployeeMapper.toPrismaUpdate(employee),
+          version: { increment: 1 },
+        },
+      });
+
+      if (result.count === 0) {
+        throw new ConflictError(
+          "他のユーザーによって更新または削除されています。画面を再読み込みして最新の内容を確認してください。"
+        );
+      }
+
+      // 担当役割を 0/1 件へ同期する（高々1件・ADR-20260706-c89）
+      await tx.employeeRole.deleteMany({ where: { employeeId: employee.id.value } });
+      if (employee.assignedRoleId) {
+        await tx.employeeRole.create({
+          data: { employeeId: employee.id.value, roleId: employee.assignedRoleId.value },
+        });
+      }
+
+      // version を進めた最新行を読み直して返す
+      const row = await tx.employee.findUnique({
+        where: { id: employee.id.value },
+        include: { employeeRoles: true },
+      });
+      if (!row) {
+        throw new Error(`保存した従業員の再取得に失敗しました: ${employee.id.value}`);
+      }
+
+      return EmployeeMapper.toDomain(row);
     });
-
-    if (result.count === 0) {
-      throw new ConflictError(
-        "他のユーザーによって更新または削除されています。画面を再読み込みして最新の内容を確認してください。"
-      );
-    }
-
-    // version を進めた最新行を読み直して返す
-    const row = await prisma.employee.findUnique({ where: { id: employee.id.value } });
-    if (!row) {
-      throw new Error(`保存した従業員の再取得に失敗しました: ${employee.id.value}`);
-    }
-
-    return EmployeeMapper.toDomain(row);
   }
 
   /**
@@ -76,6 +94,7 @@ export class PrismaEmployeeRepository implements EmployeeRepository {
   async findById(id: EmployeeId): Promise<Employee | null> {
     const prismaEmployee = await prisma.employee.findUnique({
       where: { id: id.value },
+      include: { employeeRoles: true },
     });
 
     return prismaEmployee ? EmployeeMapper.toDomain(prismaEmployee) : null;
@@ -90,6 +109,7 @@ export class PrismaEmployeeRepository implements EmployeeRepository {
   async findByEmployeeCd(employeeCd: EmployeeCd): Promise<Employee | null> {
     const prismaEmployee = await prisma.employee.findUnique({
       where: { employeeCd: employeeCd.value },
+      include: { employeeRoles: true },
     });
 
     return prismaEmployee ? EmployeeMapper.toDomain(prismaEmployee) : null;
@@ -104,6 +124,7 @@ export class PrismaEmployeeRepository implements EmployeeRepository {
   async findByEmail(email: MailAddress): Promise<Employee | null> {
     const prismaEmployee = await prisma.employee.findUnique({
       where: { email: email.value },
+      include: { employeeRoles: true },
     });
 
     return prismaEmployee ? EmployeeMapper.toDomain(prismaEmployee) : null;

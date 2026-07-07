@@ -83,6 +83,18 @@ export class PrismaRoleQueryService implements RoleQueryService {
     return count > 0;
   }
 
+  async isSoleMember(roleId: string, employeeId: string): Promise<boolean> {
+    // メンバーを最大2件だけ引き、「ちょうど1人・かつその1人が当該従業員」を1往復で判定する。
+    // 複合PK (employeeId, roleId) により行重複はないため、0/2件で false・1件で本人一致となる。
+    const members = await prisma.employeeRole.findMany({
+      where: { roleId },
+      select: { employeeId: true },
+      take: 2,
+    });
+
+    return members.length === 1 && members[0].employeeId === employeeId;
+  }
+
   async findByPositionId(positionId: string, options?: RoleListOptions): Promise<RoleDTO[]> {
     const orderBy = this.buildOrderBy(options) ?? { roleCd: "asc" as const };
 

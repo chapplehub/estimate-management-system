@@ -9,6 +9,7 @@ import { EmployeeRepository } from "@subdomains/employee/domain/repositories/Emp
 import { MailAddressDuplicationCheckDomainService } from "@subdomains/employee/domain/services/MailAddressDuplicationCheckDomainService";
 import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
 import { EmployeeName } from "@subdomains/employee/domain/values/EmployeeName";
+import { RoleId } from "@subdomains/role/domain/values/RoleId";
 
 export type UpdateEmployeeInput = {
   id: string;
@@ -21,6 +22,11 @@ export type UpdateEmployeeInput = {
   departmentId: string;
   /** ユーザーロール（"admin" | "user"） - User.roleを更新 */
   role: UserRole;
+  /**
+   * 担当役割ID。フォームが送る「次の状態」で上書きする（置換・解除）。
+   * 未指定は解除（役割なし＝課員）を意味する。割当先の存在検証は行わず FK に委ねる。
+   */
+  roleId?: string;
 };
 
 /**
@@ -59,6 +65,8 @@ export class UpdateEmployeeCommand {
     targetEmployee.changeName(new EmployeeName(input.name));
     targetEmployee.changeEmail(newMailAddress);
     targetEmployee.changeDepartment(new DepartmentId(input.departmentId));
+    // フォームが送る「次の状態」で担当役割を上書き（未指定＝解除）
+    targetEmployee.changeRole(input.roleId ? new RoleId(input.roleId) : null);
 
     // 注意: この条件付き UPDATE（楽観ロック / ADR-0039）が後続の User 同期より先に走る順序が、
     // User.email/role を employee の version で間接的に守る前提になっている。

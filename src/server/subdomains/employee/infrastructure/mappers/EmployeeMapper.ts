@@ -4,25 +4,42 @@ import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
 import { EmployeeName } from "@subdomains/employee/domain/values/EmployeeName";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
 import { DepartmentId } from "@subdomains/department/domain/values/DepartmentId";
-import { Employee as PrismaEmployee } from "@generated/prisma/client";
+import { RoleId } from "@subdomains/role/domain/values/RoleId";
+import { Prisma } from "@generated/prisma/client";
+
+/**
+ * 担当役割（EmployeeRole 子行）を含む Prisma Employee ペイロード。
+ * toDomain は担当役割を復元するため子行の同梱を前提とする。
+ */
+export type PrismaEmployeeWithRoles = Prisma.EmployeeGetPayload<{
+  include: { employeeRoles: true };
+}>;
 
 /**
  * EmployeeMapper
  *
  * PrismaのEmployeeモデルとドメインのEmployeeエンティティを相互変換する
- * Note: roleはEmployee側では管理せず、User.roleで管理
+ * Note: 認証ロールはEmployee側では管理せず、User.roleで管理。
+ *       担当役割は多対多結合表 EmployeeRole を維持しつつ、集約では高々1件として
+ *       扱う（ADR-20260706-c89）。書き込みは 0/1 件へ同期する。
  */
 export class EmployeeMapper {
   /**
    * Prismaモデルからドメインエンティティへ変換
    *
-   * @param prismaEmployee PrismaのEmployeeモデル
+   * @param prismaEmployee 担当役割子行を同梱した PrismaのEmployeeモデル
    * @returns ドメインのEmployeeエンティティ
    */
-  static toDomain(prismaEmployee: PrismaEmployee): Employee {
+  static toDomain(prismaEmployee: PrismaEmployeeWithRoles): Employee {
     const employeeCd = new EmployeeCd(prismaEmployee.employeeCd);
     const email = new MailAddress(prismaEmployee.email);
     const name = new EmployeeName(prismaEmployee.name);
+
+    // 高々1件の担当役割を子行から導出（0件＝役割なし＝課員）
+    const assignedRoleId =
+      prismaEmployee.employeeRoles.length > 0
+        ? new RoleId(prismaEmployee.employeeRoles[0].roleId)
+        : null;
 
     return Employee.reconstruct(
       new EmployeeId(prismaEmployee.id),
@@ -30,6 +47,7 @@ export class EmployeeMapper {
       email,
       name,
       new DepartmentId(prismaEmployee.departmentId),
+      assignedRoleId,
       prismaEmployee.createdAt,
       prismaEmployee.updatedAt
     );
@@ -37,6 +55,8 @@ export class EmployeeMapper {
 
   /**
    * ドメインエンティティからPrismaモデル用のデータへ変換
+   *
+   * 担当役割ありの場合は EmployeeRole 子行をネスト作成する。
    *
    * @param employee ドメインのEmployeeエンティティ
    * @returns Prisma作成用データ
@@ -48,6 +68,9 @@ export class EmployeeMapper {
       email: employee.email.value,
       name: employee.name.value,
       departmentId: employee.departmentId.value,
+      employeeRoles: employee.assignedRoleId
+        ? { create: [{ roleId: employee.assignedRoleId.value }] }
+        : undefined,
     };
   }
 
