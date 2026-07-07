@@ -164,6 +164,38 @@ describe("PrismaEmployeeRepository", () => {
       });
       expect(deleted).toBeNull();
     });
+
+    it("担当役割を持つ従業員を削除でき、EmployeeRole 子行も一緒に消える（FK CASCADE 回帰）", async () => {
+      // 役割保有従業員を保存（insert で EmployeeRole 子行が 1 件作られる）
+      const employee = Employee.create(
+        new EmployeeCd("EMP999001"),
+        new MailAddress("role-delete@example.com"),
+        new EmployeeName("役割あり削除テスト"),
+        TEST_DEPT_ID,
+        new RoleId(roleAId)
+      );
+      const savedEmployee = await repository.insert(employee);
+
+      // 前提: 子行が存在すること（RESTRICT 時代はここで delete が FK 違反 P2003 になっていた）
+      const before = await prisma.employeeRole.findMany({
+        where: { employeeId: savedEmployee.id.value },
+      });
+      expect(before).toHaveLength(1);
+
+      // 削除は例外なく成功する
+      await repository.delete(savedEmployee.id);
+
+      // 従業員本体と EmployeeRole 子行の両方が消えていること（ON DELETE CASCADE）
+      const deleted = await prisma.employee.findUnique({
+        where: { id: savedEmployee.id.value },
+      });
+      expect(deleted).toBeNull();
+
+      const afterRows = await prisma.employeeRole.findMany({
+        where: { employeeId: savedEmployee.id.value },
+      });
+      expect(afterRows).toHaveLength(0);
+    });
   });
 
   describe("findById", () => {
