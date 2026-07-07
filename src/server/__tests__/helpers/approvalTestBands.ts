@@ -15,6 +15,7 @@
  * | 03x | ApproveStepCommand.test.ts                        | N9907030-032 |
  * | 04x | RejectStepCommand.test.ts                         | N9907040-043 |
  * | 05x | GetVariationApplicationStatesQuery.test.ts        | N9907050-058 |
+ * | 06x | SearchEstimateApplicationsQuery.test.ts           | N9907060-069 |
  *
  * ## 帯を追加する手順
  * 次の空き 0x 帯（現状 06x 以降）に新しい所有者キーを追加し、値の見積番号を採番する。
@@ -69,5 +70,18 @@ export const APPROVAL_TEST_BANDS = {
     siblings: "N9907056",
     inactive: "N9907057",
     missing: "N9907058",
+  },
+  // 06x: 見積申請一覧 検索クエリ（#571）
+  searchApplications: {
+    none: "N9907060",
+    pending: "N9907061",
+    rejected: "N9907062",
+    withdrawn: "N9907063",
+    approved: "N9907064",
+    exempted: "N9907065",
+    multiAttempt: "N9907066",
+    awaiting: "N9907067",
+    inactive: "N9907068",
+    invariant: "N9907069",
   },
 } as const;
