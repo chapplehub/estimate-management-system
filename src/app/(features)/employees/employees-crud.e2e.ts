@@ -6,10 +6,16 @@ import { expect, test } from "@playwright/test";
  */
 const TEST_EMPLOYEE_CD = "EMP999901";
 const TEST_EMAIL = "e2e-create-test@example.com";
+// 担当役割の残存回帰で使う役割名（roleCd 昇順の先頭 ROLE001）。
+// Step6 の警告テスト（ROLE004/EMP000004）と非干渉で、EMP999901 は本チェーン末尾で削除される。
+const TEST_ROLE_NAME = "社長";
 
 test.describe("従業員CRUD（管理者）", () => {
   // 作成→更新→削除の順で実行（同一テストデータを使い回すため serial で順序保証）
   test.describe.serial("作成・更新・削除テスト", () => {
+    // 作成時に選んだ担当役割の value を後続の更新テストへ引き継ぐ（serial で同一 worker）。
+    let assignedRoleValue = "";
+
     test("管理者が新規従業員を作成できる", async ({ page }) => {
       // 一覧画面から新規登録画面に遷移
       await page.goto("/employees");
@@ -24,6 +30,12 @@ test.describe("従業員CRUD（管理者）", () => {
       await page.getByLabel("所属部署").selectOption({ index: 1 }); // 最初の部署を選択
       await page.getByLabel("パスワード").fill("testpass123");
       // 権限はデフォルト「一般ユーザー」のまま
+
+      // 担当役割を選択（残存回帰の起点）。選んだ value を後続テストへ引き継ぐ
+      const roleSelect = page.getByLabel("担当役割");
+      await roleSelect.selectOption({ label: TEST_ROLE_NAME });
+      assignedRoleValue = await roleSelect.inputValue();
+      expect(assignedRoleValue).not.toBe("");
 
       // 登録実行
       await page.getByRole("button", { name: "登録" }).click();
@@ -53,7 +65,10 @@ test.describe("従業員CRUD（管理者）", () => {
       // 従業員コードが読み取り専用であること
       await expect(page.locator("#employeeCd-display")).toBeDisabled();
 
-      // 複数フィールドを変更して更新
+      // 作成時に選んだ担当役割が preselect されている（残存回帰の前提）
+      await expect(page.getByLabel("担当役割")).toHaveValue(assignedRoleValue);
+
+      // 複数フィールドを変更して更新（担当役割セレクトには一切触れない）
       const nameField = page.getByLabel("名前");
       await nameField.clear();
       await nameField.fill("E2E更新テスト");
@@ -72,6 +87,10 @@ test.describe("従業員CRUD（管理者）", () => {
       // 変更が反映されていること
       await expect(nameField).toHaveValue("E2E更新テスト");
       await expect(emailField).toHaveValue("e2e-updated@example.com");
+
+      // リリースハザード F1 の網: 担当役割を送っていない更新でも役割が消えず残存すること。
+      // （#565 BE は「roleId 未指定＝解除」。フォームが roleId を往復し損ねると保存後に空になる）
+      await expect(page.getByLabel("担当役割")).toHaveValue(assignedRoleValue);
     });
 
     test("管理者が従業員を削除できる", async ({ page }) => {
@@ -125,6 +144,31 @@ test.describe("従業員CRUD（管理者）", () => {
     await page.goto("/employees/EMP000003");
 
     await expect(page.getByRole("button", { name: "削除" })).toBeVisible();
+  });
+
+  test("役割の唯一メンバーが担当役割を変更すると承認者不在ワーニングが表示される", async ({
+    page,
+  }) => {
+    // EMP000004 は ROLE004「開発部長」の唯一メンバー（seed-e2e）。DB は変更せず表示のみ検証する。
+    await page.goto("/employees/EMP000004");
+    await expect(page.getByText("従業員変更")).toBeVisible();
+
+    const roleSelect = page.getByLabel("担当役割");
+    // 現在の担当役割「開発部長」が preselect され、初期状態では警告は出ていない
+    await expect(roleSelect.locator("option:checked")).toHaveText("開発部長");
+    await expect(page.getByRole("status")).not.toBeVisible();
+
+    // 担当役割を解除（（担当役割なし））すると旧役割名入りの警告が反応的に表示される
+    await roleSelect.selectOption({ label: "（担当役割なし）" });
+    const warning = page.getByRole("status");
+    await expect(warning).toBeVisible();
+    await expect(warning).toContainText("開発部長");
+
+    // 元の担当役割へ戻すと警告は消える（非ブロッキング・反応的）
+    await roleSelect.selectOption({ label: "開発部長" });
+    await expect(page.getByRole("status")).not.toBeVisible();
+
+    // 保存はしない（DB 不変フィクスチャを維持）
   });
 
   test("存在しない従業員コードで404が表示される", async ({ page }) => {
