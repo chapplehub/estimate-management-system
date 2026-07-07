@@ -23,7 +23,8 @@ describe("CreateEmployeeCommand", () => {
   let fakeUserManagementService: FakeUserManagementService;
 
   const TEST_CODES = ["EMP999911", "EMP999914"];
-  const TEST_ROLE_CDS = ["ROLE953", "ROLE959"];
+  // ROLE953 は SearchRolesQuery テストと衝突するため未使用コードを専有する（並列実行時の削除競合回避・#327）
+  const TEST_ROLE_CDS = ["ROLE944", "ROLE959"];
   let TEST_DEPT_ID: string;
   let roleId: string; // 課長級（POS001）。担当役割／課員の上位役割の双方に使える
   let buchouRoleId: string; // 部長級（POS002）。課長級でない＝上位役割に不可
