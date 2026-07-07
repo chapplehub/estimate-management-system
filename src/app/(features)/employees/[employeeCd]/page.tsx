@@ -3,6 +3,7 @@ import { DepartmentSelectField } from "@/app/_components/form";
 import { isAdmin, isOwner } from "@server/shared/auth";
 import { GetEmployeeByEmployeeCdQuery } from "@subdomains/employee/application/queries/GetEmployeeByEmployeeCdQuery";
 import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
+import { PrismaRoleQueryService } from "@subdomains/role/infrastructure/queries/PrismaRoleQueryService";
 import { notFound } from "next/navigation";
 import { EmployeeDeleteForm } from "./EmployeeDeleteForm";
 import { EmployeeUpdateForm } from "./EmployeeUpdateForm";
@@ -24,6 +25,20 @@ export default async function Page({ params }: { params: Promise<{ employeeCd: s
   const canUpdate = isAdmin(session) || isOwner(session, employee.id);
   const canDelete = isAdmin(session);
 
+  // 担当役割の選択肢供給（A2・roleCd 昇順）と、承認者不在ワーニング用の唯一メンバー判定
+  // （#565 isSoleMember）は互いに独立した読み取りクエリなので並列に発行する。
+  // 担当役割なし（assignedRoleId==null）なら isSoleMember はクエリせず false。
+  const roleQueryService = new PrismaRoleQueryService();
+  const [roles, isSoleMemberOfCurrentRole] = await Promise.all([
+    roleQueryService.findAll({
+      orderBy: { field: "roleCd", direction: "asc" },
+    }),
+    employee.assignedRoleId
+      ? roleQueryService.isSoleMember(employee.assignedRoleId, employee.id)
+      : Promise.resolve(false),
+  ]);
+  const roleOptions = roles.map((role) => ({ id: role.id, name: role.name }));
+
   return (
     <div className="container mx-auto p-8">
       <h1 className="text-3xl font-bold mb-8">従業員管理</h1>
@@ -32,6 +47,8 @@ export default async function Page({ params }: { params: Promise<{ employeeCd: s
       <EmployeeUpdateForm
         employee={employee}
         canUpdate={canUpdate}
+        roleOptions={roleOptions}
+        isSoleMemberOfCurrentRole={isSoleMemberOfCurrentRole}
         departmentSelectSlot={
           <DepartmentSelectField
             name="departmentId"

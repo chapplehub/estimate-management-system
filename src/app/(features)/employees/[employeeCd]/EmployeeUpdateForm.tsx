@@ -14,6 +14,8 @@ type Employee = {
   employeeCd: string;
   departmentId: string;
   role: UserRole | null;
+  /** 現在の担当役割ID（EmployeeRole から導出、役割なし＝課員は null）。編集画面の preselect に用いる */
+  assignedRoleId: string | null;
   /** 楽観ロックトークン（ADR-0039）。編集画面表示時の値をフォームで往復させる */
   version: number;
 };
@@ -23,9 +25,22 @@ type Props = {
   canUpdate: boolean;
   /** 部署選択フィールド（Server Component を slot として受け取る） */
   departmentSelectSlot: React.ReactNode;
+  /** 担当役割の選択肢（page.tsx が findAll で取得し roleCd 昇順で供給） */
+  roleOptions: { id: string; name: string }[];
+  /**
+   * 現在の担当役割において本人が唯一のメンバーか（page.tsx で1回スナップショット・#565 isSoleMember）。
+   * 担当役割なし（assignedRoleId==null）のときは false。承認者不在ワーニングの反応表示に使う。
+   */
+  isSoleMemberOfCurrentRole: boolean;
 };
 
-export function EmployeeUpdateForm({ employee, canUpdate, departmentSelectSlot }: Props) {
+export function EmployeeUpdateForm({
+  employee,
+  canUpdate,
+  departmentSelectSlot,
+  roleOptions,
+  isSoleMemberOfCurrentRole,
+}: Props) {
   // LEARN: bind()でemployeeCdを事前にバインド(server-action-bind-vs-formdata.md)
   const updateEmployeeWithEmployeeCd = updateEmployee.bind(null, employee.employeeCd);
 
@@ -37,9 +52,20 @@ export function EmployeeUpdateForm({ employee, canUpdate, departmentSelectSlot }
       email: employee.email,
       departmentId: employee.departmentId,
       role: employee.role ?? USER_ROLES.USER,
+      // 現在の担当役割を preselect。null（役割なし）は空文字で解除選択にマップ
+      roleId: employee.assignedRoleId ?? "",
       version: String(employee.version),
     },
   });
+
+  // 承認者不在ワーニングの反応判定（非ブロッキング）:
+  // 本人が現在の担当役割の唯一メンバーで、かつセレクトの値が現在値から変わった（変更 or 解除）とき表示。
+  // fields.roleId.value を反応的に読むため conform 配線の getSelectProps が前提。
+  // スナップショット（isSoleMemberOfCurrentRole）で十分：陳腐化しても最終整合は承認時の NO_APPROVER が担保。
+  const currentRoleId = employee.assignedRoleId;
+  const willLeaveCurrentRole =
+    currentRoleId != null && isSoleMemberOfCurrentRole && fields.roleId.value !== currentRoleId;
+  const currentRoleName = roleOptions.find((role) => role.id === currentRoleId)?.name;
 
   return (
     <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-8">
@@ -139,6 +165,42 @@ export function EmployeeUpdateForm({ employee, canUpdate, departmentSelectSlot }
             <p className="text-red-500 text-xs mt-1" id={fields.role.errorId}>
               {fields.role.errors[0]}
             </p>
+          )}
+        </div>
+
+        <div>
+          <label htmlFor={fields.roleId.id} className="block text-gray-700 text-sm font-bold mb-2">
+            担当役割
+          </label>
+          {/* preselect は conform の defaultValue.roleId が担う。承認者不在ワーニングの
+              反応性のため権限セレクトと同じく getSelectProps 配線でフォームに値を所有させる。 */}
+          <select
+            {...getSelectProps(fields.roleId)}
+            disabled={isPending || !canUpdate}
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
+          >
+            <option value="">（担当役割なし）</option>
+            {roleOptions.map((role) => (
+              <option key={role.id} value={role.id}>
+                {role.name}
+              </option>
+            ))}
+          </select>
+          {fields.roleId.errors && (
+            <p className="text-red-500 text-xs mt-1" id={fields.roleId.errorId}>
+              {fields.roleId.errors[0]}
+            </p>
+          )}
+          {/* 承認者不在ワーニング（非ブロッキング）。エラーの role="alert" とは別扱いの role="status"。 */}
+          {willLeaveCurrentRole && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="mt-2 rounded border border-yellow-400 bg-yellow-50 px-4 py-3 text-sm text-yellow-800"
+            >
+              ⚠️ この従業員は現在「{currentRoleName}
+              」の唯一の担当者です。担当役割を変更・解除しても更新はできますが、この役割の承認が承認者不在になる可能性があります。
+            </div>
           )}
         </div>
 

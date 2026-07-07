@@ -1,8 +1,17 @@
 import Link from "next/link";
 import { DepartmentSelectField } from "@/app/_components/form";
+import { PrismaRoleQueryService } from "@subdomains/role/infrastructure/queries/PrismaRoleQueryService";
 import { EmployeeCreateForm } from "./EmployeeCreateForm";
 
-export default function EmployeeNewPage() {
+export default async function EmployeeNewPage() {
+  // 担当役割の選択肢を供給（承認者不在ワーニングの反応性のためフォームに値を所有させる方針・A2）。
+  // ラベルは name のみ、roleCd 昇順（DepartmentSelectField と同方針）。
+  const roleQueryService = new PrismaRoleQueryService();
+  const roles = await roleQueryService.findAll({
+    orderBy: { field: "roleCd", direction: "asc" },
+  });
+  const roleOptions = roles.map((role) => ({ id: role.id, name: role.name }));
+
   return (
     <div className="container mx-auto p-8">
       <div className="mb-8">
@@ -16,6 +25,7 @@ export default function EmployeeNewPage() {
       {/* 作成フォーム */}
       <EmployeeCreateForm
         departmentSelectSlot={<DepartmentSelectField name="departmentId" id="departmentId" />}
+        roleOptions={roleOptions}
       />
 
       <div className="mt-4">
