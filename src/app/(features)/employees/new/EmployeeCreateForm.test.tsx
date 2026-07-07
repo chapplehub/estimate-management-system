@@ -21,6 +21,12 @@ const mockDepartmentSelectSlot = (
   </select>
 );
 
+// 担当役割オプションのモック（page.tsx が findAll で取得し {id,name}[] を供給）
+const mockRoleOptions = [
+  { id: "role-1", name: "営業課長" },
+  { id: "role-2", name: "開発部長" },
+];
+
 describe("EmployeeCreateForm", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -30,7 +36,12 @@ describe("EmployeeCreateForm", () => {
 
   describe("レンダリングテスト", () => {
     test("全てのフォームフィールドが表示される", () => {
-      render(<EmployeeCreateForm departmentSelectSlot={mockDepartmentSelectSlot} />);
+      render(
+        <EmployeeCreateForm
+          departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+        />
+      );
 
       // 各フィールドのラベルが表示されていることを確認
       expect(screen.getByLabelText("名前")).toBeInTheDocument();
@@ -45,7 +56,12 @@ describe("EmployeeCreateForm", () => {
     });
 
     test("権限のセレクトボックスにオプションが表示される", () => {
-      render(<EmployeeCreateForm departmentSelectSlot={mockDepartmentSelectSlot} />);
+      render(
+        <EmployeeCreateForm
+          departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+        />
+      );
 
       const roleSelect = screen.getByLabelText("権限");
       expect(roleSelect).toHaveValue(USER_ROLES.USER); // デフォルト値
@@ -56,16 +72,46 @@ describe("EmployeeCreateForm", () => {
     });
 
     test("従業員コードの入力ヒントが表示される", () => {
-      render(<EmployeeCreateForm departmentSelectSlot={mockDepartmentSelectSlot} />);
+      render(
+        <EmployeeCreateForm
+          departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+        />
+      );
 
       expect(screen.getByText("形式: EMP + 6桁の数字（例: EMP000001）")).toBeInTheDocument();
+    });
+
+    test("担当役割セレクトが表示され、（担当役割なし）を含む役割オプションが並ぶ", () => {
+      render(
+        <EmployeeCreateForm
+          departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+        />
+      );
+
+      // 担当役割セレクト本体
+      const roleIdSelect = screen.getByLabelText("担当役割");
+      expect(roleIdSelect).toBeInTheDocument();
+      // 未選択（＝担当役割なし）が既定値
+      expect(roleIdSelect).toHaveValue("");
+
+      // 先頭の解除用オプション + 供給された役割名（name のみ）が並ぶ
+      expect(screen.getByRole("option", { name: "（担当役割なし）" })).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "営業課長" })).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "開発部長" })).toBeInTheDocument();
     });
   });
 
   describe("入力テスト", () => {
     test("ユーザーがフォームに値を入力できる", async () => {
       const user = userEvent.setup();
-      render(<EmployeeCreateForm departmentSelectSlot={mockDepartmentSelectSlot} />);
+      render(
+        <EmployeeCreateForm
+          departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+        />
+      );
 
       // 各フィールドに値を入力
       const nameInput = screen.getByLabelText("名前");
@@ -87,7 +133,12 @@ describe("EmployeeCreateForm", () => {
 
     test("権限を変更できる", async () => {
       const user = userEvent.setup();
-      render(<EmployeeCreateForm departmentSelectSlot={mockDepartmentSelectSlot} />);
+      render(
+        <EmployeeCreateForm
+          departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+        />
+      );
 
       const roleSelect = screen.getByLabelText("権限");
 
@@ -102,7 +153,12 @@ describe("EmployeeCreateForm", () => {
   describe("サブミットテスト", () => {
     test("フォームを送信するとcreateEmployeeが呼び出される", async () => {
       const user = userEvent.setup();
-      render(<EmployeeCreateForm departmentSelectSlot={mockDepartmentSelectSlot} />);
+      render(
+        <EmployeeCreateForm
+          departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+        />
+      );
 
       // 必須フィールドに値を入力
       await user.type(screen.getByLabelText("名前"), "山田太郎");
@@ -124,7 +180,12 @@ describe("EmployeeCreateForm", () => {
 
     test("送信されたFormDataに正しい値が含まれている", async () => {
       const user = userEvent.setup();
-      render(<EmployeeCreateForm departmentSelectSlot={mockDepartmentSelectSlot} />);
+      render(
+        <EmployeeCreateForm
+          departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+        />
+      );
 
       // 必須フィールドに値を入力
       await user.type(screen.getByLabelText("名前"), "山田太郎");
@@ -168,7 +229,12 @@ describe("EmployeeCreateForm", () => {
         initialValue: {},
       });
 
-      render(<EmployeeCreateForm departmentSelectSlot={mockDepartmentSelectSlot} />);
+      render(
+        <EmployeeCreateForm
+          departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+        />
+      );
 
       // 必須フィールドに値を入力
       await user.type(screen.getByLabelText("名前"), "山田太郎");
@@ -206,7 +272,12 @@ describe("EmployeeCreateForm", () => {
         },
       });
 
-      render(<EmployeeCreateForm departmentSelectSlot={mockDepartmentSelectSlot} />);
+      render(
+        <EmployeeCreateForm
+          departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+        />
+      );
 
       // HTML5バリデーションを通過する有効な値を入力
       // （サーバーサイドでエラーを返すシナリオ）

@@ -8,9 +8,11 @@ import { createEmployeeSchema } from "./schema";
 type Props = {
   /** 部署選択フィールド（Server Component を slot として受け取る） */
   departmentSelectSlot: React.ReactNode;
+  /** 担当役割の選択肢（page.tsx が findAll で取得し roleCd 昇順で供給） */
+  roleOptions: { id: string; name: string }[];
 };
 
-export function EmployeeCreateForm({ departmentSelectSlot }: Props) {
+export function EmployeeCreateForm({ departmentSelectSlot, roleOptions }: Props) {
   const { form, fields, isPending } = useServerForm({
     action: createEmployee,
     schema: createEmployeeSchema,
@@ -134,6 +136,32 @@ export function EmployeeCreateForm({ departmentSelectSlot }: Props) {
           {fields.role.errors && (
             <p className="text-red-500 text-xs mt-1" id={fields.role.errorId}>
               {fields.role.errors[0]}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label htmlFor={fields.roleId.id} className="block text-gray-700 text-sm font-bold mb-2">
+            担当役割
+          </label>
+          {/* 任意選択。空選択＝担当役割なし。承認者不在ワーニングの反応性のため
+              権限セレクトと同じく conform 配線（getSelectProps）でフォームに値を所有させる。 */}
+          <select
+            {...getSelectProps(fields.roleId)}
+            defaultValue=""
+            disabled={isPending}
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
+          >
+            <option value="">（担当役割なし）</option>
+            {roleOptions.map((role) => (
+              <option key={role.id} value={role.id}>
+                {role.name}
+              </option>
+            ))}
+          </select>
+          {fields.roleId.errors && (
+            <p className="text-red-500 text-xs mt-1" id={fields.roleId.errorId}>
+              {fields.roleId.errors[0]}
             </p>
           )}
         </div>
