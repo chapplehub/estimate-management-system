@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fromDateInputValue, toDateInputValue } from "../date";
+import { fromDateInputValue, toDateInputValue } from "@/app/_lib/date";
 
 describe("toDateInputValue（JST 固定で yyyy-mm-dd 整形）", () => {
   it("JST 0 時の Date をその暦日に整形する", () => {

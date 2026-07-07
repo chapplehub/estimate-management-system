@@ -1,5 +1,5 @@
 /**
- * 見積編集フォーム用の JST 固定 日付ヘルパ対（presentation 専用）。
+ * app 共有の JST 固定 日付ヘルパ（presentation 専用）。
  *
  * `<input type="date">` の value（"yyyy-mm-dd"）と Date instant を JST で相互変換する。
  * `z.coerce.date()` や `new Date("yyyy-mm-dd")` は文字列を UTC 0 時として解釈するため、

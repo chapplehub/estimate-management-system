@@ -6,7 +6,10 @@ import type { VariationDTO } from "@subdomains/estimate/application/queries/dto/
 import type { VariationApplicationStateDTO } from "@subdomains/estimate/application/queries/dto/VariationApplicationStateDTO";
 import { SUBMISSION_TYPE_LABELS, formatYen } from "../_shared/labels";
 import { ApplicationConfirmDialog } from "./ApplicationConfirmDialog";
-import { badgeToneClassName, badgeToneOf } from "./variationApplicationStateBadge";
+import {
+  badgeToneClassName,
+  badgeToneOf,
+} from "@/app/_components/shared/variationApplicationStateBadge";
 import { LineTable } from "./components/LineTable";
 import {
   isVariationAdjustable,

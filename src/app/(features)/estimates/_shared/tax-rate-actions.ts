@@ -2,7 +2,7 @@
 
 import { verifySession } from "@/app/_lib/verifyAuthentication";
 import { resolveEffectiveTaxRateQueryFactory } from "@subdomains/estimate/application/factories/estimateQueryFactory";
-import { fromDateInputValue } from "./date";
+import { fromDateInputValue } from "@/app/_lib/date";
 
 /**
  * 見積年月日（"yyyy-mm-dd"）に有効な消費税率をライブ解決する Server Action（C1 作成画面）。
