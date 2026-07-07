@@ -145,10 +145,12 @@ export function EmployeeCreateForm({ departmentSelectSlot, roleOptions }: Props)
             担当役割
           </label>
           {/* 任意選択。空選択＝担当役割なし。承認者不在ワーニングの反応性のため
-              権限セレクトと同じく conform 配線（getSelectProps）でフォームに値を所有させる。 */}
+              権限セレクトと同じく conform 配線（getSelectProps）でフォームに値を所有させる。
+              初期未選択は先頭の <option value=""> が担う。inline defaultValue は付けない
+              （spread 後の defaultValue が conform のエラー再描画時の再投入を上書きし、
+              選択済みの担当役割をサイレントに消すため。更新フォームと同じ流儀に統一）。 */}
           <select
             {...getSelectProps(fields.roleId)}
-            defaultValue=""
             disabled={isPending}
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
           >
