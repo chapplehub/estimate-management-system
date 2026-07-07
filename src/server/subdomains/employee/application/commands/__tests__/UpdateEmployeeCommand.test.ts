@@ -7,6 +7,10 @@ import { ValidationError } from "@server/shared/errors/DomainError";
 import { MailAddressDuplicationCheckDomainService } from "@subdomains/employee/domain/services/MailAddressDuplicationCheckDomainService";
 import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
 import { PrismaEmployeeRepository } from "@subdomains/employee/infrastructure/prisma/PrismaEmployeeRepository";
+import { SuperiorRoleKachouTierValidationDomainService } from "@subdomains/role/domain/services/SuperiorRoleKachouTierValidationDomainService";
+import { PrismaRoleRepository } from "@subdomains/role/infrastructure/prisma/PrismaRoleRepository";
+import { PrismaPositionRepository } from "@subdomains/role/infrastructure/prisma/PrismaPositionRepository";
+import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
 import { generateId } from "@server/shared/generateId";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { UpdateEmployeeCommand } from "../UpdateEmployeeCommand";
@@ -20,10 +24,11 @@ describe("UpdateEmployeeCommand", () => {
   const TEST_EMPLOYEE_ID = "00000000-0000-7000-8000-100000000001";
   const ANOTHER_EMPLOYEE_ID = "00000000-0000-7000-8000-100000000002";
   const TEST_EMP_CDS = ["EMP999912", "EMP999913"];
-  const TEST_ROLE_CDS = ["ROLE954", "ROLE955"];
+  const TEST_ROLE_CDS = ["ROLE954", "ROLE955", "ROLE960"];
   let TEST_DEPT_ID: string;
-  let roleAId: string;
-  let roleBId: string;
+  let roleAId: string; // 課長級（POS001）
+  let roleBId: string; // 課長級（POS001）
+  let buchouRoleId: string; // 部長級（POS002）。課長級でない＝上位役割に不可
 
   async function cleanupRolesAndChildren() {
     await prisma.employeeRole.deleteMany({
@@ -40,14 +45,19 @@ describe("UpdateEmployeeCommand", () => {
     // 2. テスト用部署を確保
     TEST_DEPT_ID = await ensureTestDepartment();
 
-    // 2-1. 担当役割 FK 用の役割を用意（POS001=課長はシード済み）
-    const kachou = await prisma.position.findUnique({ where: { positionCd: "POS001" } });
+    // 2-1. 担当役割 FK 用の役割を用意（POS001=課長・POS002=部長はシード済み）
+    const [kachou, buchou] = await Promise.all([
+      prisma.position.findUnique({ where: { positionCd: "POS001" } }),
+      prisma.position.findUnique({ where: { positionCd: "POS002" } }),
+    ]);
     roleAId = generateId();
     roleBId = generateId();
+    buchouRoleId = generateId();
     await prisma.role.createMany({
       data: [
         { id: roleAId, roleCd: TEST_ROLE_CDS[0], name: "担当役割A", positionId: kachou!.id },
         { id: roleBId, roleCd: TEST_ROLE_CDS[1], name: "担当役割B", positionId: kachou!.id },
+        { id: buchouRoleId, roleCd: TEST_ROLE_CDS[2], name: "部長級役割", positionId: buchou!.id },
       ],
     });
 
@@ -90,7 +100,11 @@ describe("UpdateEmployeeCommand", () => {
     command = new UpdateEmployeeCommand(
       repository,
       mailDuplicationCheckService,
-      fakeUserManagementService
+      fakeUserManagementService,
+      new SuperiorRoleKachouTierValidationDomainService(
+        new PrismaRoleRepository(),
+        new PrismaPositionRepository()
+      )
     );
   });
 
@@ -310,5 +324,88 @@ describe("UpdateEmployeeCommand", () => {
 
     const afterClear = await repository.findById(new EmployeeId(TEST_EMPLOYEE_ID));
     expect(afterClear?.assignedRoleId).toBeNull();
+  });
+
+  it("課員に課長級の上位役割を設定でき、省略で解除される", async () => {
+    // 課員（役割なし）に上位役割 roleA（課長級）を設定
+    await command.execute({
+      id: TEST_EMPLOYEE_ID,
+      employeeCd: "EMP999912",
+      email: "existing@example.com",
+      name: "既存従業員",
+      departmentId: TEST_DEPT_ID,
+      role: USER_ROLES.USER,
+      expectedVersion: 1,
+      superiorRoleId: roleAId,
+    });
+
+    const afterSet = await repository.findById(new EmployeeId(TEST_EMPLOYEE_ID));
+    expect(afterSet?.assignedRoleId).toBeNull();
+    expect(afterSet?.explicitSuperiorRoleId?.value).toBe(roleAId);
+
+    // superiorRoleId 省略で更新 → 解除
+    await command.execute({
+      id: TEST_EMPLOYEE_ID,
+      employeeCd: "EMP999912",
+      email: "existing@example.com",
+      name: "既存従業員",
+      departmentId: TEST_DEPT_ID,
+      role: USER_ROLES.USER,
+      expectedVersion: 2,
+    });
+
+    const afterClear = await repository.findById(new EmployeeId(TEST_EMPLOYEE_ID));
+    expect(afterClear?.explicitSuperiorRoleId).toBeNull();
+  });
+
+  it("課長級でない上位役割を指定するとエラー（更新されない）", async () => {
+    await expect(
+      command.execute({
+        id: TEST_EMPLOYEE_ID,
+        employeeCd: "EMP999912",
+        email: "existing@example.com",
+        name: "部長級上位役割",
+        departmentId: TEST_DEPT_ID,
+        role: USER_ROLES.USER,
+        expectedVersion: 1,
+        superiorRoleId: buchouRoleId,
+      })
+    ).rejects.toThrow(BusinessRuleViolationError);
+
+    // 検証は永続化より前に走るため、名前も version も変わっていない
+    const employee = await repository.findById(new EmployeeId(TEST_EMPLOYEE_ID));
+    expect(employee?.name.value).toBe("既存従業員");
+    expect(employee?.explicitSuperiorRoleId).toBeNull();
+  });
+
+  it("担当役割を割り当てると明示上位役割は自動的に解除される（I1）", async () => {
+    // まず課員に上位役割を設定
+    await command.execute({
+      id: TEST_EMPLOYEE_ID,
+      employeeCd: "EMP999912",
+      email: "existing@example.com",
+      name: "既存従業員",
+      departmentId: TEST_DEPT_ID,
+      role: USER_ROLES.USER,
+      expectedVersion: 1,
+      superiorRoleId: roleAId,
+    });
+
+    // 担当役割 roleB を割り当て（superiorRoleId は同時指定しても無視される）
+    await command.execute({
+      id: TEST_EMPLOYEE_ID,
+      employeeCd: "EMP999912",
+      email: "existing@example.com",
+      name: "既存従業員",
+      departmentId: TEST_DEPT_ID,
+      role: USER_ROLES.USER,
+      expectedVersion: 2,
+      roleId: roleBId,
+      superiorRoleId: roleAId,
+    });
+
+    const after = await repository.findById(new EmployeeId(TEST_EMPLOYEE_ID));
+    expect(after?.assignedRoleId?.value).toBe(roleBId);
+    expect(after?.explicitSuperiorRoleId).toBeNull();
   });
 });
