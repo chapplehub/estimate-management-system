@@ -14,6 +14,8 @@ type Employee = {
   employeeCd: string;
   departmentId: string;
   role: UserRole | null;
+  /** 現在の担当役割ID（EmployeeRole から導出、役割なし＝課員は null）。編集画面の preselect に用いる */
+  assignedRoleId: string | null;
   /** 楽観ロックトークン（ADR-0039）。編集画面表示時の値をフォームで往復させる */
   version: number;
 };
@@ -23,9 +25,16 @@ type Props = {
   canUpdate: boolean;
   /** 部署選択フィールド（Server Component を slot として受け取る） */
   departmentSelectSlot: React.ReactNode;
+  /** 担当役割の選択肢（page.tsx が findAll で取得し roleCd 昇順で供給） */
+  roleOptions: { id: string; name: string }[];
 };
 
-export function EmployeeUpdateForm({ employee, canUpdate, departmentSelectSlot }: Props) {
+export function EmployeeUpdateForm({
+  employee,
+  canUpdate,
+  departmentSelectSlot,
+  roleOptions,
+}: Props) {
   // LEARN: bind()でemployeeCdを事前にバインド(server-action-bind-vs-formdata.md)
   const updateEmployeeWithEmployeeCd = updateEmployee.bind(null, employee.employeeCd);
 
@@ -37,6 +46,8 @@ export function EmployeeUpdateForm({ employee, canUpdate, departmentSelectSlot }
       email: employee.email,
       departmentId: employee.departmentId,
       role: employee.role ?? USER_ROLES.USER,
+      // 現在の担当役割を preselect。null（役割なし）は空文字で解除選択にマップ
+      roleId: employee.assignedRoleId ?? "",
       version: String(employee.version),
     },
   });
@@ -138,6 +149,31 @@ export function EmployeeUpdateForm({ employee, canUpdate, departmentSelectSlot }
           {fields.role.errors && (
             <p className="text-red-500 text-xs mt-1" id={fields.role.errorId}>
               {fields.role.errors[0]}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label htmlFor={fields.roleId.id} className="block text-gray-700 text-sm font-bold mb-2">
+            担当役割
+          </label>
+          {/* preselect は conform の defaultValue.roleId が担う。承認者不在ワーニングの
+              反応性のため権限セレクトと同じく getSelectProps 配線でフォームに値を所有させる。 */}
+          <select
+            {...getSelectProps(fields.roleId)}
+            disabled={isPending || !canUpdate}
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
+          >
+            <option value="">（担当役割なし）</option>
+            {roleOptions.map((role) => (
+              <option key={role.id} value={role.id}>
+                {role.name}
+              </option>
+            ))}
+          </select>
+          {fields.roleId.errors && (
+            <p className="text-red-500 text-xs mt-1" id={fields.roleId.errorId}>
+              {fields.roleId.errors[0]}
             </p>
           )}
         </div>
