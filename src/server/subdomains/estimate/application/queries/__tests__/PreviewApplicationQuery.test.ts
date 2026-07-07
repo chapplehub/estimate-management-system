@@ -41,16 +41,24 @@ describe("PreviewApplicationQuery", () => {
 
   beforeAll(async () => {
     ids = await ensureApprovalFixtures();
+    // 申請操作者は課員（担当役割なし）。承認起点は明示上位役割行から導出される（ADR-20260707-k4e）
     const operator = await prisma.employee.upsert({
       where: { employeeCd: OPERATOR_CD },
-      update: { superiorRoleId: ids.stepRoleIds[0] },
+      update: {
+        superiorRole: {
+          upsert: {
+            create: { roleId: ids.stepRoleIds[0] },
+            update: { roleId: ids.stepRoleIds[0] },
+          },
+        },
+      },
       create: {
         id: generateId(),
         employeeCd: OPERATOR_CD,
         email: "preview-operator@example.com",
         name: "申請操作者",
         departmentId: ids.estimate.departmentId,
-        superiorRoleId: ids.stepRoleIds[0],
+        superiorRole: { create: { roleId: ids.stepRoleIds[0] } },
       },
     });
     operatorId = operator.id;

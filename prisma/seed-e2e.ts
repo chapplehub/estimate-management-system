@@ -73,6 +73,11 @@ const ROLES = [
     positionCd: "POS003",
     superiorCd: "ROLE001" as string | null,
   },
+  // 課員の上位役割を同部署の課長級（POS001）へ揃えるため追加（ADR-20260707-k4e）。
+  // 開発課長→開発部長、総務課長→総務部長→管理本部長 と役職階層1段ずつ上へ連なる。
+  { cd: "ROLE007", name: "開発課長", positionCd: "POS001", superiorCd: "ROLE004" as string | null },
+  { cd: "ROLE008", name: "総務部長", positionCd: "POS002", superiorCd: "ROLE006" as string | null },
+  { cd: "ROLE009", name: "総務課長", positionCd: "POS001", superiorCd: "ROLE008" as string | null },
 ];
 
 // E2E専用シード（ROLE9NN 帯）: ドメインエラーテスト用。DB 不変が前提。
@@ -106,7 +111,6 @@ const E2E_ONLY_EMPLOYEES = [
     email: "e2e-only-001@example.com",
     name: "E2E専用_使用中テスト従業員",
     departmentCd: "DEPT001",
-    superiorRoleCd: "ROLE003",
     assignedRoleCd: "ROLE903",
   },
 ];
@@ -127,23 +131,24 @@ const FIXED_USERS = [
   { name: "一般 ユーザ", role: USER_ROLES.USER },
 ] as const;
 
-// 一般従業員（EMP000006〜EMP000020）の部署割り当て
+// 一般従業員（EMP000006〜EMP000020）の部署割り当て。
+// 上位役割は同部署の課長級（POS001）に揃える（ADR-20260707-k4e。旧・部長級/越境を是正）。
 const GENERAL_EMPLOYEES = [
+  { departmentCd: "DEPT001", superiorRoleCd: "ROLE005" }, // 営業部 → 営業課長
   { departmentCd: "DEPT001", superiorRoleCd: "ROLE005" },
   { departmentCd: "DEPT001", superiorRoleCd: "ROLE005" },
   { departmentCd: "DEPT001", superiorRoleCd: "ROLE005" },
   { departmentCd: "DEPT001", superiorRoleCd: "ROLE005" },
-  { departmentCd: "DEPT001", superiorRoleCd: "ROLE005" },
-  { departmentCd: "DEPT002", superiorRoleCd: "ROLE004" },
-  { departmentCd: "DEPT002", superiorRoleCd: "ROLE004" },
-  { departmentCd: "DEPT002", superiorRoleCd: "ROLE004" },
-  { departmentCd: "DEPT002", superiorRoleCd: "ROLE004" },
-  { departmentCd: "DEPT002", superiorRoleCd: "ROLE004" },
-  { departmentCd: "DEPT003", superiorRoleCd: "ROLE003" },
-  { departmentCd: "DEPT003", superiorRoleCd: "ROLE003" },
-  { departmentCd: "DEPT003", superiorRoleCd: "ROLE003" },
-  { departmentCd: "DEPT003", superiorRoleCd: "ROLE003" },
-  { departmentCd: "DEPT003", superiorRoleCd: "ROLE003" },
+  { departmentCd: "DEPT002", superiorRoleCd: "ROLE007" }, // 開発部 → 開発課長
+  { departmentCd: "DEPT002", superiorRoleCd: "ROLE007" },
+  { departmentCd: "DEPT002", superiorRoleCd: "ROLE007" },
+  { departmentCd: "DEPT002", superiorRoleCd: "ROLE007" },
+  { departmentCd: "DEPT002", superiorRoleCd: "ROLE007" },
+  { departmentCd: "DEPT003", superiorRoleCd: "ROLE009" }, // 総務部 → 総務課長
+  { departmentCd: "DEPT003", superiorRoleCd: "ROLE009" },
+  { departmentCd: "DEPT003", superiorRoleCd: "ROLE009" },
+  { departmentCd: "DEPT003", superiorRoleCd: "ROLE009" },
+  { departmentCd: "DEPT003", superiorRoleCd: "ROLE009" },
 ];
 
 // 従業員の名前（固定: ランダム性を排除してテストの再現性を確保）
@@ -1335,10 +1340,6 @@ function generateSeedUsers(
     if (i <= ROLE_EMPLOYEE_CONFIGS.length) {
       // 役割を持つ従業員（最初の2名は固定ユーザー）
       const config = ROLE_EMPLOYEE_CONFIGS[i - 1];
-      const assignedRole = ROLES.find((r) => r.cd === config.roleCd)!;
-      const superiorRoleId = assignedRole.superiorCd
-        ? roleIdMap.get(assignedRole.superiorCd)!
-        : null;
       const isFixedUser = i <= FIXED_USERS.length;
       users.push({
         employeeCd: generateEmployeeCd(i),
@@ -1346,7 +1347,8 @@ function generateSeedUsers(
         name: EMPLOYEE_NAMES[i - 1],
         role: isFixedUser ? FIXED_USERS[i - 1].role : USER_ROLES.USER,
         departmentId: departmentIdMap.get(config.departmentCd)!,
-        superiorRoleId,
+        // 役割持ちは上位役割を担当役割から導出するため明示行を持たない（I1・ADR-20260707-k4e）
+        superiorRoleId: null,
         assignedRoleId: roleIdMap.get(config.roleCd),
       });
     } else {
@@ -1371,6 +1373,10 @@ async function createUserWithEmployee(userData: SeedUser, hashedPassword: string
   const userId = generateId();
   const accountId = generateId();
 
+  // 課員（担当役割なし）のみ明示上位役割行を作る。役割持ちは担当役割から導出するため
+  // 明示行を持たない（I1・ADR-20260707-k4e）。上位役割は列ではなく子表 EmployeeSuperiorRole。
+  const shouldSetExplicitSuperior = !userData.assignedRoleId && userData.superiorRoleId != null;
+
   const result = await prisma.$transaction(async (tx) => {
     const employee = await tx.employee.create({
       data: {
@@ -1379,7 +1385,9 @@ async function createUserWithEmployee(userData: SeedUser, hashedPassword: string
         email: userData.email,
         name: userData.name,
         departmentId: userData.departmentId,
-        superiorRoleId: userData.superiorRoleId,
+        superiorRole: shouldSetExplicitSuperior
+          ? { create: { roleId: userData.superiorRoleId! } }
+          : undefined,
       },
     });
 
@@ -1470,6 +1478,13 @@ async function main() {
   // 既存データを削除（FK制約を考慮した順序）
   // 見積は得意先・納品先・部署・従業員・商品を参照する（onDelete: Restrict）ため、
   // それらの削除より先に消す。配下（variation/item/setGroup 等）は Cascade で連鎖削除される。
+  // 見積申請系（#572）は全 FK が Restrict のため、estimate 削除前に子→親順で消す。
+  await prisma.estimateStepApproval.deleteMany();
+  await prisma.estimateStepRejection.deleteMany();
+  await prisma.estimateApprovalStep.deleteMany();
+  await prisma.estimateApplicationWithdrawal.deleteMany();
+  await prisma.estimateApprovalExemption.deleteMany();
+  await prisma.estimateApplication.deleteMany();
   await prisma.estimateVariationCopy.deleteMany();
   await prisma.estimateVariationRevision.deleteMany();
   await prisma.estimate.deleteMany();
@@ -1484,6 +1499,7 @@ async function main() {
   await prisma.session.deleteMany();
   await prisma.user.deleteMany();
   await prisma.employeeRole.deleteMany();
+  await prisma.employeeSuperiorRole.deleteMany(); // 課員の明示上位役割（ADR-20260707-k4e）
   await prisma.employee.deleteMany();
   await prisma.role.deleteMany();
   await prisma.position.deleteMany();
@@ -1708,7 +1724,9 @@ async function main() {
         name: e2eEmp.name,
         role: USER_ROLES.USER,
         departmentId: departmentIdMap.get(e2eEmp.departmentCd)!,
-        superiorRoleId: roleIdMap.get(e2eEmp.superiorRoleCd)!,
+        // ROLE903 を担当役割に持つ役割持ちのため、上位役割は導出（明示行を作らない・I1）。
+        // 旧 superiorRoleCd は廃止列専用だったため参照しない。ROLE903 の使用中は EmployeeRole が担保。
+        superiorRoleId: null,
       },
       hashedPassword
     );

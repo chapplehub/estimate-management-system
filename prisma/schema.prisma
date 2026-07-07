@@ -57,7 +57,8 @@ model Role {
 
   // 逆参照
   employeeRoles       EmployeeRole[]
-  employeesAsSuperior Employee[]     @relation("EmployeeSuperiorRole")
+  // 課員の明示上位役割としての逆参照（ADR-20260707-k4e）。役割はマスタなので Restrict
+  employeesAsSuperior EmployeeSuperiorRole[]
 
   // 見積承認ステップの承認対象役割としての逆参照
   approvalSteps EstimateApprovalStep[]
@@ -105,9 +106,11 @@ model Employee {
   departmentId String     @map("department_id") @db.Uuid
   department   Department @relation(fields: [departmentId], references: [id])
 
-  // 上位役割（承認フローの起点）
-  superiorRoleId String? @map("superior_role_id") @db.Uuid
-  superiorRole   Role?   @relation("EmployeeSuperiorRole", fields: [superiorRoleId], references: [id])
+  // 上位役割（承認フローの起点・ADR-20260707-k4e）
+  //   役割持ち: 保存せず findSuperiorRoleId が担当役割から読み取り時導出する
+  //   課員: 明示値のみ子表 EmployeeSuperiorRole（1:0..1）へ抽出する
+  // 従来の superior_role_id 列は廃止した
+  superiorRole EmployeeSuperiorRole?
 
   // 従業員役割（逆参照）
   employeeRoles EmployeeRole[]
@@ -138,8 +141,28 @@ model Employee {
   user User?
 
   @@index([departmentId])
-  @@index([superiorRoleId])
   @@map("employees")
+}
+
+// 課員（担当役割を持たない従業員）の明示上位役割（ADR-20260707-k4e）。
+// 行の存在 ⟺ 課員に上位役割が明示設定されている。employee_id を PK とし
+// 「1従業員は高々1上位役割」を構造担保する（nullable FK を作らず NULL ゼロ）。
+// 役割持ちには行を作らず、上位役割は担当役割から読み取り時導出する。
+model EmployeeSuperiorRole {
+  // Employee は集約ルート。従業員本体の削除時に明示行も心中させる（ON DELETE CASCADE）
+  employeeId String   @id @map("employee_id") @db.Uuid
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  // 上位役割（マスタ）。使用中の役割を削除させないため RESTRICT（Prisma 既定）を維持
+  roleId String @map("role_id") @db.Uuid
+  role   Role   @relation(fields: [roleId], references: [id])
+
+  // タイムスタンプ
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([roleId])
+  @@map("employee_superior_roles")
 }
 
 // ========================================

@@ -19,7 +19,7 @@ export class PrismaEmployeeRepository implements EmployeeRepository {
   async insert(employee: Employee): Promise<Employee> {
     const prismaEmployee = await prisma.employee.create({
       data: EmployeeMapper.toPrismaCreate(employee),
-      include: { employeeRoles: true },
+      include: { employeeRoles: true, superiorRole: true },
     });
 
     return EmployeeMapper.toDomain(prismaEmployee);
@@ -61,10 +61,18 @@ export class PrismaEmployeeRepository implements EmployeeRepository {
         });
       }
 
+      // 課員の明示上位役割を 0/1 件へ同期する（ADR-20260707-k4e。I1 により役割持ちは常に 0 件）
+      await tx.employeeSuperiorRole.deleteMany({ where: { employeeId: employee.id.value } });
+      if (employee.explicitSuperiorRoleId) {
+        await tx.employeeSuperiorRole.create({
+          data: { employeeId: employee.id.value, roleId: employee.explicitSuperiorRoleId.value },
+        });
+      }
+
       // version を進めた最新行を読み直して返す
       const row = await tx.employee.findUnique({
         where: { id: employee.id.value },
-        include: { employeeRoles: true },
+        include: { employeeRoles: true, superiorRole: true },
       });
       if (!row) {
         throw new Error(`保存した従業員の再取得に失敗しました: ${employee.id.value}`);
@@ -94,7 +102,7 @@ export class PrismaEmployeeRepository implements EmployeeRepository {
   async findById(id: EmployeeId): Promise<Employee | null> {
     const prismaEmployee = await prisma.employee.findUnique({
       where: { id: id.value },
-      include: { employeeRoles: true },
+      include: { employeeRoles: true, superiorRole: true },
     });
 
     return prismaEmployee ? EmployeeMapper.toDomain(prismaEmployee) : null;
@@ -109,7 +117,7 @@ export class PrismaEmployeeRepository implements EmployeeRepository {
   async findByEmployeeCd(employeeCd: EmployeeCd): Promise<Employee | null> {
     const prismaEmployee = await prisma.employee.findUnique({
       where: { employeeCd: employeeCd.value },
-      include: { employeeRoles: true },
+      include: { employeeRoles: true, superiorRole: true },
     });
 
     return prismaEmployee ? EmployeeMapper.toDomain(prismaEmployee) : null;
@@ -124,7 +132,7 @@ export class PrismaEmployeeRepository implements EmployeeRepository {
   async findByEmail(email: MailAddress): Promise<Employee | null> {
     const prismaEmployee = await prisma.employee.findUnique({
       where: { email: email.value },
-      include: { employeeRoles: true },
+      include: { employeeRoles: true, superiorRole: true },
     });
 
     return prismaEmployee ? EmployeeMapper.toDomain(prismaEmployee) : null;

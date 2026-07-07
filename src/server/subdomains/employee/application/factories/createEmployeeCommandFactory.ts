@@ -1,4 +1,7 @@
 import { BetterAuthUserManagementService } from "@server/shared/auth/better-auth/BetterAuthUserManagementService";
+import { SuperiorRoleKachouTierValidationDomainService } from "@subdomains/role/domain/services/SuperiorRoleKachouTierValidationDomainService";
+import { PrismaRoleRepository } from "@subdomains/role/infrastructure/prisma/PrismaRoleRepository";
+import { PrismaPositionRepository } from "@subdomains/role/infrastructure/prisma/PrismaPositionRepository";
 import { CreateEmployeeCommand } from "../commands/CreateEmployeeCommand";
 import { EmployeeCdDuplicationCheckDomainService } from "../../domain/services/EmployeeCdDuplicationCheckDomainService";
 import { MailAddressDuplicationCheckDomainService } from "../../domain/services/MailAddressDuplicationCheckDomainService";
@@ -19,6 +22,10 @@ export function createEmployeeCommandFactory(): CreateEmployeeCommand {
     repository,
     new EmployeeCdDuplicationCheckDomainService(repository),
     new MailAddressDuplicationCheckDomainService(repository),
-    userManagementService
+    userManagementService,
+    new SuperiorRoleKachouTierValidationDomainService(
+      new PrismaRoleRepository(),
+      new PrismaPositionRepository()
+    )
   );
 }

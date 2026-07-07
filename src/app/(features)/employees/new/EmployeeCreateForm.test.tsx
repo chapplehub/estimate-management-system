@@ -27,6 +27,12 @@ const mockRoleOptions = [
   { id: "role-2", name: "開発部長" },
 ];
 
+// 上位役割オプションのモック（課員の上位役割候補・課長級のみ・page.tsx が葉ティア絞り込みで供給）
+const mockSuperiorRoleOptions = [
+  { id: "sup-1", name: "営業一課長" },
+  { id: "sup-2", name: "開発課長" },
+];
+
 describe("EmployeeCreateForm", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -40,6 +46,7 @@ describe("EmployeeCreateForm", () => {
         <EmployeeCreateForm
           departmentSelectSlot={mockDepartmentSelectSlot}
           roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
         />
       );
 
@@ -60,6 +67,7 @@ describe("EmployeeCreateForm", () => {
         <EmployeeCreateForm
           departmentSelectSlot={mockDepartmentSelectSlot}
           roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
         />
       );
 
@@ -76,6 +84,7 @@ describe("EmployeeCreateForm", () => {
         <EmployeeCreateForm
           departmentSelectSlot={mockDepartmentSelectSlot}
           roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
         />
       );
 
@@ -87,6 +96,7 @@ describe("EmployeeCreateForm", () => {
         <EmployeeCreateForm
           departmentSelectSlot={mockDepartmentSelectSlot}
           roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
         />
       );
 
@@ -101,6 +111,65 @@ describe("EmployeeCreateForm", () => {
       expect(screen.getByRole("option", { name: "営業課長" })).toBeInTheDocument();
       expect(screen.getByRole("option", { name: "開発部長" })).toBeInTheDocument();
     });
+
+    test("初期状態（担当役割なし）では上位役割セレクトが課長級オプション付きで表示される", () => {
+      render(
+        <EmployeeCreateForm
+          departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
+        />
+      );
+
+      // 担当役割が（なし）なので上位役割セレクトが表示される（課員の承認起点を明示）
+      const superiorSelect = screen.getByLabelText("上位役割");
+      expect(superiorSelect).toBeInTheDocument();
+      expect(superiorSelect).toHaveValue("");
+
+      // 先頭の未設定オプション + 課長級候補（name のみ）
+      expect(screen.getByRole("option", { name: "（上位役割なし）" })).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "営業一課長" })).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "開発課長" })).toBeInTheDocument();
+    });
+
+    test("担当役割を選ぶと上位役割セレクトは消え、自動導出の注記に切り替わる（アンマウント制御）", async () => {
+      const user = userEvent.setup();
+      render(
+        <EmployeeCreateForm
+          departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
+        />
+      );
+
+      // 初期は上位役割セレクトあり
+      expect(screen.getByLabelText("上位役割")).toBeInTheDocument();
+
+      // 担当役割を選ぶ
+      await user.selectOptions(screen.getByLabelText("担当役割"), "role-1");
+
+      // 上位役割セレクトはアンマウントされ、自動導出の注記が出る
+      expect(screen.queryByLabelText("上位役割")).not.toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "担当役割が設定されているため、上位役割は担当役割から自動的に導出されます。"
+        )
+      ).toBeInTheDocument();
+    });
+
+    test("課員で上位役割が未設定のとき、申請不可の非ブロッキング警告が表示される", () => {
+      render(
+        <EmployeeCreateForm
+          departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
+        />
+      );
+
+      // 初期状態は課員かつ上位役割未設定 → 警告（role="status"）
+      const warning = screen.getByRole("status");
+      expect(warning).toHaveTextContent("上位役割を設定するまでこの従業員は見積を申請できません");
+    });
   });
 
   describe("入力テスト", () => {
@@ -110,6 +179,7 @@ describe("EmployeeCreateForm", () => {
         <EmployeeCreateForm
           departmentSelectSlot={mockDepartmentSelectSlot}
           roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
         />
       );
 
@@ -137,6 +207,7 @@ describe("EmployeeCreateForm", () => {
         <EmployeeCreateForm
           departmentSelectSlot={mockDepartmentSelectSlot}
           roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
         />
       );
 
@@ -157,6 +228,7 @@ describe("EmployeeCreateForm", () => {
         <EmployeeCreateForm
           departmentSelectSlot={mockDepartmentSelectSlot}
           roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
         />
       );
 
@@ -184,6 +256,7 @@ describe("EmployeeCreateForm", () => {
         <EmployeeCreateForm
           departmentSelectSlot={mockDepartmentSelectSlot}
           roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
         />
       );
 
@@ -233,6 +306,7 @@ describe("EmployeeCreateForm", () => {
         <EmployeeCreateForm
           departmentSelectSlot={mockDepartmentSelectSlot}
           roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
         />
       );
 
@@ -276,6 +350,7 @@ describe("EmployeeCreateForm", () => {
         <EmployeeCreateForm
           departmentSelectSlot={mockDepartmentSelectSlot}
           roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
         />
       );
 

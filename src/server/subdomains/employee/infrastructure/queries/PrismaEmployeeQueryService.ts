@@ -49,12 +49,36 @@ export class PrismaEmployeeQueryService implements EmployeeQueryService {
   }
 
   async findSuperiorRoleId(employeeId: string): Promise<string | null> {
+    // 上位役割は列に持たず読み取り時導出する（ADR-20260707-k4e。承認起点の唯一の消費点）。
+    //   担当役割あり → その担当役割の上位役割（役割階層の1段上）
+    //   担当役割なし（課員）→ EmployeeSuperiorRole の明示値
+    //   どちらも無     → null
     const employee = await prisma.employee.findUnique({
       where: { id: employeeId },
-      select: { superiorRoleId: true },
+      select: {
+        // 担当役割（高々1件）とその役割の上位役割ID
+        employeeRoles: {
+          select: { role: { select: { superiorRoleId: true } } },
+        },
+        // 課員の明示上位役割（0/1 件）
+        superiorRole: {
+          select: { roleId: true },
+        },
+      },
     });
 
-    return employee?.superiorRoleId ?? null;
+    if (!employee) {
+      return null;
+    }
+
+    // 担当役割を持つなら、その役割の上位役割を承認起点とする（役割持ちは明示行を持たない・I1）
+    const assignedRole = employee.employeeRoles[0]?.role;
+    if (assignedRole) {
+      return assignedRole.superiorRoleId ?? null;
+    }
+
+    // 課員は明示行の値を承認起点とする
+    return employee.superiorRole?.roleId ?? null;
   }
 
   /**
@@ -145,6 +169,12 @@ export class PrismaEmployeeQueryService implements EmployeeQueryService {
           roleId: true,
         },
       },
+      // 課員の明示上位役割（0/1 件・ADR-20260707-k4e）を取得
+      superiorRole: {
+        select: {
+          roleId: true,
+        },
+      },
     } as const;
   }
 
@@ -163,6 +193,7 @@ export class PrismaEmployeeQueryService implements EmployeeQueryService {
     updatedAt: Date;
     user: { role: string | null } | null;
     employeeRoles: { roleId: string }[];
+    superiorRole: { roleId: string } | null;
   }): EmployeeDTO {
     return {
       id: employee.id,
@@ -175,6 +206,8 @@ export class PrismaEmployeeQueryService implements EmployeeQueryService {
       role: (employee.user?.role as UserRole) ?? null,
       // 高々1件の担当役割を導出（0件＝役割なし＝課員）
       assignedRoleId: employee.employeeRoles[0]?.roleId ?? null,
+      // 課員の明示上位役割（役割持ちは明示行を持たない・I1 → null）
+      explicitSuperiorRoleId: employee.superiorRole?.roleId ?? null,
       version: employee.version,
       createdAt: employee.createdAt,
       updatedAt: employee.updatedAt,

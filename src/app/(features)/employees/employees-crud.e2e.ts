@@ -116,6 +116,93 @@ test.describe("従業員CRUD（管理者）", () => {
     });
   });
 
+  // 課員（担当役割なし）の上位役割の設定・更新・解除フロー（#567・ADR-20260707-k4e）
+  test.describe.serial("課員の上位役割 設定・更新・解除テスト", () => {
+    const KAIN_EMPLOYEE_CD = "EMP999902";
+    const KAIN_EMAIL = "e2e-kain-superior@example.com";
+
+    test("課員に上位役割（課長級）を設定して作成できる", async ({ page }) => {
+      await page.goto("/employees/new");
+      await expect(page.getByRole("heading", { name: "新規従業員登録" })).toBeVisible();
+
+      await page.getByLabel("名前").fill("E2E課員上位役割");
+      await page.getByLabel("メールアドレス").fill(KAIN_EMAIL);
+      await page.getByLabel("従業員コード").fill(KAIN_EMPLOYEE_CD);
+      await page.getByLabel("所属部署").selectOption({ index: 1 });
+      await page.getByLabel("パスワード").fill("testpass123");
+
+      // 担当役割は（担当役割なし）のまま＝課員。上位役割セレクトが表示される。
+      const superiorSelect = page.getByLabel("上位役割");
+      await expect(superiorSelect).toBeVisible();
+      // 未設定なので申請不可の警告が出ている
+      await expect(page.getByText(/上位役割を設定するまで/)).toBeVisible();
+
+      // 課長級の上位役割を選ぶと警告は消える
+      await superiorSelect.selectOption({ label: "営業課長" });
+      await expect(page.getByText(/上位役割を設定するまで/)).not.toBeVisible();
+
+      await page.getByRole("button", { name: "登録" }).click();
+      await expect(page).toHaveURL(/\/employees/, { timeout: 10000 });
+      await expect(page.getByText("従業員を登録しました。")).toBeVisible({ timeout: 10000 });
+    });
+
+    test("詳細画面で上位役割が preselect され、別の課長級へ更新できる", async ({ page }) => {
+      await page.goto(`/employees/${KAIN_EMPLOYEE_CD}`);
+      await expect(page.getByText("従業員変更")).toBeVisible();
+
+      // 課員なので担当役割は（担当役割なし）、上位役割は営業課長が preselect
+      await expect(page.getByLabel("担当役割")).toHaveValue("");
+      await expect(page.getByLabel("上位役割").locator("option:checked")).toHaveText("営業課長");
+
+      // 別の課長級（開発課長）へ変更して更新
+      await page.getByLabel("上位役割").selectOption({ label: "開発課長" });
+      await page.getByRole("button", { name: "更新" }).click();
+      await expect(page.getByText("従業員情報を更新しました。")).toBeVisible({ timeout: 10000 });
+
+      // 更新後も開発課長が残存している
+      await expect(page.getByLabel("上位役割").locator("option:checked")).toHaveText("開発課長");
+    });
+
+    test("上位役割を解除すると申請不可の警告が出て解除保存できる", async ({ page }) => {
+      await page.goto(`/employees/${KAIN_EMPLOYEE_CD}`);
+      await expect(page.getByText("従業員変更")).toBeVisible();
+
+      // 上位役割を（上位役割なし）へ → 申請不可の警告が反応的に表示される
+      await page.getByLabel("上位役割").selectOption({ label: "（上位役割なし）" });
+      await expect(page.getByText(/上位役割を設定するまで/)).toBeVisible();
+
+      await page.getByRole("button", { name: "更新" }).click();
+      await expect(page.getByText("従業員情報を更新しました。")).toBeVisible({ timeout: 10000 });
+
+      // 解除が残存（空選択）
+      await expect(page.getByLabel("上位役割")).toHaveValue("");
+    });
+
+    test("担当役割を割り当てると上位役割セレクトが消え自動導出の注記になる", async ({ page }) => {
+      await page.goto(`/employees/${KAIN_EMPLOYEE_CD}`);
+      await expect(page.getByText("従業員変更")).toBeVisible();
+
+      // 課員なので上位役割セレクトあり
+      await expect(page.getByLabel("上位役割")).toBeVisible();
+
+      // 担当役割を割り当てると上位役割セレクトはアンマウントされ自動導出の注記に切替
+      await page.getByLabel("担当役割").selectOption({ label: "営業課長" });
+      await expect(page.getByLabel("上位役割")).toBeHidden();
+      await expect(page.getByText(/担当役割から自動的に導出/)).toBeVisible();
+
+      // 保存はしない（このテストは表示切替の検証のみ。後続の削除で片付ける）
+    });
+
+    test("作成した課員を削除できる", async ({ page }) => {
+      await page.goto(`/employees/${KAIN_EMPLOYEE_CD}`);
+      await expect(page.getByText("従業員変更")).toBeVisible();
+
+      await page.getByRole("button", { name: "削除" }).click();
+      await expect(page).toHaveURL(/\/employees/, { timeout: 10000 });
+      await expect(page.getByText("従業員を削除しました。")).toBeVisible({ timeout: 10000 });
+    });
+  });
+
   test("重複する従業員コードでエラーが表示される", async ({ page }) => {
     await page.goto("/employees/new");
 
@@ -158,15 +245,16 @@ test.describe("従業員CRUD（管理者）", () => {
     await expect(roleSelect.locator("option:checked")).toHaveText("開発部長");
     await expect(page.getByRole("status")).not.toBeVisible();
 
-    // 担当役割を解除（（担当役割なし））すると旧役割名入りの警告が反応的に表示される
+    // 担当役割を解除（（担当役割なし））すると旧役割名入りの警告が反応的に表示される。
+    // 解除で課員になると上位役割未設定の警告も同時に出るため、承認者不在警告はテキストで特定する。
     await roleSelect.selectOption({ label: "（担当役割なし）" });
-    const warning = page.getByRole("status");
+    const warning = page.getByText(/唯一の担当者/);
     await expect(warning).toBeVisible();
     await expect(warning).toContainText("開発部長");
 
-    // 元の担当役割へ戻すと警告は消える（非ブロッキング・反応的）
+    // 元の担当役割へ戻すと承認者不在警告は消える（非ブロッキング・反応的）
     await roleSelect.selectOption({ label: "開発部長" });
-    await expect(page.getByRole("status")).not.toBeVisible();
+    await expect(page.getByText(/唯一の担当者/)).not.toBeVisible();
 
     // 保存はしない（DB 不変フィクスチャを維持）
   });

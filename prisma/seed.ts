@@ -1004,33 +1004,27 @@ function generateSeedUsers(
       // 固定ユーザー（EMP000001: 管理ユーザ, EMP000002: 一般ユーザ）
       const fixedUser = FIXED_USERS[i - 1];
       const config = ROLE_EMPLOYEE_CONFIGS[i - 1];
-      const assignedRole = ROLES.find((r) => r.cd === config.roleCd)!;
-      const superiorRoleId = assignedRole.superiorCd
-        ? roleIdMap.get(assignedRole.superiorCd)!
-        : null;
       users.push({
         employeeCd: generateEmployeeCd(i),
         email: generateEmail(i),
         name: fixedUser.name,
         role: fixedUser.role,
         departmentId: departmentIdMap.get(config.departmentCd)!,
-        superiorRoleId,
+        // 役割持ちは上位役割を担当役割から導出するため明示行を持たない（I1・ADR-20260707-k4e）
+        superiorRoleId: null,
         assignedRoleId: roleIdMap.get(config.roleCd),
       });
     } else if (i <= ROLE_EMPLOYEE_CONFIGS.length) {
       // 役割を持つ従業員（EMP000003〜EMP000015）
       const config = ROLE_EMPLOYEE_CONFIGS[i - 1];
-      const assignedRole = ROLES.find((r) => r.cd === config.roleCd)!;
-      const superiorRoleId = assignedRole.superiorCd
-        ? roleIdMap.get(assignedRole.superiorCd)!
-        : null;
       users.push({
         employeeCd: generateEmployeeCd(i),
         email: generateEmail(i),
         name: generateName(),
         role: determineRole(i),
         departmentId: departmentIdMap.get(config.departmentCd)!,
-        superiorRoleId,
+        // 役割持ちは上位役割を担当役割から導出するため明示行を持たない（I1・ADR-20260707-k4e）
+        superiorRoleId: null,
         assignedRoleId: roleIdMap.get(config.roleCd),
       });
     } else {
@@ -1057,6 +1051,10 @@ async function createUserWithEmployee(userData: SeedUser, hashedPassword: string
   const userId = generateId();
   const accountId = generateId();
 
+  // 課員（担当役割なし）のみ明示上位役割行を作る。役割持ちは担当役割から導出するため
+  // 明示行を持たない（I1・ADR-20260707-k4e）。上位役割は列ではなく子表 EmployeeSuperiorRole。
+  const shouldSetExplicitSuperior = !userData.assignedRoleId && userData.superiorRoleId != null;
+
   // トランザクションでEmployee, User, Accountを一括作成
   const result = await prisma.$transaction(async (tx) => {
     // 1. Employeeを作成
@@ -1067,7 +1065,9 @@ async function createUserWithEmployee(userData: SeedUser, hashedPassword: string
         email: userData.email,
         name: userData.name,
         departmentId: userData.departmentId,
-        superiorRoleId: userData.superiorRoleId,
+        superiorRole: shouldSetExplicitSuperior
+          ? { create: { roleId: userData.superiorRoleId! } }
+          : undefined,
       },
     });
 
@@ -1184,6 +1184,7 @@ async function main() {
   await prisma.session.deleteMany();
   await prisma.user.deleteMany();
   await prisma.employeeRole.deleteMany();
+  await prisma.employeeSuperiorRole.deleteMany(); // 課員の明示上位役割（ADR-20260707-k4e）
   await prisma.employee.deleteMany();
   await prisma.role.deleteMany();
   await prisma.position.deleteMany();
