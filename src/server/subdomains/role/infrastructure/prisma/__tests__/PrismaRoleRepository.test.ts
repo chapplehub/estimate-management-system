@@ -1,4 +1,6 @@
+import { ensureTestDepartment } from "@server/__tests__/helpers/ensureTestDepartment";
 import prisma from "@server/prisma";
+import { generateId } from "@server/shared/generateId";
 import { ConflictError } from "@server/shared/errors/ApplicationError";
 import { Role } from "@subdomains/role/domain/entities/Role";
 import { RoleCd } from "@subdomains/role/domain/values/RoleCd";
@@ -19,10 +21,15 @@ describe("PrismaRoleRepository", () => {
 
   // 他テストファイルとの並列実行衝突を避けるため未使用の roleCd を専有する
   const TEST_ROLE_CDS = ["ROLE901", "ROLE902", "ROLE903"];
+  // isInUse 検証用の従業員（被参照側）
+  const TEST_EMP_CDS = ["EMP990410", "EMP990411"];
 
   let kachouPositionId: string;
+  let deptId: string;
 
   async function cleanup() {
+    // 被参照の従業員を先に消す（employeeRole / employeeSuperiorRole 子行は CASCADE）
+    await prisma.employee.deleteMany({ where: { employeeCd: { in: TEST_EMP_CDS } } });
     await prisma.role.updateMany({
       where: { roleCd: { in: TEST_ROLE_CDS } },
       data: { superiorRoleId: null },
@@ -37,6 +44,7 @@ describe("PrismaRoleRepository", () => {
 
     const kachou = await prisma.position.findUnique({ where: { positionCd: "POS001" } });
     kachouPositionId = kachou!.id;
+    deptId = await ensureTestDepartment();
 
     repository = new PrismaRoleRepository();
   });
@@ -136,6 +144,50 @@ describe("PrismaRoleRepository", () => {
 
       const found = await repository.findById(role.id);
       expect(found).toBeNull();
+    });
+  });
+
+  describe("isInUse（被参照チェック）", () => {
+    it("課員の上位役割として参照中の役割は使用中扱い（EmployeeSuperiorRole）", async () => {
+      const role = buildRole(TEST_ROLE_CDS[0], "課員の上位役割");
+      await repository.insert(role);
+      // 課員（担当役割なし）が明示上位役割として当該役割を参照する
+      await prisma.employee.create({
+        data: {
+          id: generateId(),
+          employeeCd: TEST_EMP_CDS[0],
+          email: "superior-ref@test.example.com",
+          name: "上位役割参照課員",
+          departmentId: deptId,
+          superiorRole: { create: { roleId: role.id.value } },
+        },
+      });
+
+      expect(await repository.isInUse(role.id)).toBe(true);
+    });
+
+    it("担当役割として参照中の役割は使用中扱い（EmployeeRole）", async () => {
+      const role = buildRole(TEST_ROLE_CDS[0], "担当役割");
+      await repository.insert(role);
+      await prisma.employee.create({
+        data: {
+          id: generateId(),
+          employeeCd: TEST_EMP_CDS[1],
+          email: "assigned-ref@test.example.com",
+          name: "担当役割参照従業員",
+          departmentId: deptId,
+          employeeRoles: { create: [{ roleId: role.id.value }] },
+        },
+      });
+
+      expect(await repository.isInUse(role.id)).toBe(true);
+    });
+
+    it("どこからも参照されていない役割は未使用扱い", async () => {
+      const role = buildRole(TEST_ROLE_CDS[0], "未参照役割");
+      await repository.insert(role);
+
+      expect(await repository.isInUse(role.id)).toBe(false);
     });
   });
 });
