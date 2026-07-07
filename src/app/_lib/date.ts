@@ -22,3 +22,13 @@ export function toDateInputValue(date: Date): string {
 export function fromDateInputValue(value: string): Date {
   return new Date(`${value}T00:00:00+09:00`);
 }
+
+/**
+ * "yyyy-mm-dd" を JST 当日終端 `23:59:59.999`（inclusive 上限）の instant として解釈する。
+ *
+ * 申請日レンジ検索の上限に使う。BE の `appliedTo` は「この日時以前（≤・inclusive）」ゆえ、
+ * 半開区間の翌日 0 時ではなく当日終端を上限とする（`fromDateInputValue` の下限と対になる）。
+ */
+export function toEndOfDayInstant(value: string): Date {
+  return new Date(`${value}T23:59:59.999+09:00`);
+}
