@@ -26,22 +26,31 @@ export default async function EstimateApplicationListPage({
   await verifySession();
   const params = await searchParams;
 
+  // 各検索パラメータの生値を一度だけ抽出し、criteria と defaultSearchValues の両方で共有する
+  // （キー名の単一ソース化。二重抽出による片側修正漏れを防ぐ）。
   // 申請日レンジ：from は JST 0 時 inclusive、to は JST 当日終端 inclusive（BE の appliedTo ≤ に合わせる）。
+  const estimateNumberRaw = getStringParam(params, "estimateNumber");
+  const customerNameRaw = getStringParam(params, "customerName");
+  const deliveryLocationNameRaw = getStringParam(params, "deliveryLocationName");
+  const applicantNameRaw = getStringParam(params, "applicantName");
+  const stateRaw = getArrayParam(params, "state");
+  const awaitingRoleIdRaw = getStringParam(params, "awaitingRoleId");
   const appliedFromRaw = getStringParam(params, "appliedFrom");
   const appliedToRaw = getStringParam(params, "appliedTo");
+  const includeInactive = getStringParam(params, "includeInactive") === "true";
 
   // 不変事実＝文字列、state＝配列パラメータ、日付＝境界変換、includeInactive＝checkbox。
   // 空文字は getStringParam / getArrayParam が undefined 化し、未指定としてスキップされる。
   const criteria: EstimateApplicationSearchCriteria = {
-    estimateNumber: getStringParam(params, "estimateNumber"),
-    customerName: getStringParam(params, "customerName"),
-    deliveryLocationName: getStringParam(params, "deliveryLocationName"),
-    applicantName: getStringParam(params, "applicantName"),
-    state: getArrayParam(params, "state") as VariationApplicationStateCode[] | undefined,
-    awaitingRoleId: getStringParam(params, "awaitingRoleId"),
+    estimateNumber: estimateNumberRaw,
+    customerName: customerNameRaw,
+    deliveryLocationName: deliveryLocationNameRaw,
+    applicantName: applicantNameRaw,
+    state: stateRaw as VariationApplicationStateCode[] | undefined,
+    awaitingRoleId: awaitingRoleIdRaw,
     appliedFrom: appliedFromRaw ? fromDateInputValue(appliedFromRaw) : undefined,
     appliedTo: appliedToRaw ? toEndOfDayInstant(appliedToRaw) : undefined,
-    includeInactive: getStringParam(params, "includeInactive") === "true",
+    includeInactive,
   };
 
   // 一覧本体と、承認待ち役割 select の選択肢（全役割）を並列解決する。
@@ -79,15 +88,15 @@ export default async function EstimateApplicationListPage({
   ];
 
   const defaultSearchValues: Record<string, string | string[]> = {
-    estimateNumber: getStringParam(params, "estimateNumber") ?? "",
-    customerName: getStringParam(params, "customerName") ?? "",
-    deliveryLocationName: getStringParam(params, "deliveryLocationName") ?? "",
-    applicantName: getStringParam(params, "applicantName") ?? "",
-    state: getArrayParam(params, "state") ?? [],
-    awaitingRoleId: getStringParam(params, "awaitingRoleId") ?? "",
+    estimateNumber: estimateNumberRaw ?? "",
+    customerName: customerNameRaw ?? "",
+    deliveryLocationName: deliveryLocationNameRaw ?? "",
+    applicantName: applicantNameRaw ?? "",
+    state: stateRaw ?? [],
+    awaitingRoleId: awaitingRoleIdRaw ?? "",
     appliedFrom: appliedFromRaw ?? "",
     appliedTo: appliedToRaw ?? "",
-    includeInactive: getStringParam(params, "includeInactive") === "true" ? "true" : "",
+    includeInactive: includeInactive ? "true" : "",
   };
 
   return (
