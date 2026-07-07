@@ -30,6 +30,12 @@ Step 1〜6 時点の逸脱を記録する（半分到達時点での中間記録
 - **実際の実装**: isInUse の変更で `PrismaRoleRepository` の逆import コーンが広がり、pre-commit の `vitest related` が role/employee 系17ファイル113テストを**並列実行**するようになった結果、`CreateEmployeeCommand` テストの `ROLE953` が `SearchRolesQuery` テストと、`explicitSuperiorRoleId`（Step 7）テストの `ROLE961/962` が `DeleteRoleCommand` テストと roleCd を共有していた潜在バグが顕在化した（相手の cleanup の `deleteMany(roleCd IN ...)` が自テストの beforeEach で作った役割を消し、FK 違反・NotFound の非決定的失敗になる）。未使用コード（ROLE944 / ROLE963,964）へ張り替える独立コミット `test:` を Step 9 の前に同梱した。
 - **逸脱の理由**: #327 のファイル別プレフィックス分離規約に反する既存の衝突を、コーン拡大が暴いた。ロジックは正しく、テスト分離のみの修正のため実装コミットと分離した。なお `SearchRolesQuery` と `PrismaEmployeeRepository` の `ROLE951/952` 共有は #567 と無関係な既存衝突のため今回は触れず、PR で言及するに留める。
 
+## 逸脱5: Step 11 — seed-e2e の見積申請系 cleanup 順序を追加是正
+
+- **元の計画**: Step 11 の対象は seed / seed-e2e の上位役割移行のみ。
+- **実際の実装**: seed-e2e を再実行したところ `estimate.deleteMany()` が `estimate_applications_variation_id_fkey` で P2003（FK違反）となった。#572 で追加された見積申請系テーブル（estimate_applications・estimate_approval_steps・estimate_step_approvals/rejections・estimate_application_withdrawals・estimate_approval_exemptions／全 FK Restrict）が cleanup ブロックに含まれておらず、既存データが残る再シードで estimate 削除を阻んでいた。estimate 削除前に子→親順で deleteMany する行を追加した。
+- **逸脱の理由**: #567 と無関係な #572 混入バグだが、Step 11 の seed 検証と Step 12 の `pnpm e2e`（seed→playwright を繰り返す）を回すために不可欠。同じ cleanup ブロックの1箇所修正で影響が閉じるため、seed 移行コミットに同梱した。
+
 ---
 
 ## 計画に含まれるが未着手（Step 7 以降・逸脱ではない）
