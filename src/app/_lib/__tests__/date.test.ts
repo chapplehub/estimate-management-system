@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fromDateInputValue, toDateInputValue } from "../date";
+import { fromDateInputValue, toDateInputValue, toEndOfDayInstant } from "@/app/_lib/date";
 
 describe("toDateInputValue（JST 固定で yyyy-mm-dd 整形）", () => {
   it("JST 0 時の Date をその暦日に整形する", () => {
@@ -22,5 +22,13 @@ describe("fromDateInputValue（yyyy-mm-dd を JST 0 時として解釈）", () =
   it("toDateInputValue と往復しても JST 暦日が保たれる", () => {
     const original = new Date("2025-03-31T15:30:00Z"); // JST 2025-04-01
     expect(toDateInputValue(fromDateInputValue(toDateInputValue(original)))).toBe("2025-04-01");
+  });
+});
+
+describe("toEndOfDayInstant（yyyy-mm-dd を JST 当日終端 inclusive の instant に）", () => {
+  it("暦日を JST 23:59:59.999 の instant として解釈する（BE の appliedTo ≤ に合わせた inclusive 上限）", () => {
+    expect(toEndOfDayInstant("2025-04-01").getTime()).toBe(
+      new Date("2025-04-01T23:59:59.999+09:00").getTime()
+    );
   });
 });

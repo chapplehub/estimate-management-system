@@ -12,6 +12,7 @@ import { PrismaClient } from "../generated/prisma/client";
 import type { UserRole } from "../src/server/shared/auth/types";
 import { USER_ROLES } from "../src/server/shared/auth/types";
 import { seedEstimates } from "./seed-estimates";
+import { seedEstimateApplications } from "./seed-estimate-applications";
 
 config({ path: ".env.test" });
 
@@ -1720,6 +1721,10 @@ async function main() {
   // 見積（#330 / S2 閲覧画面のデモ・E2E 用）。マスタ作成後に参照して作る。
   const estimateCount = await seedEstimates(prisma);
   console.log(`Created ${estimateCount} estimates`);
+
+  // 見積申請一覧（#572）の代表フィクスチャ（PENDING/APPROVED/EXEMPTED/WITHDRAWN+INACTIVE）。
+  const applicationEstimateCount = await seedEstimateApplications(prisma);
+  console.log(`Created ${applicationEstimateCount} estimate applications`);
 
   console.log("");
   console.log("=".repeat(50));

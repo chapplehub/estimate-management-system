@@ -8,6 +8,11 @@ const navigationItems = [
     description: "見積の一覧表示・閲覧を行います。",
   },
   {
+    href: "/estimate-applications",
+    title: "見積申請一覧",
+    description: "見積申請の全社横断での参照・検索を行います。",
+  },
+  {
     href: "/employees",
     title: "従業員管理",
     description: "従業員の一覧表示、登録、編集、削除を行います。",

@@ -28,7 +28,7 @@ import type { ActionResult } from "@shared/types/ActionResult";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { handleCommandError } from "../../_shared/error-handler";
-import { fromDateInputValue } from "../_shared/date";
+import { fromDateInputValue } from "@/app/_lib/date";
 import { taxRateMismatchFormErrors } from "../_shared/tax-rate-format";
 import { duplicateEstimateSchema } from "./duplicateSchema";
 import { updateEstimateHeaderSchema } from "./schema";

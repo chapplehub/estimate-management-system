@@ -75,6 +75,12 @@ export function ModalSearchForm({ fields, onSearch, isLoading }: Props) {
               );
             }
 
+            // ModalSearchForm は text/select のみ対応（multiselect/date/checkbox は
+            // 共有 SearchForm 側の機能で、モーダル検索は使わない）。
+            if (field.type !== "select") {
+              return null;
+            }
+
             return (
               <div key={field.key} className="w-[140px]">
                 <label

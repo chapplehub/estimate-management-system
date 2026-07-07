@@ -1,0 +1,232 @@
+/**
+ * 見積申請一覧（/estimate-applications・#572）E2E 用の代表フィクスチャ。
+ *
+ * 状態は保存しない（ADR-0058）ため、代表状態を「終端イベント行の存在」で作り込む:
+ * - PENDING: 申請＋承認ステップのみ（承認/差戻/取下なし）。承認待ち役割が既知（営業課長）。
+ * - APPROVED: 申請＋全ステップに承認行。
+ * - EXEMPTED: 承認免除集約（申請なし・免除者=申請者列の出自）。
+ * - WITHDRAWN（かつ INACTIVE）: 申請＋取下行。バリエーションを無効化し includeInactive の検証台にする。
+ *
+ * 機構は Factory+Mapper+seed client（repository も UI も使えない）。5値状態の導出網羅は単体
+ * （SearchEstimateApplicationsQuery.test.ts）で既済のため、ここは FE 配線の観測に足る代表数に絞る。
+ * 申請日時（createdAt）は today 相対で数日ずらし、申請日レンジ検索の検証に耐える形にする
+ * （ADR-20260629-3x5）。Mapper は createdAt を DB 既定に委ねて省くため、seed 側で明示上書きする。
+ */
+import type { PrismaClient } from "../generated/prisma/client";
+import { ProductCategory } from "../generated/prisma/enums";
+import { EstimateFactory } from "@subdomains/estimate/domain/entities/EstimateFactory";
+import {
+  EstimateApplication,
+  EstimateApprovalExemption,
+} from "@subdomains/estimate/domain/entities";
+import { EstimateMapper } from "@subdomains/estimate/infrastructure/mappers/EstimateMapper";
+import { EstimateApplicationMapper } from "@subdomains/estimate/infrastructure/mappers/approval/EstimateApplicationMapper";
+import { EstimateApprovalExemptionMapper } from "@subdomains/estimate/infrastructure/mappers/approval/EstimateApprovalExemptionMapper";
+import { ApprovalChainPlan } from "@subdomains/estimate/domain/values/approval/ApprovalChainPlan";
+import { EstimateExemptionReason } from "@subdomains/estimate/domain/values/approval/EstimateExemptionReason";
+import { CustomerId } from "@subdomains/customer/domain/values/CustomerId";
+import { DeliveryLocationId } from "@subdomains/delivery-location/domain/values/DeliveryLocationId";
+import { DepartmentId } from "@subdomains/department/domain/values/DepartmentId";
+import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
+import { PositionId } from "@subdomains/position/domain/values/PositionId";
+import { ProductId } from "@subdomains/product/domain/values/ProductId";
+import { RoleId } from "@subdomains/role/domain/values/RoleId";
+import { DiscountRate } from "@subdomains/estimate/domain/values/DiscountRate";
+import { EstimateNumber } from "@subdomains/estimate/domain/values/EstimateNumber";
+import { ItemName } from "@subdomains/estimate/domain/values/ItemName";
+import { Money } from "@server/shared/domain/values/Money";
+import { Quantity } from "@subdomains/estimate/domain/values/Quantity";
+import { SubmissionType } from "@subdomains/estimate/domain/values/SubmissionType";
+import { TaxRate } from "@subdomains/estimate/domain/values/TaxRate";
+import { TaxRoundingType } from "@subdomains/estimate/domain/values/TaxRoundingType";
+import { Unit } from "@subdomains/estimate/domain/values/Unit";
+
+/** 申請一覧 E2E 用のシード見積番号（05011〜・既存 05001〜010 と非重複）。 */
+export const SEED_APPLICATION_ESTIMATE_NUMBERS = {
+  /** PENDING（V1 ACTIVE・承認待ち役割＝営業課長）。 */
+  pending: "N9905011",
+  /** APPROVED（V1 ACTIVE・全ステップ承認済）。 */
+  approved: "N9905012",
+  /** EXEMPTED（V1 ACTIVE・承認免除）。 */
+  exempted: "N9905013",
+  /** WITHDRAWN かつ INACTIVE（V1 無効・取下済＝includeInactive の検証台）。 */
+  withdrawnInactive: "N9905014",
+} as const;
+
+const TAX_RATE = new TaxRate(0.1);
+const TAX_ROUNDING = TaxRoundingType.ROUND_DOWN;
+const ESTIMATE_DATE = new Date("2026-04-01T00:00:00.000Z");
+const DEADLINE = new Date("2026-04-30T00:00:00.000Z");
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+type ApplicationSeedFk = {
+  customerId: string;
+  deliveryLocationId: string;
+  departmentId: string;
+  createdBy: string;
+  productId: string;
+  applicantId: string;
+  approverId: string;
+  exemptorId: string;
+  awaitingRoleId: string;
+  goalPositionId: string;
+};
+
+/** 申請対象の単一バリエーション見積を組み立てる（NEW・CUSTOMER・1 明細）。 */
+function buildEstimate(fk: ApplicationSeedFk, estimateNumber: string, amount: number) {
+  return EstimateFactory.create({
+    estimateDate: ESTIMATE_DATE,
+    deadline: DEADLINE,
+    customerId: new CustomerId(fk.customerId),
+    deliveryLocationId: new DeliveryLocationId(fk.deliveryLocationId),
+    taxRate: TAX_RATE,
+    taxRoundingType: TAX_ROUNDING,
+    createdBy: new EmployeeId(fk.createdBy),
+    departmentId: new DepartmentId(fk.departmentId),
+    estimateNumber: EstimateNumber.parse(estimateNumber),
+    variations: [
+      {
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        items: [
+          {
+            productId: new ProductId(fk.productId),
+            sortOrder: 1,
+            itemName: new ItemName("申請対象明細"),
+            quantity: new Quantity(1),
+            unit: new Unit("個"),
+            unitPrice: Money.fromMajorUnits(amount),
+            discountRate: new DiscountRate(1.0),
+            revisedDeliveryPrice: null,
+          },
+        ],
+      },
+    ],
+  });
+}
+
+/** 単一ステップの承認チェーン計画（承認待ち役割＝営業課長・ゴール役職は表示に出ない）。 */
+function singleStepPlan(fk: ApplicationSeedFk): ApprovalChainPlan {
+  return ApprovalChainPlan.create(new PositionId(fk.goalPositionId), [
+    new RoleId(fk.awaitingRoleId),
+  ]);
+}
+
+/**
+ * 既存の作成済みマスタ（納品先・部署・個別商品・役割・役職・従業員）を参照して、代表状態を持つ
+ * 見積申請フィクスチャを投入する。FK は E2E シードの決定的コード（EMP000003〜5・営業課長）に結び、
+ * 申請者名・承認待ち役割を E2E で弁別・断定できるようにする。
+ */
+export async function seedEstimateApplications(prisma: PrismaClient): Promise<number> {
+  const deliveryLocation = await prisma.deliveryLocation.findFirst({ orderBy: { code: "asc" } });
+  const department = await prisma.department.findFirst({ orderBy: { departmentCd: "asc" } });
+  const product = await prisma.product.findFirst({
+    where: { category: ProductCategory.INDIVIDUAL, isActive: true },
+    orderBy: { code: "asc" },
+  });
+  // 申請者・承認者・免除者は弁別可能な既知従業員。取下は本人性ガードのため申請者と一致させる。
+  const applicant = await prisma.employee.findFirst({ where: { employeeCd: "EMP000003" } }); // 佐藤 太郎
+  const approver = await prisma.employee.findFirst({ where: { employeeCd: "EMP000004" } }); // 鈴木 次郎
+  const exemptor = await prisma.employee.findFirst({ where: { employeeCd: "EMP000005" } }); // 高橋 三郎
+  const awaitingRole = await prisma.role.findFirst({ where: { name: "営業課長" } });
+  const goalPosition = await prisma.position.findFirst({ orderBy: { positionCd: "asc" } });
+
+  if (
+    !deliveryLocation ||
+    !department ||
+    !product ||
+    !applicant ||
+    !approver ||
+    !exemptor ||
+    !awaitingRole ||
+    !goalPosition
+  ) {
+    throw new Error(
+      "seedEstimateApplications: 前提マスタ（納品先・部署・個別商品・EMP000003-5・役割 営業課長・役職）が不足しています"
+    );
+  }
+
+  const fk: ApplicationSeedFk = {
+    customerId: deliveryLocation.customerId,
+    deliveryLocationId: deliveryLocation.id,
+    departmentId: department.id,
+    createdBy: applicant.id,
+    productId: product.id,
+    applicantId: applicant.id,
+    approverId: approver.id,
+    exemptorId: exemptor.id,
+    awaitingRoleId: awaitingRole.id,
+    goalPositionId: goalPosition.id,
+  };
+
+  const now = Date.now();
+  const daysAgo = (n: number): Date => new Date(now - n * DAY_MS);
+
+  // --- PENDING（申請＋ステップのみ・承認待ち役割＝営業課長） ---
+  const pendingEstimate = buildEstimate(fk, SEED_APPLICATION_ESTIMATE_NUMBERS.pending, 50000);
+  await prisma.estimate.create({ data: EstimateMapper.toEstimateCreateInput(pendingEstimate) });
+  const pendingApp = EstimateApplication.create({
+    variationId: pendingEstimate.variations[0].id,
+    attempt: 1,
+    applicantEmployeeId: new EmployeeId(fk.applicantId),
+    plan: singleStepPlan(fk),
+  });
+  await prisma.estimateApplication.create({
+    data: { ...EstimateApplicationMapper.toCreateInput(pendingApp), createdAt: daysAgo(1) },
+  });
+
+  // --- APPROVED（申請＋全ステップ承認行） ---
+  const approvedEstimate = buildEstimate(fk, SEED_APPLICATION_ESTIMATE_NUMBERS.approved, 80000);
+  await prisma.estimate.create({ data: EstimateMapper.toEstimateCreateInput(approvedEstimate) });
+  const approvedApp = EstimateApplication.create({
+    variationId: approvedEstimate.variations[0].id,
+    attempt: 1,
+    applicantEmployeeId: new EmployeeId(fk.approverId),
+    plan: singleStepPlan(fk),
+  });
+  approvedApp.approve(approvedApp.steps[0].id, new EmployeeId(fk.approverId));
+  await prisma.estimateApplication.create({
+    data: { ...EstimateApplicationMapper.toCreateInput(approvedApp), createdAt: daysAgo(3) },
+  });
+  await prisma.estimateStepApproval.createMany({
+    data: EstimateApplicationMapper.toStepApprovalCreateInputs(approvedApp),
+  });
+
+  // --- EXEMPTED（承認免除・申請なし） ---
+  const exemptedEstimate = buildEstimate(fk, SEED_APPLICATION_ESTIMATE_NUMBERS.exempted, 30000);
+  await prisma.estimate.create({ data: EstimateMapper.toEstimateCreateInput(exemptedEstimate) });
+  const exemption = EstimateApprovalExemption.create(
+    exemptedEstimate.variations[0].id,
+    EstimateExemptionReason.BELOW_THRESHOLD,
+    new EmployeeId(fk.exemptorId)
+  );
+  await prisma.estimateApprovalExemption.create({
+    data: { ...EstimateApprovalExemptionMapper.toCreateInput(exemption), createdAt: daysAgo(5) },
+  });
+
+  // --- WITHDRAWN かつ INACTIVE（申請＋取下行・バリエーション無効化） ---
+  const withdrawnEstimate = buildEstimate(
+    fk,
+    SEED_APPLICATION_ESTIMATE_NUMBERS.withdrawnInactive,
+    60000
+  );
+  withdrawnEstimate.deactivateVariation(withdrawnEstimate.variations[0].id);
+  await prisma.estimate.create({ data: EstimateMapper.toEstimateCreateInput(withdrawnEstimate) });
+  const withdrawnApp = EstimateApplication.create({
+    variationId: withdrawnEstimate.variations[0].id,
+    attempt: 1,
+    applicantEmployeeId: new EmployeeId(fk.applicantId),
+    plan: singleStepPlan(fk),
+  });
+  withdrawnApp.withdraw(new EmployeeId(fk.applicantId));
+  await prisma.estimateApplication.create({
+    data: { ...EstimateApplicationMapper.toCreateInput(withdrawnApp), createdAt: daysAgo(7) },
+  });
+  const withdrawalInput = EstimateApplicationMapper.toWithdrawalCreateInput(withdrawnApp);
+  if (withdrawalInput) {
+    await prisma.estimateApplicationWithdrawal.create({ data: withdrawalInput });
+  }
+
+  return Object.keys(SEED_APPLICATION_ESTIMATE_NUMBERS).length;
+}
