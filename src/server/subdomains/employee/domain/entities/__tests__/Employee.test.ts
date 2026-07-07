@@ -4,6 +4,7 @@ import { EmployeeName } from "@subdomains/employee/domain/values/EmployeeName";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
 import { DepartmentId } from "@subdomains/department/domain/values/DepartmentId";
 import { RoleId } from "@subdomains/role/domain/values/RoleId";
+import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
 import { describe, expect, it, beforeEach } from "vitest";
 import { Employee } from "../Employee";
 
@@ -63,6 +64,7 @@ describe("Employee エンティティ", () => {
           name,
           departmentId,
           roleId,
+          null,
           createdAt,
           updatedAt
         );
@@ -194,6 +196,89 @@ describe("Employee エンティティ", () => {
     });
   });
 
+  describe("上位役割（承認起点・課員）と不変条件 I1", () => {
+    it("createで課員に明示上位役割を指定できる", () => {
+      const superiorRoleId = RoleId.generate();
+      const employee = Employee.create(employeeCd, email, name, departmentId, null, superiorRoleId);
+
+      expect(employee.assignedRoleId).toBeNull();
+      expect(employee.explicitSuperiorRoleId).toBe(superiorRoleId);
+    });
+
+    it("createで担当役割と明示上位役割を同時指定すると I1 違反で弾く", () => {
+      const superiorRoleId = RoleId.generate();
+
+      expect(() =>
+        Employee.create(employeeCd, email, name, departmentId, roleId, superiorRoleId)
+      ).toThrow(BusinessRuleViolationError);
+    });
+
+    it("changeSuperiorRoleで課員に上位役割を設定できる", () => {
+      const employee = Employee.create(employeeCd, email, name, departmentId);
+      const superiorRoleId = RoleId.generate();
+
+      employee.changeSuperiorRole(superiorRoleId);
+
+      expect(employee.explicitSuperiorRoleId).toBe(superiorRoleId);
+    });
+
+    it("changeSuperiorRole(null)で上位役割を解除できる", () => {
+      const superiorRoleId = RoleId.generate();
+      const employee = Employee.create(employeeCd, email, name, departmentId, null, superiorRoleId);
+
+      employee.changeSuperiorRole(null);
+
+      expect(employee.explicitSuperiorRoleId).toBeNull();
+    });
+
+    it("changeRole(非null)は明示上位役割を自動クリアする（I1）", () => {
+      const superiorRoleId = RoleId.generate();
+      const employee = Employee.create(employeeCd, email, name, departmentId, null, superiorRoleId);
+
+      employee.changeRole(roleId);
+
+      expect(employee.assignedRoleId).toBe(roleId);
+      expect(employee.explicitSuperiorRoleId).toBeNull();
+    });
+
+    it("役割持ちにchangeSuperiorRole(非null)を呼ぶと I1 違反で弾く", () => {
+      const employee = Employee.create(employeeCd, email, name, departmentId, roleId);
+      const superiorRoleId = RoleId.generate();
+
+      expect(() => employee.changeSuperiorRole(superiorRoleId)).toThrow(BusinessRuleViolationError);
+    });
+
+    it("reconstructで課員の明示上位役割を復元できる", () => {
+      const id = EmployeeId.generate();
+      const superiorRoleId = RoleId.generate();
+
+      const employee = Employee.reconstruct(
+        id,
+        employeeCd,
+        email,
+        name,
+        departmentId,
+        null,
+        superiorRoleId,
+        new Date("2025-01-01"),
+        new Date("2025-01-02")
+      );
+
+      expect(employee.assignedRoleId).toBeNull();
+      expect(employee.explicitSuperiorRoleId).toBe(superiorRoleId);
+    });
+
+    it("changeSuperiorRoleで更新日時が更新される", () => {
+      const employee = Employee.create(employeeCd, email, name, departmentId);
+      const oldUpdatedAt = employee.updatedAt;
+
+      setTimeout(() => {
+        employee.changeSuperiorRole(RoleId.generate());
+        expect(employee.updatedAt.getTime()).toBeGreaterThanOrEqual(oldUpdatedAt.getTime());
+      }, 10);
+    });
+  });
+
   describe("ゲッター", () => {
     it("すべてのフィールドにアクセスできる", () => {
       const id = EmployeeId.generate();
@@ -207,6 +292,7 @@ describe("Employee エンティティ", () => {
         name,
         departmentId,
         roleId,
+        null,
         createdAt,
         updatedAt
       );

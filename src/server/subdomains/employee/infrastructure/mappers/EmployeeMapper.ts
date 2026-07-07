@@ -41,6 +41,10 @@ export class EmployeeMapper {
         ? new RoleId(prismaEmployee.employeeRoles[0].roleId)
         : null;
 
+    // 課員の明示上位役割は Step 5 で employee_superior_roles 行から復元する。
+    // 本ステップ（集約シグネチャ変更）では整合のため一律 null を渡す。
+    const explicitSuperiorRoleId = null;
+
     return Employee.reconstruct(
       new EmployeeId(prismaEmployee.id),
       employeeCd,
@@ -48,6 +52,7 @@ export class EmployeeMapper {
       name,
       new DepartmentId(prismaEmployee.departmentId),
       assignedRoleId,
+      explicitSuperiorRoleId,
       prismaEmployee.createdAt,
       prismaEmployee.updatedAt
     );
