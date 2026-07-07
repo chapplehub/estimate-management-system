@@ -24,6 +24,12 @@ Step 1〜6 時点の逸脱を記録する（半分到達時点での中間記録
 - **実際の実装**: 承認チェーンの**統合テスト**2件 `SubmitApplicationCommand.test.ts` / `PreviewApplicationQuery.test.ts` が、申請操作者（課員）の承認起点を廃止した `employees.superior_role_id` 列へ直接書き込んでいた。列削除で壊れるため、明示上位役割行方式（`superiorRole: { create/upsert }`）へフィクスチャを追随させた。
 - **逸脱の理由**: ADR が言及した「E2E」ではなく、課員を申請操作者に使う**統合テスト**が列に依存していた見落とし。導出のソース変更（列→明示行）に対して消費側フィクスチャの追随は不可避で、Step 6（導出の実装）と同一コミットに含めるのが自然。
 
+## 逸脱4: Step 9 — テストの役割コード衝突を解消する追加コミットを同梱
+
+- **元の計画**: Step 9 の対象は `PrismaRoleRepository.ts`（isInUse 張り替え）とそのテストのみ。
+- **実際の実装**: isInUse の変更で `PrismaRoleRepository` の逆import コーンが広がり、pre-commit の `vitest related` が role/employee 系17ファイル113テストを**並列実行**するようになった結果、`CreateEmployeeCommand` テストの `ROLE953` が `SearchRolesQuery` テストと、`explicitSuperiorRoleId`（Step 7）テストの `ROLE961/962` が `DeleteRoleCommand` テストと roleCd を共有していた潜在バグが顕在化した（相手の cleanup の `deleteMany(roleCd IN ...)` が自テストの beforeEach で作った役割を消し、FK 違反・NotFound の非決定的失敗になる）。未使用コード（ROLE944 / ROLE963,964）へ張り替える独立コミット `test:` を Step 9 の前に同梱した。
+- **逸脱の理由**: #327 のファイル別プレフィックス分離規約に反する既存の衝突を、コーン拡大が暴いた。ロジックは正しく、テスト分離のみの修正のため実装コミットと分離した。なお `SearchRolesQuery` と `PrismaEmployeeRepository` の `ROLE951/952` 共有は #567 と無関係な既存衝突のため今回は触れず、PR で言及するに留める。
+
 ---
 
 ## 計画に含まれるが未着手（Step 7 以降・逸脱ではない）
