@@ -28,4 +28,18 @@ export class PrismaPositionRepository implements PositionRepository {
 
     return position !== null;
   }
+
+  async isLeafPosition(positionId: PositionId): Promise<boolean> {
+    // 存在しない役職は葉として扱わない（誤って課長級判定を通さないため）
+    if (!(await this.exists(positionId))) {
+      return false;
+    }
+
+    // 「自分を上位役職に持つ行」＝下位役職。1件でもあれば葉ではない
+    const subordinateCount = await prisma.position.count({
+      where: { superiorPositionId: positionId.value },
+    });
+
+    return subordinateCount === 0;
+  }
 }
