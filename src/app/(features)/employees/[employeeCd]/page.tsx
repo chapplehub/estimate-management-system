@@ -25,18 +25,19 @@ export default async function Page({ params }: { params: Promise<{ employeeCd: s
   const canUpdate = isAdmin(session) || isOwner(session, employee.id);
   const canDelete = isAdmin(session);
 
-  // 担当役割の選択肢を供給（A2・roleCd 昇順）
+  // 担当役割の選択肢供給（A2・roleCd 昇順）と、承認者不在ワーニング用の唯一メンバー判定
+  // （#565 isSoleMember）は互いに独立した読み取りクエリなので並列に発行する。
+  // 担当役割なし（assignedRoleId==null）なら isSoleMember はクエリせず false。
   const roleQueryService = new PrismaRoleQueryService();
-  const roles = await roleQueryService.findAll({
-    orderBy: { field: "roleCd", direction: "asc" },
-  });
+  const [roles, isSoleMemberOfCurrentRole] = await Promise.all([
+    roleQueryService.findAll({
+      orderBy: { field: "roleCd", direction: "asc" },
+    }),
+    employee.assignedRoleId
+      ? roleQueryService.isSoleMember(employee.assignedRoleId, employee.id)
+      : Promise.resolve(false),
+  ]);
   const roleOptions = roles.map((role) => ({ id: role.id, name: role.name }));
-
-  // 承認者不在ワーニング用に、現在の担当役割で本人が唯一メンバーかを1回スナップショット（#565 isSoleMember）。
-  // 担当役割なし（assignedRoleId==null）ならクエリせず false。
-  const isSoleMemberOfCurrentRole = employee.assignedRoleId
-    ? await roleQueryService.isSoleMember(employee.assignedRoleId, employee.id)
-    : false;
 
   return (
     <div className="container mx-auto p-8">
