@@ -16,6 +16,8 @@ type Employee = {
   role: UserRole | null;
   /** 現在の担当役割ID（EmployeeRole から導出、役割なし＝課員は null）。編集画面の preselect に用いる */
   assignedRoleId: string | null;
+  /** 現在の明示上位役割ID（課員のみ・役割持ちは null）。編集画面の preselect に用いる */
+  explicitSuperiorRoleId: string | null;
   /** 楽観ロックトークン（ADR-0039）。編集画面表示時の値をフォームで往復させる */
   version: number;
 };
@@ -27,6 +29,8 @@ type Props = {
   departmentSelectSlot: React.ReactNode;
   /** 担当役割の選択肢（page.tsx が findAll で取得し roleCd 昇順で供給） */
   roleOptions: { id: string; name: string }[];
+  /** 課員の上位役割の選択肢（課長級のみ・page.tsx が葉ティア絞り込みで供給） */
+  superiorRoleOptions: { id: string; name: string }[];
   /**
    * 現在の担当役割において本人が唯一のメンバーか（page.tsx で1回スナップショット・#565 isSoleMember）。
    * 担当役割なし（assignedRoleId==null）のときは false。承認者不在ワーニングの反応表示に使う。
@@ -39,6 +43,7 @@ export function EmployeeUpdateForm({
   canUpdate,
   departmentSelectSlot,
   roleOptions,
+  superiorRoleOptions,
   isSoleMemberOfCurrentRole,
 }: Props) {
   // LEARN: bind()でemployeeCdを事前にバインド(server-action-bind-vs-formdata.md)
@@ -54,9 +59,15 @@ export function EmployeeUpdateForm({
       role: employee.role ?? USER_ROLES.USER,
       // 現在の担当役割を preselect。null（役割なし）は空文字で解除選択にマップ
       roleId: employee.assignedRoleId ?? "",
+      // 現在の明示上位役割を preselect（課員のみ・null は空文字で未設定にマップ）
+      superiorRoleId: employee.explicitSuperiorRoleId ?? "",
       version: String(employee.version),
     },
   });
+
+  // 担当役割の有無で上位役割 UI を切り替える（課員＝担当役割なしのときだけ明示）。
+  // 選択済みなら上位役割セレクトをアンマウントして FormData に載せない（作成フォームと同流儀）。
+  const isKain = !fields.roleId.value;
 
   // 承認者不在ワーニングの反応判定（非ブロッキング）:
   // 本人が現在の担当役割の唯一メンバーで、かつセレクトの値が現在値から変わった（変更 or 解除）とき表示。
@@ -203,6 +214,55 @@ export function EmployeeUpdateForm({
             </div>
           )}
         </div>
+
+        {/* 上位役割（承認起点・ADR-20260707-k4e）。担当役割の有無でアンマウント制御する。
+            課員のときだけ課長級セレクトを描画。役割持ちは導出の注記に切替え、セレクトは
+            DOM から外して FormData に載せない（作成フォームと同流儀）。 */}
+        {isKain ? (
+          <div>
+            <label
+              htmlFor={fields.superiorRoleId.id}
+              className="block text-gray-700 text-sm font-bold mb-2"
+            >
+              上位役割
+            </label>
+            <select
+              {...getSelectProps(fields.superiorRoleId)}
+              disabled={isPending || !canUpdate}
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline disabled:bg-gray-100"
+            >
+              <option value="">（上位役割なし）</option>
+              {superiorRoleOptions.map((role) => (
+                <option key={role.id} value={role.id}>
+                  {role.name}
+                </option>
+              ))}
+            </select>
+            {fields.superiorRoleId.errors && (
+              <p className="text-red-500 text-xs mt-1" id={fields.superiorRoleId.errorId}>
+                {fields.superiorRoleId.errors[0]}
+              </p>
+            )}
+            {/* 上位役割未設定は更新できるが申請できない旨の非ブロッキング警告（role="status"） */}
+            {!fields.superiorRoleId.value && (
+              <div
+                role="status"
+                aria-live="polite"
+                className="mt-2 rounded border border-yellow-400 bg-yellow-50 px-4 py-3 text-sm text-yellow-800"
+              >
+                ⚠️
+                上位役割が未設定です。このまま更新できますが、上位役割を設定するまでこの従業員は見積を申請できません。
+              </div>
+            )}
+          </div>
+        ) : (
+          <div>
+            <p className="block text-gray-700 text-sm font-bold mb-2">上位役割</p>
+            <p className="text-gray-600 text-sm" role="note">
+              担当役割が設定されているため、上位役割は担当役割から自動的に導出されます。
+            </p>
+          </div>
+        )}
 
         {canUpdate && (
           <div className="flex gap-4">
