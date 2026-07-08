@@ -16,9 +16,10 @@
  * | 04x | RejectStepCommand.test.ts                         | N9907040-043 |
  * | 05x | GetVariationApplicationStatesQuery.test.ts        | N9907050-058 |
  * | 06x | SearchEstimateApplicationsQuery.test.ts           | N9907060-069 |
+ * | 07x | PrismaEstimateApplicationDetailQueryService.test.ts | N9907070-079 |
  *
  * ## 帯を追加する手順
- * 次の空き 0x 帯（現状 06x 以降）に新しい所有者キーを追加し、値の見積番号を採番する。
+ * 次の空き 0x 帯（現状 07x 以降）に新しい所有者キーを追加し、値の見積番号を採番する。
  * 既存帯の番号は変更しない。追加後にガードテストが一意性を検証する。
  */
 export const APPROVAL_TEST_BANDS = {
@@ -83,5 +84,14 @@ export const APPROVAL_TEST_BANDS = {
     awaiting: "N9907067",
     inactive: "N9907068",
     invariant: "N9907069",
+  },
+  // 07x: 見積申請詳細 参照クエリ（#573）
+  applicationDetail: {
+    pending: "N9907070",
+    rejectedResubmit: "N9907071",
+    approved: "N9907072",
+    withdrawn: "N9907073",
+    exempted: "N9907074",
+    missing: "N9907075",
   },
 } as const;
