@@ -32,7 +32,8 @@ export type ApplicationDetailSummaryView = {
   finalTotal: number;
   /**
    * バリエーション申請状態（バッジ表示用）。`code` は VO 単一ソースの 6 値（ADR-0069）、
-   * `label` は VO が持つ正準文言。詳細は申請の有無に関わらず開けるため NONE も取り得る。
+   * `label` は VO が持つ正準文言。申請も免除も無い（NONE 相当の）バリエーションは
+   * findDetail が NotFound（null）を返すため、本 DTO 経由で NONE には到達しない。
    */
   applicationState: {
     code: VariationApplicationStateCode;
