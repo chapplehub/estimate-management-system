@@ -32,6 +32,11 @@
 ### vitest の env 読み込み切り替え
 - 現 `vitest.config.ts` は `config()`（`.env`）を読む。これを `config({ path: ".env.unit" })` に変更し、単体テスト専用 DB を向くようにする（e2e/playwright と同じ考え方）。
 
+### `.env*` ファイルの取り扱い（作業分担）
+- **前提: Claude は `.env` / `.env.test` / `.env.unit` / `.env.example` などの `.env*` ファイルを閲覧・編集できない（権限制約）。**
+- したがって、`.env*` 本体の新規作成・編集は **Claude が中身（キー・値・コメント）を提示し、ユーザがファイルへ反映する**運用とする。Claude はファイルへ直接書き込まない。
+- `.gitignore` / `scripts/unit-setup.ts` / `vitest.config.ts` / `package.json` などの通常ファイルは Claude が編集する（`.env*` 制約の対象外）。
+
 ## ステップ
 
 ### Step 1: 共有マスタ定数の切り出し
@@ -59,12 +64,16 @@
 - コミットメッセージ: `refactor: 開発確認用seedをseed-devへ改名する`
 
 ### Step 4: 単体テスト環境の env・setup スクリプト整備
-- 対象ファイル: `.env.unit.example`（新規）、`.env.unit`（gitignore対象・手元作成）、`scripts/unit-setup.ts`（新規）、`.gitignore`
-- 作業内容:
+- 対象ファイル: `scripts/unit-setup.ts`（新規・Claude作成）、`.gitignore`（Claude編集）／ `.env.unit.example`・`.env.unit`（**ユーザが作成**、Claudeは中身を提示）
+- Claude が行う作業:
   - `scripts/e2e-setup.ts` を雛形に `scripts/unit-setup.ts` を作成（`.env.unit` 読み込み → DB作成 → `prisma migrate deploy` → `seed-unit.ts` 投入）
-  - `.env.unit.example` を用意し、`DATABASE_URL` に単体テスト専用DB名（例: `ems_unit`）を記載
   - `.gitignore` に `.env.unit` を追加（`.env.test` と同様）
-- コミットメッセージ: `feat: 単体テスト用DBのセットアップスクリプトとenv雛形を追加する`
+  - `.env.unit.example` と `.env.unit` に記載すべき内容（`DATABASE_URL` に単体テスト専用DB名。例: `ems_unit`）をユーザへ提示する
+- ユーザが行う作業（`.env*` はClaude不可視のため）:
+  - Claude提示の内容で `.env.unit.example`（コミット対象）を作成
+  - 同内容で手元の `.env.unit`（gitignore対象・非コミット）を作成
+- コミットメッセージ: `feat: 単体テスト用DBのセットアップスクリプトを追加する`
+  - ※ `.env.unit.example` はユーザ作成のため、コミット時に含まれていれば一緒にコミットする（無ければ Claude作成分のみコミットし、example はユーザ側で別途追加）
 
 ### Step 5: vitest 設定と npm scripts の切り替え
 - 対象ファイル: `vitest.config.ts`、`package.json`
@@ -75,8 +84,12 @@
 - コミットメッセージ: `feat: vitestを単体テスト専用DBに向け、test:setupを追加する`
 
 ### Step 6: 動作確認とドキュメント追随
-- 対象ファイル: `CLAUDE.md`（Commands 節）、必要に応じ `.env.example` 系の注記
-- 作業内容:
-  - `pnpm test:setup` → `pnpm test` が新DBで通ることを確認
+- 対象ファイル: `CLAUDE.md`（Commands 節・Claude編集）／ `.env.example` 系の注記（必要なら**ユーザが編集**、Claudeは文面を提示）
+- Claude が行う作業:
+  - `pnpm test:setup` → `pnpm test` が新DBで通ることを確認（`.env.unit` はユーザ作成後に実施）
   - CLAUDE.md の Commands に単体テストDBの初期化手順（`pnpm test:setup`）を追記
+  - `.env.example` 系へ注記が必要な場合は、その文面をユーザへ提示する
+- ユーザが行う作業（`.env*` はClaude不可視のため）:
+  - 手元に `.env.unit` を用意（Step 4 で提示済みの内容）
+  - 必要に応じ Claude提示の文面で `.env.example` 系へ注記を追加
 - コミットメッセージ: `docs: 単体テスト用DBの初期化手順をCLAUDEmdに追記する`
