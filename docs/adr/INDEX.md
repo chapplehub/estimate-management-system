@@ -24,6 +24,7 @@
 | [0068](0068-submit-application-serializes-single-advancing-via-estimate-version-gate-before-insert.md) | 見積申請の「1見積1前進」は見積 version 関門を申請挿入の前段に置いて直列化し、集約またぎトランザクションを張らない | 採用 | 2026-06-23 |
 | [20260626-dee](20260626-dee-close-submit-toctou-window-by-atomic-version-bump-and-insert.md) | 申請 submit の version bump と申請挿入を単一トランザクションで原子化し、兄弟二重前進の TOCTOU 窓を閉じる | 採用 | 2026-06-26 |
 | [20260706-u7z](20260706-u7z-variation-application-state-distinct-vo-not-extend-application-status.md) | バリエーション申請状態を6値の別ドメインVOで表し、`ApplicationStatus`(4値)を拡張しない | 採用 | 2026-07-06 |
+| [20260707-ae2](20260707-ae2-application-detail-operation-flags-composed-in-app-layer.md) | 見積申請詳細の操作可否フラグ(canApprove/canReject/canWithdraw)はapp層で合成し、query serviceは操作者非依存に保つ（承認/差戻可否がroleサブドメインのhasMemberを要するため一覧のようなquery-service完結にできない） | 採用 | 2026-07-07 |
 
 ## インフラストラクチャ（データベース・ID）
 
