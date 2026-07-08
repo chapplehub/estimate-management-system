@@ -87,6 +87,7 @@
 | [0061](0061-unify-variation-operation-guard-as-display-status-progress-lock-passing-through-memo.md) | バリエーション操作ガードを表示ステータス由来の進行ロックに統一しメモを貫通させる | 採用 | 2026-06-19 |
 | [20260624-8f5](20260624-8f5-immutable-temporal-vo-epoch-millis.md) | 不変な時刻概念は epoch ミリ秒保持の不変VOでラップし raw Date を境界で締め出す | 採用 | 2026-06-24 |
 | [20260706-c89](20260706-c89-employee-assigned-role-single-in-app-layer-keep-mn-schema.md) | 従業員の担当役割は多対多スキーマ(EmployeeRole)を維持しつつアプリ層で高々1件に制約する | 採用 | 2026-07-06 |
+| [20260707-k4e](20260707-k4e-employee-superior-role-derive-and-explicit-kachou-tier.md) | 従業員の上位役割は役割持ちを役割の上位役割から導出・課員は課長級を明示とし、明示値のみ EmployeeSuperiorRole へ抽出する | 採用 | 2026-07-07 |
 
 ## ドメイン（価格決定）
 

@@ -23,8 +23,12 @@ describe("PrismaEmployeeRepository", () => {
   let roleBId: string;
 
   async function cleanup() {
-    // 子行（employeeRole）→ 従業員 → 役割 の順で FK 制約を満たしながら削除する。
+    // 子行（employeeRole / employeeSuperiorRole）→ 従業員 → 役割 の順で
+    // FK 制約を満たしながら削除する（従業員削除でも CASCADE されるが明示的に）。
     await prisma.employeeRole.deleteMany({
+      where: { employee: { employeeCd: { in: TEST_EMP_CDS } } },
+    });
+    await prisma.employeeSuperiorRole.deleteMany({
       where: { employee: { employeeCd: { in: TEST_EMP_CDS } } },
     });
     await prisma.employee.deleteMany({ where: { employeeCd: { in: TEST_EMP_CDS } } });
@@ -362,6 +366,113 @@ describe("PrismaEmployeeRepository", () => {
       expect(updated.assignedRoleId).toBeNull();
 
       const rows = await prisma.employeeRole.findMany({
+        where: { employeeId: saved.id.value },
+      });
+      expect(rows).toHaveLength(0);
+    });
+  });
+
+  describe("課員の上位役割の永続化（EmployeeSuperiorRole 行の 0/1 件同期）", () => {
+    it("課員に明示上位役割ありで保存すると行が 1 件作られ、findById で復元される", async () => {
+      const employee = Employee.create(
+        new EmployeeCd("EMP999001"),
+        new MailAddress("sup-insert@example.com"),
+        new EmployeeName("上位役割あり課員"),
+        TEST_DEPT_ID,
+        null,
+        new RoleId(roleAId)
+      );
+
+      const saved = await repository.insert(employee);
+
+      const rows = await prisma.employeeSuperiorRole.findMany({
+        where: { employeeId: saved.id.value },
+      });
+      expect(rows).toHaveLength(1);
+      expect(rows[0].roleId).toBe(roleAId);
+
+      const found = await repository.findById(saved.id);
+      expect(found?.explicitSuperiorRoleId?.value).toBe(roleAId);
+    });
+
+    it("課員に明示上位役割なしで保存すると行は作られず、explicitSuperiorRoleId は null になる", async () => {
+      const employee = Employee.create(
+        new EmployeeCd("EMP999001"),
+        new MailAddress("sup-none@example.com"),
+        new EmployeeName("上位役割なし課員"),
+        TEST_DEPT_ID
+      );
+
+      const saved = await repository.insert(employee);
+
+      const rows = await prisma.employeeSuperiorRole.findMany({
+        where: { employeeId: saved.id.value },
+      });
+      expect(rows).toHaveLength(0);
+
+      const found = await repository.findById(saved.id);
+      expect(found?.explicitSuperiorRoleId).toBeNull();
+    });
+
+    it("役割持ちで保存すると EmployeeSuperiorRole 行は作られない（I1）", async () => {
+      const employee = Employee.create(
+        new EmployeeCd("EMP999001"),
+        new MailAddress("sup-roleholder@example.com"),
+        new EmployeeName("役割持ち従業員"),
+        TEST_DEPT_ID,
+        new RoleId(roleAId)
+      );
+
+      const saved = await repository.insert(employee);
+
+      const rows = await prisma.employeeSuperiorRole.findMany({
+        where: { employeeId: saved.id.value },
+      });
+      expect(rows).toHaveLength(0);
+    });
+
+    it("更新で課員の上位役割を別役割へ置換すると、旧行が消え新行だけが残る", async () => {
+      const saved = await repository.insert(
+        Employee.create(
+          new EmployeeCd("EMP999001"),
+          new MailAddress("sup-replace@example.com"),
+          new EmployeeName("上位役割置換課員"),
+          TEST_DEPT_ID,
+          null,
+          new RoleId(roleAId)
+        )
+      );
+
+      saved.changeSuperiorRole(new RoleId(roleBId));
+      const updated = await repository.update(saved, 1);
+
+      expect(updated.explicitSuperiorRoleId?.value).toBe(roleBId);
+
+      const rows = await prisma.employeeSuperiorRole.findMany({
+        where: { employeeId: saved.id.value },
+      });
+      expect(rows).toHaveLength(1);
+      expect(rows[0].roleId).toBe(roleBId);
+    });
+
+    it("更新で課員の上位役割を解除すると、EmployeeSuperiorRole 行が消える", async () => {
+      const saved = await repository.insert(
+        Employee.create(
+          new EmployeeCd("EMP999001"),
+          new MailAddress("sup-clear@example.com"),
+          new EmployeeName("上位役割解除課員"),
+          TEST_DEPT_ID,
+          null,
+          new RoleId(roleAId)
+        )
+      );
+
+      saved.changeSuperiorRole(null);
+      const updated = await repository.update(saved, 1);
+
+      expect(updated.explicitSuperiorRoleId).toBeNull();
+
+      const rows = await prisma.employeeSuperiorRole.findMany({
         where: { employeeId: saved.id.value },
       });
       expect(rows).toHaveLength(0);

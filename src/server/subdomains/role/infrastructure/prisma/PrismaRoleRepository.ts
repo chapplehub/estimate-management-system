@@ -103,9 +103,11 @@ export class PrismaRoleRepository implements RoleRepository {
   }
 
   async isInUse(roleId: RoleId): Promise<boolean> {
+    // 役割の被参照は二源: 担当役割（EmployeeRole）と課員の明示上位役割（EmployeeSuperiorRole）。
+    // 旧 employees.superior_role_id 列は子表 EmployeeSuperiorRole へ抽出済み（ADR-20260707-k4e）。
     const [employeeRoleCount, employeeSuperiorCount] = await Promise.all([
       prisma.employeeRole.count({ where: { roleId: roleId.value } }),
-      prisma.employee.count({ where: { superiorRoleId: roleId.value } }),
+      prisma.employeeSuperiorRole.count({ where: { roleId: roleId.value } }),
     ]);
 
     return employeeRoleCount > 0 || employeeSuperiorCount > 0;

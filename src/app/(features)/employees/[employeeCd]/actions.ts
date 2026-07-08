@@ -33,7 +33,7 @@ export async function updateEmployee(employeeCd: string, prevState: unknown, for
     return submission.reply();
   }
 
-  const { name, email, role, departmentId, version, roleId } = submission.value;
+  const { name, email, role, departmentId, version, roleId, superiorRoleId } = submission.value;
 
   // employeeCdからidを取得（version は再取得値ではなくフォーム由来の値を使う。
   // 再取得値を使うと常に最新 version でチェックが素通りし、編集ウィンドウを守れない / ADR-0039）
@@ -62,6 +62,7 @@ export async function updateEmployee(employeeCd: string, prevState: unknown, for
       departmentId,
       role,
       roleId,
+      superiorRoleId,
       expectedVersion: version,
     });
 

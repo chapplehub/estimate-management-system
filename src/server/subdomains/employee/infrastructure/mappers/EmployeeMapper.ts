@@ -8,11 +8,11 @@ import { RoleId } from "@subdomains/role/domain/values/RoleId";
 import { Prisma } from "@generated/prisma/client";
 
 /**
- * 担当役割（EmployeeRole 子行）を含む Prisma Employee ペイロード。
- * toDomain は担当役割を復元するため子行の同梱を前提とする。
+ * 担当役割（EmployeeRole 子行）と課員の明示上位役割（EmployeeSuperiorRole 行）を含む
+ * Prisma Employee ペイロード。toDomain は両者を復元するため子行の同梱を前提とする。
  */
 export type PrismaEmployeeWithRoles = Prisma.EmployeeGetPayload<{
-  include: { employeeRoles: true };
+  include: { employeeRoles: true; superiorRole: true };
 }>;
 
 /**
@@ -41,6 +41,11 @@ export class EmployeeMapper {
         ? new RoleId(prismaEmployee.employeeRoles[0].roleId)
         : null;
 
+    // 課員の明示上位役割を子行（0/1 件）から復元（行なし＝未設定 or 役割持ち＝null）
+    const explicitSuperiorRoleId = prismaEmployee.superiorRole
+      ? new RoleId(prismaEmployee.superiorRole.roleId)
+      : null;
+
     return Employee.reconstruct(
       new EmployeeId(prismaEmployee.id),
       employeeCd,
@@ -48,6 +53,7 @@ export class EmployeeMapper {
       name,
       new DepartmentId(prismaEmployee.departmentId),
       assignedRoleId,
+      explicitSuperiorRoleId,
       prismaEmployee.createdAt,
       prismaEmployee.updatedAt
     );
@@ -70,6 +76,10 @@ export class EmployeeMapper {
       departmentId: employee.departmentId.value,
       employeeRoles: employee.assignedRoleId
         ? { create: [{ roleId: employee.assignedRoleId.value }] }
+        : undefined,
+      // 課員の明示上位役割は 0/1 件をネスト作成（I1 により役割持ちは null）
+      superiorRole: employee.explicitSuperiorRoleId
+        ? { create: { roleId: employee.explicitSuperiorRoleId.value } }
         : undefined,
     };
   }
