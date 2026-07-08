@@ -57,8 +57,21 @@ export const SEED_APPLICATION_ESTIMATE_NUMBERS = {
    * - attempt1 = 差戻（REJECTED・差戻コメント付き）＝過去履歴
    * - attempt2 = 多段チェーン（営業課長 承認済 → 営業部長 承認待ち）＝最新申請（PENDING）
    * 過去履歴・差戻コメント・多段ステップの状態・actorName を一度に配線検証する。
+   * 主役 employee2（営業本部長）は申請者でも承認待ち役割メンバーでもないため、この番号は
+   * 操作動線 E2E で「操作ボタンが一切出ない純粋閲覧」の負の検証台にも使う（#575）。
    */
   richMultiStep: "N9905015",
+
+  // --- 操作動線 E2E 用（#575・主役 employee2＝EMP000002＝営業本部長＝ROLE002）。 ---
+  // いずれも終端イベントの無い PENDING 申請で、plan の承認待ち役割と申請者だけが異なる。
+  /** 最終承認用（単段・承認待ち＝営業本部長）。employee2 が承認して APPROVED になる。 */
+  operationApprove: "N9905016",
+  /** 途中承認用（2 段・step1＝営業本部長 → step2＝社長）。employee2 が step1 を承認して途中承認。 */
+  operationMidApprove: "N9905017",
+  /** 差戻用（単段・承認待ち＝営業本部長）。employee2 がコメント付きで差し戻す。 */
+  operationReject: "N9905018",
+  /** 取下用（単段・申請者＝営業本部長・承認待ち＝社長）。employee2 が本人として取り下げる。 */
+  operationWithdraw: "N9905019",
 } as const;
 
 const TAX_RATE = new TaxRate(0.1);
@@ -81,6 +94,12 @@ type ApplicationSeedFk = {
   /** 多段チェーンの 2 段目役割（営業部長）。リッチフィクスチャの step2 に使う。 */
   secondRoleId: string;
   goalPositionId: string;
+  /** 操作動線 E2E の主役（EMP000002＝営業本部長）。取下フィクスチャの申請者にも使う。 */
+  protagonistId: string;
+  /** 営業本部長役割（ROLE002）。主役 employee2 が直接メンバーで、承認/差戻の承認待ち役割に使う。 */
+  headquartersRoleId: string;
+  /** 社長役割（ROLE001）。途中承認の 2 段目・取下フィクスチャの承認待ち役割に使う。 */
+  presidentRoleId: string;
 };
 
 /** 申請対象の単一バリエーション見積を組み立てる（NEW・CUSTOMER・1 明細）。 */
@@ -131,6 +150,41 @@ function twoStepPlan(fk: ApplicationSeedFk): ApprovalChainPlan {
   ]);
 }
 
+/** 承認待ち役割を差し替えられる汎用チェーン計画（操作動線 E2E 用・ゴール役職は表示に出ない）。 */
+function planWithRoles(fk: ApplicationSeedFk, roleIds: string[]): ApprovalChainPlan {
+  return ApprovalChainPlan.create(
+    new PositionId(fk.goalPositionId),
+    roleIds.map((id) => new RoleId(id))
+  );
+}
+
+/**
+ * 終端イベントの無い PENDING 申請を単体で投入する（操作動線 E2E 用・#575）。
+ *
+ * 申請者・承認待ち役割だけを差し替えて、承認/差戻/取下の各動線ごとに独立したバリエーションを作る。
+ * 操作の成否は主役 employee2（営業本部長）が「承認待ち役割の直接メンバーか」「申請者本人か」で決まる。
+ */
+async function seedPendingApplication(
+  prisma: PrismaClient,
+  fk: ApplicationSeedFk,
+  estimateNumber: string,
+  amount: number,
+  applicantEmployeeId: string,
+  roleIds: string[]
+): Promise<void> {
+  const estimate = buildEstimate(fk, estimateNumber, amount);
+  await prisma.estimate.create({ data: EstimateMapper.toEstimateCreateInput(estimate) });
+  const application = EstimateApplication.create({
+    variationId: estimate.variations[0].id,
+    attempt: 1,
+    applicantEmployeeId: new EmployeeId(applicantEmployeeId),
+    plan: planWithRoles(fk, roleIds),
+  });
+  await prisma.estimateApplication.create({
+    data: EstimateApplicationMapper.toCreateInput(application),
+  });
+}
+
 /**
  * 既存の作成済みマスタ（納品先・部署・個別商品・役割・役職・従業員）を参照して、代表状態を持つ
  * 見積申請フィクスチャを投入する。FK は E2E シードの決定的コード（EMP000003〜5・営業課長）に結び、
@@ -150,6 +204,10 @@ export async function seedEstimateApplications(prisma: PrismaClient): Promise<nu
   const awaitingRole = await prisma.role.findFirst({ where: { name: "営業課長" } });
   const secondRole = await prisma.role.findFirst({ where: { name: "営業部長" } });
   const goalPosition = await prisma.position.findFirst({ orderBy: { positionCd: "asc" } });
+  // 操作動線 E2E の主役と役割（#575）。employee2＝EMP000002＝営業本部長＝ROLE002 の直接メンバー。
+  const protagonist = await prisma.employee.findFirst({ where: { employeeCd: "EMP000002" } }); // 一般 ユーザ（営業本部長）
+  const headquartersRole = await prisma.role.findFirst({ where: { name: "営業本部長" } });
+  const presidentRole = await prisma.role.findFirst({ where: { name: "社長" } });
 
   if (
     !deliveryLocation ||
@@ -160,10 +218,13 @@ export async function seedEstimateApplications(prisma: PrismaClient): Promise<nu
     !exemptor ||
     !awaitingRole ||
     !secondRole ||
-    !goalPosition
+    !goalPosition ||
+    !protagonist ||
+    !headquartersRole ||
+    !presidentRole
   ) {
     throw new Error(
-      "seedEstimateApplications: 前提マスタ（納品先・部署・個別商品・EMP000003-5・役割 営業課長/営業部長・役職）が不足しています"
+      "seedEstimateApplications: 前提マスタ（納品先・部署・個別商品・EMP000002-5・役割 社長/営業本部長/営業部長/営業課長・役職）が不足しています"
     );
   }
 
@@ -179,6 +240,9 @@ export async function seedEstimateApplications(prisma: PrismaClient): Promise<nu
     awaitingRoleId: awaitingRole.id,
     secondRoleId: secondRole.id,
     goalPositionId: goalPosition.id,
+    protagonistId: protagonist.id,
+    headquartersRoleId: headquartersRole.id,
+    presidentRoleId: presidentRole.id,
   };
 
   const now = Date.now();
@@ -287,6 +351,51 @@ export async function seedEstimateApplications(prisma: PrismaClient): Promise<nu
   await prisma.estimateStepApproval.createMany({
     data: EstimateApplicationMapper.toStepApprovalCreateInputs(pendingChainApp),
   });
+
+  // --- 操作動線 E2E 用の 4 フィクスチャ（#575・主役 employee2＝営業本部長）。 ---
+  // いずれも PENDING（終端イベントなし）。承認待ち役割と申請者だけで employee2 の操作可否を切り替える。
+
+  // 1. 最終承認用: 単段・承認待ち＝営業本部長。employee2 が承認すると全ステップ承認済＝APPROVED。
+  await seedPendingApplication(
+    prisma,
+    fk,
+    SEED_APPLICATION_ESTIMATE_NUMBERS.operationApprove,
+    50000,
+    fk.applicantId,
+    [fk.headquartersRoleId]
+  );
+
+  // 2. 途中承認用: 2 段（step1＝営業本部長 → step2＝社長）。employee2 が step1 を承認しても
+  //    社長ステップが承認待ちで残り、申請は PENDING のまま（途中承認）。
+  await seedPendingApplication(
+    prisma,
+    fk,
+    SEED_APPLICATION_ESTIMATE_NUMBERS.operationMidApprove,
+    70000,
+    fk.applicantId,
+    [fk.headquartersRoleId, fk.presidentRoleId]
+  );
+
+  // 3. 差戻用: 単段・承認待ち＝営業本部長。employee2 がコメント付きで差し戻す。
+  await seedPendingApplication(
+    prisma,
+    fk,
+    SEED_APPLICATION_ESTIMATE_NUMBERS.operationReject,
+    90000,
+    fk.applicantId,
+    [fk.headquartersRoleId]
+  );
+
+  // 4. 取下用: 単段・申請者＝営業本部長（本人）・承認待ち＝社長（employee2 は非メンバー）。
+  //    employee2 は申請者本人として取下でき、承認/差戻ボタンは出ない。
+  await seedPendingApplication(
+    prisma,
+    fk,
+    SEED_APPLICATION_ESTIMATE_NUMBERS.operationWithdraw,
+    110000,
+    fk.protagonistId,
+    [fk.presidentRoleId]
+  );
 
   return Object.keys(SEED_APPLICATION_ESTIMATE_NUMBERS).length;
 }
