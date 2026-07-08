@@ -24,6 +24,7 @@ import { EstimateApplicationMapper } from "@subdomains/estimate/infrastructure/m
 import { EstimateApprovalExemptionMapper } from "@subdomains/estimate/infrastructure/mappers/approval/EstimateApprovalExemptionMapper";
 import { ApprovalChainPlan } from "@subdomains/estimate/domain/values/approval/ApprovalChainPlan";
 import { EstimateExemptionReason } from "@subdomains/estimate/domain/values/approval/EstimateExemptionReason";
+import { RejectionComment } from "@subdomains/estimate/domain/values/approval/RejectionComment";
 import { CustomerId } from "@subdomains/customer/domain/values/CustomerId";
 import { DeliveryLocationId } from "@subdomains/delivery-location/domain/values/DeliveryLocationId";
 import { DepartmentId } from "@subdomains/department/domain/values/DepartmentId";
@@ -51,6 +52,13 @@ export const SEED_APPLICATION_ESTIMATE_NUMBERS = {
   exempted: "N9905013",
   /** WITHDRAWN かつ INACTIVE（V1 無効・取下済＝includeInactive の検証台）。 */
   withdrawnInactive: "N9905014",
+  /**
+   * 詳細画面用リッチフィクスチャ（V1 ACTIVE）。同一バリエーションに 2 申請を積む:
+   * - attempt1 = 差戻（REJECTED・差戻コメント付き）＝過去履歴
+   * - attempt2 = 多段チェーン（営業課長 承認済 → 営業部長 承認待ち）＝最新申請（PENDING）
+   * 過去履歴・差戻コメント・多段ステップの状態・actorName を一度に配線検証する。
+   */
+  richMultiStep: "N9905015",
 } as const;
 
 const TAX_RATE = new TaxRate(0.1);
@@ -70,6 +78,8 @@ type ApplicationSeedFk = {
   approverId: string;
   exemptorId: string;
   awaitingRoleId: string;
+  /** 多段チェーンの 2 段目役割（営業部長）。リッチフィクスチャの step2 に使う。 */
+  secondRoleId: string;
   goalPositionId: string;
 };
 
@@ -113,6 +123,14 @@ function singleStepPlan(fk: ApplicationSeedFk): ApprovalChainPlan {
   ]);
 }
 
+/** 2 段の承認チェーン計画（step1＝営業課長 → step2＝営業部長）。詳細画面の多段表示検証用。 */
+function twoStepPlan(fk: ApplicationSeedFk): ApprovalChainPlan {
+  return ApprovalChainPlan.create(new PositionId(fk.goalPositionId), [
+    new RoleId(fk.awaitingRoleId),
+    new RoleId(fk.secondRoleId),
+  ]);
+}
+
 /**
  * 既存の作成済みマスタ（納品先・部署・個別商品・役割・役職・従業員）を参照して、代表状態を持つ
  * 見積申請フィクスチャを投入する。FK は E2E シードの決定的コード（EMP000003〜5・営業課長）に結び、
@@ -130,6 +148,7 @@ export async function seedEstimateApplications(prisma: PrismaClient): Promise<nu
   const approver = await prisma.employee.findFirst({ where: { employeeCd: "EMP000004" } }); // 鈴木 次郎
   const exemptor = await prisma.employee.findFirst({ where: { employeeCd: "EMP000005" } }); // 高橋 三郎
   const awaitingRole = await prisma.role.findFirst({ where: { name: "営業課長" } });
+  const secondRole = await prisma.role.findFirst({ where: { name: "営業部長" } });
   const goalPosition = await prisma.position.findFirst({ orderBy: { positionCd: "asc" } });
 
   if (
@@ -140,10 +159,11 @@ export async function seedEstimateApplications(prisma: PrismaClient): Promise<nu
     !approver ||
     !exemptor ||
     !awaitingRole ||
+    !secondRole ||
     !goalPosition
   ) {
     throw new Error(
-      "seedEstimateApplications: 前提マスタ（納品先・部署・個別商品・EMP000003-5・役割 営業課長・役職）が不足しています"
+      "seedEstimateApplications: 前提マスタ（納品先・部署・個別商品・EMP000003-5・役割 営業課長/営業部長・役職）が不足しています"
     );
   }
 
@@ -157,6 +177,7 @@ export async function seedEstimateApplications(prisma: PrismaClient): Promise<nu
     approverId: approver.id,
     exemptorId: exemptor.id,
     awaitingRoleId: awaitingRole.id,
+    secondRoleId: secondRole.id,
     goalPositionId: goalPosition.id,
   };
 
@@ -227,6 +248,45 @@ export async function seedEstimateApplications(prisma: PrismaClient): Promise<nu
   if (withdrawalInput) {
     await prisma.estimateApplicationWithdrawal.create({ data: withdrawalInput });
   }
+
+  // --- リッチ（詳細画面用・同一バリエーションに attempt1 差戻 → attempt2 多段 PENDING） ---
+  const richEstimate = buildEstimate(fk, SEED_APPLICATION_ESTIMATE_NUMBERS.richMultiStep, 120000);
+  await prisma.estimate.create({ data: EstimateMapper.toEstimateCreateInput(richEstimate) });
+  const richVariationId = richEstimate.variations[0].id;
+
+  // attempt1: 単段チェーンを営業課長が差し戻す（差戻コメント付き＝過去履歴で読む対象）。
+  const rejectedApp = EstimateApplication.create({
+    variationId: richVariationId,
+    attempt: 1,
+    applicantEmployeeId: new EmployeeId(fk.applicantId),
+    plan: singleStepPlan(fk),
+  });
+  rejectedApp.reject(
+    rejectedApp.steps[0].id,
+    new EmployeeId(fk.approverId),
+    new RejectionComment("金額の根拠資料を添付してください")
+  );
+  await prisma.estimateApplication.create({
+    data: { ...EstimateApplicationMapper.toCreateInput(rejectedApp), createdAt: daysAgo(4) },
+  });
+  await prisma.estimateStepRejection.createMany({
+    data: EstimateApplicationMapper.toStepRejectionCreateInputs(rejectedApp),
+  });
+
+  // attempt2: 2 段チェーン（営業課長 → 営業部長）。課長のみ承認済＝部長が承認待ちの PENDING。
+  const pendingChainApp = EstimateApplication.create({
+    variationId: richVariationId,
+    attempt: 2,
+    applicantEmployeeId: new EmployeeId(fk.applicantId),
+    plan: twoStepPlan(fk),
+  });
+  pendingChainApp.approve(pendingChainApp.steps[0].id, new EmployeeId(fk.approverId));
+  await prisma.estimateApplication.create({
+    data: { ...EstimateApplicationMapper.toCreateInput(pendingChainApp), createdAt: daysAgo(2) },
+  });
+  await prisma.estimateStepApproval.createMany({
+    data: EstimateApplicationMapper.toStepApprovalCreateInputs(pendingChainApp),
+  });
 
   return Object.keys(SEED_APPLICATION_ESTIMATE_NUMBERS).length;
 }

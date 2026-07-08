@@ -1,7 +1,10 @@
 /**
- * 見積申請一覧（/estimate-applications）の表示ラベル・整形ヘルパ（presentation 専用）。
- * この機能に閉じた小さな写像として持つ（日付・バッジのような複数画面共有部品は _lib へ昇格済みだが、
- * これらは本一覧固有のため昇格しない）。
+ * 見積申請（一覧 `/estimate-applications` と詳細 `[estimateNumber]/[variationNumber]`）で共有する
+ * 表示ラベル・整形ヘルパ（presentation 専用）。
+ *
+ * 一覧・詳細の共通親（`estimate-applications/`）直下の `_shared` に置き、両画面で同じ提出区分ラベル・
+ * 金額/日時整形を単一ソースにする。見積申請機能に閉じるため global（`_lib`）へは昇格しない
+ * （機能固有は昇格しない方針）。
  */
 
 /** 提出区分（バリエーションの submissionType・ADR-0045）。 */
@@ -15,7 +18,7 @@ export function formatYen(amount: number): string {
   return `${amount.toLocaleString("ja-JP")}円`;
 }
 
-/** 申請日時を JST の「2026/07/01 13:45」形式に整形する。 */
+/** 日時を JST の「2026/07/01 13:45」形式に整形する。 */
 export function formatDateTime(date: Date): string {
   return date.toLocaleString("ja-JP", {
     timeZone: "Asia/Tokyo",
