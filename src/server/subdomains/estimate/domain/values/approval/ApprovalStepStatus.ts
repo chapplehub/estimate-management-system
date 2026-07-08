@@ -2,9 +2,17 @@ import { ValidationError } from "@server/shared/errors/DomainError";
 import { ValueObject } from "@server/shared/ValueObject";
 
 const VALID_VALUES = ["NOT_STARTED", "AWAITING", "APPROVED", "REJECTED"] as const;
-type ApprovalStepStatusValue = (typeof VALID_VALUES)[number];
 
-const LABEL_MAP: Record<ApprovalStepStatusValue, string> = {
+/**
+ * 承認ステップ導出状態の code 集合（4値）。
+ *
+ * ADR-0069 に従い、状態語彙の code 集合はドメイン VO を単一ソースとする。読み取り DTO
+ * （見積申請詳細の `ApprovalStepView`）はこの型を再輸出して独自の文字列ユニオンを定義せず、
+ * label もこの VO の `label` へ委譲することでドリフトを防ぐ。
+ */
+export type ApprovalStepStatusCode = (typeof VALID_VALUES)[number];
+
+const LABEL_MAP: Record<ApprovalStepStatusCode, string> = {
   NOT_STARTED: "未着手",
   AWAITING: "承認待ち",
   APPROVED: "承認済",
@@ -41,7 +49,7 @@ export class ApprovalStepStatus extends ValueObject<string, "ApprovalStepStatus"
 
   /** 業務表示名（「未着手」/「承認待ち」/「承認済」/「差戻」）。 */
   get label(): string {
-    return LABEL_MAP[this._value as ApprovalStepStatusValue];
+    return LABEL_MAP[this._value as ApprovalStepStatusCode];
   }
 
   /** 承認待ち（承認/差戻の操作対象・§7.1/§7.2）。 */
@@ -50,7 +58,7 @@ export class ApprovalStepStatus extends ValueObject<string, "ApprovalStepStatus"
   }
 
   protected validate(value: string): void {
-    if (!VALID_VALUES.includes(value as ApprovalStepStatusValue)) {
+    if (!VALID_VALUES.includes(value as ApprovalStepStatusCode)) {
       throw new ValidationError(
         `不正な承認ステップ状態です: ${value}（有効値: ${VALID_VALUES.join(", ")}）`
       );

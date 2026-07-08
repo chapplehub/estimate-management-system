@@ -2,9 +2,17 @@ import { ValidationError } from "@server/shared/errors/DomainError";
 import { ValueObject } from "@server/shared/ValueObject";
 
 const VALID_VALUES = ["CONSUMABLE_ONLY", "BELOW_THRESHOLD", "AFTER_REPAIR"] as const;
-type EstimateExemptionReasonValue = (typeof VALID_VALUES)[number];
 
-const LABEL_MAP: Record<EstimateExemptionReasonValue, string> = {
+/**
+ * 承認免除理由の code 集合（3値）。
+ *
+ * ADR-0069 に従い、code 集合はドメイン VO を単一ソースとする。読み取り DTO（見積申請詳細の
+ * `ExemptionView`）はこの型を再輸出して独自の文字列ユニオンを定義せず、label もこの VO の
+ * `label` へ委譲することでドリフトを防ぐ。
+ */
+export type EstimateExemptionReasonCode = (typeof VALID_VALUES)[number];
+
+const LABEL_MAP: Record<EstimateExemptionReasonCode, string> = {
   CONSUMABLE_ONLY: "消耗品のみ",
   BELOW_THRESHOLD: "10万円未満",
   AFTER_REPAIR: "事後見積",
@@ -35,7 +43,7 @@ export class EstimateExemptionReason extends ValueObject<string, "EstimateExempt
 
   /** 業務表示名（「消耗品のみ」/「10万円未満」/「事後見積」）。 */
   get label(): string {
-    return LABEL_MAP[this._value as EstimateExemptionReasonValue];
+    return LABEL_MAP[this._value as EstimateExemptionReasonCode];
   }
 
   /** Prisma 値から生成する。 */
@@ -55,7 +63,7 @@ export class EstimateExemptionReason extends ValueObject<string, "EstimateExempt
   }
 
   protected validate(value: string): void {
-    if (!VALID_VALUES.includes(value as EstimateExemptionReasonValue)) {
+    if (!VALID_VALUES.includes(value as EstimateExemptionReasonCode)) {
       throw new ValidationError(
         `不正な免除理由です: ${value}（有効値: ${VALID_VALUES.join(", ")}）`
       );
