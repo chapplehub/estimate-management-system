@@ -6,6 +6,7 @@ import { PrismaClient } from "../generated/prisma/client";
 import type { UserRole } from "../src/server/shared/auth/types";
 import { USER_ROLES } from "../src/server/shared/auth/types";
 import { seedEstimates } from "./seed-estimates";
+import { POSITIONS, TAX_RATES } from "./seed-shared/masterData";
 
 config({ path: ".env" });
 
@@ -153,12 +154,8 @@ const DEPARTMENTS = [
 ];
 
 // 役職リスト（cdで定義、idはシード時にCUID生成）
-const POSITIONS = [
-  { cd: "POS001", name: "課長", superiorCd: "POS002" as string | null },
-  { cd: "POS002", name: "部長", superiorCd: "POS003" as string | null },
-  { cd: "POS003", name: "本部長", superiorCd: "POS004" as string | null },
-  { cd: "POS004", name: "社長", superiorCd: null },
-];
+// 役職マスタ（POSITIONS）・消費税率マスタ（TAX_RATES）は seed-unit.ts と共有する正準定数のため
+// ./seed-shared/masterData.ts へ切り出した（Issue #584）。ROLES はここに残す（開発 seed 独自拡張のため）。
 
 // 役割リスト（cdで定義、FK参照はcd経由で解決）
 const ROLES = [
@@ -951,10 +948,7 @@ const COMMON_SELLING_PRICES = [
 ];
 
 // 消費税率データ（昇順）
-const TAX_RATES = [
-  { rate: "0.080", effectiveFrom: new Date("2014-04-01T00:00:00+09:00") },
-  { rate: "0.100", effectiveFrom: new Date("2019-10-01T00:00:00+09:00") },
-];
+// TAX_RATES は ./seed-shared/masterData.ts へ切り出した（seed-unit.ts と共有・Issue #584）。
 
 // ランダムな要素を取得
 function randomChoice<T>(array: T[]): T {
