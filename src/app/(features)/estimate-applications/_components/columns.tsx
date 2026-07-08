@@ -8,7 +8,7 @@ import {
   badgeToneOf,
 } from "@/app/_components/shared/variationApplicationStateBadge";
 import type { EstimateApplicationSummaryDTO } from "@subdomains/estimate/application/queries/dto/EstimateApplicationSummaryDTO";
-import { SUBMISSION_TYPE_LABELS, formatDateTime, formatYen } from "./labels";
+import { SUBMISSION_TYPE_LABELS, formatDateTime, formatYen } from "../_shared/labels";
 
 /**
  * 見積申請一覧の 1 行（presentation 用）。BE の読み取り DTO をそのまま行に用いる
