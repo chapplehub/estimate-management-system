@@ -15,7 +15,7 @@
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
-    "db:seed": "tsx prisma/seed.ts",
+    "db:seed": "tsx prisma/seed-dev.ts",
     "test": "vitest",
     "e2e": "tsx prisma/seed-e2e.ts && playwright test",
     "e2e:ui": "playwright test --ui",
@@ -89,6 +89,6 @@
     "vitest": "^4.0.2"
   },
   "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "seed": "tsx prisma/seed-dev.ts"
   }
 }
