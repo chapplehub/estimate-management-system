@@ -14,10 +14,30 @@
 import { generateId } from "../src/server/shared/generateId";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { config } from "dotenv";
+import { existsSync } from "fs";
+import path from "path";
 import { PrismaClient } from "../generated/prisma/client";
 import { POSITIONS, TAX_RATES } from "./seed-shared/masterData";
 
-config({ path: ".env.unit" });
+// .env.unit は単体テスト専用DBの接続先。未整備のまま `pnpm test`（seed-unit → vitest）を走らせると
+// DATABASE_URL 不在で PrismaPg の低レベル接続エラーになり原因が分かりにくいため、unit-setup.ts と同じ
+// existsSync ガードを前段に置き cp 誘導を出す（Issue #584 フォローアップ）。__dirname 基準にすることで
+// 実行 cwd に依存せず prisma/ の親（ルート）の .env.unit を確実に指す。
+const ENV_UNIT_PATH = path.resolve(__dirname, "../.env.unit");
+
+if (!existsSync(ENV_UNIT_PATH)) {
+  console.error("Error: .env.unit が見つかりません。");
+  console.error("以下のコマンドでテンプレートからコピーしてください:");
+  console.error("  cp .env.unit.example .env.unit");
+  process.exit(1);
+}
+
+config({ path: ENV_UNIT_PATH });
+
+if (!process.env.DATABASE_URL) {
+  console.error("Error: .env.unit に DATABASE_URL が設定されていません。");
+  process.exit(1);
+}
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
