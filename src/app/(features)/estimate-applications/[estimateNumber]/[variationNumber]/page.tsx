@@ -25,8 +25,12 @@ export default async function EstimateApplicationDetailPage({
 }) {
   const { estimateNumber, variationNumber } = await params;
 
+  // URL セグメントは常に文字列。厳格な 10 進整数（1 始まりの正の数のみ・先頭ゼロ/符号/小数/16 進/
+  // 空白を弾く）かつ int4 範囲内のみ受理し、それ以外は notFound()。範囲外・非正規値を Prisma の
+  // `Int`(int4) 列 where に到達させないことで 500 を避ける。業務上の上限（1〜99）はここで二重に
+  // 持たず、存在しない番号はクエリの null → notFound() に委ねる（DB/ドメイン制約と乖離させない）。
   const variationNumberValue = Number(variationNumber);
-  if (!Number.isInteger(variationNumberValue)) {
+  if (!/^[1-9][0-9]*$/.test(variationNumber) || variationNumberValue > 2_147_483_647) {
     notFound();
   }
 
