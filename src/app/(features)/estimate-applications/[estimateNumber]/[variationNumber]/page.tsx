@@ -3,6 +3,7 @@ import { verifySession } from "@/app/_lib/verifyAuthentication";
 import { getEstimateApplicationDetailQueryFactory } from "@subdomains/estimate/application/factories/getEstimateApplicationDetailQueryFactory";
 import { ApplicationCard } from "./_components/ApplicationCard";
 import { ApplicationDetailSummary } from "./_components/ApplicationDetailSummary";
+import { ApplicationOperations } from "./_components/ApplicationOperations";
 import { ExemptionRecord } from "./_components/ExemptionRecord";
 
 /**
@@ -17,6 +18,10 @@ import { ExemptionRecord } from "./_components/ExemptionRecord";
  *
  * NotFound（見積番号なし／バリエーション番号なし／申請も免除も無い）はクエリが null を返すため
  * `notFound()`（既存 estimates 詳細と同一パターン）。バリエーション番号が数値でない URL も同様。
+ *
+ * 操作 UI（承認・差戻・取下・#575）は要約ヘッダの後に `ApplicationOperations` として描画する。可否は
+ * DTO の `operations` 3 フラグに従い、資格の無い閲覧者には 3 フラグが全 false で渡り何も描画されない
+ * （純粋な閲覧画面）。最終防衛は BE（役割メンバー検証・本人性検証・楽観ロック）で、FE は UX の出し分け。
  */
 export default async function EstimateApplicationDetailPage({
   params,
@@ -55,6 +60,11 @@ export default async function EstimateApplicationDetailPage({
       <h1 className="text-3xl font-bold">見積申請詳細</h1>
 
       <ApplicationDetailSummary summary={detail.summary} />
+
+      <ApplicationOperations
+        operations={detail.operations}
+        variationNumber={detail.summary.variationNumber}
+      />
 
       {detail.kind === "EXEMPTED" ? (
         <ExemptionRecord exemption={detail.exemption} />
