@@ -3,6 +3,7 @@ import { EmployeeId } from "@subdomains/employee/domain/values/EmployeeId";
 import { PositionId } from "@subdomains/position/domain/values/PositionId";
 import { ApplicationStatus } from "../../values/approval/ApplicationStatus";
 import { deriveApplicationStatus } from "../../values/approval/deriveApplicationStatus";
+import { deriveApprovalStepStatus } from "../../values/approval/deriveApprovalStepStatus";
 import { ApprovalChainPlan } from "../../values/approval/ApprovalChainPlan";
 import { ApprovalStepStatus } from "../../values/approval/ApprovalStepStatus";
 import { ApplicationWithdrawal } from "../../values/approval/ApplicationWithdrawal";
@@ -163,19 +164,16 @@ export class EstimateApplication {
    */
   stepStatus(stepId: EstimateApprovalStepId): ApprovalStepStatus {
     const step = this.findStep(stepId);
-    if (step.isRejected()) {
-      return ApprovalStepStatus.REJECTED;
-    }
-    if (step.isApproved()) {
-      return ApprovalStepStatus.APPROVED;
-    }
-    if (!this.applicationStatus.isPending()) {
-      return ApprovalStepStatus.NOT_STARTED;
-    }
-    const lowerAllApproved = this._steps
-      .filter((other) => other.stepOrder < step.stepOrder)
-      .every((other) => other.isApproved());
-    return lowerAllApproved ? ApprovalStepStatus.AWAITING : ApprovalStepStatus.NOT_STARTED;
+    // 行の走査（自分の決定・下位ステップの承認）は集約が担い、判定規則は共有純粋関数に委ねる
+    // （read model とドリフトさせない）。
+    return deriveApprovalStepStatus({
+      hasRejection: step.isRejected(),
+      hasApproval: step.isApproved(),
+      applicationIsPending: this.applicationStatus.isPending(),
+      lowerStepsAllApproved: this._steps
+        .filter((other) => other.stepOrder < step.stepOrder)
+        .every((other) => other.isApproved()),
+    });
   }
 
   // ========================================
