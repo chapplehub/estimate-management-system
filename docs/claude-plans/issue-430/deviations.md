@@ -40,3 +40,29 @@ Step 4 では次に留めた:
 
 ### 逸脱の理由
 `lineSchema` の `unitPrice` は zod 推論型 `VariationLineInput`/`VariationNodeInput` を介して FE 表示層（`variationLines.ts` の作業行モデル・ライブプレビュー＝Step 7 対象）に深く結合している。Step 4 で外すと Step 7 相当の広範な FE 改修を巻き込み、スコープが肥大化する（メモリ「大きすぎるスコープの実装は分割する」に反する）。Step 4 はバックエンドのコマンド挙動（C3/C4 サーバー解決・C4 既存行保全）に集中し、FE zod の `unitPrice` 除去は表示層改修とまとめて Step 7 で行う。中間状態として FE は `unitPrice` を送出し続けるが、zod は保持しつつ mapping がコマンドへ渡さないため、単価はサーバーがマスタから権威解決する（データの正しさは成立。計画「許容する中間状態」と整合）。
+
+## 逸脱4: C4 既存行保全の itemId ペイロード搭載漏れを Step 7 で補完（Step 4/Step 7）
+
+### 元の計画内容
+Step 4 は「C4 既存行（itemId 一致・productId 不変）はマスタ改定後も単価保持」をコマンドテストで駆動する内容で、C4 保全が Step 4 で機能する想定だった。
+
+### 実際の実装内容
+Step 4 では `lineSchema` に `itemId`（optional）を追加し、`variationContentMapping.toItemInput` が `line.itemId` を読むところまで実装したが、**FE 作業行 `WorkingLine` に `itemId` フィールドが無く、`variationLines.lineFields`（ペイロード整形）が `itemId` を出力していなかった**。このため Step 4 時点では itemId がペイロードに乗らず、サーバー側の `existingLines` 突合（Step 4 で実装済み）は常に不一致＝全行再解決になり、C4 既存行保全が**空回り**していた。Step 7 スライス1（`fe273fd3`）で `WorkingLine.itemId` を追加し `fromLineDTO` で永続 itemId を写し、`lineFields` がペイロードに載せることで初めて保全が機能した。
+
+### 逸脱の理由
+ADR-20260709-5ea は「FE は既に rowId = itemId で識別子を保持済み、JSON に載せるだけ」と記していたが、実コードは rowId を itemId として使うだけで JSON への搭載が未実装だった。この搭載作業は FE 作業行コード（`WorkingLine`/`toNodePayload`）の改修に含まれ、逸脱3 で Step 7 へ繰り延べた FE ripple の範囲内。結果として C4 保全のバックエンド（Step 4）とフロントエンド（Step 7）が別コミットに分かれた。
+
+## 逸脱5: Step 7 を2コミットに分割し対象ファイルを追加（Step 7）
+
+### 元の計画内容
+Step 7 は1コミット（`feat: 明細編集テーブルの単価を読み取り専用化し商品選択時に価格決定を表示する`）で、対象ファイルは `LineEditTable.tsx`・`useVariationLineEditor.ts`・`variationLines.ts`・`variationContentMapping.ts`・`ProductSuggestDialog.tsx` 周辺・各フォームの `__tests__`。
+
+### 実際の実装内容
+Step 7 を2コミットに分割した:
+- スライス1（`fe273fd3`・`feat: 明細スキーマから単価を撤去しペイロードにitemIdを載せる`）: 画面非依存の payload/スキーマ改修（逸脱3 の本体＋逸脱4 の補完）。
+- スライス2（`6009270e`・計画のコミットメッセージ）: 選択時ライブ解決・単価読み取り専用化・価格コンテキスト配線。
+
+また計画の対象ファイルに無い次を改修した: `_shared/SubmissionTypeField.tsx`（提出区分を controlled 対応。C1/C3新規で現在値を価格解決へ供給するため）、`page.tsx`・`VariationPanel.tsx`（価格コンテキスト＝見積年月日・得意先ID・納品先ID の配線）、`new/CreateEstimateForm.tsx`（C1 も同じ共有部品を使うため）。`ProductSuggestDialog.tsx` 自体は改修不要だった（サジェスト解決はフック側 `confirmSuggestions` で完結）。
+
+### 逸脱の理由
+`useVariationLineEditor` と `LineEditTable` は C1/C3/C4 共有のため、payload/スキーマ改修（ユニットテストで完結・低リスク）と UI/配線（3フォーム＋親ページ横断・高リスク）を1コミットに混ぜると差分が読みにくく回帰切り分けも困難。スライス分割で「スキーマ契約の変更」と「UI 挙動の変更」を分離した（メモリ「大きすぎるスコープの実装は分割する」に沿う）。対象ファイル追加は、価格コンテキスト（見積年月日・宛先）が見積ヘッダー層のデータで、フォーム props に無く親から配線する必要があったため必然。
