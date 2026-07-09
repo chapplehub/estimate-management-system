@@ -606,20 +606,18 @@ export async function seedProducts(prisma: PrismaClient): Promise<{
   commonPricePeriodCount: number;
   costPeriodCount: number;
 }> {
-  // 商品
-  for (const product of PRODUCTS) {
-    await prisma.product.create({
-      data: {
-        id: generateId(),
-        code: product.code,
-        name: product.name,
-        category: product.category,
-        unit: product.unit,
-        isActive: product.isActive,
-        description: product.description,
-      },
-    });
-  }
+  // 商品（スカラー列のみ・id 自前付与のため createMany で一括投入。戻り値は下の findMany で再解決）
+  await prisma.product.createMany({
+    data: PRODUCTS.map((product) => ({
+      id: generateId(),
+      code: product.code,
+      name: product.name,
+      category: product.category,
+      unit: product.unit,
+      isActive: product.isActive,
+      description: product.description,
+    })),
+  });
 
   const productsByCode = new Map(
     (await prisma.product.findMany({ select: { id: true, code: true } })).map((p) => [p.code, p.id])
