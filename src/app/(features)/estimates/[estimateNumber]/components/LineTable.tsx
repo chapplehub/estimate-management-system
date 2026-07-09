@@ -12,8 +12,11 @@ import { lineGross, previewLineAmount } from "../previewAmounts";
 /** 明細メモの編集パッチ（顧客/社内のいずれか一方ずつ）。 */
 export type MemoPatch = { customerMemo?: string; internalMemo?: string };
 
-/** 価格調整の編集パッチ（単価・掛率・明細値引のいずれか一つずつ・#390）。 */
-export type PricePatch = { unitPrice?: number; discountRate?: number; itemDiscount?: number };
+/**
+ * 価格調整の編集パッチ（掛率・明細値引のいずれか一つずつ・#390/#430）。
+ * 単価は価格決定で確定・固定され調整対象外のため含めない（ADR-0064）。
+ */
+export type PricePatch = { discountRate?: number; itemDiscount?: number };
 
 /** input の生文字列を数値へ。空・非数は 0 に倒す（プレビュー用の緩い変換）。 */
 function num(value: string): number {
@@ -209,16 +212,9 @@ function LineRow({
       <td className="px-3 py-2">{line.unit}</td>
       {priceEdit ? (
         <>
-          <td className="px-3 py-2 align-top" onClick={(e) => e.stopPropagation()}>
-            <input
-              type="number"
-              min={0}
-              step={1}
-              aria-label={`単価（${line.itemName}）`}
-              value={line.unitPrice}
-              onChange={(e) => onChangePrice?.(line.itemId, { unitPrice: num(e.target.value) })}
-              className={`${cellInputClass} w-28`}
-            />
+          {/* 単価は価格決定で確定・固定のため入力させず読み取り専用表示（ADR-0064・#430）。 */}
+          <td className="px-3 py-2 text-right" aria-label={`単価（${line.itemName}）`}>
+            {formatYen(line.unitPrice)}
           </td>
           <td className="px-3 py-2 align-top" onClick={(e) => e.stopPropagation()}>
             <input

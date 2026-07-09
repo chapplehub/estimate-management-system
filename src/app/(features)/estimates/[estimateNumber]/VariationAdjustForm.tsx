@@ -26,11 +26,13 @@ type Props = {
   onCancel: () => void;
 };
 
-/** 明細調整の作業状態（itemId キー）。LineTable の価格・メモ編集と双方向。 */
+/**
+ * 明細調整の作業状態（itemId キー）。LineTable の価格・メモ編集と双方向。
+ * 単価は価格決定で確定・固定のため作業 state に持たず、表示・プレビューは DTO 確定値を使う（ADR-0064・#430）。
+ */
 type ItemAdjustState = Record<
   string,
   {
-    unitPrice: number;
     discountRate: number;
     itemDiscount: number;
     customerMemo: string;
@@ -43,7 +45,6 @@ function buildInitialItemAdjust(variation: VariationDTO): ItemAdjustState {
   const state: ItemAdjustState = {};
   const put = (l: LineDTO) => {
     state[l.itemId] = {
-      unitPrice: l.unitPrice,
       discountRate: l.discountRate,
       itemDiscount: l.itemDiscount,
       customerMemo: l.customerMemo,
@@ -61,7 +62,8 @@ function buildInitialItemAdjust(variation: VariationDTO): ItemAdjustState {
  * 改訂先バリエーションの部分編集フォーム（#390）。
  *
  * 改訂先は商品・数量・改訂価格・行構成が固定（ADR-0060）のため、{@link LineTable} を priceEdit＋
- * memoEdit で出し、単価・掛率・明細値引・明細メモだけを編集させる（数量・商品・単位は read-only）。
+ * memoEdit で出し、掛率・明細値引・明細メモだけを編集させる（単価・数量・商品・単位は read-only）。
+ * 単価は明細生成時に価格決定で確定・固定される（ADR-0064・#430）。
  * 明細調整は itemId キーの作業 state で controlled に持ち、submit 時に単一 hidden へ JSON 化して
  * 往復する（往復形状・ADR-0050）。LineTable は `line.*` を入力値に使う契約のため、DTO の lines に
  * 作業 state を写し込んだ派生配列を渡す。全体値引・バリ単位メモはスカラーゆえ conform 管理。
@@ -107,10 +109,10 @@ export function VariationAdjustForm({
   // LineTable の入力値（line.*）に作業 state を写し込んだ派生 lines。
   const applyAdjust = (l: LineDTO): LineDTO => {
     const a = items[l.itemId];
+    // 単価は上書きせず DTO 確定値を保つ（価格決定で固定・ADR-0064）。掛率・値引・メモのみ差し替え。
     return a
       ? {
           ...l,
-          unitPrice: a.unitPrice,
           discountRate: a.discountRate,
           itemDiscount: a.itemDiscount,
           customerMemo: a.customerMemo,
@@ -160,7 +162,7 @@ export function VariationAdjustForm({
       )}
 
       <div className="bg-blue-50 border border-blue-300 text-blue-800 px-4 py-2 rounded mb-4 text-sm">
-        改訂先バリエーションです。単価・掛率・値引・メモを調整できます（商品・数量・行構成は固定）。
+        改訂先バリエーションです。掛率・値引・メモを調整できます（単価・商品・数量・行構成は固定）。
       </div>
 
       <form {...getFormProps(form)} noValidate>

@@ -10,11 +10,12 @@ import { z } from "zod";
  * メモは optional（conform は空フィールドを undefined 化するため required だと空メモが弾かれる）。
  */
 
-/** 明細調整1件（JSON 配列の要素）。itemId で対象明細を特定する。数量・商品は持たない。 */
+/**
+ * 明細調整1件（JSON 配列の要素）。itemId で対象明細を特定する。数量・商品・単価は持たない。
+ * 単価は明細生成時に価格決定で確定・固定され、以後の調整では変更できない（ADR-0064・#430）。
+ */
 const adjustItemSchema = z.object({
   itemId: z.string().min(1, "明細が特定できません"),
-  /** 単価（円・整数・0以上）。 */
-  unitPrice: z.number().int("単価は整数で指定してください").min(0, "単価は0以上で指定してください"),
   /** 掛率（>0。例 1.0=値引なし）。上限は DiscountRate VO（9.9999）が最終強制。 */
   discountRate: z.number().positive("掛率は0より大きい値で指定してください"),
   /** 明細値引（円・整数・0以上）。 */
