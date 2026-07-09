@@ -129,7 +129,8 @@ export function useVariationLineEditor({
       const componentIds = expanded.components.map((c) => c.productId);
       const prices = await resolvePricesFor(componentIds);
       // 1構成でも解決不能なら展開ごと拒否し、不能な構成商品名を列挙する（重複は除く）。
-      const unresolved = expanded.components.filter((c) => prices[c.productId] === null);
+      // `== null` で undefined（見積年月日未入力時の空マップ）も解決不能として拾う（通常明細157・サジェスト182と対称）。
+      const unresolved = expanded.components.filter((c) => prices[c.productId] == null);
       if (unresolved.length > 0) {
         const names = [...new Set(unresolved.map((c) => c.name))];
         setSelectionError(

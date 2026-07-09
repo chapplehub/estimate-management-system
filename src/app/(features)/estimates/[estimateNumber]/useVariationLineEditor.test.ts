@@ -156,4 +156,22 @@ describe("セット商品の選択時の見積単価解決", () => {
     expect(result.current.selectionError).toContain("構成B");
     expect(result.current.selectionError).not.toContain("構成A");
   });
+
+  it("見積年月日未入力で解決が空マップを返す場合、NaN群を作らず展開ごと拒否する", async () => {
+    // 見積年月日が空だと resolveSellingPricesForDisplay は空マップ {} を返し、
+    // 各構成の単価が undefined になる。=== null では素通りして unitPrice: undefined の
+    // 群を作り金額が NaN になっていた（通常明細・サジェストと非対称）。== null で拒否する。
+    expandSetComponents.mockResolvedValue(expanded);
+    resolveSellingPricesForDisplay.mockResolvedValue({});
+
+    const { result } = setup();
+    await act(async () => {
+      await result.current.handleProductSelect([productRow({ id: "set1", category: "SET" })]);
+    });
+
+    expect(result.current.nodes).toHaveLength(0);
+    expect(result.current.selectionError).toContain("セットA");
+    expect(result.current.selectionError).toContain("構成A");
+    expect(result.current.selectionError).toContain("構成B");
+  });
 });
