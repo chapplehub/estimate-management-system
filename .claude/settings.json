@@ -1,5 +1,8 @@
 {
   "cleanupPeriodDays": 365,
+  "env": {
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "30"
+  },
   "permissions": {
     "allow": [
       "Bash(pnpm dev*)",
