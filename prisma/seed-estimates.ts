@@ -1,9 +1,12 @@
 /**
- * 見積のシードデータ（#330 / S2 閲覧画面のデモ・E2E 用）。
+ * 見積のシードデータ（#330 / S2 閲覧画面のデモ・E2E 専属）。
+ *
+ * dev seed は #591 で自前フィクスチャ（prisma/seed-dev-data/）へ完全移行したため、本ファイルは
+ * seed-e2e.ts 専属になった（ADR-20260709-f2q: dev＝網羅性・現実感、e2e＝断定可能性は最適化方向が逆）。
  *
  * 方針（計画 Q8 の趣旨）: 金額・集計はドメインで導出させ、raw Prisma での再実装ドリフトを避ける。
  * 構築は EstimateFactory（集約）→ EstimateMapper.toEstimateCreateInput（Prisma 入力）で行い、
- * 書き込みは呼び出し側 seed の PrismaClient（dev=.env / e2e=.env.e2e）に通す。
+ * 書き込みは呼び出し側 seed（e2e=.env.e2e）の PrismaClient に通す。
  *   ※ 計画は PrismaEstimateRepository.save() を想定していたが、repository は @server/prisma
  *     シングルトン（別 DB）を使うため seed では使えない。EstimateMapper 経由に置き換えた。
  *

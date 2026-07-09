@@ -5,7 +5,9 @@ import { hashPassword } from "better-auth/crypto";
 import { PrismaClient } from "../generated/prisma/client";
 import type { UserRole } from "../src/server/shared/auth/types";
 import { USER_ROLES } from "../src/server/shared/auth/types";
-import { seedEstimates } from "./seed-estimates";
+import { seedProducts, seedPriceOverrides } from "./seed-dev-data/products";
+import { seedDevEstimates } from "./seed-dev-data/estimates";
+import { seedDevApplications } from "./seed-dev-data/applications";
 import { POSITIONS, TAX_RATES } from "./seed-shared/masterData";
 
 config({ path: ".env" });
@@ -151,6 +153,7 @@ const DEPARTMENTS = [
   { departmentCd: "DEPT003", name: "総務部", abbreviation: "総務" },
   { departmentCd: "DEPT004", name: "人事部", abbreviation: "人事" },
   { departmentCd: "DEPT005", name: "経理部", abbreviation: "経理" },
+  { departmentCd: "DEPT006", name: "製造部", abbreviation: "製造" }, // 製造系列の並行承認チェーン（#591）
 ];
 
 // 役職リスト（cdで定義、idはシード時にCUID生成）
@@ -208,35 +211,103 @@ const ROLES = [
   { cd: "ROLE013", name: "総務課長", positionCd: "POS001", superiorCd: "ROLE006" as string | null },
   { cd: "ROLE014", name: "人事課長", positionCd: "POS001", superiorCd: "ROLE007" as string | null },
   { cd: "ROLE015", name: "経理課長", positionCd: "POS001", superiorCd: "ROLE008" as string | null },
+  // 製造系列（#591）: 営業系列と独立した完全4段チェーン（社長まで到達可能）。
+  // 並行する承認チェーンを画面で確認できるよう、営業チェーンと別本部で横展開する。
+  {
+    cd: "ROLE016",
+    name: "製造本部長",
+    positionCd: "POS003",
+    superiorCd: "ROLE001" as string | null,
+  },
+  { cd: "ROLE017", name: "製造部長", positionCd: "POS002", superiorCd: "ROLE016" as string | null },
+  {
+    cd: "ROLE018",
+    name: "製造一課長",
+    positionCd: "POS001",
+    superiorCd: "ROLE017" as string | null,
+  },
+  {
+    cd: "ROLE019",
+    name: "製造二課長",
+    positionCd: "POS001",
+    superiorCd: "ROLE017" as string | null,
+  },
+  // チェーン不成立の検証用役割（#591・ユーザー要望）: 上位役割エッジが欠けた課長。
+  // 役割名で「上位役割が無い」事実がそのまま分かるよう命名する。この役割を上位役割に持つ
+  // 課員が部長以上のゴール金額で申請すると GOAL_UNREACHABLE（チェーン不成立）を画面で観測できる。
+  {
+    cd: "ROLE020",
+    name: "上位役割未設定 検証課長",
+    positionCd: "POS001",
+    superiorCd: null as string | null,
+  },
 ];
 
-// 役割を持つ従業員の設定（EMP000001〜EMP000015）
-const ROLE_EMPLOYEE_CONFIGS = [
-  { roleCd: "ROLE001", departmentCd: "DEPT001" }, // 社長 → 営業部（便宜上）
-  { roleCd: "ROLE002", departmentCd: "DEPT001" }, // 営業本部長 → 営業部
-  { roleCd: "ROLE003", departmentCd: "DEPT003" }, // 管理本部長 → 総務部
-  { roleCd: "ROLE004", departmentCd: "DEPT001" }, // 営業部長 → 営業部
-  { roleCd: "ROLE005", departmentCd: "DEPT002" }, // 開発部長 → 開発部
-  { roleCd: "ROLE006", departmentCd: "DEPT003" }, // 総務部長 → 総務部
-  { roleCd: "ROLE007", departmentCd: "DEPT004" }, // 人事部長 → 人事部
-  { roleCd: "ROLE008", departmentCd: "DEPT005" }, // 経理部長 → 経理部
-  { roleCd: "ROLE009", departmentCd: "DEPT001" }, // 営業一課長 → 営業部
-  { roleCd: "ROLE010", departmentCd: "DEPT001" }, // 営業二課長 → 営業部
-  { roleCd: "ROLE011", departmentCd: "DEPT002" }, // 開発一課長 → 開発部
-  { roleCd: "ROLE012", departmentCd: "DEPT002" }, // 開発二課長 → 開発部
-  { roleCd: "ROLE013", departmentCd: "DEPT003" }, // 総務課長 → 総務部
-  { roleCd: "ROLE014", departmentCd: "DEPT004" }, // 人事課長 → 人事部
-  { roleCd: "ROLE015", departmentCd: "DEPT005" }, // 経理課長 → 経理部
-];
+/**
+ * 役割を持つ従業員（担当役割つき・EMP000001〜連番）。名前は決定的（ランダム排除）で、
+ * 階層別ログインアカウントとして再シードのたび同じ人物・同じ役割を再現する（#591）。
+ * userRole は Admin Plugin の権限（ADMIN/USER）。承認チェーンの役割メンバーシップは roleCd で決まる。
+ *
+ * 同一 roleCd を複数エントリに持たせると、その役割が複数メンバーを持つ（営業系列は 2 名ずつ）。
+ * 承認は「承認待ち役割の直接メンバーなら誰でも」可能なため、複数メンバーの確認台になる。
+ */
+const ROLE_EMPLOYEES = [
+  // --- 営業チェーン（主デモ動線: 社長→営業本部長→営業部長→営業一/二課長）。 ---
+  { name: "管理 ユーザ", roleCd: "ROLE001", departmentCd: "DEPT001", userRole: USER_ROLES.ADMIN }, // 社長（admin固定）
+  { name: "一般 ユーザ", roleCd: "ROLE002", departmentCd: "DEPT001", userRole: USER_ROLES.USER }, // 営業本部長（user固定）
+  { name: "田中 四郎", roleCd: "ROLE004", departmentCd: "DEPT001", userRole: USER_ROLES.USER }, // 営業部長
+  { name: "小林 九一", roleCd: "ROLE009", departmentCd: "DEPT001", userRole: USER_ROLES.USER }, // 営業一課長
+  { name: "加藤 十郎", roleCd: "ROLE010", departmentCd: "DEPT001", userRole: USER_ROLES.USER }, // 営業二課長
+  // --- 管理系列（本部長配下の各部長・課長）。 ---
+  { name: "高橋 三郎", roleCd: "ROLE003", departmentCd: "DEPT003", userRole: USER_ROLES.USER }, // 管理本部長
+  { name: "伊藤 五郎", roleCd: "ROLE005", departmentCd: "DEPT002", userRole: USER_ROLES.USER }, // 開発部長
+  { name: "渡辺 六郎", roleCd: "ROLE006", departmentCd: "DEPT003", userRole: USER_ROLES.USER }, // 総務部長
+  { name: "山本 七海", roleCd: "ROLE007", departmentCd: "DEPT004", userRole: USER_ROLES.USER }, // 人事部長
+  { name: "中村 八郎", roleCd: "ROLE008", departmentCd: "DEPT005", userRole: USER_ROLES.USER }, // 経理部長
+  { name: "吉田 一光", roleCd: "ROLE011", departmentCd: "DEPT002", userRole: USER_ROLES.USER }, // 開発一課長
+  { name: "山田 二三", roleCd: "ROLE012", departmentCd: "DEPT002", userRole: USER_ROLES.USER }, // 開発二課長
+  { name: "佐々木 三上", roleCd: "ROLE013", departmentCd: "DEPT003", userRole: USER_ROLES.USER }, // 総務課長
+  { name: "山口 四季", roleCd: "ROLE014", departmentCd: "DEPT004", userRole: USER_ROLES.USER }, // 人事課長
+  { name: "松本 五月", roleCd: "ROLE015", departmentCd: "DEPT005", userRole: USER_ROLES.USER }, // 経理課長
+  // --- 製造チェーン（営業と独立した並行チェーン・#591）。 ---
+  { name: "井上 六花", roleCd: "ROLE016", departmentCd: "DEPT006", userRole: USER_ROLES.USER }, // 製造本部長
+  { name: "木村 七星", roleCd: "ROLE017", departmentCd: "DEPT006", userRole: USER_ROLES.USER }, // 製造部長
+  { name: "林 八雲", roleCd: "ROLE018", departmentCd: "DEPT006", userRole: USER_ROLES.USER }, // 製造一課長
+  { name: "斎藤 九重", roleCd: "ROLE019", departmentCd: "DEPT006", userRole: USER_ROLES.USER }, // 製造二課長
+  // --- チェーン不成立の検証用役割の保有者（#591）。 ---
+  { name: "検証 未設定", roleCd: "ROLE020", departmentCd: "DEPT001", userRole: USER_ROLES.USER }, // 上位役割未設定 検証課長
+  // --- 営業系列役割の追加メンバー（各役割 2 名化・#591）。 ---
+  { name: "清水 副一", roleCd: "ROLE009", departmentCd: "DEPT001", userRole: USER_ROLES.USER }, // 営業一課長（2人目）
+  { name: "山崎 補佐", roleCd: "ROLE004", departmentCd: "DEPT001", userRole: USER_ROLES.USER }, // 営業部長（2人目）
+  { name: "森 次官", roleCd: "ROLE002", departmentCd: "DEPT001", userRole: USER_ROLES.USER }, // 営業本部長（2人目）
+] as const;
 
-// 部署ごとの一般従業員の上位役割候補（roleCdで指定）
+/**
+ * 固定の課員ログインアカウント（担当役割なし・上位役割つき・ROLE_EMPLOYEES の直後の連番）。
+ * 申請の起点は「申請者の上位役割」なので、課員で申請するとその上位役割を先頭に承認チェーンが組まれる。
+ * 金額を跨ぐドラフト（Step 3）を各課員で申請すると、起点差でチェーン段数が変わる（#591・設計判断B）。
+ */
+const FIXED_STAFF = [
+  // 営業課員: 上位役割＝営業一課長。高額ドラフトを申請すると営業チェーン全 4 段（課長→部長→本部長→社長）。
+  { name: "営業 課員", superiorRoleCd: "ROLE009", departmentCd: "DEPT001" },
+  // 製造課員: 上位役割＝製造一課長。並行チェーン（製造系列）の申請起点。
+  { name: "製造 課員", superiorRoleCd: "ROLE018", departmentCd: "DEPT006" },
+  // 検証課員: 上位役割＝上位役割未設定 検証課長。部長以上のゴール金額で申請すると GOAL_UNREACHABLE。
+  { name: "検証 課員", superiorRoleCd: "ROLE020", departmentCd: "DEPT001" },
+] as const;
+
+// 部署ごとの一般（ランダム）従業員の上位役割候補（roleCdで指定）
 const DEPARTMENT_SUPERIOR_ROLE_CDS = new Map<string, string[]>([
   ["DEPT001", ["ROLE009", "ROLE010"]], // 営業部 → 営業一課長 or 営業二課長
   ["DEPT002", ["ROLE011", "ROLE012"]], // 開発部 → 開発一課長 or 開発二課長
   ["DEPT003", ["ROLE013"]], // 総務部 → 総務課長
   ["DEPT004", ["ROLE014"]], // 人事部 → 人事課長
   ["DEPT005", ["ROLE015"]], // 経理部 → 経理課長
+  ["DEPT006", ["ROLE018", "ROLE019"]], // 製造部 → 製造一課長 or 製造二課長
 ]);
+
+/** 固定ログインアカウント総数（役割持ち＋固定課員）。ランダム一般従業員はこの後の連番。 */
+const FIXED_ACCOUNT_COUNT = ROLE_EMPLOYEES.length + FIXED_STAFF.length;
 
 // 得意先・納品先データ
 const CUSTOMERS = [
@@ -746,207 +817,6 @@ const CUSTOMERS = [
   },
 ];
 
-// 商品データ（開発用: 各区分・単位・有効/無効をカバー）
-const PRODUCTS = [
-  // 個別商品（INDIVIDUAL）
-  {
-    code: "PRD001",
-    name: "標準デスク",
-    category: "INDIVIDUAL" as const,
-    unit: "UNIT" as const,
-    costPrice: 15000,
-    isActive: true,
-    description: "W1200×D700×H720 標準サイズのオフィスデスク",
-  },
-  {
-    code: "PRD002",
-    name: "オフィスチェア",
-    category: "INDIVIDUAL" as const,
-    unit: "UNIT" as const,
-    costPrice: 25000,
-    isActive: true,
-    description: "エルゴノミクスチェア メッシュバック",
-  },
-  {
-    code: "PRD003",
-    name: "モニターアーム",
-    category: "INDIVIDUAL" as const,
-    unit: "UNIT" as const,
-    costPrice: 8000,
-    isActive: true,
-    description: "シングルモニター用 VESA対応",
-  },
-  {
-    code: "PRD004",
-    name: "キーボードトレイ",
-    category: "INDIVIDUAL" as const,
-    unit: "UNIT" as const,
-    costPrice: 5000,
-    isActive: true,
-    description: "スライド式 後付けタイプ",
-  },
-  {
-    code: "PRD005",
-    name: "旧型モニター",
-    category: "INDIVIDUAL" as const,
-    unit: "UNIT" as const,
-    costPrice: 20000,
-    isActive: false,
-    description: "販売終了品 24インチ液晶",
-  },
-  {
-    code: "PRD006",
-    name: "旧型プリンター",
-    category: "INDIVIDUAL" as const,
-    unit: "UNIT" as const,
-    costPrice: 35000,
-    isActive: false,
-    description: "販売終了品 A3対応レーザー",
-  },
-  {
-    code: "PRD007",
-    name: "パーティション",
-    category: "INDIVIDUAL" as const,
-    unit: "SHEET" as const,
-    costPrice: 12000,
-    isActive: true,
-    description: "H1800 自立式パーティション",
-  },
-  {
-    code: "PRD008",
-    name: "ケーブルダクト",
-    category: "INDIVIDUAL" as const,
-    unit: "ROLL" as const,
-    costPrice: 3500,
-    isActive: true,
-    description: "床用ケーブルカバー 1m単位",
-  },
-  // 消耗品（CONSUMABLE）
-  {
-    code: "PRD009",
-    name: "コピー用紙A4",
-    category: "CONSUMABLE" as const,
-    unit: "BOX" as const,
-    costPrice: 3000,
-    isActive: true,
-    description: "A4 500枚×5冊入り",
-  },
-  {
-    code: "PRD010",
-    name: "コピー用紙A3",
-    category: "CONSUMABLE" as const,
-    unit: "BOX" as const,
-    costPrice: 4500,
-    isActive: true,
-    description: "A3 500枚×3冊入り",
-  },
-  {
-    code: "PRD011",
-    name: "トナーカートリッジ黒",
-    category: "CONSUMABLE" as const,
-    unit: "PIECE" as const,
-    costPrice: 8000,
-    isActive: true,
-    description: null,
-  },
-  {
-    code: "PRD012",
-    name: "トナーカートリッジカラー",
-    category: "CONSUMABLE" as const,
-    unit: "PIECE" as const,
-    costPrice: 12000,
-    isActive: true,
-    description: "C/M/Y 3色セット",
-  },
-  {
-    code: "PRD013",
-    name: "クリーニングキット",
-    category: "CONSUMABLE" as const,
-    unit: "PIECE" as const,
-    costPrice: 2500,
-    isActive: true,
-    description: "OA機器クリーニング用",
-  },
-  {
-    code: "PRD014",
-    name: "旧型トナー",
-    category: "CONSUMABLE" as const,
-    unit: "PIECE" as const,
-    costPrice: 6000,
-    isActive: false,
-    description: "旧型プリンター用 在庫限り",
-  },
-  // セット商品（SET）
-  {
-    code: "PRD015",
-    name: "デスクセット一式",
-    category: "SET" as const,
-    unit: "SET" as const,
-    costPrice: null,
-    isActive: true,
-    description: "デスク＋チェアのセット",
-  },
-  {
-    code: "PRD016",
-    name: "モニター環境セット",
-    category: "SET" as const,
-    unit: "SET" as const,
-    costPrice: null,
-    isActive: true,
-    description: "モニターアーム＋ケーブルダクトのセット",
-  },
-  {
-    code: "PRD017",
-    name: "印刷消耗品セット",
-    category: "SET" as const,
-    unit: "SET" as const,
-    costPrice: null,
-    isActive: true,
-    description: "トナー＋用紙のまとめ買いセット",
-  },
-  {
-    code: "PRD018",
-    name: "旧型デスクセット",
-    category: "SET" as const,
-    unit: "SET" as const,
-    costPrice: null,
-    isActive: false,
-    description: "販売終了セット商品",
-  },
-];
-
-/**
- * セット構成（SetProductComponent・ADR-0047）。SET 商品 → 構成商品（個別/消耗品）の対応。
- * 自動展開（expandSetComponents）が構成を引けるよう、有効な SET 商品に構成を持たせる。
- */
-const SET_COMPONENTS = [
-  { setCode: "PRD015", componentCode: "PRD001", quantity: 1 }, // デスクセット = 標準デスク
-  { setCode: "PRD015", componentCode: "PRD002", quantity: 1 }, //            + オフィスチェア
-  { setCode: "PRD016", componentCode: "PRD003", quantity: 1 }, // モニター環境 = モニターアーム
-  { setCode: "PRD016", componentCode: "PRD008", quantity: 2 }, //            + ケーブルダクト×2
-  { setCode: "PRD017", componentCode: "PRD011", quantity: 1 }, // 印刷消耗品 = トナー黒
-  { setCode: "PRD017", componentCode: "PRD009", quantity: 3 }, //            + コピー用紙A4×3
-];
-
-/**
- * 共通販売単価（ADR-0066 / 0067）。商品単位の適用期間付き単価。
- * 適用期間は半開区間 [開始, 終了)、end=null は無期限上端。同一商品内で重複しない。
- * PRD001 は期中改定（10/1 で値上げ）、PRD002 は無期限1本の例。
- */
-const COMMON_SELLING_PRICES = [
-  {
-    productCode: "PRD001",
-    periods: [
-      { start: "2025-04-01", end: "2025-10-01", price: 30000 },
-      { start: "2025-10-01", end: null, price: 32000 }, // 改定後・無期限
-    ],
-  },
-  {
-    productCode: "PRD002",
-    periods: [{ start: "2025-04-01", end: null, price: 18000 }],
-  },
-];
-
 // 消費税率データ（昇順）
 // TAX_RATES は ./seed-shared/masterData.ts へ切り出した（seed-unit.ts と共有・Issue #584）。
 
@@ -972,21 +842,13 @@ function generateEmail(index: number): string {
   return `employee${index}@example.com`;
 }
 
-// 固定ユーザー（画面上で管理者/一般ユーザを識別しやすくする）
-const FIXED_USERS = [
-  { name: "管理 ユーザ", role: USER_ROLES.ADMIN },
-  { name: "一般 ユーザ", role: USER_ROLES.USER },
-] as const;
-
-// 役割を決定（約5%が管理者）
-function determineRole(index: number): UserRole {
-  // 固定ユーザーはFIXED_USERSで決定済み
-  if (index <= FIXED_USERS.length) return FIXED_USERS[index - 1].role;
-  // それ以降は確率で決定
+// 一般（ランダム）従業員の権限を確率で決定（約5%が管理者）。固定アカウントは各定義で権限を明示済み。
+function determineRandomRole(): UserRole {
   return Math.random() < ADMIN_RATIO ? USER_ROLES.ADMIN : USER_ROLES.USER;
 }
 
-// シードユーザーデータを生成（roleIdMap: roleCd → CUID, departmentIdMap: departmentCd → CUID）
+// シードユーザーデータを生成（roleIdMap: roleCd → CUID, departmentIdMap: departmentCd → CUID）。
+// 連番の割当: [1..N] 役割持ち従業員（ROLE_EMPLOYEES）→ [N+1..N+M] 固定課員（FIXED_STAFF）→ 残り ランダム一般従業員。
 function generateSeedUsers(
   count: number,
   roleIdMap: Map<string, string>,
@@ -994,32 +856,29 @@ function generateSeedUsers(
 ): SeedUser[] {
   const users: SeedUser[] = [];
   for (let i = 1; i <= count; i++) {
-    if (i <= FIXED_USERS.length) {
-      // 固定ユーザー（EMP000001: 管理ユーザ, EMP000002: 一般ユーザ）
-      const fixedUser = FIXED_USERS[i - 1];
-      const config = ROLE_EMPLOYEE_CONFIGS[i - 1];
+    if (i <= ROLE_EMPLOYEES.length) {
+      // 役割を持つ従業員（決定的名前・階層別ログインアカウント）。
+      const config = ROLE_EMPLOYEES[i - 1];
       users.push({
         employeeCd: generateEmployeeCd(i),
         email: generateEmail(i),
-        name: fixedUser.name,
-        role: fixedUser.role,
+        name: config.name,
+        role: config.userRole,
         departmentId: departmentIdMap.get(config.departmentCd)!,
         // 役割持ちは上位役割を担当役割から導出するため明示行を持たない（I1・ADR-20260707-k4e）
         superiorRoleId: null,
         assignedRoleId: roleIdMap.get(config.roleCd),
       });
-    } else if (i <= ROLE_EMPLOYEE_CONFIGS.length) {
-      // 役割を持つ従業員（EMP000003〜EMP000015）
-      const config = ROLE_EMPLOYEE_CONFIGS[i - 1];
+    } else if (i <= FIXED_ACCOUNT_COUNT) {
+      // 固定課員（担当役割なし・上位役割つき・申請起点として決定的）。
+      const staff = FIXED_STAFF[i - ROLE_EMPLOYEES.length - 1];
       users.push({
         employeeCd: generateEmployeeCd(i),
         email: generateEmail(i),
-        name: generateName(),
-        role: determineRole(i),
-        departmentId: departmentIdMap.get(config.departmentCd)!,
-        // 役割持ちは上位役割を担当役割から導出するため明示行を持たない（I1・ADR-20260707-k4e）
-        superiorRoleId: null,
-        assignedRoleId: roleIdMap.get(config.roleCd),
+        name: staff.name,
+        role: USER_ROLES.USER,
+        departmentId: departmentIdMap.get(staff.departmentCd)!,
+        superiorRoleId: roleIdMap.get(staff.superiorRoleCd)!,
       });
     } else {
       // 一般従業員（部署に応じた課長を上位役割に設定）
@@ -1031,7 +890,7 @@ function generateSeedUsers(
         employeeCd: generateEmployeeCd(i),
         email: generateEmail(i),
         name: generateName(),
-        role: determineRole(i),
+        role: determineRandomRole(),
         departmentId,
         superiorRoleId: roleIdMap.get(superiorRoleCd)!,
       });
@@ -1163,10 +1022,19 @@ async function main() {
 
   // 既存データを削除（外部キー制約を考慮した順序）
   // 見積は得意先・納品先・部署・従業員・商品を参照する（onDelete: Restrict）ため先に消す。
+  // 見積申請・承認免除はバリエーションを参照するため、見積より先に消す（#591 で dev も申請を持つ）。
+  await prisma.estimateStepApproval.deleteMany();
+  await prisma.estimateStepRejection.deleteMany();
+  await prisma.estimateApprovalStep.deleteMany();
+  await prisma.estimateApplicationWithdrawal.deleteMany();
+  await prisma.estimateApprovalExemption.deleteMany();
+  await prisma.estimateApplication.deleteMany();
   await prisma.estimateVariationCopy.deleteMany();
   await prisma.estimateVariationRevision.deleteMany();
   await prisma.estimate.deleteMany();
   await prisma.taxRate.deleteMany();
+  await prisma.customerSellingPrice.deleteMany(); // 得意先別販売単価。期間行は FK Cascade（ADR-20260624-8tg）
+  await prisma.deliveryLocationSellingPrice.deleteMany(); // 納品先別販売単価。期間行は FK Cascade
   await prisma.commonSellingPrice.deleteMany(); // 期間行は FK Cascade で消える
   await prisma.costPrice.deleteMany(); // 原価集約。期間行は FK Cascade で消える（ADR-20260627-a5c）
   await prisma.setProductComponent.deleteMany();
@@ -1243,93 +1111,16 @@ async function main() {
   console.log(`Created ${ROLES.length} roles`);
   console.log("");
 
-  // 商品を作成
-  console.log("Creating products...");
-  for (const product of PRODUCTS) {
-    await prisma.product.create({
-      data: {
-        id: generateId(),
-        code: product.code,
-        name: product.name,
-        category: product.category,
-        unit: product.unit,
-        isActive: product.isActive,
-        description: product.description,
-      },
-    });
-  }
-  console.log(`Created ${PRODUCTS.length} products`);
-
-  // セット構成（SetProductComponent・ADR-0047）。コード→id を解決して交差行を作る。
-  const productsByCode = new Map(
-    (await prisma.product.findMany({ select: { id: true, code: true } })).map((p) => [p.code, p.id])
-  );
-  await prisma.setProductComponent.createMany({
-    data: SET_COMPONENTS.map((c) => ({
-      setProductId: productsByCode.get(c.setCode)!,
-      componentProductId: productsByCode.get(c.componentCode)!,
-      quantity: c.quantity,
-    })),
-  });
-  console.log(`Created ${SET_COMPONENTS.length} set product components`);
-  console.log("");
-
-  // 共通販売単価（ADR-0066 / 0067）。daterange 列は Prisma typed では書けないため、
-  // 親行は typed create、期間行は $executeRaw で daterange を生成して投入する。
-  console.log("Creating common selling prices...");
-  let cspPeriodCount = 0;
-  for (const csp of COMMON_SELLING_PRICES) {
-    const productId = productsByCode.get(csp.productCode);
-    if (!productId) continue;
-    await prisma.commonSellingPrice.create({ data: { productId } });
-    for (const p of csp.periods) {
-      await prisma.$executeRaw`
-        INSERT INTO common_selling_price_periods
-          (id, product_id, selling_price, applicable_period, updated_at)
-        VALUES (
-          ${generateId()}::uuid,
-          ${productId}::uuid,
-          ${p.price}::numeric,
-          daterange(${p.start}::date, ${p.end}::date, '[)'),
-          CURRENT_TIMESTAMP
-        )
-      `;
-      cspPeriodCount += 1;
-    }
-  }
+  // 商品・セット構成・共通販売単価・原価を作成（dev 専用フィクスチャ・#591）。
+  // 得意先/納品先に依存しないためこの位置で投入し、得意先別/納品先別の上書きは得意先作成後に行う。
+  console.log("Creating products and prices...");
+  const productSeedResult = await seedProducts(prisma);
+  console.log(`Created ${productSeedResult.productCount} products`);
+  console.log(`Created ${productSeedResult.setComponentCount} set product components`);
   console.log(
-    `Created common selling prices for ${COMMON_SELLING_PRICES.length} products (${cspPeriodCount} periods)`
+    `Created common selling prices (${productSeedResult.commonPricePeriodCount} periods)`
   );
-  console.log("");
-
-  // 原価集約（ADR-0066 / 0067 / 20260627-a5c）。別 curated 配列を作らず PRODUCTS から導出し、
-  // バックフィル移行と同じカテゴリ分岐・同じ起点で投入する（seed と移行の意味論ドリフトを防ぐ）。
-  //   - 複合品（category === "SET"）       → 行を作らない（強制 0 はプレースホルダ。粗利は後続）
-  //   - 非複合品 ＆ costPrice == null        → 行を作らない（期間なし＝原価未設定）
-  //   - 非複合品 ＆ costPrice 非null         → [2026-04-01, ) を1本（本物の 0 も保存）
-  // 起点は移行 SQL の暦日定数と一致させる（ADR-0024 の当年度期首）。
-  const COST_PRICE_BASE_DATE = "2026-04-01";
-  console.log("Creating cost prices...");
-  let costPeriodCount = 0;
-  for (const product of PRODUCTS) {
-    if (product.category === "SET" || product.costPrice == null) continue;
-    const productId = productsByCode.get(product.code);
-    if (!productId) continue;
-    await prisma.costPrice.create({ data: { productId } });
-    await prisma.$executeRaw`
-      INSERT INTO cost_price_periods
-        (id, product_id, cost_price, applicable_period, updated_at)
-      VALUES (
-        ${generateId()}::uuid,
-        ${productId}::uuid,
-        ${product.costPrice}::numeric,
-        daterange(${COST_PRICE_BASE_DATE}::date, NULL, '[)'),
-        CURRENT_TIMESTAMP
-      )
-    `;
-    costPeriodCount += 1;
-  }
-  console.log(`Created cost prices (${costPeriodCount} products / periods)`);
+  console.log(`Created cost prices (${productSeedResult.costPeriodCount} periods)`);
   console.log("");
 
   // 消費税率を作成（昇順で投入。前期間の終わり = 次の行の effectiveFrom の暗黙）
@@ -1344,6 +1135,13 @@ async function main() {
 
   // 得意先・納品先を作成
   const { customerCount, deliveryLocationCount } = await seedCustomersAndDeliveryLocations();
+
+  // 得意先別/納品先別販売単価の上書き（得意先・納品先の作成後・#591）。
+  const overrideResult = await seedPriceOverrides(prisma);
+  console.log(
+    `Created ${overrideResult.customerOverrideCount} customer / ${overrideResult.deliveryOverrideCount} delivery price overrides`
+  );
+  console.log("");
 
   // パスワードは全員同じなので、事前に1回だけハッシュ化
   console.log("Hashing password...");
@@ -1394,9 +1192,13 @@ async function main() {
   }
   console.log(`Created ${employeeRoleData.length} employee role assignments`);
 
-  // 見積（#330 / S2 閲覧画面のデモ用）。マスタ作成後に参照して作る。
-  const estimateCount = await seedEstimates(prisma);
-  console.log(`Created ${estimateCount} estimates`);
+  // dev 専用の未申請見積（ドラフト・#591）。免除3理由＋承認段階4段＋境界ペア＋構造多様性。
+  const devEstimateCount = await seedDevEstimates(prisma);
+  console.log(`Created ${devEstimateCount} dev draft estimates`);
+
+  // dev 専用の見積申請（5 状態×検索8軸弁別・#591）。申請日時は today 相対で過去 90 日に分散。
+  const devApplicationCount = await seedDevApplications(prisma);
+  console.log(`Created ${devApplicationCount} dev application estimates`);
 
   const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
   console.log("");
@@ -1410,11 +1212,33 @@ async function main() {
   console.log(`Created ${POSITIONS.length} positions`);
   console.log(`Created ${ROLES.length} roles`);
   console.log(`Created ${employeeRoleData.length} employee role assignments`);
-  console.log(`Created ${PRODUCTS.length} products`);
+  console.log(`Created ${productSeedResult.productCount} products`);
   console.log(`Created ${TAX_RATES.length} tax rates`);
   console.log(`Created ${customerCount} customers`);
   console.log(`Created ${deliveryLocationCount} delivery locations`);
-  console.log(`Default password for all users: ${DEFAULT_PASSWORD}`);
+  console.log("=".repeat(50));
+
+  // 階層別ログインアカウント一覧（メール／氏名／役割）。手動確認・デモの入口として提示する（#591）。
+  // 詳細カタログ（金額帯×承認段階・申請者別チェーン段数・検索8軸）は README を参照。
+  const roleNameByCd = new Map(ROLES.map((r) => [r.cd, r.name]));
+  console.log("");
+  console.log(`Login accounts (all password: ${DEFAULT_PASSWORD}):`);
+  ROLE_EMPLOYEES.forEach((e, i) => {
+    console.log(
+      `  ${generateEmail(i + 1).padEnd(26)} ${e.name}  [${roleNameByCd.get(e.roleCd) ?? "?"}]`
+    );
+  });
+  FIXED_STAFF.forEach((s, i) => {
+    const email = generateEmail(ROLE_EMPLOYEES.length + i + 1);
+    console.log(
+      `  ${email.padEnd(26)} ${s.name}  [課員 / 上位=${roleNameByCd.get(s.superiorRoleCd) ?? "?"}]`
+    );
+  });
+  console.log("");
+  console.log("Dev estimate number bands:");
+  console.log("  未申請ドラフト : N/R/A 9906 + 06001〜06022");
+  console.log("  申請(状態あり) : N9906101〜160 / A9906110-111 (連番 061xx)");
+  console.log("  カタログ詳細  : prisma/seed-dev-data/README.md");
   console.log("=".repeat(50));
 }
 

@@ -1,5 +1,8 @@
 /**
- * 見積申請一覧（/estimate-applications・#572）E2E 用の代表フィクスチャ。
+ * 見積申請一覧（/estimate-applications・#572）E2E 専属の代表フィクスチャ。
+ *
+ * dev seed は #591 で自前の申請フィクスチャ（prisma/seed-dev-data/applications.ts）へ移行したため、
+ * 本ファイルは seed-e2e.ts 専属になった（ADR-20260709-f2q）。
  *
  * 状態は保存しない（ADR-0058）ため、代表状態を「終端イベント行の存在」で作り込む:
  * - PENDING: 申請＋承認ステップのみ（承認/差戻/取下なし）。承認待ち役割が既知（営業課長）。
