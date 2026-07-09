@@ -649,8 +649,8 @@ export async function updateVariationAdjustment(
     customerMemo: value.customerMemo,
     internalMemo: value.internalMemo,
     items: value.items.map((item) => ({
+      // 単価は価格決定で固定され調整対象外（ADR-0064）。フォームが送っても無視する。
       itemId: item.itemId,
-      unitPrice: item.unitPrice,
       discountRate: item.discountRate,
       itemDiscount: item.itemDiscount,
       customerMemo: item.customerMemo,

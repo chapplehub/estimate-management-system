@@ -130,9 +130,11 @@ describe("AdjustRevisedVariationCommand", () => {
     return { estimateId: created.id.value, target, version: current.version };
   }
 
-  it("改訂先の単価・掛率・明細値引・全体値引とメモを適用し saved で永続化される", async () => {
+  it("改訂先の掛率・明細値引・全体値引とメモを適用し、単価は不変で saved 永続化される", async () => {
     const { estimateId, target, version } = await buildRevisedTarget();
     const item = target.items[0]!;
+    // 改訂先の単価は改訂元から複写された解決値（フィクスチャ 1000 円）。調整では変更できない（ADR-0064）。
+    expect(item.unitPrice.majorUnits).toBe(1000);
 
     const result = await command.execute({
       estimateId,
@@ -144,7 +146,6 @@ describe("AdjustRevisedVariationCommand", () => {
       items: [
         {
           itemId: item.id.value,
-          unitPrice: 1500,
           discountRate: 1.0,
           itemDiscount: 100,
           customerMemo: "明細顧客",
@@ -158,9 +159,9 @@ describe("AdjustRevisedVariationCommand", () => {
 
     const saved = result.estimate.variations.find((v) => v.id.equals(target.id))!;
     const savedItem = saved.items[0]!;
-    // item: base 1500*2=3000, 掛率1.0, 値引100 → final 2900
-    expect(savedItem.unitPrice.majorUnits).toBe(1500);
-    expect(savedItem.finalAmount.majorUnits).toBe(2900);
+    // 単価は不変の 1000。base 1000*2=2000, 掛率1.0, 値引100 → final 1900
+    expect(savedItem.unitPrice.majorUnits).toBe(1000);
+    expect(savedItem.finalAmount.majorUnits).toBe(1900);
     expect(saved.overallDiscount.majorUnits).toBe(50);
     expect(saved.customerMemo.value).toBe("得意先向けメモ");
     expect(savedItem.customerMemo.value).toBe("明細顧客");
@@ -171,7 +172,7 @@ describe("AdjustRevisedVariationCommand", () => {
     const reloaded = await repository.findById(new EstimateId(estimateId));
     expect(reloaded).not.toBeNull();
     const reloadedTarget = reloaded!.variations.find((v) => v.id.equals(target.id))!;
-    expect(reloadedTarget.items[0]!.finalAmount.majorUnits).toBe(2900);
+    expect(reloadedTarget.items[0]!.finalAmount.majorUnits).toBe(1900);
     expect(reloadedTarget.overallDiscount.majorUnits).toBe(50);
   });
 
@@ -208,7 +209,7 @@ describe("AdjustRevisedVariationCommand", () => {
       variationId: variation.id.value,
       version: 1,
       overallDiscount: 0,
-      items: [{ itemId: item.id.value, unitPrice: 2000, discountRate: 1.0, itemDiscount: 0 }],
+      items: [{ itemId: item.id.value, discountRate: 1.0, itemDiscount: 0 }],
     });
 
     expect(result.kind).toBe("taxRateMismatch");

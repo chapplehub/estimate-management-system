@@ -365,19 +365,6 @@ export class Estimate {
     this.touch();
   }
 
-  changeItemUnitPrice(
-    variationId: EstimateVariationId,
-    itemId: EstimateItemId,
-    newPrice: Money
-  ): void {
-    this.editableVariationOrThrow(variationId).changeItemUnitPrice(
-      itemId,
-      newPrice,
-      this.taxContext()
-    );
-    this.touch();
-  }
-
   changeItemDiscountRate(
     variationId: EstimateVariationId,
     itemId: EstimateItemId,
@@ -413,9 +400,10 @@ export class Estimate {
   }
 
   /**
-   * バリエーションの価格系（明細の単価・掛率・明細値引＋全体値引）を一括調整する
-   * （#390・改訂先の部分編集）。editableVariationOrThrow 経由なので凍結改訂元は拒否し、
-   * 改訂先は通る。数量・行構成は変えないため改訂先でも安全（数量固定・ADR-0060）。
+   * バリエーションの価格系（明細の掛率・明細値引＋全体値引）を一括調整する
+   * （#390・改訂先の部分編集）。単価は価格決定で固定され調整対象外（ADR-0064）。
+   * editableVariationOrThrow 経由なので凍結改訂元は拒否し、改訂先は通る。数量・行構成は
+   * 変えないため改訂先でも安全（数量固定・ADR-0060）。
    */
   adjustVariationPricing(
     variationId: EstimateVariationId,

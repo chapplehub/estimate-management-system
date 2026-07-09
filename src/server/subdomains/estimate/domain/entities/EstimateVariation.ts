@@ -36,11 +36,11 @@ export type TaxContext = {
 
 /**
  * 明細単位の価格調整（#390・改訂先の部分編集）。1 明細の価格系フィールドの新値を表す。
- * 数量・商品は対象外（改訂先では固定・ADR-0060）。{@link EstimateVariation.adjustPricing} が消費する。
+ * 数量・商品・単価は対象外（改訂先では固定・数量固定 ADR-0060、単価は価格決定で固定 ADR-0064）。
+ * {@link EstimateVariation.adjustPricing} が消費する。
  */
 export type ItemPriceAdjustment = {
   itemId: EstimateItemId;
-  unitPrice: Money;
   discountRate: DiscountRate;
   itemDiscount: Money;
 };
@@ -239,11 +239,6 @@ export class EstimateVariation {
     this.recalculate(tax);
   }
 
-  changeItemUnitPrice(itemId: EstimateItemId, newPrice: Money, tax: TaxContext): void {
-    this.findItemOrThrow(itemId).changeUnitPrice(newPrice);
-    this.recalculate(tax);
-  }
-
   changeItemDiscountRate(itemId: EstimateItemId, newRate: DiscountRate, tax: TaxContext): void {
     this.findItemOrThrow(itemId).changeDiscountRate(newRate);
     this.recalculate(tax);
@@ -277,10 +272,13 @@ export class EstimateVariation {
   }
 
   /**
-   * 価格系（明細の単価・掛率・明細値引＋全体値引）を一括調整する（#390・改訂先の部分編集）。
+   * 価格系（明細の掛率・明細値引＋全体値引）を一括調整する（#390・改訂先の部分編集）。
+   *
+   * 単価は明細生成時に価格決定で確定・固定され、調整対象ではない（ADR-0064）。掛率・明細値引・
+   * 全体値引・メモのみが改訂先の編集可能集合（ADR-0060）。
    *
    * 各明細に setter を適用したあと末尾で **1 回だけ** 再計算する。粒度別メソッド
-   * （changeItemUnitPrice 等）を明細ごとに呼ぶと per-call 再計算が O(N^2) になるため、
+   * （changeItemDiscountRate 等）を明細ごとに呼ぶと per-call 再計算が O(N^2) になるため、
    * recalculate が最終状態からの純導出で冪等であることを使い、適用後に一括で再計算する
    * （計画 設計判断 Q）。
    *
@@ -295,7 +293,6 @@ export class EstimateVariation {
     this.assertEditable();
     for (const adj of itemAdjustments) {
       const item = this.findItemOrThrow(adj.itemId);
-      item.changeUnitPrice(adj.unitPrice);
       item.changeDiscountRate(adj.discountRate);
       item.changeItemDiscount(adj.itemDiscount);
     }

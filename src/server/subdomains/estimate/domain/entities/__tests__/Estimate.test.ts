@@ -797,12 +797,12 @@ describe("Estimate", () => {
       );
     });
 
-    it("改訂元（凍結）には明細操作（追加・単価変更・全体値引変更）ができない", () => {
+    it("改訂元（凍結）には明細操作（追加・掛率変更・全体値引変更）ができない", () => {
       const { estimate, source, sourceItem } = buildRevisedEstimate();
 
       expect(() => estimate.addItem(source.id, makeItem())).toThrow(BusinessRuleViolationError);
       expect(() =>
-        estimate.changeItemUnitPrice(source.id, sourceItem.id, Money.fromMajorUnits(900))
+        estimate.changeItemDiscountRate(source.id, sourceItem.id, new DiscountRate(0.5))
       ).toThrow(BusinessRuleViolationError);
       expect(() => estimate.changeOverallDiscount(source.id, Money.fromMajorUnits(100))).toThrow(
         BusinessRuleViolationError
@@ -826,12 +826,14 @@ describe("Estimate", () => {
       expect(estimate.variations[0]!.isActive()).toBe(true);
     });
 
-    it("改訂先（得意先宛）への調整（単価変更）は集約ルート経由でできる", () => {
+    it("改訂先（得意先宛）への調整（掛率変更）は集約ルート経由でできる", () => {
       const { estimate, revised, revisedItem } = buildRevisedEstimate();
 
-      estimate.changeItemUnitPrice(revised.id, revisedItem.id, Money.fromMajorUnits(1000));
+      // 単価は不変（1200）。掛率0.5 → discounted 600
+      estimate.changeItemDiscountRate(revised.id, revisedItem.id, new DiscountRate(0.5));
 
-      expect(revisedItem.unitPrice.equals(Money.fromMajorUnits(1000))).toBe(true);
+      expect(revisedItem.unitPrice.equals(Money.fromMajorUnits(1200))).toBe(true);
+      expect(revisedItem.discountedAmount.equals(Money.fromMajorUnits(600))).toBe(true);
     });
 
     it("改訂先（得意先宛）の数量変更は集約ルート経由でも拒否される（数量固定・ADR-0060）", () => {
@@ -851,7 +853,6 @@ describe("Estimate", () => {
         [
           {
             itemId: revisedItem.id,
-            unitPrice: Money.fromMajorUnits(1000),
             discountRate: new DiscountRate(1.0),
             itemDiscount: Money.fromMajorUnits(100),
           },
@@ -859,8 +860,9 @@ describe("Estimate", () => {
         Money.fromMajorUnits(50)
       );
 
-      expect(revisedItem.unitPrice.equals(Money.fromMajorUnits(1000))).toBe(true);
-      expect(revisedItem.finalAmount.equals(Money.fromMajorUnits(900))).toBe(true);
+      // 単価は不変の 1200。base 1200*1=1200, 掛率1.0, 値引100 → final 1100
+      expect(revisedItem.unitPrice.equals(Money.fromMajorUnits(1200))).toBe(true);
+      expect(revisedItem.finalAmount.equals(Money.fromMajorUnits(1100))).toBe(true);
       expect(revised.overallDiscount.equals(Money.fromMajorUnits(50))).toBe(true);
       expect(revisedItem.quantity.value).toBe(1);
     });
@@ -874,7 +876,6 @@ describe("Estimate", () => {
           [
             {
               itemId: sourceItem.id,
-              unitPrice: Money.fromMajorUnits(900),
               discountRate: new DiscountRate(1.0),
               itemDiscount: Money.zero(),
             },
