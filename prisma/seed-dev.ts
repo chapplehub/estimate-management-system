@@ -6,6 +6,7 @@ import { PrismaClient } from "../generated/prisma/client";
 import type { UserRole } from "../src/server/shared/auth/types";
 import { USER_ROLES } from "../src/server/shared/auth/types";
 import { seedEstimates } from "./seed-estimates";
+import { seedProducts, seedPriceOverrides } from "./seed-dev-data/products";
 import { POSITIONS, TAX_RATES } from "./seed-shared/masterData";
 
 config({ path: ".env" });
@@ -815,207 +816,6 @@ const CUSTOMERS = [
   },
 ];
 
-// 商品データ（開発用: 各区分・単位・有効/無効をカバー）
-const PRODUCTS = [
-  // 個別商品（INDIVIDUAL）
-  {
-    code: "PRD001",
-    name: "標準デスク",
-    category: "INDIVIDUAL" as const,
-    unit: "UNIT" as const,
-    costPrice: 15000,
-    isActive: true,
-    description: "W1200×D700×H720 標準サイズのオフィスデスク",
-  },
-  {
-    code: "PRD002",
-    name: "オフィスチェア",
-    category: "INDIVIDUAL" as const,
-    unit: "UNIT" as const,
-    costPrice: 25000,
-    isActive: true,
-    description: "エルゴノミクスチェア メッシュバック",
-  },
-  {
-    code: "PRD003",
-    name: "モニターアーム",
-    category: "INDIVIDUAL" as const,
-    unit: "UNIT" as const,
-    costPrice: 8000,
-    isActive: true,
-    description: "シングルモニター用 VESA対応",
-  },
-  {
-    code: "PRD004",
-    name: "キーボードトレイ",
-    category: "INDIVIDUAL" as const,
-    unit: "UNIT" as const,
-    costPrice: 5000,
-    isActive: true,
-    description: "スライド式 後付けタイプ",
-  },
-  {
-    code: "PRD005",
-    name: "旧型モニター",
-    category: "INDIVIDUAL" as const,
-    unit: "UNIT" as const,
-    costPrice: 20000,
-    isActive: false,
-    description: "販売終了品 24インチ液晶",
-  },
-  {
-    code: "PRD006",
-    name: "旧型プリンター",
-    category: "INDIVIDUAL" as const,
-    unit: "UNIT" as const,
-    costPrice: 35000,
-    isActive: false,
-    description: "販売終了品 A3対応レーザー",
-  },
-  {
-    code: "PRD007",
-    name: "パーティション",
-    category: "INDIVIDUAL" as const,
-    unit: "SHEET" as const,
-    costPrice: 12000,
-    isActive: true,
-    description: "H1800 自立式パーティション",
-  },
-  {
-    code: "PRD008",
-    name: "ケーブルダクト",
-    category: "INDIVIDUAL" as const,
-    unit: "ROLL" as const,
-    costPrice: 3500,
-    isActive: true,
-    description: "床用ケーブルカバー 1m単位",
-  },
-  // 消耗品（CONSUMABLE）
-  {
-    code: "PRD009",
-    name: "コピー用紙A4",
-    category: "CONSUMABLE" as const,
-    unit: "BOX" as const,
-    costPrice: 3000,
-    isActive: true,
-    description: "A4 500枚×5冊入り",
-  },
-  {
-    code: "PRD010",
-    name: "コピー用紙A3",
-    category: "CONSUMABLE" as const,
-    unit: "BOX" as const,
-    costPrice: 4500,
-    isActive: true,
-    description: "A3 500枚×3冊入り",
-  },
-  {
-    code: "PRD011",
-    name: "トナーカートリッジ黒",
-    category: "CONSUMABLE" as const,
-    unit: "PIECE" as const,
-    costPrice: 8000,
-    isActive: true,
-    description: null,
-  },
-  {
-    code: "PRD012",
-    name: "トナーカートリッジカラー",
-    category: "CONSUMABLE" as const,
-    unit: "PIECE" as const,
-    costPrice: 12000,
-    isActive: true,
-    description: "C/M/Y 3色セット",
-  },
-  {
-    code: "PRD013",
-    name: "クリーニングキット",
-    category: "CONSUMABLE" as const,
-    unit: "PIECE" as const,
-    costPrice: 2500,
-    isActive: true,
-    description: "OA機器クリーニング用",
-  },
-  {
-    code: "PRD014",
-    name: "旧型トナー",
-    category: "CONSUMABLE" as const,
-    unit: "PIECE" as const,
-    costPrice: 6000,
-    isActive: false,
-    description: "旧型プリンター用 在庫限り",
-  },
-  // セット商品（SET）
-  {
-    code: "PRD015",
-    name: "デスクセット一式",
-    category: "SET" as const,
-    unit: "SET" as const,
-    costPrice: null,
-    isActive: true,
-    description: "デスク＋チェアのセット",
-  },
-  {
-    code: "PRD016",
-    name: "モニター環境セット",
-    category: "SET" as const,
-    unit: "SET" as const,
-    costPrice: null,
-    isActive: true,
-    description: "モニターアーム＋ケーブルダクトのセット",
-  },
-  {
-    code: "PRD017",
-    name: "印刷消耗品セット",
-    category: "SET" as const,
-    unit: "SET" as const,
-    costPrice: null,
-    isActive: true,
-    description: "トナー＋用紙のまとめ買いセット",
-  },
-  {
-    code: "PRD018",
-    name: "旧型デスクセット",
-    category: "SET" as const,
-    unit: "SET" as const,
-    costPrice: null,
-    isActive: false,
-    description: "販売終了セット商品",
-  },
-];
-
-/**
- * セット構成（SetProductComponent・ADR-0047）。SET 商品 → 構成商品（個別/消耗品）の対応。
- * 自動展開（expandSetComponents）が構成を引けるよう、有効な SET 商品に構成を持たせる。
- */
-const SET_COMPONENTS = [
-  { setCode: "PRD015", componentCode: "PRD001", quantity: 1 }, // デスクセット = 標準デスク
-  { setCode: "PRD015", componentCode: "PRD002", quantity: 1 }, //            + オフィスチェア
-  { setCode: "PRD016", componentCode: "PRD003", quantity: 1 }, // モニター環境 = モニターアーム
-  { setCode: "PRD016", componentCode: "PRD008", quantity: 2 }, //            + ケーブルダクト×2
-  { setCode: "PRD017", componentCode: "PRD011", quantity: 1 }, // 印刷消耗品 = トナー黒
-  { setCode: "PRD017", componentCode: "PRD009", quantity: 3 }, //            + コピー用紙A4×3
-];
-
-/**
- * 共通販売単価（ADR-0066 / 0067）。商品単位の適用期間付き単価。
- * 適用期間は半開区間 [開始, 終了)、end=null は無期限上端。同一商品内で重複しない。
- * PRD001 は期中改定（10/1 で値上げ）、PRD002 は無期限1本の例。
- */
-const COMMON_SELLING_PRICES = [
-  {
-    productCode: "PRD001",
-    periods: [
-      { start: "2025-04-01", end: "2025-10-01", price: 30000 },
-      { start: "2025-10-01", end: null, price: 32000 }, // 改定後・無期限
-    ],
-  },
-  {
-    productCode: "PRD002",
-    periods: [{ start: "2025-04-01", end: null, price: 18000 }],
-  },
-];
-
 // 消費税率データ（昇順）
 // TAX_RATES は ./seed-shared/masterData.ts へ切り出した（seed-unit.ts と共有・Issue #584）。
 
@@ -1221,10 +1021,19 @@ async function main() {
 
   // 既存データを削除（外部キー制約を考慮した順序）
   // 見積は得意先・納品先・部署・従業員・商品を参照する（onDelete: Restrict）ため先に消す。
+  // 見積申請・承認免除はバリエーションを参照するため、見積より先に消す（#591 で dev も申請を持つ）。
+  await prisma.estimateStepApproval.deleteMany();
+  await prisma.estimateStepRejection.deleteMany();
+  await prisma.estimateApprovalStep.deleteMany();
+  await prisma.estimateApplicationWithdrawal.deleteMany();
+  await prisma.estimateApprovalExemption.deleteMany();
+  await prisma.estimateApplication.deleteMany();
   await prisma.estimateVariationCopy.deleteMany();
   await prisma.estimateVariationRevision.deleteMany();
   await prisma.estimate.deleteMany();
   await prisma.taxRate.deleteMany();
+  await prisma.customerSellingPrice.deleteMany(); // 得意先別販売単価。期間行は FK Cascade（ADR-20260624-8tg）
+  await prisma.deliveryLocationSellingPrice.deleteMany(); // 納品先別販売単価。期間行は FK Cascade
   await prisma.commonSellingPrice.deleteMany(); // 期間行は FK Cascade で消える
   await prisma.costPrice.deleteMany(); // 原価集約。期間行は FK Cascade で消える（ADR-20260627-a5c）
   await prisma.setProductComponent.deleteMany();
@@ -1301,93 +1110,16 @@ async function main() {
   console.log(`Created ${ROLES.length} roles`);
   console.log("");
 
-  // 商品を作成
-  console.log("Creating products...");
-  for (const product of PRODUCTS) {
-    await prisma.product.create({
-      data: {
-        id: generateId(),
-        code: product.code,
-        name: product.name,
-        category: product.category,
-        unit: product.unit,
-        isActive: product.isActive,
-        description: product.description,
-      },
-    });
-  }
-  console.log(`Created ${PRODUCTS.length} products`);
-
-  // セット構成（SetProductComponent・ADR-0047）。コード→id を解決して交差行を作る。
-  const productsByCode = new Map(
-    (await prisma.product.findMany({ select: { id: true, code: true } })).map((p) => [p.code, p.id])
-  );
-  await prisma.setProductComponent.createMany({
-    data: SET_COMPONENTS.map((c) => ({
-      setProductId: productsByCode.get(c.setCode)!,
-      componentProductId: productsByCode.get(c.componentCode)!,
-      quantity: c.quantity,
-    })),
-  });
-  console.log(`Created ${SET_COMPONENTS.length} set product components`);
-  console.log("");
-
-  // 共通販売単価（ADR-0066 / 0067）。daterange 列は Prisma typed では書けないため、
-  // 親行は typed create、期間行は $executeRaw で daterange を生成して投入する。
-  console.log("Creating common selling prices...");
-  let cspPeriodCount = 0;
-  for (const csp of COMMON_SELLING_PRICES) {
-    const productId = productsByCode.get(csp.productCode);
-    if (!productId) continue;
-    await prisma.commonSellingPrice.create({ data: { productId } });
-    for (const p of csp.periods) {
-      await prisma.$executeRaw`
-        INSERT INTO common_selling_price_periods
-          (id, product_id, selling_price, applicable_period, updated_at)
-        VALUES (
-          ${generateId()}::uuid,
-          ${productId}::uuid,
-          ${p.price}::numeric,
-          daterange(${p.start}::date, ${p.end}::date, '[)'),
-          CURRENT_TIMESTAMP
-        )
-      `;
-      cspPeriodCount += 1;
-    }
-  }
+  // 商品・セット構成・共通販売単価・原価を作成（dev 専用フィクスチャ・#591）。
+  // 得意先/納品先に依存しないためこの位置で投入し、得意先別/納品先別の上書きは得意先作成後に行う。
+  console.log("Creating products and prices...");
+  const productSeedResult = await seedProducts(prisma);
+  console.log(`Created ${productSeedResult.productCount} products`);
+  console.log(`Created ${productSeedResult.setComponentCount} set product components`);
   console.log(
-    `Created common selling prices for ${COMMON_SELLING_PRICES.length} products (${cspPeriodCount} periods)`
+    `Created common selling prices (${productSeedResult.commonPricePeriodCount} periods)`
   );
-  console.log("");
-
-  // 原価集約（ADR-0066 / 0067 / 20260627-a5c）。別 curated 配列を作らず PRODUCTS から導出し、
-  // バックフィル移行と同じカテゴリ分岐・同じ起点で投入する（seed と移行の意味論ドリフトを防ぐ）。
-  //   - 複合品（category === "SET"）       → 行を作らない（強制 0 はプレースホルダ。粗利は後続）
-  //   - 非複合品 ＆ costPrice == null        → 行を作らない（期間なし＝原価未設定）
-  //   - 非複合品 ＆ costPrice 非null         → [2026-04-01, ) を1本（本物の 0 も保存）
-  // 起点は移行 SQL の暦日定数と一致させる（ADR-0024 の当年度期首）。
-  const COST_PRICE_BASE_DATE = "2026-04-01";
-  console.log("Creating cost prices...");
-  let costPeriodCount = 0;
-  for (const product of PRODUCTS) {
-    if (product.category === "SET" || product.costPrice == null) continue;
-    const productId = productsByCode.get(product.code);
-    if (!productId) continue;
-    await prisma.costPrice.create({ data: { productId } });
-    await prisma.$executeRaw`
-      INSERT INTO cost_price_periods
-        (id, product_id, cost_price, applicable_period, updated_at)
-      VALUES (
-        ${generateId()}::uuid,
-        ${productId}::uuid,
-        ${product.costPrice}::numeric,
-        daterange(${COST_PRICE_BASE_DATE}::date, NULL, '[)'),
-        CURRENT_TIMESTAMP
-      )
-    `;
-    costPeriodCount += 1;
-  }
-  console.log(`Created cost prices (${costPeriodCount} products / periods)`);
+  console.log(`Created cost prices (${productSeedResult.costPeriodCount} periods)`);
   console.log("");
 
   // 消費税率を作成（昇順で投入。前期間の終わり = 次の行の effectiveFrom の暗黙）
@@ -1402,6 +1134,13 @@ async function main() {
 
   // 得意先・納品先を作成
   const { customerCount, deliveryLocationCount } = await seedCustomersAndDeliveryLocations();
+
+  // 得意先別/納品先別販売単価の上書き（得意先・納品先の作成後・#591）。
+  const overrideResult = await seedPriceOverrides(prisma);
+  console.log(
+    `Created ${overrideResult.customerOverrideCount} customer / ${overrideResult.deliveryOverrideCount} delivery price overrides`
+  );
+  console.log("");
 
   // パスワードは全員同じなので、事前に1回だけハッシュ化
   console.log("Hashing password...");
@@ -1468,7 +1207,7 @@ async function main() {
   console.log(`Created ${POSITIONS.length} positions`);
   console.log(`Created ${ROLES.length} roles`);
   console.log(`Created ${employeeRoleData.length} employee role assignments`);
-  console.log(`Created ${PRODUCTS.length} products`);
+  console.log(`Created ${productSeedResult.productCount} products`);
   console.log(`Created ${TAX_RATES.length} tax rates`);
   console.log(`Created ${customerCount} customers`);
   console.log(`Created ${deliveryLocationCount} delivery locations`);
