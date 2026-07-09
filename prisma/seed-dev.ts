@@ -1216,7 +1216,29 @@ async function main() {
   console.log(`Created ${TAX_RATES.length} tax rates`);
   console.log(`Created ${customerCount} customers`);
   console.log(`Created ${deliveryLocationCount} delivery locations`);
-  console.log(`Default password for all users: ${DEFAULT_PASSWORD}`);
+  console.log("=".repeat(50));
+
+  // 階層別ログインアカウント一覧（メール／氏名／役割）。手動確認・デモの入口として提示する（#591）。
+  // 詳細カタログ（金額帯×承認段階・申請者別チェーン段数・検索8軸）は README を参照。
+  const roleNameByCd = new Map(ROLES.map((r) => [r.cd, r.name]));
+  console.log("");
+  console.log(`Login accounts (all password: ${DEFAULT_PASSWORD}):`);
+  ROLE_EMPLOYEES.forEach((e, i) => {
+    console.log(
+      `  ${generateEmail(i + 1).padEnd(26)} ${e.name}  [${roleNameByCd.get(e.roleCd) ?? "?"}]`
+    );
+  });
+  FIXED_STAFF.forEach((s, i) => {
+    const email = generateEmail(ROLE_EMPLOYEES.length + i + 1);
+    console.log(
+      `  ${email.padEnd(26)} ${s.name}  [課員 / 上位=${roleNameByCd.get(s.superiorRoleCd) ?? "?"}]`
+    );
+  });
+  console.log("");
+  console.log("Dev estimate number bands:");
+  console.log("  未申請ドラフト : N/R/A 9906 + 06001〜06022");
+  console.log("  申請(状態あり) : N9906101〜160 / A9906110-111 (連番 061xx)");
+  console.log("  カタログ詳細  : prisma/seed-dev-data/README.md");
   console.log("=".repeat(50));
 }
 
