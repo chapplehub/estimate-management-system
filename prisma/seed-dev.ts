@@ -5,7 +5,6 @@ import { hashPassword } from "better-auth/crypto";
 import { PrismaClient } from "../generated/prisma/client";
 import type { UserRole } from "../src/server/shared/auth/types";
 import { USER_ROLES } from "../src/server/shared/auth/types";
-import { seedEstimates } from "./seed-estimates";
 import { seedProducts, seedPriceOverrides } from "./seed-dev-data/products";
 import { seedDevEstimates } from "./seed-dev-data/estimates";
 import { seedDevApplications } from "./seed-dev-data/applications";
@@ -1192,10 +1191,6 @@ async function main() {
     await prisma.employeeRole.create({ data });
   }
   console.log(`Created ${employeeRoleData.length} employee role assignments`);
-
-  // 見積（#330 / S2 閲覧画面のデモ用）。マスタ作成後に参照して作る。
-  const estimateCount = await seedEstimates(prisma);
-  console.log(`Created ${estimateCount} estimates`);
 
   // dev 専用の未申請見積（ドラフト・#591）。免除3理由＋承認段階4段＋境界ペア＋構造多様性。
   const devEstimateCount = await seedDevEstimates(prisma);
