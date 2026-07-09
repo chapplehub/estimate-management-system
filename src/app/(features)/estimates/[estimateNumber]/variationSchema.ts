@@ -12,6 +12,9 @@ import { z } from "zod";
 
 /** 明細1件（JSON 配列の要素）。商品名・単位は選択時スナップショット（§8・編集不可）。 */
 const lineSchema = z.object({
+  // C4 内容編集で既存明細を突合する任意キー（ADR-20260709-5ea）。既存行のみ持ち、新規行は未指定。
+  // 単価保全（itemId 一致かつ productId 不変なら永続単価を保持）の突合に使う。偽造/不一致は新規行扱い。
+  itemId: z.string().optional(),
   productId: z.string().min(1, "商品を選択してください"),
   itemName: z.string().min(1, "商品名が空です"),
   unit: z.string().min(1, "単位が空です"),

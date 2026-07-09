@@ -8,6 +8,12 @@ import { ProductQueryService } from "@subdomains/product/application/queries/Pro
 import { assertSetComponentsValid } from "../shared/assertSetComponentsValid";
 import { checkTaxRateThenSave, type TaxCheckedSaveResult } from "../shared/checkTaxRateThenSave";
 import {
+  resolveLineTreePrices,
+  type ExistingLinePrice,
+  type LinePriceContext,
+  type SellingPriceResolver,
+} from "../shared/resolveLinePrices";
+import {
   toVariationContentDescriptor,
   type VariationContentInput,
 } from "../shared/variationContentInput";
@@ -38,7 +44,12 @@ export class UpdateVariationCommand {
   constructor(
     private readonly estimateRepository: EstimateRepository,
     private readonly taxRateConsistencyCheck: TaxRateConsistencyCheckDomainService,
-    private readonly productQueryService: ProductQueryService
+    private readonly productQueryService: ProductQueryService,
+    /**
+     * 明細生成時の見積単価を権威解決する価格決定（#428・ADR-0064）。入力の単価は受け取らず、
+     * 商品選択＝明細生成としてここで解決・固定する。C4 全置換の既存行保全は次段で配線する。
+     */
+    private readonly resolveSellingPrice: SellingPriceResolver
   ) {}
 
   async execute(input: UpdateVariationInput): Promise<TaxCheckedSaveResult> {
@@ -47,8 +58,36 @@ export class UpdateVariationCommand {
       throw new NotFoundEntityError(Estimate, { id: input.estimateId });
     }
 
+    // 内容の見積単価を価格決定で解決する（ADR-0064）。提出区分は対象バリエーションの不変属性
+    // （ADR-0045）、宛先・見積年月日は親見積から取る。
+    const target = estimate.variations.find((v) => v.id.value === input.variationId);
+    if (!target) {
+      throw new NotFoundEntityError(Estimate, { id: input.variationId });
+    }
+    const context: LinePriceContext = {
+      submissionType: target.submissionType,
+      customerId: estimate.customerId.value,
+      deliveryLocationId: estimate.deliveryLocationId.value,
+      estimateDate: estimate.estimateDate,
+    };
+    // C4 全置換の既存行保全（ADR-20260709-5ea）: 現行明細の永続単価を itemId で索引する。
+    // ペイロード行が同一 itemId かつ productId 不変なら再解決せず永続値を保つ（設計判断 B）。
+    // target.items は通常明細・セット構成明細の双方を含むため、両者の保全がこれで賄える。
+    const existingLines = new Map<string, ExistingLinePrice>(
+      target.items.map((item) => [
+        item.id.value,
+        { productId: item.productId.value, unitPrice: item.unitPrice },
+      ])
+    );
+    const priceMap = await resolveLineTreePrices(
+      input.content,
+      context,
+      this.resolveSellingPrice,
+      existingLines
+    );
+
     const content = EstimateFactory.buildVariationContent(
-      toVariationContentDescriptor(input.content)
+      toVariationContentDescriptor(input.content, priceMap)
     );
     // セット群の構成について区分・有効性をライブ検証（ADR-0052・ペイロード防御）。
     // 区分外（セット商品ネスト等）はここで BusinessRuleViolationError として弾く。

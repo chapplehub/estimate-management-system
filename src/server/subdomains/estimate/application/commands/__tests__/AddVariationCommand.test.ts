@@ -34,7 +34,8 @@ describe("AddVariationCommand", () => {
     const repository = new PrismaEstimateRepository();
     command = new AddVariationCommand(
       repository,
-      new TaxRateConsistencyCheckDomainService(new PrismaTaxRateRepository())
+      new TaxRateConsistencyCheckDomainService(new PrismaTaxRateRepository()),
+      resolveSellingPriceQueryFactory()
     );
     createCommand = new CreateEstimateCommand(
       repository,
@@ -78,7 +79,7 @@ describe("AddVariationCommand", () => {
     };
   }
 
-  it("max+1 採番した新バリエーションを追加し、saved で永続化される", async () => {
+  it("追加明細の単価は入力ではなく販売単価マスタから解決される（ADR-0064）", async () => {
     const created = await createCommand.execute(createInput());
 
     const result = await command.execute({
@@ -94,7 +95,6 @@ describe("AddVariationCommand", () => {
             itemName: "商品B",
             quantity: 2,
             unit: "個",
-            unitPrice: 1500,
           },
         ],
       },
@@ -105,8 +105,9 @@ describe("AddVariationCommand", () => {
     const found = await new PrismaEstimateRepository().findById(created.id);
     expect(found?.variations).toHaveLength(2);
     const added = found?.variations.find((v) => v.variationNumber === 2);
-    // 1500 × 2 = 3000
-    expect(added?.subtotal.majorUnits).toBe(3000);
+    // 単価は入力に無く、フィクスチャ商品の共通販売単価 1000 円が解決される。1000 × 2 = 2000
+    expect(added?.items[0]!.unitPrice.majorUnits).toBe(1000);
+    expect(added?.subtotal.majorUnits).toBe(2000);
     expect(added?.submissionType.isDeliveryLocation()).toBe(true);
     expect(
       found?.variations.find((v) => v.variationNumber === 1)?.submissionType.isCustomer()
