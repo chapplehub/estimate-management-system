@@ -2,13 +2,13 @@ import { describe, expect, it } from "vitest";
 import { addVariationNodeSchema, updateVariationContentNodeSchema } from "./variationSchema";
 
 describe("updateVariationContentNodeSchema（セット群対応・判別子 union・S5）", () => {
+  // 単価はスキーマに含めない（見積単価は価格決定でサーバ解決・ADR-0064）。
   const lineNode = {
     kind: "line",
     productId: "p1",
     itemName: "通常",
     unit: "個",
     quantity: 1,
-    unitPrice: 1000,
     discountRate: 1.0,
     itemDiscount: 0,
   };
@@ -24,7 +24,6 @@ describe("updateVariationContentNodeSchema（セット群対応・判別子 unio
         itemName: "構成1",
         unit: "個",
         quantity: 1,
-        unitPrice: 0,
         discountRate: 1.0,
         itemDiscount: 0,
       },
@@ -42,6 +41,15 @@ describe("updateVariationContentNodeSchema（セット群対応・判別子 unio
 
   it("通常明細ノードとセット群ノードの混在を通す", () => {
     expect(parseNodes([lineNode, setGroupNode]).success).toBe(true);
+  });
+
+  it("単価を含まない明細を通す（単価は手入力せずサーバ解決・ADR-0064）", () => {
+    // lineNode は既に単価を持たない。単価が必須でないことを回帰ガードとして固定する。
+    expect(parseNodes([lineNode]).success).toBe(true);
+  });
+
+  it("既存行の itemId（任意）を受け付ける（C4 保全キー・ADR-20260709-5ea）", () => {
+    expect(parseNodes([{ ...lineNode, itemId: "item-1" }]).success).toBe(true);
   });
 
   it("構成明細が空のセット群を拒否する（空群禁止の第一防御・min(1)）", () => {

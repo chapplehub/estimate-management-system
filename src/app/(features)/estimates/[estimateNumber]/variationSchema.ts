@@ -20,8 +20,8 @@ const lineSchema = z.object({
   unit: z.string().min(1, "単位が空です"),
   // 数量: 1 以上の整数（Quantity VO と整合）。
   quantity: z.number().int("数量は整数で入力してください").min(1, "数量は1以上で入力してください"),
-  // 単価: 円・0 以上（販売単価マスタ未確定のため新規行は 0＝要入力）。
-  unitPrice: z.number().min(0, "単価は0以上で入力してください"),
+  // 単価はスキーマに含めない: 見積単価は保存時に価格決定でサーバが権威解決する（ADR-0064）。
+  // クライアント値は一切受け取らない（既存行は itemId 突合で永続値を保全・ADR-20260709-5ea）。
   // 掛率: 0 超〜9.9999（DiscountRate VO と整合）。1.0 が値引なし。
   discountRate: z
     .number()

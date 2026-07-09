@@ -31,6 +31,12 @@ export type WorkingLine = {
   kind: "line";
   /** client 一意キー（React key・アクティブ行・D&D 用。永続化しない）。 */
   rowId: string;
+  /**
+   * 既存明細の永続 itemId（C4 既存行保全の突合キー・ADR-20260709-5ea）。読み取り DTO 由来の行のみ
+   * 持ち、新規行・自動展開構成は未指定。ペイロードに載せて itemId 一致かつ productId 不変なら
+   * サーバが永続単価を保全する。永続化 identity には使わない（保存のたびに新採番される）。
+   */
+  itemId?: string;
   productId: string;
   /** 表示用（read-through・ADR-0048）。サーバへは送らない。 */
   productCode: string;
@@ -125,6 +131,8 @@ export function fromLineDTO(line: LineDTO): WorkingLine {
   return {
     kind: "line",
     rowId: line.itemId,
+    // 永続 itemId を単価保全の突合キーとして保持する（rowId と同値だが用途が別・ADR-20260709-5ea）。
+    itemId: line.itemId,
     productId: line.productId,
     productCode: line.productCode,
     productCategory: line.productCategory,
@@ -206,14 +214,19 @@ export function createWorkingSetGroup(
   };
 }
 
-/** 作業行を JSON 往復用のペイロード（lineSchema 項目）へ絞る。client 専用列を落とす。 */
+/**
+ * 作業行を JSON 往復用のペイロード（lineSchema 項目）へ絞る。client 専用列（rowId・表示用・単価）を
+ * 落とす。単価は載せない（サーバが価格決定で権威解決・ADR-0064）。既存行は itemId を突合キーとして
+ * 載せる（新規行は undefined ＝ JSON.stringify で省かれサーバで新規解決される・ADR-20260709-5ea）。
+ */
 function lineFields(line: WorkingLine): VariationLineInput {
   return {
+    // 既存行のみ itemId を載せる。新規行は undefined ＝キーごと省く（サーバで新規解決）。
+    ...(line.itemId !== undefined ? { itemId: line.itemId } : {}),
     productId: line.productId,
     itemName: line.itemName,
     unit: line.unit,
     quantity: line.quantity,
-    unitPrice: line.unitPrice,
     discountRate: line.discountRate,
     itemDiscount: line.itemDiscount,
     customerMemo: line.customerMemo,

@@ -255,4 +255,20 @@ describe("toNodePayload（JSON 往復用に schema 項目へ絞る）", () => {
     expect(node.components[0]).not.toHaveProperty("rowId");
     expect(node).not.toHaveProperty("rowId");
   });
+
+  it("既存行は itemId を載せ、単価は載せない（C4 保全キー・単価はサーバ解決・ADR-20260709-5ea/0064）", () => {
+    // fromVariationLines 経由の既存明細（itemId 保持）。単価はペイロードに含めない。
+    const existing = fromVariationLines([lineDTO({ itemId: "item-9" })]);
+    const payload = toNodePayload(existing);
+
+    expect(payload[0]).toMatchObject({ kind: "line", itemId: "item-9" });
+    expect(payload[0]).not.toHaveProperty("unitPrice");
+  });
+
+  it("新規行は itemId を載せない（未指定＝サーバで新規解決される）", () => {
+    const payload = toNodePayload([line("A")]);
+
+    expect(payload[0]).not.toHaveProperty("itemId");
+    expect(payload[0]).not.toHaveProperty("unitPrice");
+  });
 });
