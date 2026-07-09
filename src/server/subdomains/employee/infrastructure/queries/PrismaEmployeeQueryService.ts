@@ -9,6 +9,60 @@ import { Prisma } from "@generated/prisma/client";
 import type { UserRole } from "@server/shared/auth/types";
 
 /**
+ * 従業員 DTO の読み取り select 定義（単一真実源）。
+ * この定数から toDTO の行型（EmployeeRow）を GetPayload で機械導出するため、
+ * select を変えれば行型も1箇所で追従する（手書き行型との二重管理を排除・PR #594）。
+ * User.role、担当役割名（role.name）、上位役割名（role.superiorRole.name /
+ * superiorRole.role.name）も含めて取得する。
+ */
+const EMPLOYEE_SELECT = {
+  id: true,
+  employeeCd: true,
+  email: true,
+  name: true,
+  departmentId: true,
+  version: true,
+  createdAt: true,
+  updatedAt: true,
+  // Department.nameを取得
+  department: {
+    select: {
+      name: true,
+    },
+  },
+  // User.roleを取得
+  user: {
+    select: {
+      role: true,
+    },
+  },
+  // 担当役割（高々1件・ADR-20260706-c89）を取得。
+  // role.name＝担当役割名、role.superiorRole.name＝役割持ちの上位役割名（承認起点）。
+  employeeRoles: {
+    select: {
+      roleId: true,
+      role: {
+        select: {
+          name: true,
+          superiorRole: { select: { name: true } },
+        },
+      },
+    },
+  },
+  // 課員の明示上位役割（0/1 件・ADR-20260707-k4e）を取得。
+  // role.name＝課員の上位役割名（承認起点）。
+  superiorRole: {
+    select: {
+      roleId: true,
+      role: { select: { name: true } },
+    },
+  },
+} satisfies Prisma.EmployeeSelect;
+
+/** EMPLOYEE_SELECT が返す Employee 行の型（toDTO の入力・select と単一真実源）。 */
+type EmployeeRow = Prisma.EmployeeGetPayload<{ select: typeof EMPLOYEE_SELECT }>;
+
+/**
  * Prismaを使用した従業員クエリサービス実装
  *
  * データベースから直接DTOを取得し、軽量で高速な読み取りを実現
@@ -18,7 +72,7 @@ export class PrismaEmployeeQueryService implements EmployeeQueryService {
   async findById(id: string): Promise<EmployeeDTO | null> {
     const employee = await prisma.employee.findUnique({
       where: { id },
-      select: this.getSelectFields(),
+      select: EMPLOYEE_SELECT,
     });
 
     return employee ? this.toDTO(employee) : null;
@@ -27,7 +81,7 @@ export class PrismaEmployeeQueryService implements EmployeeQueryService {
   async findByEmployeeCd(employeeCd: string): Promise<EmployeeDTO | null> {
     const employee = await prisma.employee.findFirst({
       where: { employeeCd },
-      select: this.getSelectFields(),
+      select: EMPLOYEE_SELECT,
     });
 
     return employee ? this.toDTO(employee) : null;
@@ -39,7 +93,7 @@ export class PrismaEmployeeQueryService implements EmployeeQueryService {
 
     const employees = await prisma.employee.findMany({
       where,
-      select: this.getSelectFields(),
+      select: EMPLOYEE_SELECT,
       orderBy,
       take: options?.limit,
       skip: options?.offset,
@@ -138,75 +192,9 @@ export class PrismaEmployeeQueryService implements EmployeeQueryService {
   }
 
   /**
-   * DTOに必要なフィールドのみを取得するためのselect定義
-   * User.roleも含めて取得する
+   * PrismaモデルからDTOへ変換。入力型は EMPLOYEE_SELECT から導出（EmployeeRow）。
    */
-  private getSelectFields() {
-    return {
-      id: true,
-      employeeCd: true,
-      email: true,
-      name: true,
-      departmentId: true,
-      version: true,
-      createdAt: true,
-      updatedAt: true,
-      // Department.nameを取得
-      department: {
-        select: {
-          name: true,
-        },
-      },
-      // User.roleを取得
-      user: {
-        select: {
-          role: true,
-        },
-      },
-      // 担当役割（高々1件・ADR-20260706-c89）を取得。
-      // role.name＝担当役割名、role.superiorRole.name＝役割持ちの上位役割名（承認起点）。
-      employeeRoles: {
-        select: {
-          roleId: true,
-          role: {
-            select: {
-              name: true,
-              superiorRole: { select: { name: true } },
-            },
-          },
-        },
-      },
-      // 課員の明示上位役割（0/1 件・ADR-20260707-k4e）を取得。
-      // role.name＝課員の上位役割名（承認起点）。
-      superiorRole: {
-        select: {
-          roleId: true,
-          role: { select: { name: true } },
-        },
-      },
-    } as const;
-  }
-
-  /**
-   * PrismaモデルからDTOへ変換
-   */
-  private toDTO(employee: {
-    id: string;
-    employeeCd: string;
-    email: string;
-    name: string;
-    departmentId: string;
-    department: { name: string };
-    version: number;
-    createdAt: Date;
-    updatedAt: Date;
-    user: { role: string | null } | null;
-    employeeRoles: {
-      roleId: string;
-      role: { name: string; superiorRole: { name: string } | null };
-    }[];
-    superiorRole: { roleId: string; role: { name: string } } | null;
-  }): EmployeeDTO {
+  private toDTO(employee: EmployeeRow): EmployeeDTO {
     // 高々1件の担当役割（0件＝役割なし＝課員・ADR-20260706-c89）
     const assignedRole = employee.employeeRoles[0];
     return {
