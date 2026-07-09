@@ -148,10 +148,20 @@ function buildSingleLine(
 }
 
 export async function seedDevEstimates(prisma: PrismaClient): Promise<number> {
-  const findProduct = async (code: string) => {
-    const p = await prisma.product.findFirst({ where: { code }, select: { id: true } });
-    if (!p) throw new Error(`seedDevEstimates: 商品 ${code} が見つかりません`);
-    return p.id;
+  // 参照する商品コードを 1 回の findMany でまとめて解決する。
+  const productCodes = ["PRD002", "PRD013", "PRD029", "PRD041", "PRD014"];
+  const productIdByCode = new Map(
+    (
+      await prisma.product.findMany({
+        where: { code: { in: productCodes } },
+        select: { id: true, code: true },
+      })
+    ).map((p) => [p.code, p.id])
+  );
+  const findProduct = (code: string): string => {
+    const id = productIdByCode.get(code);
+    if (!id) throw new Error(`seedDevEstimates: 商品 ${code} が見つかりません`);
+    return id;
   };
   const deliveryLocation = await prisma.deliveryLocation.findFirst({ where: { code: "D001" } });
   const department = await prisma.department.findFirst({ where: { departmentCd: "DEPT001" } });
@@ -169,11 +179,11 @@ export async function seedDevEstimates(prisma: PrismaClient): Promise<number> {
     deliveryLocationId: deliveryLocation.id,
     departmentId: department.id,
     createdBy: creator.id,
-    individualAId: await findProduct("PRD002"), // オフィスチェア
-    individualBId: await findProduct("PRD013"), // 27インチモニター
-    consumableId: await findProduct("PRD029"), // コピー用紙A4（消耗品）
-    setProductId: await findProduct("PRD041"), // デスクセット一式（SET）
-    repairTargetId: await findProduct("PRD014"), // A3複合機（修理対象）
+    individualAId: findProduct("PRD002"), // オフィスチェア
+    individualBId: findProduct("PRD013"), // 27インチモニター
+    consumableId: findProduct("PRD029"), // コピー用紙A4（消耗品）
+    setProductId: findProduct("PRD041"), // デスクセット一式（SET）
+    repairTargetId: findProduct("PRD014"), // A3複合機（修理対象）
   };
 
   // 締切日を未来に保つため today 相対（再シードで常に有効期限内・ADR-20260629-3x5 と同じ思想）。

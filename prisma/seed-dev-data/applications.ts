@@ -511,10 +511,20 @@ type ApplicationFk = {
 };
 
 export async function seedDevApplications(prisma: PrismaClient): Promise<number> {
-  const findProduct = async (code: string) => {
-    const p = await prisma.product.findFirst({ where: { code }, select: { id: true } });
-    if (!p) throw new Error(`seedDevApplications: 商品 ${code} が見つかりません`);
-    return p.id;
+  // 参照する商品コードを 1 回の findMany でまとめて解決する（納品先・申請者の IN 一括取得と同じ方針）。
+  const productCodes = ["PRD002", "PRD029", "PRD014"];
+  const productIdByCode = new Map(
+    (
+      await prisma.product.findMany({
+        where: { code: { in: productCodes } },
+        select: { id: true, code: true },
+      })
+    ).map((p) => [p.code, p.id])
+  );
+  const findProduct = (code: string): string => {
+    const id = productIdByCode.get(code);
+    if (!id) throw new Error(`seedDevApplications: 商品 ${code} が見つかりません`);
+    return id;
   };
   const department = await prisma.department.findFirst({ where: { departmentCd: "DEPT001" } });
   if (!department) {
@@ -523,9 +533,9 @@ export async function seedDevApplications(prisma: PrismaClient): Promise<number>
 
   const fk: ApplicationFk = {
     departmentId: department.id,
-    individualId: await findProduct("PRD002"),
-    consumableId: await findProduct("PRD029"),
-    repairTargetId: await findProduct("PRD014"),
+    individualId: findProduct("PRD002"),
+    consumableId: findProduct("PRD029"),
+    repairTargetId: findProduct("PRD014"),
   };
 
   // 役割: roleCd → {id, positionId}（ゴール役職の解決と役割 ID 参照に使う）。
