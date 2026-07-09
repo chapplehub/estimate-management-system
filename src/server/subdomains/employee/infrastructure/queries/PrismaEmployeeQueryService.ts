@@ -163,16 +163,25 @@ export class PrismaEmployeeQueryService implements EmployeeQueryService {
           role: true,
         },
       },
-      // 担当役割（高々1件・ADR-20260706-c89）を取得
+      // 担当役割（高々1件・ADR-20260706-c89）を取得。
+      // role.name＝担当役割名、role.superiorRole.name＝役割持ちの上位役割名（承認起点）。
       employeeRoles: {
         select: {
           roleId: true,
+          role: {
+            select: {
+              name: true,
+              superiorRole: { select: { name: true } },
+            },
+          },
         },
       },
-      // 課員の明示上位役割（0/1 件・ADR-20260707-k4e）を取得
+      // 課員の明示上位役割（0/1 件・ADR-20260707-k4e）を取得。
+      // role.name＝課員の上位役割名（承認起点）。
       superiorRole: {
         select: {
           roleId: true,
+          role: { select: { name: true } },
         },
       },
     } as const;
@@ -192,9 +201,14 @@ export class PrismaEmployeeQueryService implements EmployeeQueryService {
     createdAt: Date;
     updatedAt: Date;
     user: { role: string | null } | null;
-    employeeRoles: { roleId: string }[];
-    superiorRole: { roleId: string } | null;
+    employeeRoles: {
+      roleId: string;
+      role: { name: string; superiorRole: { name: string } | null };
+    }[];
+    superiorRole: { roleId: string; role: { name: string } } | null;
   }): EmployeeDTO {
+    // 高々1件の担当役割（0件＝役割なし＝課員・ADR-20260706-c89）
+    const assignedRole = employee.employeeRoles[0];
     return {
       id: employee.id,
       employeeCd: employee.employeeCd,
@@ -204,10 +218,16 @@ export class PrismaEmployeeQueryService implements EmployeeQueryService {
       departmentName: employee.department.name,
       // User.roleを使用（"admin" | "user" | null）
       role: (employee.user?.role as UserRole) ?? null,
-      // 高々1件の担当役割を導出（0件＝役割なし＝課員）
-      assignedRoleId: employee.employeeRoles[0]?.roleId ?? null,
+      // 担当役割ID／名（0件＝役割なし＝課員 → null）
+      assignedRoleId: assignedRole?.roleId ?? null,
+      assignedRoleName: assignedRole?.role.name ?? null,
       // 課員の明示上位役割（役割持ちは明示行を持たない・I1 → null）
       explicitSuperiorRoleId: employee.superiorRole?.roleId ?? null,
+      // 従業員の上位役割名（承認起点の名前解決）。findSuperiorRoleId と同じ導出分岐：
+      //   担当役割あり → その役割の上位役割名／課員 → 明示上位役割名／どちらも無 → null
+      superiorRoleName: assignedRole
+        ? (assignedRole.role.superiorRole?.name ?? null)
+        : (employee.superiorRole?.role.name ?? null),
       version: employee.version,
       createdAt: employee.createdAt,
       updatedAt: employee.updatedAt,
