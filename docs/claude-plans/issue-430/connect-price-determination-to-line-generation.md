@@ -72,7 +72,8 @@
 - 対象ファイル: `AddVariationCommand.ts`、`UpdateVariationCommand.ts`、`application/shared/variationContentInput.ts`、`variationSchema.ts`
 - 作業内容:
   - Red: C3「解決値で明細生成」、C4「既存行（itemId 一致・productId 不変）はマスタ改定後も単価保持」「商品変更行・新規行は再解決」「不一致/偽造 itemId は新規行扱い」のテストを先行（ADR-20260709-5ea）
-  - Green: `lineSchema` から `unitPrice` 除去・`itemId`（optional）追加、`variationContentInput` の変換をヘルパー解決に置換
+  - Green: `lineSchema` へ `itemId`（optional）追加、`variationContentInput` の変換をヘルパー解決に置換、`variationContentMapping` はコマンドへ `unitPrice` を転送しない
+  - **注（逸脱3・実装済み）**: `lineSchema` からの `unitPrice` **除去は Step 4 では行わず Step 7 へ繰り延べた**。zod 推論型を介して FE 表示層（`variationLines.ts` の `WorkingLine`/`toNodePayload`・`previewAmounts`）に深く結合しており、除去すると Step 7 相当の FE 改修を巻き込むため。中間状態として FE は `unitPrice` を送出し続けるが mapping がコマンドへ渡さず、単価はサーバーがマスタから権威解決する（データの正しさは成立）。詳細は `deviations.md` 逸脱3
 - コミットメッセージ: `feat: C3/C4の明細単価を価格決定で確定しC4既存行は永続値を保全する (#430)`
 
 ### Step 5: 単価手入力のドメイン・コマンド一括撤去
@@ -92,8 +93,9 @@
 - コミットメッセージ: `feat: 販売単価の表示用ライブ解決Server Actionを追加 (#430)`
 
 ### Step 7: FE 編集テーブルの単価読み取り専用化と選択時解決（C1/C3/C4 共有部品）
-- 対象ファイル: `LineEditTable.tsx`、`useVariationLineEditor.ts`、`variationLines.ts`、`variationContentMapping.ts`、`ProductSuggestDialog.tsx` 周辺、各フォームの `__tests__`
+- 対象ファイル: `LineEditTable.tsx`、`useVariationLineEditor.ts`、`variationLines.ts`、`variationSchema.ts`、`variationContentMapping.ts`、`ProductSuggestDialog.tsx` 周辺、各フォームの `__tests__`
 - 作業内容:
+  - **`lineSchema`（`variationSchema.ts`）から `unitPrice` を除去**（Step 4 から繰り延べ・逸脱3）。連鎖する zod 推論型 `VariationLineInput`/`VariationNodeInput` 経由の FE 表示・作業行コード（`variationLines.ts` の `WorkingLine`/`toNodePayload`、`previewAmounts` 等）を併せて改修する
   - 単価 `<input>` を読み取り専用表示へ差し替え、商品選択・セット展開時に Step 6 のアクションで解決値を取得
   - 解決不能（null）なら行を追加せずエラー表示（セットは不能な構成商品名を列挙し展開拒否）
   - `WorkingLine` は表示用に `unitPrice` を保持しつつ、ペイロード（`toNodePayload`）には `itemId` のみ載せる
