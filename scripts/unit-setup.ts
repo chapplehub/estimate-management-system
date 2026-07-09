@@ -7,7 +7,7 @@
  *
  * 使い方: pnpm test:setup
  *
- * e2e-setup.ts（.env.test / seed-e2e.ts）の型を単体テストへ横展開したもの（Issue #584）。
+ * e2e-setup.ts（.env.e2e / seed-e2e.ts）の型を単体テストへ横展開したもの（Issue #584）。
  */
 import { execFileSync } from "child_process";
 import { config } from "dotenv";
@@ -59,7 +59,7 @@ try {
   execFileSync(
     "createdb",
     ["-h", dbInfo.host, "-p", dbInfo.port, "-U", dbInfo.user, dbInfo.dbName],
-    { stdio: "pipe", env: { ...process.env, PGPASSWORD: dbInfo.password } },
+    { stdio: "pipe", env: { ...process.env, PGPASSWORD: dbInfo.password } }
   );
   console.log(`  Created database: ${dbInfo.dbName}`);
 } catch (e: unknown) {

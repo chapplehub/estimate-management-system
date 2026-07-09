@@ -14,7 +14,7 @@ import { USER_ROLES } from "../src/server/shared/auth/types";
 import { seedEstimates } from "./seed-estimates";
 import { seedEstimateApplications } from "./seed-estimate-applications";
 
-config({ path: ".env.test" });
+config({ path: ".env.e2e" });
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
