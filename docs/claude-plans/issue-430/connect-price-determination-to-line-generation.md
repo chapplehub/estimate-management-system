@@ -6,6 +6,8 @@
 
 実装は `/tdd`（red-green-refactor）で進める。各ステップは「テスト先行 → 実装 → リファクタ」を1単位とし、意味のあるまとまりでコミットする。
 
+**コンテキスト管理**: Step 2 完了後・Step 5 完了後・Step 8 完了後の3箇所で `/compact` を実行する（各ステップのコミット直後＝クリーンな作業ツリーで行うこと）。**compact 直後の最初の行動は、本計画ファイルと ADR-20260709-5ea の再 Read に固定する**。実装済みヘルパーの公開 API は実コードを再 Read して確認する。
+
 **スコープ外（グリルセッションで確定した線引き）**:
 - 再解決契機（複製先生成・改訂先生成・見積年月日/宛先変更。永続前後とも）→ #431
 - 一斉再解決前の確認 UI → #432
@@ -59,6 +61,8 @@
   - Green: ヘルパー実装。`ResolveSellingPriceQuery` はコンストラクタ引数で受ける（テストではモック/実 DB どちらも可能な形）
 - コミットメッセージ: `feat: 明細価格解決の共有ヘルパーを application/shared に追加 (#430)`
 
+> **📦 /compact ポイント①**（基盤完了 → コマンド接続へ）: コミット後に `/compact`。再開時は本計画と Step 2 で作ったヘルパーの公開シグネチャ（実コード）を再 Read してから Step 3 に着手する。
+
 ### Step 3: C1 CreateEstimateCommand への接続
 - 対象ファイル: `CreateEstimateCommand.ts`、`src/app/(features)/estimates/new/schema.ts`、`new/actions.ts`、estimate のコマンドファクトリ
 - 作業内容:
@@ -79,6 +83,8 @@
   - `changeUnitPrice` 委譲鎖3メソッド・`ItemPriceAdjustment.unitPrice`・`AdjustRevisedVariationCommand` の単価入力を一括撤去（委譲元・委譲先の消し残しを作らない・ADR-0064）
   - 撤去メソッドのテストを削除、改訂先調整のテストを「掛率・明細値引・全体値引・メモのみ」へ改修
 - コミットメッセージ: `feat!: 見積単価の手入力経路をドメイン・コマンドから撤去する (#430)`
+
+> **📦 /compact ポイント②（最重要）**（BE 完了 → FE 着手へ）: コミット後に `/compact`。Step 6 以降はファイル群がまったく別（Server Action・React・zod）で BE の詳細は不要。再開時は本計画と ADR-20260709-5ea を再 Read してから Step 6 に着手する。
 
 ### Step 6: 表示用解決 Server Action
 - 対象ファイル: `src/app/(features)/estimates/_shared/selling-price-actions.ts`（新規）
@@ -101,6 +107,8 @@
 - 作業内容:
   - 改訂先調整画面の単価入力を除去し読み取り専用表示へ（編集可能は掛率・明細値引・全体値引・メモのみ）
 - コミットメッセージ: `feat: 改訂先調整フォームの単価入力を撤去し掛率・値引のみに限定する (#430)`
+
+> **📦 /compact ポイント③**（FE 完了 → E2E・実機確認へ）: コミット後に `/compact`。Step 9–10 は「何がどう動くべきか」（本計画に記載済み）だけで進められる。再開時は本計画を再 Read してから Step 9 に着手する。
 
 ### Step 9: E2E 改修と解決不能ケースの追加
 - 対象ファイル: 見積作成・編集系の `*.e2e.ts`、e2e seed（販売単価フィクスチャ）
