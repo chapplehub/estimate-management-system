@@ -12,20 +12,20 @@ import { config } from "dotenv";
 import { existsSync } from "fs";
 import path from "path";
 
-const ENV_TEST_PATH = path.resolve(__dirname, "../.env.test");
+const ENV_E2E_PATH = path.resolve(__dirname, "../.env.e2e");
 
-if (!existsSync(ENV_TEST_PATH)) {
-  console.error("Error: .env.test が見つかりません。");
+if (!existsSync(ENV_E2E_PATH)) {
+  console.error("Error: .env.e2e が見つかりません。");
   console.error("以下のコマンドでテンプレートからコピーしてください:");
-  console.error("  cp .env.test.example .env.test");
+  console.error("  cp .env.e2e.example .env.e2e");
   process.exit(1);
 }
 
-config({ path: ENV_TEST_PATH });
+config({ path: ENV_E2E_PATH });
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
-  console.error("Error: .env.test に DATABASE_URL が設定されていません。");
+  console.error("Error: .env.e2e に DATABASE_URL が設定されていません。");
   process.exit(1);
 }
 
@@ -57,7 +57,7 @@ try {
   execFileSync(
     "createdb",
     ["-h", dbInfo.host, "-p", dbInfo.port, "-U", dbInfo.user, dbInfo.dbName],
-    { stdio: "pipe", env: { ...process.env, PGPASSWORD: dbInfo.password } },
+    { stdio: "pipe", env: { ...process.env, PGPASSWORD: dbInfo.password } }
   );
   console.log(`  Created database: ${dbInfo.dbName}`);
 } catch (e: unknown) {

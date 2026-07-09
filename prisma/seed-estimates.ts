@@ -3,7 +3,7 @@
  *
  * 方針（計画 Q8 の趣旨）: 金額・集計はドメインで導出させ、raw Prisma での再実装ドリフトを避ける。
  * 構築は EstimateFactory（集約）→ EstimateMapper.toEstimateCreateInput（Prisma 入力）で行い、
- * 書き込みは呼び出し側 seed の PrismaClient（dev=.env / e2e=.env.test）に通す。
+ * 書き込みは呼び出し側 seed の PrismaClient（dev=.env / e2e=.env.e2e）に通す。
  *   ※ 計画は PrismaEstimateRepository.save() を想定していたが、repository は @server/prisma
  *     シングルトン（別 DB）を使うため seed では使えない。EstimateMapper 経由に置き換えた。
  *
