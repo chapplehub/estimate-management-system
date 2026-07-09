@@ -69,6 +69,35 @@ test.describe("従業員一覧（管理者）", () => {
     }
   });
 
+  test("担当役割・上位役割の列に役割名が表示される（役割保有従業員）", async ({ page }) => {
+    // EMP000004＝開発部長（ROLE004）。上位役割は役割階層の1段上＝営業本部長（ROLE002）。
+    await page.goto("/employees?employeeCd=EMP000004");
+    await waitForListReady(page);
+
+    // ヘッダー名からカラム位置を動的特定（カラム追加・並び替えに耐性を持たせる）
+    const headers = await page.locator("table thead th").allTextContents();
+    const assignedColIndex = headers.indexOf("担当役割") + 1;
+    const superiorColIndex = headers.indexOf("上位役割") + 1;
+
+    const row = page.locator("table tbody tr").first();
+    await expect(row.locator(`td:nth-child(${assignedColIndex})`)).toHaveText("開発部長");
+    await expect(row.locator(`td:nth-child(${superiorColIndex})`)).toHaveText("営業本部長");
+  });
+
+  test("担当役割なしの課員は担当役割が「-」・上位役割に明示上位役割名が出る", async ({ page }) => {
+    // EMP000006＝課員（担当役割なし）。明示上位役割＝営業課長（ROLE005）。
+    await page.goto("/employees?employeeCd=EMP000006");
+    await waitForListReady(page);
+
+    const headers = await page.locator("table thead th").allTextContents();
+    const assignedColIndex = headers.indexOf("担当役割") + 1;
+    const superiorColIndex = headers.indexOf("上位役割") + 1;
+
+    const row = page.locator("table tbody tr").first();
+    await expect(row.locator(`td:nth-child(${assignedColIndex})`)).toHaveText("-");
+    await expect(row.locator(`td:nth-child(${superiorColIndex})`)).toHaveText("営業課長");
+  });
+
   test("クリアボタンで検索条件がリセットされる", async ({ page }) => {
     await page.goto("/employees?email=employee1");
     await waitForListReady(page);
