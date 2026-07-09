@@ -38,6 +38,18 @@ pnpm db:migrate / db:generate / db:studio
 3. Application layer uses repository **interfaces** from domain layer, NOT concrete implementations
 4. Infrastructure layer implements domain interfaces and handles Prisma <-> Domain mapping
 
+## Unit Tests
+
+単体テスト（vitest）は開発DBと分離した専用DB（`.env.unit` の `DATABASE_URL`）を使う（Issue #584）。
+
+```bash
+pnpm test:setup   # 単体テスト用DB初期化（DB作成 → migrate deploy → 正準マスタseed投入）。初回・schema変更時に実行
+pnpm test         # 正準マスタ再シード + 単体テスト実行
+```
+
+- 初回は `cp .env.unit.example .env.unit` で env を用意してから `pnpm test:setup` を実行する
+- seed（`prisma/seed-unit.ts`）は正準マスタ（役職・役割・消費税率）のみ。シナリオデータは各テストが自前生成する
+
 ## E2E Tests
 
 ```bash

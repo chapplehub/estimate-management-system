@@ -3,7 +3,7 @@ import { config } from "dotenv";
 import path from "path";
 import { defineConfig } from "vitest/config";
 
-config(); // .envを読み込む
+config({ path: ".env.unit" }); // 単体テスト専用DBの .env.unit を読み込む（Issue #584）
 
 export default defineConfig({
   test: {

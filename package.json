@@ -15,8 +15,9 @@
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
-    "db:seed": "tsx prisma/seed.ts",
-    "test": "vitest",
+    "db:seed": "tsx prisma/seed-dev.ts",
+    "test": "tsx prisma/seed-unit.ts && vitest",
+    "test:setup": "tsx scripts/unit-setup.ts",
     "e2e": "tsx prisma/seed-e2e.ts && playwright test",
     "e2e:ui": "playwright test --ui",
     "e2e:headed": "playwright test --headed",
@@ -89,6 +90,6 @@
     "vitest": "^4.0.2"
   },
   "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "seed": "tsx prisma/seed-dev.ts"
   }
 }
