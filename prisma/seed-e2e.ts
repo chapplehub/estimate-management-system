@@ -485,6 +485,18 @@ const PRODUCTS = [
     isActive: true,
     description: "S4 周辺商品サジェスト E2E 用（周辺）",
   },
+  // 見積明細の販売単価 解決不能ケース E2E 用（#430・ADR-0064）。有効・選択可能だが共通/得意先/
+  // 納品先いずれの販売単価も投入しない（seedEstimateSellingPrices の対象外）。明細追加時に価格決定が
+  // 解決できず 0 円明細を作らず追加拒否されることを検証する決定的商品。
+  {
+    code: "PRD830",
+    name: "販売単価なし_解決不能テスト商品",
+    category: "INDIVIDUAL" as const,
+    unit: "UNIT" as const,
+    costPrice: null,
+    isActive: true,
+    description: "見積E2E（有効単価なし＝明細追加が価格決定で拒否される）",
+  },
   // 共通販売単価 保守 E2E 用（PRD82x 帯・#481）。costPrice は null とし原価集約を作らない
   // （CSP 関心に閉じたフィクスチャ）。CSP 期間は seedCommonSellingPrices で today 相対 raw insert する。
   {
@@ -916,6 +928,47 @@ async function seedCommonSellingPrices(productIdByCode: Map<string, string>): Pr
   console.log(
     "Created common selling prices (PRD820: 3 periods / PRD823: 1 period / PRD826: 1 period)"
   );
+}
+
+/**
+ * 見積作成・編集 E2E で対話的に選択する商品へ共通販売単価を投入する（#430・ADR-0064）。
+ *
+ * 明細生成時、価格決定（ResolveSellingPriceQuery）が「見積年月日で有効な販売単価」を引くため、
+ * 選択対象の商品には有効単価が要る。seed 見積は estimateDate=2026-04-01、C1 作成は実行日（today）を
+ * 使うため、両方を覆う無期限期間 `[2026-04-01, ∞)`（原価の COST_PRICE_BASE_DATE と同起点）を投入する。
+ * 過去開始は集約の assertStartNotPast を通せないため raw daterange insert で入れる（他フィクスチャと同型）。
+ *
+ * 対象: PRD001/002（seedEstimates の productA/B・SET 構成でもある）と PRD810/811（S4 周辺サジェスト）。
+ * PRD005（SET）自身は価格を持たず構成側で解決するため対象外。PRD830（解決不能ケース）は敢えて対象外。
+ * 価格値は各 E2E の追加明細金額アサーションに使われない（行の存在のみ検証）ため決定的な代表値で足りる。
+ */
+async function seedEstimateSellingPrices(productIdByCode: Map<string, string>): Promise<void> {
+  const START = "2026-04-01";
+  const priced: Array<[code: string, price: number]> = [
+    ["PRD001", 10000], // 標準デスク
+    ["PRD002", 8000], // オフィスチェア
+    ["PRD810", 12000], // S4周辺テスト本体
+    ["PRD811", 2000], // S4周辺テスト周辺
+  ];
+  let count = 0;
+  for (const [code, price] of priced) {
+    const productId = productIdByCode.get(code);
+    if (!productId) continue;
+    await prisma.commonSellingPrice.create({ data: { productId } });
+    await prisma.$executeRaw`
+      INSERT INTO common_selling_price_periods
+        (id, product_id, selling_price, applicable_period, updated_at)
+      VALUES (
+        ${generateId()}::uuid,
+        ${productId}::uuid,
+        ${price}::numeric,
+        daterange(${START}::date, NULL, '[)'),
+        CURRENT_TIMESTAMP
+      )
+    `;
+    count += 1;
+  }
+  console.log(`Created estimate selling prices (${count} products / common [2026-04-01, ∞))`);
 }
 
 /**
@@ -1661,6 +1714,11 @@ async function main() {
   // 3状態（active/lapsed/none）は参照日由来の派生状態のため today 相対で投入する。
   // 専用得意先 C903・専用納品先 D902 に閉じるため、既存フィクスチャには影響しない。
   await seedDeliveryLocationSellingPrices(productIdByCode);
+
+  // 見積作成・編集 E2E で選択する商品の共通販売単価（#430・ADR-0064）。価格決定が見積年月日で
+  // 有効単価を引くため、対話的に選択する PRD001/002/810/811 に [2026-04-01, ∞) を投入する
+  // （PRD830 は解決不能ケース用に敢えて未投入）。
+  await seedEstimateSellingPrices(productIdByCode);
 
   // S4 周辺商品サジェスト E2E 用の関連（本体 PRD810 → 周辺 PRD811・数量2）。
   const suggestParent = await prisma.product.findUniqueOrThrow({ where: { code: "PRD810" } });
