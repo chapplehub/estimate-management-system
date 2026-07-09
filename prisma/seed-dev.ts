@@ -8,6 +8,7 @@ import { USER_ROLES } from "../src/server/shared/auth/types";
 import { seedEstimates } from "./seed-estimates";
 import { seedProducts, seedPriceOverrides } from "./seed-dev-data/products";
 import { seedDevEstimates } from "./seed-dev-data/estimates";
+import { seedDevApplications } from "./seed-dev-data/applications";
 import { POSITIONS, TAX_RATES } from "./seed-shared/masterData";
 
 config({ path: ".env" });
@@ -1199,6 +1200,10 @@ async function main() {
   // dev 専用の未申請見積（ドラフト・#591）。免除3理由＋承認段階4段＋境界ペア＋構造多様性。
   const devEstimateCount = await seedDevEstimates(prisma);
   console.log(`Created ${devEstimateCount} dev draft estimates`);
+
+  // dev 専用の見積申請（5 状態×検索8軸弁別・#591）。申請日時は today 相対で過去 90 日に分散。
+  const devApplicationCount = await seedDevApplications(prisma);
+  console.log(`Created ${devApplicationCount} dev application estimates`);
 
   const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
   console.log("");
