@@ -83,6 +83,34 @@ export async function resolveLinePrices(
   });
 }
 
+/** 価格を確定したい明細ツリー（通常明細＋セット群の入れ子構成明細）。 */
+export type LinePriceTree<L extends LinePriceRequest> = {
+  items: readonly L[];
+  setGroups?: readonly { components: readonly L[] }[];
+};
+
+/**
+ * 明細ツリー（通常明細＋セット構成明細）の見積単価を解決し、行オブジェクト参照をキーとする
+ * `Map` で返す。呼び出し側は入れ子を平坦化・再構築せず `priceMap.get(line)` で解決済み `Money` を
+ * 引ける（インデックス整合の壊れやすさを排除する）。
+ *
+ * 平坦化は「通常明細 → 各セット群の構成明細」の順で行い、{@link resolveLinePrices} にそのまま渡す
+ * （デデュープ・並列解決・既存行保全・例外伝播は同関数に委ねる）。C1/C3/C4 の各コマンドで共用する。
+ */
+export async function resolveLineTreePrices<L extends LinePriceRequest>(
+  tree: LinePriceTree<L>,
+  context: LinePriceContext,
+  resolver: SellingPriceResolver,
+  existingLines: ReadonlyMap<string, ExistingLinePrice> = new Map()
+): Promise<ReadonlyMap<L, Money>> {
+  const lines: L[] = [
+    ...tree.items,
+    ...(tree.setGroups ?? []).flatMap((group) => [...group.components]),
+  ];
+  const prices = await resolveLinePrices(lines, context, resolver, existingLines);
+  return new Map(lines.map((line, index) => [line, prices[index]]));
+}
+
 /**
  * 既存明細の突合が成立する（itemId 一致かつ productId 不変）なら永続単価を返し、そうでなければ null。
  * null は「価格決定で解決すべき行」を意味する。

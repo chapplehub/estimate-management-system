@@ -7,6 +7,7 @@ import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { EstimateId } from "@subdomains/estimate/domain/values/EstimateId";
 import { TaxRateConsistencyCheckDomainService } from "@subdomains/estimate/domain/services/TaxRateConsistencyCheckDomainService";
 import { PrismaEstimateNumberIssuer } from "@subdomains/estimate/infrastructure/prisma/PrismaEstimateNumberIssuer";
+import { resolveSellingPriceQueryFactory } from "@subdomains/pricing/application/factories/pricingQueryFactory";
 import { PrismaEstimateRepository } from "@subdomains/estimate/infrastructure/prisma/PrismaEstimateRepository";
 import { PrismaTaxRateRepository } from "@subdomains/estimate/infrastructure/prisma/PrismaTaxRateRepository";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -48,7 +49,11 @@ describe("UpdateVariationMemosCommand", () => {
   beforeEach(async () => {
     repository = new PrismaEstimateRepository();
     command = new UpdateVariationMemosCommand(repository);
-    createCommand = new CreateEstimateCommand(repository, new PrismaEstimateNumberIssuer());
+    createCommand = new CreateEstimateCommand(
+      repository,
+      new PrismaEstimateNumberIssuer(),
+      resolveSellingPriceQueryFactory()
+    );
     reviseCommand = new ReviseForCustomerCommand(
       repository,
       new TaxRateConsistencyCheckDomainService(new PrismaTaxRateRepository())
@@ -84,7 +89,6 @@ describe("UpdateVariationMemosCommand", () => {
               itemName: "商品A",
               quantity: 2,
               unit: "個",
-              unitPrice: 600000,
             },
           ],
         },

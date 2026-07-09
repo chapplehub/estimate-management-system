@@ -1,4 +1,5 @@
 import { PrismaProductQueryService } from "@subdomains/product/infrastructure/queries/PrismaProductQueryService";
+import { resolveSellingPriceQueryFactory } from "@subdomains/pricing/application/factories/pricingQueryFactory";
 import { CreateEstimateCommand } from "../commands/CreateEstimateCommand";
 import { PrismaEstimateNumberIssuer } from "../../infrastructure/prisma/PrismaEstimateNumberIssuer";
 import { PrismaEstimateRepository } from "../../infrastructure/prisma/PrismaEstimateRepository";
@@ -15,5 +16,10 @@ import { PrismaEstimateRepository } from "../../infrastructure/prisma/PrismaEsti
 export function createEstimateCommandFactory(): CreateEstimateCommand {
   const repository = new PrismaEstimateRepository();
   const numberIssuer = new PrismaEstimateNumberIssuer();
-  return new CreateEstimateCommand(repository, numberIssuer, new PrismaProductQueryService());
+  return new CreateEstimateCommand(
+    repository,
+    numberIssuer,
+    resolveSellingPriceQueryFactory(),
+    new PrismaProductQueryService()
+  );
 }

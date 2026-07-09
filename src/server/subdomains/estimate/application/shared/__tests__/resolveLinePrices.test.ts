@@ -9,6 +9,7 @@ import { SellingUnitPrice } from "@subdomains/pricing/domain/values/SellingUnitP
 import { describe, expect, it, vi } from "vitest";
 import {
   resolveLinePrices,
+  resolveLineTreePrices,
   type ExistingLinePrice,
   type LinePriceContext,
 } from "../resolveLinePrices";
@@ -154,5 +155,38 @@ describe("resolveLinePrices", () => {
     await expect(
       resolveLinePrices([{ productId: "unpriced" }], customerContext, resolver)
     ).rejects.toThrow(BusinessRuleViolationError);
+  });
+});
+
+describe("resolveLineTreePrices", () => {
+  it("通常明細とセット構成明細の両方を解決し、行オブジェクト参照で Money を引ける", async () => {
+    const { resolver } = fakeResolver({ "prod-a": 1000, "prod-b": 2000, "prod-c": 3000 });
+    const itemA = { productId: "prod-a" };
+    const componentB = { productId: "prod-b" };
+    const componentC = { productId: "prod-c" };
+    const tree = {
+      items: [itemA],
+      setGroups: [{ components: [componentB, componentC] }],
+    };
+
+    const priceMap = await resolveLineTreePrices(tree, customerContext, resolver);
+
+    expect(priceMap.get(itemA)?.majorUnits).toBe(1000);
+    expect(priceMap.get(componentB)?.majorUnits).toBe(2000);
+    expect(priceMap.get(componentC)?.majorUnits).toBe(3000);
+  });
+
+  it("既存行保全はネストしたセット構成明細にも効く（itemId 一致・productId 不変）", async () => {
+    const { resolver, execute } = fakeResolver({ "prod-b": 9999 });
+    const component = { productId: "prod-b", itemId: "item-2" };
+    const tree = { items: [], setGroups: [{ components: [component] }] };
+    const existing = new Map<string, ExistingLinePrice>([
+      ["item-2", { productId: "prod-b", unitPrice: Money.fromMajorUnits(2000) }],
+    ]);
+
+    const priceMap = await resolveLineTreePrices(tree, customerContext, resolver, existing);
+
+    expect(priceMap.get(component)?.majorUnits).toBe(2000);
+    expect(execute).not.toHaveBeenCalled();
   });
 });
