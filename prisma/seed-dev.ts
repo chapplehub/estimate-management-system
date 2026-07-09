@@ -151,6 +151,7 @@ const DEPARTMENTS = [
   { departmentCd: "DEPT003", name: "総務部", abbreviation: "総務" },
   { departmentCd: "DEPT004", name: "人事部", abbreviation: "人事" },
   { departmentCd: "DEPT005", name: "経理部", abbreviation: "経理" },
+  { departmentCd: "DEPT006", name: "製造部", abbreviation: "製造" }, // 製造系列の並行承認チェーン（#591）
 ];
 
 // 役職リスト（cdで定義、idはシード時にCUID生成）
@@ -208,35 +209,103 @@ const ROLES = [
   { cd: "ROLE013", name: "総務課長", positionCd: "POS001", superiorCd: "ROLE006" as string | null },
   { cd: "ROLE014", name: "人事課長", positionCd: "POS001", superiorCd: "ROLE007" as string | null },
   { cd: "ROLE015", name: "経理課長", positionCd: "POS001", superiorCd: "ROLE008" as string | null },
+  // 製造系列（#591）: 営業系列と独立した完全4段チェーン（社長まで到達可能）。
+  // 並行する承認チェーンを画面で確認できるよう、営業チェーンと別本部で横展開する。
+  {
+    cd: "ROLE016",
+    name: "製造本部長",
+    positionCd: "POS003",
+    superiorCd: "ROLE001" as string | null,
+  },
+  { cd: "ROLE017", name: "製造部長", positionCd: "POS002", superiorCd: "ROLE016" as string | null },
+  {
+    cd: "ROLE018",
+    name: "製造一課長",
+    positionCd: "POS001",
+    superiorCd: "ROLE017" as string | null,
+  },
+  {
+    cd: "ROLE019",
+    name: "製造二課長",
+    positionCd: "POS001",
+    superiorCd: "ROLE017" as string | null,
+  },
+  // チェーン不成立の検証用役割（#591・ユーザー要望）: 上位役割エッジが欠けた課長。
+  // 役割名で「上位役割が無い」事実がそのまま分かるよう命名する。この役割を上位役割に持つ
+  // 課員が部長以上のゴール金額で申請すると GOAL_UNREACHABLE（チェーン不成立）を画面で観測できる。
+  {
+    cd: "ROLE020",
+    name: "上位役割未設定 検証課長",
+    positionCd: "POS001",
+    superiorCd: null as string | null,
+  },
 ];
 
-// 役割を持つ従業員の設定（EMP000001〜EMP000015）
-const ROLE_EMPLOYEE_CONFIGS = [
-  { roleCd: "ROLE001", departmentCd: "DEPT001" }, // 社長 → 営業部（便宜上）
-  { roleCd: "ROLE002", departmentCd: "DEPT001" }, // 営業本部長 → 営業部
-  { roleCd: "ROLE003", departmentCd: "DEPT003" }, // 管理本部長 → 総務部
-  { roleCd: "ROLE004", departmentCd: "DEPT001" }, // 営業部長 → 営業部
-  { roleCd: "ROLE005", departmentCd: "DEPT002" }, // 開発部長 → 開発部
-  { roleCd: "ROLE006", departmentCd: "DEPT003" }, // 総務部長 → 総務部
-  { roleCd: "ROLE007", departmentCd: "DEPT004" }, // 人事部長 → 人事部
-  { roleCd: "ROLE008", departmentCd: "DEPT005" }, // 経理部長 → 経理部
-  { roleCd: "ROLE009", departmentCd: "DEPT001" }, // 営業一課長 → 営業部
-  { roleCd: "ROLE010", departmentCd: "DEPT001" }, // 営業二課長 → 営業部
-  { roleCd: "ROLE011", departmentCd: "DEPT002" }, // 開発一課長 → 開発部
-  { roleCd: "ROLE012", departmentCd: "DEPT002" }, // 開発二課長 → 開発部
-  { roleCd: "ROLE013", departmentCd: "DEPT003" }, // 総務課長 → 総務部
-  { roleCd: "ROLE014", departmentCd: "DEPT004" }, // 人事課長 → 人事部
-  { roleCd: "ROLE015", departmentCd: "DEPT005" }, // 経理課長 → 経理部
-];
+/**
+ * 役割を持つ従業員（担当役割つき・EMP000001〜連番）。名前は決定的（ランダム排除）で、
+ * 階層別ログインアカウントとして再シードのたび同じ人物・同じ役割を再現する（#591）。
+ * userRole は Admin Plugin の権限（ADMIN/USER）。承認チェーンの役割メンバーシップは roleCd で決まる。
+ *
+ * 同一 roleCd を複数エントリに持たせると、その役割が複数メンバーを持つ（営業系列は 2 名ずつ）。
+ * 承認は「承認待ち役割の直接メンバーなら誰でも」可能なため、複数メンバーの確認台になる。
+ */
+const ROLE_EMPLOYEES = [
+  // --- 営業チェーン（主デモ動線: 社長→営業本部長→営業部長→営業一/二課長）。 ---
+  { name: "管理 ユーザ", roleCd: "ROLE001", departmentCd: "DEPT001", userRole: USER_ROLES.ADMIN }, // 社長（admin固定）
+  { name: "一般 ユーザ", roleCd: "ROLE002", departmentCd: "DEPT001", userRole: USER_ROLES.USER }, // 営業本部長（user固定）
+  { name: "田中 四郎", roleCd: "ROLE004", departmentCd: "DEPT001", userRole: USER_ROLES.USER }, // 営業部長
+  { name: "小林 九一", roleCd: "ROLE009", departmentCd: "DEPT001", userRole: USER_ROLES.USER }, // 営業一課長
+  { name: "加藤 十郎", roleCd: "ROLE010", departmentCd: "DEPT001", userRole: USER_ROLES.USER }, // 営業二課長
+  // --- 管理系列（本部長配下の各部長・課長）。 ---
+  { name: "高橋 三郎", roleCd: "ROLE003", departmentCd: "DEPT003", userRole: USER_ROLES.USER }, // 管理本部長
+  { name: "伊藤 五郎", roleCd: "ROLE005", departmentCd: "DEPT002", userRole: USER_ROLES.USER }, // 開発部長
+  { name: "渡辺 六郎", roleCd: "ROLE006", departmentCd: "DEPT003", userRole: USER_ROLES.USER }, // 総務部長
+  { name: "山本 七海", roleCd: "ROLE007", departmentCd: "DEPT004", userRole: USER_ROLES.USER }, // 人事部長
+  { name: "中村 八郎", roleCd: "ROLE008", departmentCd: "DEPT005", userRole: USER_ROLES.USER }, // 経理部長
+  { name: "吉田 一光", roleCd: "ROLE011", departmentCd: "DEPT002", userRole: USER_ROLES.USER }, // 開発一課長
+  { name: "山田 二三", roleCd: "ROLE012", departmentCd: "DEPT002", userRole: USER_ROLES.USER }, // 開発二課長
+  { name: "佐々木 三上", roleCd: "ROLE013", departmentCd: "DEPT003", userRole: USER_ROLES.USER }, // 総務課長
+  { name: "山口 四季", roleCd: "ROLE014", departmentCd: "DEPT004", userRole: USER_ROLES.USER }, // 人事課長
+  { name: "松本 五月", roleCd: "ROLE015", departmentCd: "DEPT005", userRole: USER_ROLES.USER }, // 経理課長
+  // --- 製造チェーン（営業と独立した並行チェーン・#591）。 ---
+  { name: "井上 六花", roleCd: "ROLE016", departmentCd: "DEPT006", userRole: USER_ROLES.USER }, // 製造本部長
+  { name: "木村 七星", roleCd: "ROLE017", departmentCd: "DEPT006", userRole: USER_ROLES.USER }, // 製造部長
+  { name: "林 八雲", roleCd: "ROLE018", departmentCd: "DEPT006", userRole: USER_ROLES.USER }, // 製造一課長
+  { name: "斎藤 九重", roleCd: "ROLE019", departmentCd: "DEPT006", userRole: USER_ROLES.USER }, // 製造二課長
+  // --- チェーン不成立の検証用役割の保有者（#591）。 ---
+  { name: "検証 未設定", roleCd: "ROLE020", departmentCd: "DEPT001", userRole: USER_ROLES.USER }, // 上位役割未設定 検証課長
+  // --- 営業系列役割の追加メンバー（各役割 2 名化・#591）。 ---
+  { name: "清水 副一", roleCd: "ROLE009", departmentCd: "DEPT001", userRole: USER_ROLES.USER }, // 営業一課長（2人目）
+  { name: "山崎 補佐", roleCd: "ROLE004", departmentCd: "DEPT001", userRole: USER_ROLES.USER }, // 営業部長（2人目）
+  { name: "森 次官", roleCd: "ROLE002", departmentCd: "DEPT001", userRole: USER_ROLES.USER }, // 営業本部長（2人目）
+] as const;
 
-// 部署ごとの一般従業員の上位役割候補（roleCdで指定）
+/**
+ * 固定の課員ログインアカウント（担当役割なし・上位役割つき・ROLE_EMPLOYEES の直後の連番）。
+ * 申請の起点は「申請者の上位役割」なので、課員で申請するとその上位役割を先頭に承認チェーンが組まれる。
+ * 金額を跨ぐドラフト（Step 3）を各課員で申請すると、起点差でチェーン段数が変わる（#591・設計判断B）。
+ */
+const FIXED_STAFF = [
+  // 営業課員: 上位役割＝営業一課長。高額ドラフトを申請すると営業チェーン全 4 段（課長→部長→本部長→社長）。
+  { name: "営業 課員", superiorRoleCd: "ROLE009", departmentCd: "DEPT001" },
+  // 製造課員: 上位役割＝製造一課長。並行チェーン（製造系列）の申請起点。
+  { name: "製造 課員", superiorRoleCd: "ROLE018", departmentCd: "DEPT006" },
+  // 検証課員: 上位役割＝上位役割未設定 検証課長。部長以上のゴール金額で申請すると GOAL_UNREACHABLE。
+  { name: "検証 課員", superiorRoleCd: "ROLE020", departmentCd: "DEPT001" },
+] as const;
+
+// 部署ごとの一般（ランダム）従業員の上位役割候補（roleCdで指定）
 const DEPARTMENT_SUPERIOR_ROLE_CDS = new Map<string, string[]>([
   ["DEPT001", ["ROLE009", "ROLE010"]], // 営業部 → 営業一課長 or 営業二課長
   ["DEPT002", ["ROLE011", "ROLE012"]], // 開発部 → 開発一課長 or 開発二課長
   ["DEPT003", ["ROLE013"]], // 総務部 → 総務課長
   ["DEPT004", ["ROLE014"]], // 人事部 → 人事課長
   ["DEPT005", ["ROLE015"]], // 経理部 → 経理課長
+  ["DEPT006", ["ROLE018", "ROLE019"]], // 製造部 → 製造一課長 or 製造二課長
 ]);
+
+/** 固定ログインアカウント総数（役割持ち＋固定課員）。ランダム一般従業員はこの後の連番。 */
+const FIXED_ACCOUNT_COUNT = ROLE_EMPLOYEES.length + FIXED_STAFF.length;
 
 // 得意先・納品先データ
 const CUSTOMERS = [
@@ -972,21 +1041,13 @@ function generateEmail(index: number): string {
   return `employee${index}@example.com`;
 }
 
-// 固定ユーザー（画面上で管理者/一般ユーザを識別しやすくする）
-const FIXED_USERS = [
-  { name: "管理 ユーザ", role: USER_ROLES.ADMIN },
-  { name: "一般 ユーザ", role: USER_ROLES.USER },
-] as const;
-
-// 役割を決定（約5%が管理者）
-function determineRole(index: number): UserRole {
-  // 固定ユーザーはFIXED_USERSで決定済み
-  if (index <= FIXED_USERS.length) return FIXED_USERS[index - 1].role;
-  // それ以降は確率で決定
+// 一般（ランダム）従業員の権限を確率で決定（約5%が管理者）。固定アカウントは各定義で権限を明示済み。
+function determineRandomRole(): UserRole {
   return Math.random() < ADMIN_RATIO ? USER_ROLES.ADMIN : USER_ROLES.USER;
 }
 
-// シードユーザーデータを生成（roleIdMap: roleCd → CUID, departmentIdMap: departmentCd → CUID）
+// シードユーザーデータを生成（roleIdMap: roleCd → CUID, departmentIdMap: departmentCd → CUID）。
+// 連番の割当: [1..N] 役割持ち従業員（ROLE_EMPLOYEES）→ [N+1..N+M] 固定課員（FIXED_STAFF）→ 残り ランダム一般従業員。
 function generateSeedUsers(
   count: number,
   roleIdMap: Map<string, string>,
@@ -994,32 +1055,29 @@ function generateSeedUsers(
 ): SeedUser[] {
   const users: SeedUser[] = [];
   for (let i = 1; i <= count; i++) {
-    if (i <= FIXED_USERS.length) {
-      // 固定ユーザー（EMP000001: 管理ユーザ, EMP000002: 一般ユーザ）
-      const fixedUser = FIXED_USERS[i - 1];
-      const config = ROLE_EMPLOYEE_CONFIGS[i - 1];
+    if (i <= ROLE_EMPLOYEES.length) {
+      // 役割を持つ従業員（決定的名前・階層別ログインアカウント）。
+      const config = ROLE_EMPLOYEES[i - 1];
       users.push({
         employeeCd: generateEmployeeCd(i),
         email: generateEmail(i),
-        name: fixedUser.name,
-        role: fixedUser.role,
+        name: config.name,
+        role: config.userRole,
         departmentId: departmentIdMap.get(config.departmentCd)!,
         // 役割持ちは上位役割を担当役割から導出するため明示行を持たない（I1・ADR-20260707-k4e）
         superiorRoleId: null,
         assignedRoleId: roleIdMap.get(config.roleCd),
       });
-    } else if (i <= ROLE_EMPLOYEE_CONFIGS.length) {
-      // 役割を持つ従業員（EMP000003〜EMP000015）
-      const config = ROLE_EMPLOYEE_CONFIGS[i - 1];
+    } else if (i <= FIXED_ACCOUNT_COUNT) {
+      // 固定課員（担当役割なし・上位役割つき・申請起点として決定的）。
+      const staff = FIXED_STAFF[i - ROLE_EMPLOYEES.length - 1];
       users.push({
         employeeCd: generateEmployeeCd(i),
         email: generateEmail(i),
-        name: generateName(),
-        role: determineRole(i),
-        departmentId: departmentIdMap.get(config.departmentCd)!,
-        // 役割持ちは上位役割を担当役割から導出するため明示行を持たない（I1・ADR-20260707-k4e）
-        superiorRoleId: null,
-        assignedRoleId: roleIdMap.get(config.roleCd),
+        name: staff.name,
+        role: USER_ROLES.USER,
+        departmentId: departmentIdMap.get(staff.departmentCd)!,
+        superiorRoleId: roleIdMap.get(staff.superiorRoleCd)!,
       });
     } else {
       // 一般従業員（部署に応じた課長を上位役割に設定）
@@ -1031,7 +1089,7 @@ function generateSeedUsers(
         employeeCd: generateEmployeeCd(i),
         email: generateEmail(i),
         name: generateName(),
-        role: determineRole(i),
+        role: determineRandomRole(),
         departmentId,
         superiorRoleId: roleIdMap.get(superiorRoleCd)!,
       });
