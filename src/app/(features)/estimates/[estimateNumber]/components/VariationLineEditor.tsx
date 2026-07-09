@@ -65,6 +65,24 @@ export function VariationLineEditor({
         </button>
       </div>
 
+      {/* 販売単価が解決できず追加を拒否したときの通知（ADR-0064: 0円明細を作らない）。 */}
+      {editor.selectionError && (
+        <div
+          role="alert"
+          className="bg-amber-100 border border-amber-400 text-amber-800 px-4 py-2 rounded mb-3 flex items-start justify-between gap-4"
+        >
+          <p className="text-sm">{editor.selectionError}</p>
+          <button
+            type="button"
+            onClick={() => editor.setSelectionError(null)}
+            className="shrink-0 text-amber-800 hover:text-amber-950 font-bold"
+            aria-label="通知を閉じる"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       <LineEditTable
         nodes={editor.nodes}
         activeRowId={editor.activeRowId}

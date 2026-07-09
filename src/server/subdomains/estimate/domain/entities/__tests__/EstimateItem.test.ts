@@ -104,14 +104,6 @@ describe("EstimateItem", () => {
       expect(item.finalAmount.equals(Money.fromMajorUnits(5000))).toBe(true);
     });
 
-    it("changeUnitPrice で再計算される", () => {
-      const item = EstimateItem.create(
-        buildInput({ quantity: new Quantity(2), unitPrice: Money.fromMajorUnits(1000) })
-      );
-      item.changeUnitPrice(Money.fromMajorUnits(3000));
-      expect(item.baseAmount.equals(Money.fromMajorUnits(6000))).toBe(true);
-    });
-
     it("changeDiscountRate で再計算される", () => {
       const item = EstimateItem.create(
         buildInput({ quantity: new Quantity(1), unitPrice: Money.fromMajorUnits(10000) })

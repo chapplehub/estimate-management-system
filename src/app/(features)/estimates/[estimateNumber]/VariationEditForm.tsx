@@ -14,6 +14,12 @@ type Props = {
   /** 集約ルートの楽観ロックトークン（ADR-0039）。 */
   version: number;
   variation: VariationDTO;
+  /** 見積年月日 "yyyy-mm-dd"（明細追加時の価格決定に供給・#430）。 */
+  estimateDate: string;
+  /** 得意先ID（提出区分=得意先向けの価格解決に使う）。 */
+  customerId: string;
+  /** 納品先ID（提出区分=納品先向けの価格解決に使う）。 */
+  deliveryLocationId: string;
   taxRate: number;
   taxRoundingType: string;
   onCancel: () => void;
@@ -31,6 +37,9 @@ export function VariationEditForm({
   estimateNumber,
   version,
   variation,
+  estimateDate,
+  customerId,
+  deliveryLocationId,
   taxRate,
   taxRoundingType,
   onCancel,
@@ -51,6 +60,13 @@ export function VariationEditForm({
   const editor = useVariationLineEditor({
     initialNodes: fromVariationLines(variation.lines),
     initialOverallDiscount: variation.overallDiscount,
+    // C4 は提出区分が固定（変更不可）なのでバリの submissionType をそのまま供給する。
+    priceContext: {
+      estimateDate,
+      customerId,
+      deliveryLocationId,
+      submissionType: variation.submissionType,
+    },
     taxRate,
     taxRoundingType,
   });

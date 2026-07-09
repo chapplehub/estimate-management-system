@@ -18,7 +18,6 @@ const ONE_LINE_NODE = JSON.stringify([
     itemName: "明細",
     unit: "個",
     quantity: 1,
-    unitPrice: 1000,
     discountRate: 1,
     itemDiscount: 0,
     customerMemo: "",

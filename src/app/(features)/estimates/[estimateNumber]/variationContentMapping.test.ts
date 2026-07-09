@@ -3,14 +3,14 @@ import { toVariationContentInputFromNodes } from "./variationContentMapping";
 import type { VariationNodeInput } from "./variationSchema";
 
 describe("toVariationContentInputFromNodes（ノード union → C4/C1 入力）", () => {
-  function lineNode(productId: string): VariationNodeInput {
+  function lineNode(productId: string, itemId?: string): VariationNodeInput {
     return {
       kind: "line",
+      itemId,
       productId,
       itemName: "通常",
       unit: "個",
       quantity: 1,
-      unitPrice: 1000,
       discountRate: 1.0,
       itemDiscount: 0,
       customerMemo: "",
@@ -29,7 +29,6 @@ describe("toVariationContentInputFromNodes（ノード union → C4/C1 入力）
         itemName: "構成",
         unit: "個",
         quantity: 1,
-        unitPrice: 0,
         discountRate: 1.0,
         itemDiscount: 0,
         customerMemo: "",
@@ -60,6 +59,15 @@ describe("toVariationContentInputFromNodes（ノード union → C4/C1 入力）
     expect(result.items.find((i) => i.productId === "n1")!.sortOrder).toBe(1);
     expect(result.setGroups![0].components.map((c) => c.sortOrder)).toEqual([2, 3]);
     expect(result.items.find((i) => i.productId === "n2")!.sortOrder).toBe(4);
+  });
+
+  it("既存行の itemId を items に通す（C4 既存行保全の突合キー・ADR-20260709-5ea）", () => {
+    const result = toVariationContentInputFromNodes({
+      nodes: [lineNode("n1", "item-1")],
+      overallDiscount: 0,
+    });
+
+    expect(result.items[0].itemId).toBe("item-1");
   });
 
   it("全体値引・バリメモを通す", () => {

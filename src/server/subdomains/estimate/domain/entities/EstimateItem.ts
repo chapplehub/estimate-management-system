@@ -155,11 +155,6 @@ export class EstimateItem {
     this.recalculate();
   }
 
-  changeUnitPrice(newPrice: Money): void {
-    this._unitPrice = newPrice;
-    this.recalculate();
-  }
-
   changeDiscountRate(newRate: DiscountRate): void {
     this._discountRate = newRate;
     this.recalculate();

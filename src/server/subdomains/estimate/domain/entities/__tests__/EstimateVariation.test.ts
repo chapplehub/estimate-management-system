@@ -246,20 +246,6 @@ describe("EstimateVariation", () => {
       expect(v.finalTotal.equals(Money.fromMajorUnits(3300))).toBe(true);
     });
 
-    it("changeItemUnitPrice で集計が再計算される", () => {
-      const item = makeItem({ quantity: 2, unitPrice: 1000 });
-      const v = EstimateVariation.create({
-        variationNumber: 1,
-        submissionType: SubmissionType.CUSTOMER,
-        tax: TAX,
-        items: [item],
-      });
-
-      v.changeItemUnitPrice(item.id, Money.fromMajorUnits(1500), TAX);
-
-      expect(v.subtotal.equals(Money.fromMajorUnits(3000))).toBe(true);
-    });
-
     it("存在しない明細を変更しようとするとエラー", () => {
       const v = EstimateVariation.create({
         variationNumber: 1,
@@ -291,8 +277,8 @@ describe("EstimateVariation", () => {
     });
   });
 
-  describe("adjustPricing - 価格バッチ調整（単価・掛率・明細値引・全体値引）", () => {
-    it("複数明細の単価・掛率・明細値引と全体値引を一括適用し集計が再計算される", () => {
+  describe("adjustPricing - 価格バッチ調整（掛率・明細値引・全体値引）", () => {
+    it("複数明細の掛率・明細値引と全体値引を一括適用し集計が再計算される（単価は不変）", () => {
       const item1 = makeItem({ quantity: 2, unitPrice: 1000 });
       const item2 = makeItem({ quantity: 1, unitPrice: 500, sortOrder: 2 });
       const v = EstimateVariation.create({
@@ -306,13 +292,11 @@ describe("EstimateVariation", () => {
         [
           {
             itemId: item1.id,
-            unitPrice: Money.fromMajorUnits(1500),
             discountRate: new DiscountRate(1.0),
             itemDiscount: Money.fromMajorUnits(100),
           },
           {
             itemId: item2.id,
-            unitPrice: Money.fromMajorUnits(800),
             discountRate: new DiscountRate(0.5),
             itemDiscount: Money.zero(),
           },
@@ -321,18 +305,20 @@ describe("EstimateVariation", () => {
         TAX
       );
 
-      // item1: base 3000, 掛率1.0, 値引100 → final 2900
-      // item2: base 800, 掛率0.5 → 400, 値引0 → final 400
-      expect(item1.finalAmount.equals(Money.fromMajorUnits(2900))).toBe(true);
-      expect(item2.finalAmount.equals(Money.fromMajorUnits(400))).toBe(true);
-      expect(v.subtotal.equals(Money.fromMajorUnits(3300))).toBe(true);
+      // 単価は不変（item1=1000, item2=500）。
+      // item1: base 2000, 掛率1.0, 値引100 → final 1900
+      // item2: base 500, 掛率0.5 → 250, 値引0 → final 250
+      expect(item1.unitPrice.equals(Money.fromMajorUnits(1000))).toBe(true);
+      expect(item1.finalAmount.equals(Money.fromMajorUnits(1900))).toBe(true);
+      expect(item2.finalAmount.equals(Money.fromMajorUnits(250))).toBe(true);
+      expect(v.subtotal.equals(Money.fromMajorUnits(2150))).toBe(true);
       expect(v.overallDiscount.equals(Money.fromMajorUnits(300))).toBe(true);
-      expect(v.finalSubtotal.equals(Money.fromMajorUnits(3000))).toBe(true);
-      expect(v.taxAmount.equals(Money.fromMajorUnits(300))).toBe(true);
-      expect(v.finalTotal.equals(Money.fromMajorUnits(3300))).toBe(true);
+      expect(v.finalSubtotal.equals(Money.fromMajorUnits(1850))).toBe(true);
+      expect(v.taxAmount.equals(Money.fromMajorUnits(185))).toBe(true);
+      expect(v.finalTotal.equals(Money.fromMajorUnits(2035))).toBe(true);
     });
 
-    it("数量は adjustPricing の対象外で据え置かれる（粗利スナップショット保全）", () => {
+    it("数量・単価は adjustPricing の対象外で据え置かれる（数量固定・単価固定）", () => {
       const item = makeItem({ quantity: 2, unitPrice: 1000 });
       const v = EstimateVariation.create({
         variationNumber: 1,
@@ -345,7 +331,6 @@ describe("EstimateVariation", () => {
         [
           {
             itemId: item.id,
-            unitPrice: Money.fromMajorUnits(1500),
             discountRate: new DiscountRate(1.0),
             itemDiscount: Money.zero(),
           },
@@ -355,7 +340,8 @@ describe("EstimateVariation", () => {
       );
 
       expect(item.quantity.value).toBe(2);
-      expect(item.unitPrice.equals(Money.fromMajorUnits(1500))).toBe(true);
+      // 単価は入力に持たず不変（ADR-0064）。
+      expect(item.unitPrice.equals(Money.fromMajorUnits(1000))).toBe(true);
     });
 
     it("無効状態のバリエーションでは弾かれる（assertEditable）", () => {
@@ -373,7 +359,6 @@ describe("EstimateVariation", () => {
           [
             {
               itemId: item.id,
-              unitPrice: Money.fromMajorUnits(1500),
               discountRate: new DiscountRate(1.0),
               itemDiscount: Money.zero(),
             },
@@ -399,7 +384,6 @@ describe("EstimateVariation", () => {
           [
             {
               itemId: ghost.id,
-              unitPrice: Money.fromMajorUnits(1500),
               discountRate: new DiscountRate(1.0),
               itemDiscount: Money.zero(),
             },
@@ -588,16 +572,18 @@ describe("EstimateVariation", () => {
       );
     });
 
-    it("改訂で生まれたバリエーションでも単価・値引・メモの調整はできる", () => {
+    it("改訂で生まれたバリエーションでも掛率・値引・メモの調整はできる（単価は不変）", () => {
       const item = makeItem({ quantity: 2, unitPrice: 1200 });
       const v = makeRevisedVariation([item]);
 
-      v.changeItemUnitPrice(item.id, Money.fromMajorUnits(1000), TAX);
+      v.changeItemDiscountRate(item.id, new DiscountRate(0.5), TAX);
       v.changeOverallDiscount(Money.fromMajorUnits(100), TAX);
       v.changeCustomerMemo(Memo.create("得意先向けに調整"));
 
-      expect(item.unitPrice.equals(Money.fromMajorUnits(1000))).toBe(true);
-      expect(v.subtotal.equals(Money.fromMajorUnits(2000))).toBe(true);
+      // 単価は不変の 1200。base 2400, 掛率0.5 → 1200
+      expect(item.unitPrice.equals(Money.fromMajorUnits(1200))).toBe(true);
+      expect(item.finalAmount.equals(Money.fromMajorUnits(1200))).toBe(true);
+      expect(v.subtotal.equals(Money.fromMajorUnits(1200))).toBe(true);
       expect(v.customerMemo.value).toBe("得意先向けに調整");
     });
 

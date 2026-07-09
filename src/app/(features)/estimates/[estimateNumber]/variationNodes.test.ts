@@ -133,8 +133,15 @@ describe("createWorkingSetGroup（自動展開結果 → 作業ノード）", ()
     ],
   };
 
-  it("構成は単価0・数量=構成定義・有効性スナップショットで作られる", () => {
-    const node = createWorkingSetGroup("g-row", expanded, (i) => `c-row-${i}`);
+  it("構成は解決単価・数量=構成定義・有効性スナップショットで作られる", () => {
+    // 価格決定で解決した表示単価を productId ごとに注入する（ca=500, cb=300）。
+    const prices: Record<string, number> = { ca: 500, cb: 300 };
+    const node = createWorkingSetGroup(
+      "g-row",
+      expanded,
+      (i) => `c-row-${i}`,
+      (pid) => prices[pid]
+    );
 
     expect(node.rowId).toBe("g-row");
     expect(node.productId).toBe("set-9");
@@ -143,11 +150,15 @@ describe("createWorkingSetGroup（自動展開結果 → 作業ノード）", ()
       rowId: "c-row-0",
       productId: "ca",
       quantity: 3,
-      unitPrice: 0,
+      unitPrice: 500,
       isActive: true,
     });
-    // 無効構成も捨てず isActive=false で含める
-    expect(node.components[1]).toMatchObject({ rowId: "c-row-1", isActive: false });
+    // 無効構成も捨てず isActive=false で含める（単価は解決値を注入）
+    expect(node.components[1]).toMatchObject({
+      rowId: "c-row-1",
+      unitPrice: 300,
+      isActive: false,
+    });
   });
 });
 
@@ -254,5 +265,21 @@ describe("toNodePayload（JSON 往復用に schema 項目へ絞る）", () => {
     expect(node.components).toHaveLength(2);
     expect(node.components[0]).not.toHaveProperty("rowId");
     expect(node).not.toHaveProperty("rowId");
+  });
+
+  it("既存行は itemId を載せ、単価は載せない（C4 保全キー・単価はサーバ解決・ADR-20260709-5ea/0064）", () => {
+    // fromVariationLines 経由の既存明細（itemId 保持）。単価はペイロードに含めない。
+    const existing = fromVariationLines([lineDTO({ itemId: "item-9" })]);
+    const payload = toNodePayload(existing);
+
+    expect(payload[0]).toMatchObject({ kind: "line", itemId: "item-9" });
+    expect(payload[0]).not.toHaveProperty("unitPrice");
+  });
+
+  it("新規行は itemId を載せない（未指定＝サーバで新規解決される）", () => {
+    const payload = toNodePayload([line("A")]);
+
+    expect(payload[0]).not.toHaveProperty("itemId");
+    expect(payload[0]).not.toHaveProperty("unitPrice");
   });
 });

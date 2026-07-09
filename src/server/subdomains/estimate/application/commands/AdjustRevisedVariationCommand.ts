@@ -10,11 +10,12 @@ import { Memo } from "@subdomains/estimate/domain/values/Memo";
 import { Money } from "@server/shared/domain/values/Money";
 import { checkTaxRateThenSave, type TaxCheckedSaveResult } from "../shared/checkTaxRateThenSave";
 
-/** 明細単位の調整入力（#390）。価格系（単価・掛率・明細値引）＋メモ。数量・商品は持たない。 */
+/**
+ * 明細単位の調整入力（#390）。価格系（掛率・明細値引）＋メモ。数量・商品・単価は持たない。
+ * 単価は明細生成時に価格決定で確定・固定され、以後の調整では変更できない（ADR-0064）。
+ */
 export type AdjustRevisedVariationItemInput = {
   itemId: string;
-  /** 単価（円・整数）。 */
-  unitPrice: number;
   /** 掛率（例 1.0=値引なし、0.95=5%引き）。 */
   discountRate: number;
   /** 明細値引（円・整数）。 */
@@ -45,7 +46,7 @@ export type AdjustRevisedVariationInput = {
 /**
  * 改訂先バリエーションの部分編集コマンド（#390）。
  *
- * 流れ: 既存集約をロード → ルート adjustVariationPricing で価格系（明細の単価・掛率・
+ * 流れ: 既存集約をロード → ルート adjustVariationPricing で価格系（明細の掛率・
  * 明細値引＋全体値引）を一括適用 → バリ単位・明細単位のメモを適用 → §8.6/§8.7 の
  * 税率チェック→保存。改訂先は editableVariationOrThrow で凍結改訂元を弾きつつ通る。
  *
@@ -69,7 +70,6 @@ export class AdjustRevisedVariationCommand {
 
     const adjustments: ItemPriceAdjustment[] = input.items.map((item) => ({
       itemId: new EstimateItemId(item.itemId),
-      unitPrice: Money.fromMajorUnits(item.unitPrice),
       discountRate: new DiscountRate(item.discountRate),
       itemDiscount: Money.fromMajorUnits(item.itemDiscount),
     }));

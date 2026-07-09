@@ -79,7 +79,7 @@ describe("LineTable メモ列", () => {
 });
 
 describe("LineTable 価格調整モード（priceEdit・#390）", () => {
-  it("priceEdit で単価・掛率・明細値引が編集セルになり、変更で onChangePrice を呼ぶ", () => {
+  it("priceEdit で掛率・明細値引は編集セル、単価は読み取り専用表示（#430・ADR-0064）", () => {
     const onChangePrice = vi.fn();
     render(
       <LineTable
@@ -91,8 +91,10 @@ describe("LineTable 価格調整モード（priceEdit・#390）", () => {
       />
     );
 
-    fireEvent.change(screen.getByLabelText("単価（明細Y）"), { target: { value: "1500" } });
-    expect(onChangePrice).toHaveBeenCalledWith("item-1", { unitPrice: 1500 });
+    // 単価は価格決定で確定・固定のため入力欄を出さず、確定単価を表示する（ADR-0064）。
+    const unitPriceCell = screen.getByLabelText("単価（明細Y）");
+    expect(unitPriceCell.tagName).not.toBe("INPUT");
+    expect(unitPriceCell).toHaveTextContent("1,000円");
 
     fireEvent.change(screen.getByLabelText("掛率（明細Y）"), { target: { value: "0.9" } });
     expect(onChangePrice).toHaveBeenCalledWith("item-1", { discountRate: 0.9 });
@@ -165,7 +167,8 @@ describe("LineTable 価格調整モード（priceEdit・#390）", () => {
       />
     );
 
-    expect(screen.getByLabelText("単価（併用）")).toBeInTheDocument();
+    // 編集可能な価格入力は掛率（単価は読み取り専用に変わった・#430）。
+    expect(screen.getByLabelText("掛率（併用）")).toBeInTheDocument();
     expect(screen.getByLabelText("顧客メモ（併用）")).toBeInTheDocument();
   });
 });

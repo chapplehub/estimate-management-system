@@ -92,6 +92,8 @@ export function CreateEstimateForm({
   const [estimateDate, setEstimateDate] = useState(defaultEstimateDate);
   const [taxRoundingType, setTaxRoundingType] = useState("ROUND_DOWN");
   const [taxRate, setTaxRate] = useState<number | null>(initialTaxRate);
+  // 提出区分は明細追加時の価格決定（宛先判別）に効くため controlled state に持ち上げる（SubmissionTypeField と共有）。
+  const [submissionType, setSubmissionType] = useState("CUSTOMER");
   const [, startTaxResolve] = useTransition();
 
   const [customer, setCustomer] = useState({ id: "", code: "", name: "" });
@@ -131,9 +133,16 @@ export function CreateEstimateForm({
   };
 
   // 明細編集器（新規作成は白紙＝空ノード・全体値引0で開始）。プレビュー税率はライブ解決値。
+  // 価格コンテキストは作成中の動的なヘッダー値（見積年月日・得意先/納品先・提出区分）を毎レンダー供給する。
   const editor = useVariationLineEditor({
     initialNodes: [],
     initialOverallDiscount: 0,
+    priceContext: {
+      estimateDate,
+      customerId: customer.id,
+      deliveryLocationId: deliveryLocation.id,
+      submissionType,
+    },
     taxRate: taxRate ?? 0,
     taxRoundingType,
   });
@@ -357,7 +366,13 @@ export function CreateEstimateForm({
         {/* 初期バリエーション（1件・提出区分＋明細） */}
         <section className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-8">
           <h2 className="text-xl font-semibold mb-4 text-gray-500">バリエーション</h2>
-          <SubmissionTypeField field={fields.submissionType} mode="select" disabled={isPending} />
+          <SubmissionTypeField
+            field={fields.submissionType}
+            mode="select"
+            disabled={isPending}
+            value={submissionType}
+            onValueChange={setSubmissionType}
+          />
           <VariationLineEditor
             editor={editor}
             nodesField={fields.nodes}

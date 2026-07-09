@@ -15,7 +15,20 @@ import { SUBMISSION_TYPE_LABELS } from "./labels";
  */
 type SubmissionTypeFieldProps = {
   field: FieldMetadata<string>;
-} & ({ mode: "select"; disabled?: boolean } | { mode: "fixed"; value: string });
+} & (
+  | {
+      mode: "select";
+      disabled?: boolean;
+      /**
+       * controlled 値。指定時は制御コンポーネントとして描画する（提出区分を親 state に持ち上げ、
+       * 明細追加時の価格決定に現在値を供給する用途・#430）。未指定なら従来どおり conform 管理の
+       * uncontrolled select。
+       */
+      value?: string;
+      onValueChange?: (value: string) => void;
+    }
+  | { mode: "fixed"; value: string }
+);
 
 export function SubmissionTypeField(props: SubmissionTypeFieldProps) {
   const { field } = props;
@@ -38,6 +51,15 @@ export function SubmissionTypeField(props: SubmissionTypeFieldProps) {
           </label>
           <select
             {...getSelectProps(field)}
+            // controlled 時は defaultValue を外し value/onChange で制御する（React の混在警告回避）。
+            {...(props.value !== undefined
+              ? {
+                  defaultValue: undefined,
+                  value: props.value,
+                  onChange: (e: React.ChangeEvent<HTMLSelectElement>) =>
+                    props.onValueChange?.(e.target.value),
+                }
+              : {})}
             disabled={props.disabled}
             className="border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-400"
           >

@@ -66,6 +66,8 @@ describe("fromLineDTO（既存明細 DTO → 作業行）", () => {
     expect(line).toEqual({
       kind: "line",
       rowId: "item-9",
+      // C4 既存行保全の突合キー（ADR-20260709-5ea）。rowId とは別に永続 itemId を保持する。
+      itemId: "item-9",
       productId: "prod-1",
       productCode: "P001",
       productCategory: "INDIVIDUAL",

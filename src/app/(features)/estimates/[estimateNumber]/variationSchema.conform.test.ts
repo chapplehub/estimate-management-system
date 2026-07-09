@@ -31,7 +31,6 @@ const NODES_WITH_EMPTY_MEMOS = JSON.stringify([
     itemName: "編集対象明細",
     unit: "個",
     quantity: 1,
-    unitPrice: 1000,
     discountRate: 1,
     itemDiscount: 0,
     customerMemo: "",

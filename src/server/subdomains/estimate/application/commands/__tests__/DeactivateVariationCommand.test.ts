@@ -6,6 +6,7 @@ import prisma from "@server/prisma";
 import { ConflictError, NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { EstimateId } from "@subdomains/estimate/domain/values/EstimateId";
 import { PrismaEstimateNumberIssuer } from "@subdomains/estimate/infrastructure/prisma/PrismaEstimateNumberIssuer";
+import { resolveSellingPriceQueryFactory } from "@subdomains/pricing/application/factories/pricingQueryFactory";
 import { PrismaEstimateRepository } from "@subdomains/estimate/infrastructure/prisma/PrismaEstimateRepository";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
@@ -43,7 +44,11 @@ describe("DeactivateVariationCommand", () => {
   beforeEach(async () => {
     repository = new PrismaEstimateRepository();
     command = new DeactivateVariationCommand(repository);
-    createCommand = new CreateEstimateCommand(repository, new PrismaEstimateNumberIssuer());
+    createCommand = new CreateEstimateCommand(
+      repository,
+      new PrismaEstimateNumberIssuer(),
+      resolveSellingPriceQueryFactory()
+    );
     await cleanupTestYear();
   });
 
@@ -73,7 +78,6 @@ describe("DeactivateVariationCommand", () => {
               itemName: "商品A",
               quantity: 2,
               unit: "個",
-              unitPrice: 600000,
             },
           ],
         },

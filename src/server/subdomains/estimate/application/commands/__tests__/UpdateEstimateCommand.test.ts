@@ -6,6 +6,7 @@ import prisma from "@server/prisma";
 import { ConflictError, NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { TaxRateConsistencyCheckDomainService } from "@subdomains/estimate/domain/services/TaxRateConsistencyCheckDomainService";
 import { PrismaEstimateNumberIssuer } from "@subdomains/estimate/infrastructure/prisma/PrismaEstimateNumberIssuer";
+import { resolveSellingPriceQueryFactory } from "@subdomains/pricing/application/factories/pricingQueryFactory";
 import { PrismaEstimateRepository } from "@subdomains/estimate/infrastructure/prisma/PrismaEstimateRepository";
 import { PrismaTaxRateRepository } from "@subdomains/estimate/infrastructure/prisma/PrismaTaxRateRepository";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -49,7 +50,11 @@ describe("UpdateEstimateCommand", () => {
       new PrismaTaxRateRepository()
     );
     command = new UpdateEstimateCommand(repository, taxRateConsistencyCheck);
-    createCommand = new CreateEstimateCommand(repository, new PrismaEstimateNumberIssuer());
+    createCommand = new CreateEstimateCommand(
+      repository,
+      new PrismaEstimateNumberIssuer(),
+      resolveSellingPriceQueryFactory()
+    );
     reviseCommand = new ReviseForCustomerCommand(repository, taxRateConsistencyCheck);
     await cleanupTestYear();
   });
@@ -80,7 +85,6 @@ describe("UpdateEstimateCommand", () => {
               itemName: "商品A",
               quantity: 2,
               unit: "個",
-              unitPrice: 1000,
             },
           ],
         },
@@ -223,7 +227,6 @@ describe("UpdateEstimateCommand", () => {
                 itemName: "商品A",
                 quantity: 1,
                 unit: "個",
-                unitPrice: 1000,
               },
             ],
           },

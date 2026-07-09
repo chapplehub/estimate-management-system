@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { WorkingLine, WorkingNode, WorkingSetGroup } from "../variationLines";
 import { LineEditTable } from "./LineEditTable";
@@ -71,5 +71,15 @@ describe("LineEditTable の HTML 構造（#369 hydration エラー修正）", ()
     const table = container.querySelector("table");
     expect(table).not.toBeNull();
     expect(table?.querySelector(":scope > div")).toBeNull();
+  });
+});
+
+describe("単価は読み取り専用（手入力不可・ADR-0064）", () => {
+  it("単価セルは input ではなく表示で、数量は input のまま", () => {
+    renderTable([line({ itemName: "ポンプ", unitPrice: 1000 })]);
+
+    // 単価セルは <input> を持たない（read-only 表示）。数量は編集可能な input のまま。
+    expect(screen.getByLabelText("単価（ポンプ）").tagName).not.toBe("INPUT");
+    expect(screen.getByLabelText("数量（ポンプ）").tagName).toBe("INPUT");
   });
 });

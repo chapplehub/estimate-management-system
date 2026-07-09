@@ -17,6 +17,11 @@ import { EstimateNumberIssuer } from "@subdomains/estimate/domain/repositories/E
 import { EstimateRepository } from "@subdomains/estimate/domain/repositories/EstimateRepository";
 import { ProductQueryService } from "@subdomains/product/application/queries/ProductQueryService";
 import { assertSetComponentsValid } from "../shared/assertSetComponentsValid";
+import {
+  resolveLineTreePrices,
+  type LinePriceContext,
+  type SellingPriceResolver,
+} from "../shared/resolveLinePrices";
 import { EmergencyReason } from "@subdomains/estimate/domain/values/approval/EmergencyReason";
 import { EstimateType } from "@subdomains/estimate/domain/values/EstimateType";
 import { FaultDescription } from "@subdomains/estimate/domain/values/FaultDescription";
@@ -30,14 +35,18 @@ import { TaxRoundingType } from "@subdomains/estimate/domain/values/TaxRoundingT
 import { Unit } from "@subdomains/estimate/domain/values/Unit";
 import { DiscountRate } from "@subdomains/estimate/domain/values/DiscountRate";
 
-/** 明細の入力（プリミティブ。金額は major units = 円）。 */
+/**
+ * 明細の入力（プリミティブ。金額は major units = 円）。
+ *
+ * 見積単価は入力に含めない（ADR-0064）。商品選択＝明細生成時にサーバーが価格決定（#428）で
+ * 権威解決・固定する。クライアントから単価を受け取らない。
+ */
 export type CreateEstimateItemInput = {
   productId: string;
   sortOrder: number;
   itemName: string;
   quantity: number;
   unit: string;
-  unitPrice: number;
   discountRate?: number;
   itemDiscount?: number;
   customerMemo?: string | null;
@@ -122,6 +131,11 @@ export class CreateEstimateCommand {
     private readonly estimateRepository: EstimateRepository,
     private readonly numberIssuer: EstimateNumberIssuer,
     /**
+     * 明細生成時の見積単価を権威解決する価格決定（#428・ADR-0064）。入力の単価は受け取らず、
+     * 商品選択＝明細生成としてここで解決・固定する。
+     */
+    private readonly resolveSellingPrice: SellingPriceResolver,
+    /**
      * セット構成のライブ区分・有効性検証（ADR-0052）用の商品クエリ。
      * セット群を含まない既存の作成経路では未使用のため任意注入とし、後方互換を保つ。
      */
@@ -134,8 +148,12 @@ export class CreateEstimateCommand {
     const taxRate = new TaxRate(input.taxRate);
     const taxRoundingType = TaxRoundingType.from(input.taxRoundingType);
 
+    // 1.5 明細の見積単価を価格決定で解決する（ADR-0064）。提出区分はバリエーション単位（ADR-0045）
+    // のため宛先コンテキストもバリエーションごとに組み立てる。行オブジェクト参照で解決値を引く。
+    const priceMap = await this.resolveVariationPrices(input);
+
     const variations: EstimateVariationDescriptor[] = input.variations.map((variation) =>
-      this.toVariationDescriptor(variation)
+      this.toVariationDescriptor(variation, priceMap)
     );
     const repairDetail = this.toRepairDescriptor(input.repairDetail);
     const afterRepairDetail = this.toAfterRepairDescriptor(input.afterRepairDetail);
@@ -172,14 +190,38 @@ export class CreateEstimateCommand {
     return await this.estimateRepository.insert(estimate);
   }
 
+  /**
+   * 全バリエーションの明細（通常明細＋セット構成明細）の見積単価を価格決定で解決し、
+   * 行入力オブジェクト参照 → 解決済み `Money` の索引を返す。C1 は既存明細を持たないため全行を新規解決する。
+   */
+  private async resolveVariationPrices(
+    input: CreateEstimateInput
+  ): Promise<ReadonlyMap<CreateEstimateItemInput, Money>> {
+    const priceMap = new Map<CreateEstimateItemInput, Money>();
+    for (const variation of input.variations) {
+      const context: LinePriceContext = {
+        submissionType: SubmissionType.from(variation.submissionType),
+        customerId: input.customerId,
+        deliveryLocationId: input.deliveryLocationId,
+        estimateDate: input.estimateDate,
+      };
+      const resolved = await resolveLineTreePrices(variation, context, this.resolveSellingPrice);
+      for (const [line, price] of resolved) {
+        priceMap.set(line, price);
+      }
+    }
+    return priceMap;
+  }
+
   private toVariationDescriptor(
-    variation: CreateEstimateVariationInput
+    variation: CreateEstimateVariationInput,
+    priceMap: ReadonlyMap<CreateEstimateItemInput, Money>
   ): EstimateVariationDescriptor {
     return {
       variationNumber: variation.variationNumber,
       submissionType: SubmissionType.from(variation.submissionType),
-      items: variation.items.map((item) => this.toItemDescriptor(item)),
-      setGroups: variation.setGroups?.map((group) => this.toSetGroupDescriptor(group)),
+      items: variation.items.map((item) => this.toItemDescriptor(item, priceMap)),
+      setGroups: variation.setGroups?.map((group) => this.toSetGroupDescriptor(group, priceMap)),
       overallDiscount:
         variation.overallDiscount != null
           ? Money.fromMajorUnits(variation.overallDiscount)
@@ -191,25 +233,36 @@ export class CreateEstimateCommand {
     };
   }
 
-  private toSetGroupDescriptor(group: CreateEstimateSetGroupInput): EstimateSetGroupDescriptor {
+  private toSetGroupDescriptor(
+    group: CreateEstimateSetGroupInput,
+    priceMap: ReadonlyMap<CreateEstimateItemInput, Money>
+  ): EstimateSetGroupDescriptor {
     return {
       productId: new ProductId(group.productId),
       itemName: new ItemName(group.itemName),
       unit: new Unit(group.unit),
-      components: group.components.map((item) => this.toItemDescriptor(item)),
+      components: group.components.map((item) => this.toItemDescriptor(item, priceMap)),
       customerMemo: group.customerMemo != null ? Memo.create(group.customerMemo) : undefined,
       internalMemo: group.internalMemo != null ? Memo.create(group.internalMemo) : undefined,
     };
   }
 
-  private toItemDescriptor(item: CreateEstimateItemInput): EstimateItemDescriptor {
+  private toItemDescriptor(
+    item: CreateEstimateItemInput,
+    priceMap: ReadonlyMap<CreateEstimateItemInput, Money>
+  ): EstimateItemDescriptor {
+    const unitPrice = priceMap.get(item);
+    if (unitPrice === undefined) {
+      // 解決済み単価が索引に無いのは resolveVariationPrices の平坦化漏れ＝内部不整合。
+      throw new Error("明細の見積単価が解決されていません（内部エラー）");
+    }
     return {
       productId: new ProductId(item.productId),
       sortOrder: item.sortOrder,
       itemName: new ItemName(item.itemName),
       quantity: new Quantity(item.quantity),
       unit: new Unit(item.unit),
-      unitPrice: Money.fromMajorUnits(item.unitPrice),
+      unitPrice,
       discountRate: item.discountRate != null ? new DiscountRate(item.discountRate) : undefined,
       itemDiscount: item.itemDiscount != null ? Money.fromMajorUnits(item.itemDiscount) : undefined,
       customerMemo: item.customerMemo != null ? Memo.create(item.customerMemo) : undefined,

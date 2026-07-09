@@ -12,13 +12,16 @@ import { z } from "zod";
 
 /** 明細1件（JSON 配列の要素）。商品名・単位は選択時スナップショット（§8・編集不可）。 */
 const lineSchema = z.object({
+  // C4 内容編集で既存明細を突合する任意キー（ADR-20260709-5ea）。既存行のみ持ち、新規行は未指定。
+  // 単価保全（itemId 一致かつ productId 不変なら永続単価を保持）の突合に使う。偽造/不一致は新規行扱い。
+  itemId: z.string().optional(),
   productId: z.string().min(1, "商品を選択してください"),
   itemName: z.string().min(1, "商品名が空です"),
   unit: z.string().min(1, "単位が空です"),
   // 数量: 1 以上の整数（Quantity VO と整合）。
   quantity: z.number().int("数量は整数で入力してください").min(1, "数量は1以上で入力してください"),
-  // 単価: 円・0 以上（販売単価マスタ未確定のため新規行は 0＝要入力）。
-  unitPrice: z.number().min(0, "単価は0以上で入力してください"),
+  // 単価はスキーマに含めない: 見積単価は保存時に価格決定でサーバが権威解決する（ADR-0064）。
+  // クライアント値は一切受け取らない（既存行は itemId 突合で永続値を保全・ADR-20260709-5ea）。
   // 掛率: 0 超〜9.9999（DiscountRate VO と整合）。1.0 が値引なし。
   discountRate: z
     .number()

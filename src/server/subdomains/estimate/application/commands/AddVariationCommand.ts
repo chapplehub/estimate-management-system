@@ -6,6 +6,11 @@ import { EstimateId } from "@subdomains/estimate/domain/values/EstimateId";
 import { SubmissionType } from "@subdomains/estimate/domain/values/SubmissionType";
 import { checkTaxRateThenSave, type TaxCheckedSaveResult } from "../shared/checkTaxRateThenSave";
 import {
+  resolveLineTreePrices,
+  type LinePriceContext,
+  type SellingPriceResolver,
+} from "../shared/resolveLinePrices";
+import {
   toVariationContentDescriptor,
   type VariationContentInput,
 } from "../shared/variationContentInput";
@@ -38,7 +43,12 @@ export type AddVariationInput = {
 export class AddVariationCommand {
   constructor(
     private readonly estimateRepository: EstimateRepository,
-    private readonly taxRateConsistencyCheck: TaxRateConsistencyCheckDomainService
+    private readonly taxRateConsistencyCheck: TaxRateConsistencyCheckDomainService,
+    /**
+     * 明細生成時の見積単価を権威解決する価格決定（#428・ADR-0064）。入力の単価は受け取らず、
+     * 商品選択＝明細生成としてここで解決・固定する。追加バリエーションは全行が新規＝全解決。
+     */
+    private readonly resolveSellingPrice: SellingPriceResolver
   ) {}
 
   async execute(input: AddVariationInput): Promise<TaxCheckedSaveResult> {
@@ -47,8 +57,18 @@ export class AddVariationCommand {
       throw new NotFoundEntityError(Estimate, { id: input.estimateId });
     }
 
+    // 追加明細の見積単価を価格決定で解決する（ADR-0064）。提出区分は入力で確定する不変属性
+    // （ADR-0045）、宛先・見積年月日は親見積から取る。追加は全行が新規のため既存行保全はなし。
+    const context: LinePriceContext = {
+      submissionType: SubmissionType.from(input.submissionType),
+      customerId: estimate.customerId.value,
+      deliveryLocationId: estimate.deliveryLocationId.value,
+      estimateDate: estimate.estimateDate,
+    };
+    const priceMap = await resolveLineTreePrices(input.content, context, this.resolveSellingPrice);
+
     const content = EstimateFactory.buildVariationContent(
-      toVariationContentDescriptor(input.content)
+      toVariationContentDescriptor(input.content, priceMap)
     );
     estimate.appendVariation(content, SubmissionType.from(input.submissionType));
 

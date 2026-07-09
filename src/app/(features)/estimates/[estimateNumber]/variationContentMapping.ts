@@ -59,7 +59,9 @@ function toItemInput(line: VariationLineInput, sortOrder: number): EstimateItemI
     itemName: line.itemName,
     quantity: line.quantity,
     unit: line.unit,
-    unitPrice: line.unitPrice,
+    // 見積単価はコマンドが価格決定で権威解決する（ADR-0064）。ここでは転送しない。
+    // itemId は C4 既存行保全（ADR-20260709-5ea）の突合キー。未指定の行は新規解決される。
+    itemId: line.itemId,
     discountRate: line.discountRate,
     itemDiscount: line.itemDiscount,
     customerMemo: line.customerMemo,

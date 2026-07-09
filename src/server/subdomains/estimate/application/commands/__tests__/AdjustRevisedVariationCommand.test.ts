@@ -2,11 +2,13 @@ import {
   ensureEstimateFixtures,
   type EstimateFixtureIds,
 } from "@server/__tests__/helpers/ensureEstimateFixtures";
+import { ensurePricedProduct } from "@server/__tests__/helpers/sellingPriceScenario";
 import prisma from "@server/prisma";
 import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { EstimateId } from "@subdomains/estimate/domain/values/EstimateId";
 import { TaxRateConsistencyCheckDomainService } from "@subdomains/estimate/domain/services/TaxRateConsistencyCheckDomainService";
 import { PrismaEstimateNumberIssuer } from "@subdomains/estimate/infrastructure/prisma/PrismaEstimateNumberIssuer";
+import { resolveSellingPriceQueryFactory } from "@subdomains/pricing/application/factories/pricingQueryFactory";
 import { PrismaEstimateRepository } from "@subdomains/estimate/infrastructure/prisma/PrismaEstimateRepository";
 import { PrismaTaxRateRepository } from "@subdomains/estimate/infrastructure/prisma/PrismaTaxRateRepository";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -40,9 +42,20 @@ describe("AdjustRevisedVariationCommand", () => {
   let reviseCommand: ReviseForCustomerCommand;
   let repository: PrismaEstimateRepository;
   let ids: EstimateFixtureIds;
+  // 税率不一致テストは estimateDate=2019 を使う。フィクスチャ単価は「今日始まり」で2019を被覆しない
+  // ため、2019以降を無期限で被覆する履歴単価付きの専用商品を用意する（参照日を2019に指定して
+  // 過去不変制約を回避する・テスト支援用途）。
+  let historicalProductId: string;
 
   beforeAll(async () => {
     ids = await ensureEstimateFixtures();
+    historicalProductId = await ensurePricedProduct({
+      code: "ADJ430H",
+      name: "AdjustRevised 履歴単価商品",
+      yen: 1000,
+      start: "2019-01-01",
+      today: "2019-01-01",
+    });
   });
 
   beforeEach(async () => {
@@ -51,7 +64,11 @@ describe("AdjustRevisedVariationCommand", () => {
       repository,
       new TaxRateConsistencyCheckDomainService(new PrismaTaxRateRepository())
     );
-    createCommand = new CreateEstimateCommand(repository, new PrismaEstimateNumberIssuer());
+    createCommand = new CreateEstimateCommand(
+      repository,
+      new PrismaEstimateNumberIssuer(),
+      resolveSellingPriceQueryFactory()
+    );
     reviseCommand = new ReviseForCustomerCommand(
       repository,
       new TaxRateConsistencyCheckDomainService(new PrismaTaxRateRepository())
@@ -86,7 +103,6 @@ describe("AdjustRevisedVariationCommand", () => {
               itemName: "商品A",
               quantity: 2,
               unit: "個",
-              unitPrice: 1000,
             },
           ],
         },
@@ -114,9 +130,11 @@ describe("AdjustRevisedVariationCommand", () => {
     return { estimateId: created.id.value, target, version: current.version };
   }
 
-  it("改訂先の単価・掛率・明細値引・全体値引とメモを適用し saved で永続化される", async () => {
+  it("改訂先の掛率・明細値引・全体値引とメモを適用し、単価は不変で saved 永続化される", async () => {
     const { estimateId, target, version } = await buildRevisedTarget();
     const item = target.items[0]!;
+    // 改訂先の単価は改訂元から複写された解決値（フィクスチャ 1000 円）。調整では変更できない（ADR-0064）。
+    expect(item.unitPrice.majorUnits).toBe(1000);
 
     const result = await command.execute({
       estimateId,
@@ -128,7 +146,6 @@ describe("AdjustRevisedVariationCommand", () => {
       items: [
         {
           itemId: item.id.value,
-          unitPrice: 1500,
           discountRate: 1.0,
           itemDiscount: 100,
           customerMemo: "明細顧客",
@@ -142,9 +159,9 @@ describe("AdjustRevisedVariationCommand", () => {
 
     const saved = result.estimate.variations.find((v) => v.id.equals(target.id))!;
     const savedItem = saved.items[0]!;
-    // item: base 1500*2=3000, 掛率1.0, 値引100 → final 2900
-    expect(savedItem.unitPrice.majorUnits).toBe(1500);
-    expect(savedItem.finalAmount.majorUnits).toBe(2900);
+    // 単価は不変の 1000。base 1000*2=2000, 掛率1.0, 値引100 → final 1900
+    expect(savedItem.unitPrice.majorUnits).toBe(1000);
+    expect(savedItem.finalAmount.majorUnits).toBe(1900);
     expect(saved.overallDiscount.majorUnits).toBe(50);
     expect(saved.customerMemo.value).toBe("得意先向けメモ");
     expect(savedItem.customerMemo.value).toBe("明細顧客");
@@ -155,7 +172,7 @@ describe("AdjustRevisedVariationCommand", () => {
     const reloaded = await repository.findById(new EstimateId(estimateId));
     expect(reloaded).not.toBeNull();
     const reloadedTarget = reloaded!.variations.find((v) => v.id.equals(target.id))!;
-    expect(reloadedTarget.items[0]!.finalAmount.majorUnits).toBe(2900);
+    expect(reloadedTarget.items[0]!.finalAmount.majorUnits).toBe(1900);
     expect(reloadedTarget.overallDiscount.majorUnits).toBe(50);
   });
 
@@ -172,12 +189,12 @@ describe("AdjustRevisedVariationCommand", () => {
             submissionType: "CUSTOMER",
             items: [
               {
-                productId: ids.productId,
+                // 2019 を被覆する履歴単価付き商品（フィクスチャ商品は今日始まりで2019を被覆しない）。
+                productId: historicalProductId,
                 sortOrder: 1,
                 itemName: "商品A",
                 quantity: 1,
                 unit: "個",
-                unitPrice: 1000,
               },
             ],
           },
@@ -192,7 +209,7 @@ describe("AdjustRevisedVariationCommand", () => {
       variationId: variation.id.value,
       version: 1,
       overallDiscount: 0,
-      items: [{ itemId: item.id.value, unitPrice: 2000, discountRate: 1.0, itemDiscount: 0 }],
+      items: [{ itemId: item.id.value, discountRate: 1.0, itemDiscount: 0 }],
     });
 
     expect(result.kind).toBe("taxRateMismatch");
