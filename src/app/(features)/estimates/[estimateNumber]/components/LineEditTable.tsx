@@ -343,16 +343,12 @@ function EditRow({
         />
       </td>
       <td className="px-3 py-2 align-top">{line.unit}</td>
-      <td className="px-3 py-2 align-top">
-        <input
-          type="number"
-          min={0}
-          step={1}
-          aria-label={`単価（${label}）`}
-          value={line.unitPrice}
-          onChange={(e) => onChangeLine(line.rowId, { unitPrice: num(e.target.value) })}
-          className={`${cellInputClass} w-28`}
-        />
+      {/* 単価は手入力不可の読み取り専用表示（商品選択時に価格決定でサーバ解決・ADR-0064）。 */}
+      <td
+        className="px-3 py-2 align-top text-right tabular-nums text-gray-700"
+        aria-label={`単価（${label}）`}
+      >
+        {formatYen(line.unitPrice)}
       </td>
       <td className="px-3 py-2 align-top">
         <input

@@ -81,6 +81,9 @@ export default async function EstimateDetailPage({
         estimateNumber={estimate.estimateNumber}
         version={estimate.version}
         variations={estimate.variations}
+        estimateDate={toDateInputValue(estimate.estimateDate)}
+        customerId={estimate.customerId}
+        deliveryLocationId={estimate.deliveryLocationId}
         applicationStates={applicationStates}
         taxRate={estimate.taxRate}
         taxRoundingType={estimate.taxRoundingType}

@@ -34,6 +34,12 @@ type Props = {
   /** 集約ルートの楽観ロックトークン（ADR-0039）。編集フォームへ往復させる。 */
   version: number;
   variations: VariationDTO[];
+  /** 見積年月日 "yyyy-mm-dd"（明細追加時の価格決定に供給・#430）。編集/追加フォームへ引き回す。 */
+  estimateDate: string;
+  /** 得意先ID（提出区分=得意先向けの価格解決に使う・#430）。 */
+  customerId: string;
+  /** 納品先ID（提出区分=納品先向けの価格解決に使う・#430）。 */
+  deliveryLocationId: string;
   /**
    * バリエーション別 申請状態（#493・#494）。申請ボタンの出し分け（canApply）とバッジ（label）を
    * 駆動する。variationId で {@link VariationDTO} と join する（INACTIVE 含む全件・variationNumber 昇順）。
@@ -81,6 +87,9 @@ export function VariationPanel({
   estimateNumber,
   version,
   variations,
+  estimateDate,
+  customerId,
+  deliveryLocationId,
   applicationStates,
   taxRate,
   taxRoundingType,
@@ -317,6 +326,9 @@ export function VariationPanel({
                 : { kind: "new" as const })}
               estimateNumber={estimateNumber}
               version={version}
+              estimateDate={estimateDate}
+              customerId={customerId}
+              deliveryLocationId={deliveryLocationId}
               taxRate={taxRate}
               taxRoundingType={taxRoundingType}
               onCancel={() => setMode({ kind: "view" })}
@@ -326,6 +338,9 @@ export function VariationPanel({
               estimateNumber={estimateNumber}
               version={version}
               variation={active}
+              estimateDate={estimateDate}
+              customerId={customerId}
+              deliveryLocationId={deliveryLocationId}
               taxRate={taxRate}
               taxRoundingType={taxRoundingType}
               onCancel={() => setMode({ kind: "view" })}

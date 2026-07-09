@@ -1,6 +1,7 @@
 "use client";
 
 import { getFormProps, getInputProps } from "@conform-to/react";
+import { useState } from "react";
 import { useServerForm } from "@/app/_hooks/useServerForm";
 import { SubmissionTypeField } from "../_shared/SubmissionTypeField";
 import { VariationLineEditor, VariationLineEditorOverlays } from "./components/VariationLineEditor";
@@ -13,6 +14,12 @@ type Props = {
   estimateNumber: string;
   /** 集約ルートの楽観ロックトークン（ADR-0039）。 */
   version: number;
+  /** 見積年月日 "yyyy-mm-dd"（明細追加時の価格決定に供給・#430）。 */
+  estimateDate: string;
+  /** 得意先ID（提出区分=得意先向けの価格解決に使う）。 */
+  customerId: string;
+  /** 納品先ID（提出区分=納品先向けの価格解決に使う）。 */
+  deliveryLocationId: string;
   taxRate: number;
   taxRoundingType: string;
   onCancel: () => void;
@@ -34,10 +41,22 @@ type Props = {
  * 選択（SubmissionTypeField）。version はフォーム由来の楽観ロックトークン（ADR-0039・追加型でも必須）。
  */
 export function VariationCreateForm(props: Props) {
-  const { estimateNumber, version, taxRate, taxRoundingType, onCancel } = props;
+  const {
+    estimateNumber,
+    version,
+    estimateDate,
+    customerId,
+    deliveryLocationId,
+    taxRate,
+    taxRoundingType,
+    onCancel,
+  } = props;
   // 複製は提出区分・明細等を複製元から引き継ぎ、新規追加は白紙で始める。複製/新規は initialValues の
   // 有無ではなくタグ（props.kind）で区別する。
   const initialValues = props.kind === "duplicate" ? props.initialValues : undefined;
+  // 提出区分は明細追加時の価格決定（宛先判別）に効くため controlled state に持ち上げる。複製は
+  // 複製元固定、新規は選択式（SubmissionTypeField と共有）。
+  const [submissionType, setSubmissionType] = useState(initialValues?.submissionType ?? "CUSTOMER");
 
   const action = addVariation.bind(null, estimateNumber);
   const { form, fields, isPending } = useServerForm({
@@ -57,6 +76,7 @@ export function VariationCreateForm(props: Props) {
   const editor = useVariationLineEditor({
     initialNodes: initialValues?.nodes ?? [],
     initialOverallDiscount: initialValues?.overallDiscount ?? 0,
+    priceContext: { estimateDate, customerId, deliveryLocationId, submissionType },
     taxRate,
     taxRoundingType,
   });
@@ -83,7 +103,12 @@ export function VariationCreateForm(props: Props) {
           field={fields.submissionType}
           {...(props.kind === "duplicate"
             ? { mode: "fixed" as const, value: props.initialValues.submissionType }
-            : { mode: "select" as const, disabled: isPending })}
+            : {
+                mode: "select" as const,
+                disabled: isPending,
+                value: submissionType,
+                onValueChange: setSubmissionType,
+              })}
         />
 
         <VariationLineEditor

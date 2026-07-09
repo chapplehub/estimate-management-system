@@ -99,6 +99,9 @@ function renderPanel(
       estimateNumber="EST-0001"
       version={1}
       variations={variations}
+      estimateDate="2026-07-09"
+      customerId="cust-1"
+      deliveryLocationId="dloc-1"
       applicationStates={
         applicationStates ??
         variations.map((v) => appState(v.variationId, { canApply: v.status === "ACTIVE" }))
@@ -228,6 +231,9 @@ describe("VariationPanel（改訂先の部分編集・#390）", () => {
         estimateNumber="EST-0001"
         version={1}
         variations={[revisionSource]}
+        estimateDate="2026-07-09"
+        customerId="cust-1"
+        deliveryLocationId="dloc-1"
         applicationStates={[appState(revisionSource.variationId)]}
         taxRate={0.1}
         taxRoundingType="ROUND_DOWN"

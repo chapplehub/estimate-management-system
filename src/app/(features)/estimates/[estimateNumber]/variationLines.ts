@@ -178,13 +178,15 @@ export function fromVariationLines(lines: ReadonlyArray<LineDTO | SetGroupDTO>):
 
 /**
  * 自動展開されたセット群（expandSetComponents の結果）を作業ノードへ変換する。
- * 構成明細は単価 0（要入力）・数量＝構成定義・名称/単位/有効性はスナップショット。rowId は
- * 副作用（採番）を避けるため呼び出し側から渡す（群・各構成それぞれに UUID を採る）。
+ * 構成明細の単価は価格決定で解決した表示値（`unitPriceOf`）・数量＝構成定義・名称/単位/有効性は
+ * スナップショット。rowId は副作用（採番）を避けるため呼び出し側から渡す（群・各構成それぞれに UUID
+ * を採る）。構成は新規行のため itemId は持たない（保存時にサーバが新規解決する・ADR-20260709-5ea）。
  */
 export function createWorkingSetGroup(
   groupRowId: string,
   group: ExpandedSetGroup,
-  componentRowId: (componentIndex: number) => string
+  componentRowId: (componentIndex: number) => string,
+  unitPriceOf: (productId: string) => number
 ): WorkingSetGroup {
   return {
     kind: "setGroup",
@@ -205,7 +207,7 @@ export function createWorkingSetGroup(
       itemName: component.name,
       unit: component.unit,
       quantity: component.quantity,
-      unitPrice: 0,
+      unitPrice: unitPriceOf(component.productId),
       discountRate: NEW_LINE_DEFAULTS.discountRate,
       itemDiscount: NEW_LINE_DEFAULTS.itemDiscount,
       customerMemo: "",

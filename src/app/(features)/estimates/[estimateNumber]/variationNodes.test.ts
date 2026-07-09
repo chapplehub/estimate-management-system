@@ -133,8 +133,15 @@ describe("createWorkingSetGroup（自動展開結果 → 作業ノード）", ()
     ],
   };
 
-  it("構成は単価0・数量=構成定義・有効性スナップショットで作られる", () => {
-    const node = createWorkingSetGroup("g-row", expanded, (i) => `c-row-${i}`);
+  it("構成は解決単価・数量=構成定義・有効性スナップショットで作られる", () => {
+    // 価格決定で解決した表示単価を productId ごとに注入する（ca=500, cb=300）。
+    const prices: Record<string, number> = { ca: 500, cb: 300 };
+    const node = createWorkingSetGroup(
+      "g-row",
+      expanded,
+      (i) => `c-row-${i}`,
+      (pid) => prices[pid]
+    );
 
     expect(node.rowId).toBe("g-row");
     expect(node.productId).toBe("set-9");
@@ -143,11 +150,15 @@ describe("createWorkingSetGroup（自動展開結果 → 作業ノード）", ()
       rowId: "c-row-0",
       productId: "ca",
       quantity: 3,
-      unitPrice: 0,
+      unitPrice: 500,
       isActive: true,
     });
-    // 無効構成も捨てず isActive=false で含める
-    expect(node.components[1]).toMatchObject({ rowId: "c-row-1", isActive: false });
+    // 無効構成も捨てず isActive=false で含める（単価は解決値を注入）
+    expect(node.components[1]).toMatchObject({
+      rowId: "c-row-1",
+      unitPrice: 300,
+      isActive: false,
+    });
   });
 });
 
