@@ -101,6 +101,7 @@
 | [20260627-a5c](20260627-a5c-cost-price-migration-expand-contract.md) | 原価移設は expand/contract で分割し、移行は固定起点・カテゴリ分岐の期間なし写像・遅延疎生成で行う | 採用 | 2026-06-27 |
 | [20260627-86b](20260627-86b-selling-price-maintenance-temporal-guards.md) | 共通売単価の保守は「過去不変」を芯に、行の時点状態を集約の不変条件として強制し、参照日は実行時サーバー生成で注入する | 採用 | 2026-06-27 |
 | [20260709-5ea](20260709-5ea-c4-preserve-fixed-unit-price-by-item-id.md) | C4 内容編集は再解決契機とせず、既存明細の見積単価を itemId 突合で保全する | 採用 | 2026-07-09 |
+| [20260710-q7t](20260710-q7t-estimate-date-and-addressee-immutable-after-creation.md) | 見積年月日・宛先は作成時確定の不変属性とし、変更契機の一斉再解決を廃する | 採用 | 2026-07-10 |
 
 ## アプリケーション（コマンド）
 
