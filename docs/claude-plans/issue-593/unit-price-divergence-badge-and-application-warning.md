@@ -104,7 +104,7 @@
 - コミットメッセージ: `feat: C4編集画面の明細行に単価乖離・解決不能バッジを表示 (#593)`
 
 ### Step 6: FE — 申請確認モーダルの警告バナー
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/app/(features)/estimates/[estimateNumber]/ApplicationConfirmDialog.tsx`（`PreviewBody` の REQUIRED/EXEMPT 分岐に警告バナー追加）
   - `ApplicationConfirmDialog.test.tsx`（先に書く）

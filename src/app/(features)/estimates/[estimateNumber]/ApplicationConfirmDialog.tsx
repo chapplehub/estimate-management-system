@@ -9,7 +9,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/app/_components/shadcnui/dialog";
-import type { PreviewApplicationResultDTO } from "@subdomains/estimate/application/queries/dto/PreviewApplicationResultDTO";
+import type {
+  PreviewApplicationResultDTO,
+  UnitPriceWarningDTO,
+} from "@subdomains/estimate/application/queries/dto/PreviewApplicationResultDTO";
 import { formatYen } from "../_shared/labels";
 import { previewApplication, submitApplication } from "./actions";
 
@@ -189,6 +192,7 @@ function PreviewBody({
             <p className="text-sm text-gray-600 mt-2">最終承認職位: {preview.goalPositionName}</p>
           </div>
           <p className="text-right text-lg font-bold text-gray-900">{formatYen(finalTotal)}</p>
+          <UnitPriceWarningBanner warning={preview.unitPriceWarning} />
           <ConfirmFooter
             confirmLabel="申請する"
             isSubmitting={isSubmitting}
@@ -204,6 +208,7 @@ function PreviewBody({
             この申請は承認不要です（理由: {preview.reasonLabel}
             ）。申請すると承認免除として記録されます。
           </p>
+          <UnitPriceWarningBanner warning={preview.unitPriceWarning} />
           <ConfirmFooter
             confirmLabel="申請する"
             isSubmitting={isSubmitting}
@@ -244,6 +249,35 @@ function PreviewBody({
       return null;
     }
   }
+}
+
+/**
+ * 単価乖離・解決不能の非ブロッキング警告バナー（#593）。件数が 0/0 なら描かない。
+ *
+ * 申請可否とは直交で、申請ボタンの活性は変えない（BLOCKED を作らない・ADR-20260710-fg7）。BE 由来の
+ * 件数を「単価乖離 N 件・解決不能 M 件」の固定文言で示し、内容確認だけ促す。version スキュー等で
+ * warning が欠落しても（未定義）安全に何も描かない。
+ */
+function UnitPriceWarningBanner({ warning }: { warning?: UnitPriceWarningDTO }) {
+  if (!warning || (warning.divergentCount === 0 && warning.unresolvableCount === 0)) {
+    return null;
+  }
+  const parts: string[] = [];
+  if (warning.divergentCount > 0) {
+    parts.push(`単価乖離 ${warning.divergentCount} 件`);
+  }
+  if (warning.unresolvableCount > 0) {
+    parts.push(`解決不能 ${warning.unresolvableCount} 件`);
+  }
+  return (
+    <div
+      className="bg-yellow-50 border border-yellow-400 text-yellow-800 px-3 py-2 rounded text-sm"
+      role="status"
+    >
+      {parts.join("・")}
+      の明細があります。見積時の単価と現在のマスタ単価に差異があります。申請は可能ですが、内容をご確認ください。
+    </div>
+  );
 }
 
 /** 確認（申請する）＋キャンセルのフッター（EXEMPT / REQUIRED 共用）。 */
