@@ -45,7 +45,7 @@
 ## ステップ
 
 ### Step 1: pricing — 非 throw の販売単価解決経路
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/server/subdomains/pricing/domain/policies/PriceResolutionPolicy.ts`（非 throw 版メソッド追加。例: `tryResolve`）
   - `src/server/subdomains/pricing/application/queries/`（非 throw 解決クエリ新設。既存 `ResolveSellingPriceQuery.ts` の兄弟。「解決値 or 解決不能」の判別ユニオン DTO を返す）

@@ -1,11 +1,9 @@
-import { Money } from "@server/shared/domain/values/Money";
 import { PriceResolutionPolicy } from "@subdomains/pricing/domain/policies/PriceResolutionPolicy";
 import { SellingUnitPrice } from "@subdomains/pricing/domain/values/SellingUnitPrice";
-import { toJstCalendarDay } from "@server/shared/domain/values/toJstCalendarDay";
 import { ResolveCommonSellingPriceQuery } from "./ResolveCommonSellingPriceQuery";
 import { ResolveCustomerSellingPriceQuery } from "./ResolveCustomerSellingPriceQuery";
 import { ResolveDeliveryLocationSellingPriceQuery } from "./ResolveDeliveryLocationSellingPriceQuery";
-import { SellingPriceResolutionDTO } from "./dto/SellingPriceResolutionDTO";
+import { resolveSellingPriceCandidates } from "./resolveSellingPriceCandidates";
 
 /**
  * 価格決定オーケストレーションの入口（提出区分ごとの宛先 ID ＋ 見積年月日）。
@@ -41,41 +39,18 @@ export class ResolveSellingPriceQuery {
   ) {}
 
   async execute(target: SellingPriceResolutionTarget): Promise<SellingUnitPrice> {
-    const date = toJstCalendarDay(target.estimateDate);
-
-    // 上書き層と共通層は互いに出力依存が無いため並列に解決する。Policy が `override ?? common`
-    // で先勝ちするため共通層は上書きヒット時に捨てられるが、上書き層は例外的存在で多数派は共通層
-    // に着地する設計上、常時並列のほうが短絡（上書きnull時のみ共通取得）より総レイテンシが小さい。
-    const overridePromise =
-      target.addressee === "CUSTOMER"
-        ? this.customerQuery.execute({
-            customerId: target.customerId,
-            productId: target.productId,
-            date,
-          })
-        : this.deliveryLocationQuery.execute({
-            deliveryLocationId: target.deliveryLocationId,
-            productId: target.productId,
-            date,
-          });
-
-    const commonPromise = this.commonQuery.execute({ productId: target.productId, date });
-
-    const [overrideDto, commonDto] = await Promise.all([overridePromise, commonPromise]);
+    // 候補取得（暦日変換・上書き層/共通層の並列時点解決）は非throw版と共有する。判定（解決不能→throw）だけが
+    // 本クエリ固有で、書き込み契機の拒否として `BusinessRuleViolationError` を投げる。
+    const candidates = await resolveSellingPriceCandidates(target, {
+      common: this.commonQuery,
+      customer: this.customerQuery,
+      deliveryLocation: this.deliveryLocationQuery,
+    });
 
     return PriceResolutionPolicy.resolve({
-      override: toSellingUnitPrice(overrideDto),
-      common: toSellingUnitPrice(commonDto),
+      ...candidates,
       productId: target.productId,
       addressee: target.addressee,
     });
   }
-}
-
-/** 時点解決 DTO（10進文字列）を `SellingUnitPrice` VO へ変換する。null は該当なしとしてそのまま透過。 */
-function toSellingUnitPrice(dto: SellingPriceResolutionDTO | null): SellingUnitPrice | null {
-  if (dto === null) {
-    return null;
-  }
-  return SellingUnitPrice.fromMoney(Money.fromDecimalString(dto.sellingPrice));
 }

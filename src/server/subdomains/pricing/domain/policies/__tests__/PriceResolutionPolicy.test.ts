@@ -68,4 +68,36 @@ describe("PriceResolutionPolicy", () => {
       })
     ).toThrow(/納品先宛/);
   });
+
+  describe("tryResolve（非throw・読み取り契機）", () => {
+    it("上書きがあれば共通があっても上書きを RESOLVED として返す（先勝ち）", () => {
+      const outcome = PriceResolutionPolicy.tryResolve({
+        override: price(800),
+        common: price(1000),
+      });
+      expect(outcome.kind).toBe("RESOLVED");
+      if (outcome.kind === "RESOLVED") {
+        expect(outcome.unitPrice.equals(price(800))).toBe(true);
+      }
+    });
+
+    it("上書きが無ければ共通を RESOLVED として返す", () => {
+      const outcome = PriceResolutionPolicy.tryResolve({
+        override: null,
+        common: price(1000),
+      });
+      expect(outcome.kind).toBe("RESOLVED");
+      if (outcome.kind === "RESOLVED") {
+        expect(outcome.unitPrice.equals(price(1000))).toBe(true);
+      }
+    });
+
+    it("上書きも共通も無ければ UNRESOLVABLE を返す（throw しない）", () => {
+      const outcome = PriceResolutionPolicy.tryResolve({
+        override: null,
+        common: null,
+      });
+      expect(outcome.kind).toBe("UNRESOLVABLE");
+    });
+  });
 });
