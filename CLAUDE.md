@@ -20,6 +20,16 @@ pnpm db:migrate / db:generate / db:studio
 - defalut branch: `develop`
 - branch naming rule: `feat/issue-{number}`, `fix/issue-{number}`, `docs/issue-{number}`
 
+## Git Hooks (husky)
+
+コミット・プッシュ時に husky が自動でチェックを走らせる。エージェントはこのコストを前提にコミット単位を設計すること。
+
+- **pre-commit**: `lint-staged`（eslint --fix + prettier --write）→ staged コードの**関連テストのみ** `vitest related` を実行。`src/`・`prisma/`・ルートの `.ts/js/mjs/tsx/jsx` が staged された時だけ走り、docs のみのコミットはスキップされる。
+  - → **各コミットは関連テストが緑になる単位で区切る**こと。テストが割れる中間状態でコミットしない。
+- **commit-msg**: `commitlint` で type を検証（許可 type は `.claude/references/commit-types.md`）。
+- **pre-push**: `tsc --noEmit`（全体型チェック）+ `vitest run`（フルスイート）。個別コミットでは型全体・全テストは担保されない点に注意。
+- フックを無効化（`--no-verify`）してコミット／プッシュしないこと。
+
 ## Commit Rule
 
 - **Commit at each meaningful change**: コードの編集・追加をしたら、意味のあるまとまりの時点でコミットする。一括実装してまとめてコミットしない。
