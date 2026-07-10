@@ -81,7 +81,7 @@
 - コミットメッセージ: `feat: 見積複製先の生成に価格決定を接続し解決不能なら拒否する`
 
 ### Step 4: 改訂ドメイン — reviseForCustomer に解決済み単価引数を追加
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/server/subdomains/estimate/domain/entities/Estimate.ts`
   - `src/server/subdomains/estimate/domain/entities/__tests__/Estimate.test.ts`
@@ -91,7 +91,7 @@
 - コミットメッセージ: `feat: 改訂先明細の単価を改訂元複写から解決済み単価マップ供給に変更`
 
 ### Step 5: 改訂アプリ層 — ReviseForCustomerCommand に価格決定を接続
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/server/subdomains/estimate/application/commands/ReviseForCustomerCommand.ts`
   - 対応する Factory

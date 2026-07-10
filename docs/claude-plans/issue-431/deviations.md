@@ -11,6 +11,15 @@
   Step 2 単独のコミットが green にならない。中間状態を green に保つには両ステップを 1 コミットに
   束ねる必要があった。テスト先行（red→green）の TDD サイクル自体はステップごとに実施している。
 
+## 逸脱1b: Step 4 と Step 5 も同じ理由で1コミットにまとめた
+
+- **元の計画内容**: Step 4（改訂ドメイン: `reviseForCustomer` への解決済み単価引数追加）と
+  Step 5（改訂アプリ層: `ReviseForCustomerCommand` への価格決定接続）を別コミットにする。
+- **実際の実装内容**: 逸脱1 と同様に 1 コミットにまとめた。
+- **逸脱の理由**: Step 4 で `reviseForCustomer` に必須引数を追加した時点で、まだ引数を渡していない
+  `ReviseForCustomerCommand`（Step 5）と、改訂を利用する周辺テスト（PrismaEstimateRepository・
+  GetEstimateDetailQuery）が落ちる。pre-commit が関連テストを実行するため中間 green を保てない。
+
 ## 逸脱2: 宛先マッピング関数 `toSellingPriceTarget` を `resolveLinePrices.ts` から export
 
 - **元の計画内容**: Step 1 で「既存 `resolveLinePrices` は変更しない」。

@@ -17,6 +17,9 @@
  * 別バレルを切る等の方針を別イシューで決定する（計画 設計判断 6）。
  */
 export { Estimate } from "./Estimate";
+// 得意先改訂先明細の解決済み単価マップ型。アプリ層（ReviseForCustomerCommand）が構築して
+// reviseForCustomer に渡すため、集約ルートの API 型として本バレルから公開する（#431）。
+export type { RevisedUnitPriceMap } from "./Estimate";
 // EstimateApprovalExemption は承認免除の独立集約ルート（ADR-0054）。子エンティティを
 // 持たない薄い集約のため、ルートをそのまま公開する。
 export { EstimateApprovalExemption } from "./approval/EstimateApprovalExemption";

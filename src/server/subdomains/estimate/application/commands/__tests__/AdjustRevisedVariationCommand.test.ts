@@ -71,7 +71,8 @@ describe("AdjustRevisedVariationCommand", () => {
     );
     reviseCommand = new ReviseForCustomerCommand(
       repository,
-      new TaxRateConsistencyCheckDomainService(new PrismaTaxRateRepository())
+      new TaxRateConsistencyCheckDomainService(new PrismaTaxRateRepository()),
+      resolveSellingPriceQueryFactory()
     );
     await cleanupTestYear();
   });

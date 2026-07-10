@@ -31,6 +31,14 @@ import type { RepairEstimateDetail } from "./RepairEstimateDetail";
 import { RevisedEstimateItemDetail } from "./RevisedEstimateItemDetail";
 
 /**
+ * 得意先改訂先明細の解決済み見積単価（商品ID → Money）。改訂先は常に得意先宛のため、
+ * 商品IDだけでキーが一意になる（複製と異なり提出区分は不要）。アプリ層が得意先宛・見積の
+ * 見積年月日で価格決定した結果を構築し {@link Estimate.reviseForCustomer} に渡す（#431・ADR-20260710-q7t）。
+ * ドメインは解決済み `Money` を引くだけで pricing を import しない（DDD レイヤ規約）。
+ */
+export type RevisedUnitPriceMap = ReadonlyMap<string, Money>;
+
+/**
  * Estimate 集約ルート（§11.3.1 / ADR-0019）。
  *
  * **集約境界規約**: 本クラスのみ entities バレル (index.ts) から export
@@ -202,8 +210,9 @@ export class Estimate {
    * 同一集約内に生成する。採番なし・集約内で完結する（C6 複製と本質的に異なる）。
    *
    * 生成規則:
-   * - 明細・価格・値引・メモを全複写する（C6 の単価クリアと異なり、納品先価格を
-   *   得意先卸値へ「調整」する出発点として引き継ぐ）
+   * - 単価は得意先宛で解決した見積単価（`resolvedUnitPrices`）を用いる（#431。従来の改訂元単価の
+   *   全複写を撤去し、不変則 単価=f(宛先,商品,年月日) を回復。得意先卸値を出発点にする）
+   * - 掛率・固定値引・メモ・全体値引は改訂元から複写する
    * - 明細ごとに改訂元明細の finalAmount を deliveryPrice としてスナップショットする
    *   （明細単位の粗利 = 納品先価格 − 得意先価格 の真実の源・§8.4。改訂元は凍結される
    *   が、見積書に印字される確定値のため導出ではなくスナップショットを真実の源とする）
@@ -212,7 +221,10 @@ export class Estimate {
    * 前提条件: 改訂元は納品先宛かつ有効（ACTIVE）であること。
    * 同一改訂元からの再改訂（複数の得意先宛派生）は許可される。
    */
-  reviseForCustomer(sourceVariationId: EstimateVariationId): EstimateVariation {
+  reviseForCustomer(
+    sourceVariationId: EstimateVariationId,
+    resolvedUnitPrices: RevisedUnitPriceMap
+  ): EstimateVariation {
     const source = this.findVariationOrThrow(sourceVariationId);
     if (!source.submissionType.isDeliveryLocation()) {
       throw new BusinessRuleViolationError(
@@ -232,7 +244,8 @@ export class Estimate {
         itemName: item.itemName,
         quantity: item.quantity,
         unit: item.unit,
-        unitPrice: item.unitPrice,
+        // 単価は得意先宛で解決した値。マップ欠落は黙って複写・0円にせず拒否する（#431）。
+        unitPrice: Estimate.resolvedRevisedUnitPriceOrThrow(resolvedUnitPrices, item),
         discountRate: item.discountRate,
         itemDiscount: item.itemDiscount,
         customerMemo: item.customerMemo,
@@ -252,6 +265,23 @@ export class Estimate {
     });
     this.addVariation(revised);
     return revised;
+  }
+
+  /**
+   * 得意先改訂先明細の解決済み見積単価をマップから引く。欠落は黙って改訂元単価の複写・0円に
+   * せず BusinessRuleViolationError で拒否する（アプリ層が全明細を解決してから渡す前提の防御・#431）。
+   */
+  private static resolvedRevisedUnitPriceOrThrow(
+    resolvedUnitPrices: RevisedUnitPriceMap,
+    item: Readonly<EstimateItem>
+  ): Money {
+    const price = resolvedUnitPrices.get(item.productId.value);
+    if (price === undefined) {
+      throw new BusinessRuleViolationError(
+        `改訂先の見積単価が解決されていません（商品=${item.itemName.value}）`
+      );
+    }
+    return price;
   }
 
   /**

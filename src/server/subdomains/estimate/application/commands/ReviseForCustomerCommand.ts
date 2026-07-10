@@ -1,10 +1,16 @@
 import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
-import { Estimate } from "@subdomains/estimate/domain/entities";
+import { Estimate, type RevisedUnitPriceMap } from "@subdomains/estimate/domain/entities";
 import { EstimateRepository } from "@subdomains/estimate/domain/repositories/EstimateRepository";
 import { TaxRateConsistencyCheckDomainService } from "@subdomains/estimate/domain/services/TaxRateConsistencyCheckDomainService";
 import { EstimateId } from "@subdomains/estimate/domain/values/EstimateId";
 import { EstimateVariationId } from "@subdomains/estimate/domain/values/EstimateVariationId";
+import { SubmissionType } from "@subdomains/estimate/domain/values/SubmissionType";
 import { checkTaxRateThenSave, type TaxCheckedSaveResult } from "../shared/checkTaxRateThenSave";
+import { toSellingPriceTarget, type SellingPriceResolver } from "../shared/resolveLinePrices";
+import {
+  resolveUnitPricesOrReject,
+  type UnitPriceResolutionRequest,
+} from "../shared/resolveUnitPricesOrReject";
 
 /**
  * 得意先改訂コマンドの入力。
@@ -37,7 +43,12 @@ export type ReviseForCustomerInput = {
 export class ReviseForCustomerCommand {
   constructor(
     private readonly estimateRepository: EstimateRepository,
-    private readonly taxRateConsistencyCheck: TaxRateConsistencyCheckDomainService
+    private readonly taxRateConsistencyCheck: TaxRateConsistencyCheckDomainService,
+    /**
+     * 改訂先明細の見積単価を権威解決する価格決定（#428・#431）。改訂元単価は引き継がず、
+     * 改訂先の宛先（得意先宛固定）・見積の見積年月日で解決し直す。
+     */
+    private readonly resolveSellingPrice: SellingPriceResolver
   ) {}
 
   async execute(input: ReviseForCustomerInput): Promise<TaxCheckedSaveResult> {
@@ -46,11 +57,44 @@ export class ReviseForCustomerCommand {
       throw new NotFoundEntityError(Estimate, { id: input.estimateId });
     }
 
-    estimate.reviseForCustomer(new EstimateVariationId(input.sourceVariationId));
+    const sourceVariationId = new EstimateVariationId(input.sourceVariationId);
+
+    // 改訂先明細の見積単価を価格決定で一括解決する（#431）。改訂先は得意先宛固定のため
+    // 得意先宛・見積の見積年月日で解決し、1明細でも解決不能なら書き込み前に商品名を列挙して拒否する。
+    const resolvedUnitPrices = await this.resolveRevisionPrices(estimate, sourceVariationId);
+
+    estimate.reviseForCustomer(sourceVariationId, resolvedUnitPrices);
 
     return checkTaxRateThenSave(estimate, input.version, {
       taxRateConsistencyCheck: this.taxRateConsistencyCheck,
       estimateRepository: this.estimateRepository,
     });
+  }
+
+  /**
+   * 改訂元バリエーションの全明細の見積単価を、得意先宛・見積の見積年月日で一括解決する。
+   * キーは商品ID（改訂先は得意先宛固定のため提出区分は不要）で、ドメインの参照キーと一致させる。
+   * 改訂元が見つからない場合は空マップを返し、reviseForCustomer 側の存在チェックに委ねる。
+   */
+  private async resolveRevisionPrices(
+    estimate: Estimate,
+    sourceVariationId: EstimateVariationId
+  ): Promise<RevisedUnitPriceMap> {
+    const source = estimate.variations.find((v) => v.id.equals(sourceVariationId));
+    if (!source) {
+      return new Map();
+    }
+    const requests: UnitPriceResolutionRequest[] = source.items.map((item) => ({
+      key: item.productId.value,
+      productName: item.itemName.value,
+      target: toSellingPriceTarget(item.productId.value, {
+        // 改訂先は得意先宛固定（ADR-0045）。宛先は見積の得意先、見積年月日は見積のもの。
+        submissionType: SubmissionType.CUSTOMER,
+        customerId: estimate.customerId.value,
+        deliveryLocationId: estimate.deliveryLocationId.value,
+        estimateDate: estimate.estimateDate,
+      }),
+    }));
+    return resolveUnitPricesOrReject(requests, this.resolveSellingPrice);
   }
 }
