@@ -19,7 +19,7 @@ import { Unit } from "../../values/Unit";
 import { TaxRate } from "../../values/TaxRate";
 import { TaxRoundingType } from "../../values/TaxRoundingType";
 import { AfterRepairEstimateDetail } from "../AfterRepairEstimateDetail";
-import { Estimate } from "../Estimate";
+import { Estimate, type RevisedUnitPriceMap } from "../Estimate";
 import { EstimateItem } from "../EstimateItem";
 import { EstimateVariation, type TaxContext } from "../EstimateVariation";
 import { RepairEstimateDetail } from "../RepairEstimateDetail";
@@ -38,6 +38,19 @@ function makeItem(unitPrice = 1000, quantity = 1): EstimateItem {
     unit: new Unit("個"),
     unitPrice: Money.fromMajorUnits(unitPrice),
   });
+}
+
+/**
+ * 得意先改訂の解決済み単価マップ（商品ID → Money）を作る。既定は改訂元単価をそのまま引き継ぐ値で、
+ * 単価を検証しないテストの挙動を変えない。単価解決を検証するテストは priceFor で別値を与える。
+ */
+function revisionPricesFor(
+  source: EstimateVariation,
+  priceFor?: (item: (typeof source.items)[number]) => Money
+): RevisedUnitPriceMap {
+  return new Map(
+    source.items.map((item) => [item.productId.value, priceFor ? priceFor(item) : item.unitPrice])
+  );
 }
 
 function makeVariation(variationNumber = 1, items?: EstimateItem[]): EstimateVariation {
@@ -495,7 +508,7 @@ describe("Estimate", () => {
           scheduledRepairDate: new Date("2025-05-01"),
         }),
       });
-      e.reviseForCustomer(source.id);
+      e.reviseForCustomer(source.id, revisionPricesFor(source));
       const newProduct = ProductId.generate();
 
       e.changeRepairDetail({
@@ -625,10 +638,16 @@ describe("Estimate", () => {
       return { estimate, source, itemA, itemB };
     }
 
-    it("納品先宛バリエーションから得意先宛の新バリエーションを生成する（全複写・調整の出発点）", () => {
+    it("納品先宛から得意先宛の新バリエーションを生成し、単価は得意先宛の解決値・掛率値引は複写する", () => {
       const { estimate, source, itemA, itemB } = buildDeliveryEstimate();
+      // 得意先宛の解決単価は改訂元（納品先価格）と別値にし、複写でなく解決であることを観測可能にする
+      const prices = revisionPricesFor(source, (item) =>
+        item.productId.equals(itemA.productId)
+          ? Money.fromMajorUnits(300000)
+          : Money.fromMajorUnits(150000)
+      );
 
-      const revised = estimate.reviseForCustomer(source.id);
+      const revised = estimate.reviseForCustomer(source.id, prices);
 
       // 得意先宛・出自=改訂元・max+1採番・ACTIVE
       expect(revised.submissionType).toBe(SubmissionType.CUSTOMER);
@@ -637,39 +656,52 @@ describe("Estimate", () => {
       expect(revised.isActive()).toBe(true);
       expect(estimate.variations).toHaveLength(2);
 
-      // 明細は全複写（C6 と異なり単価・値引もクリアしない）
+      // 単価は改訂元複写ではなく得意先宛で解決した値（#431）
       expect(revised.items).toHaveLength(2);
       const [revisedA, revisedB] = revised.items;
       expect(revisedA!.itemName.value).toBe("商品A");
-      expect(revisedA!.unitPrice.equals(itemA.unitPrice)).toBe(true);
+      expect(revisedA!.unitPrice.majorUnits).toBe(300000);
+      expect(revisedB!.unitPrice.majorUnits).toBe(150000);
+      // 掛率・固定値引・全体値引・数量は改訂元から複写
       expect(revisedA!.quantity.value).toBe(2);
       expect(revisedA!.itemDiscount.equals(itemA.itemDiscount)).toBe(true);
-      expect(revisedB!.unitPrice.equals(itemB.unitPrice)).toBe(true);
       expect(revised.overallDiscount.equals(source.overallDiscount)).toBe(true);
 
-      // deliveryPrice スナップショット = 改訂元明細の finalAmount（§8.4）
+      // deliveryPrice スナップショット = 改訂元明細の finalAmount（納品先価格・§8.4）。単価解決に影響されない
       expect(revisedA!.revisedDetail?.deliveryPrice.equals(itemA.finalAmount)).toBe(true);
       expect(revisedB!.revisedDetail?.deliveryPrice.equals(itemB.finalAmount)).toBe(true);
     });
 
+    it("解決済み単価マップに該当商品が無い場合は BusinessRuleViolationError（黙って複写しない）", () => {
+      const { estimate, source } = buildDeliveryEstimate();
+
+      expect(() => estimate.reviseForCustomer(source.id, new Map())).toThrow(
+        BusinessRuleViolationError
+      );
+    });
+
     it("得意先宛バリエーションは改訂元にできない", () => {
       const { estimate, source } = buildDeliveryEstimate();
-      const revised = estimate.reviseForCustomer(source.id);
+      const revised = estimate.reviseForCustomer(source.id, revisionPricesFor(source));
 
-      expect(() => estimate.reviseForCustomer(revised.id)).toThrow(BusinessRuleViolationError);
+      expect(() => estimate.reviseForCustomer(revised.id, new Map())).toThrow(
+        BusinessRuleViolationError
+      );
     });
 
     it("無効（INACTIVE）のバリエーションは改訂元にできない", () => {
       const { estimate, source } = buildDeliveryEstimate();
       estimate.deactivateVariation(source.id);
 
-      expect(() => estimate.reviseForCustomer(source.id)).toThrow(BusinessRuleViolationError);
+      expect(() => estimate.reviseForCustomer(source.id, new Map())).toThrow(
+        BusinessRuleViolationError
+      );
     });
 
     it("存在しないバリエーションを改訂元に指定するとエラー", () => {
       const { estimate } = buildDeliveryEstimate();
 
-      expect(() => estimate.reviseForCustomer(EstimateVariationId.generate())).toThrow(
+      expect(() => estimate.reviseForCustomer(EstimateVariationId.generate(), new Map())).toThrow(
         BusinessRuleViolationError
       );
     });
@@ -677,8 +709,8 @@ describe("Estimate", () => {
     it("同じ改訂元から再改訂できる（1ソース→複数の得意先宛派生）", () => {
       const { estimate, source } = buildDeliveryEstimate();
 
-      const first = estimate.reviseForCustomer(source.id);
-      const second = estimate.reviseForCustomer(source.id);
+      const first = estimate.reviseForCustomer(source.id, revisionPricesFor(source));
+      const second = estimate.reviseForCustomer(source.id, revisionPricesFor(source));
 
       expect(first.variationNumber).toBe(2);
       expect(second.variationNumber).toBe(3);
@@ -689,7 +721,7 @@ describe("Estimate", () => {
     it("改訂すると改訂元は凍結され、以降編集不可になる", () => {
       const { estimate, source } = buildDeliveryEstimate();
 
-      estimate.reviseForCustomer(source.id);
+      estimate.reviseForCustomer(source.id, revisionPricesFor(source));
 
       expect(() => estimate.updateVariation(source.id, { items: [makeItem()] })).toThrow(
         BusinessRuleViolationError
@@ -710,7 +742,7 @@ describe("Estimate", () => {
         estimateNumber: EstimateNumber.parse("N2500001"),
         variations: [source],
       });
-      estimate.reviseForCustomer(source.id);
+      estimate.reviseForCustomer(source.id, revisionPricesFor(source));
       return estimate;
     }
 

@@ -55,7 +55,11 @@ describe("UpdateEstimateCommand", () => {
       new PrismaEstimateNumberIssuer(),
       resolveSellingPriceQueryFactory()
     );
-    reviseCommand = new ReviseForCustomerCommand(repository, taxRateConsistencyCheck);
+    reviseCommand = new ReviseForCustomerCommand(
+      repository,
+      taxRateConsistencyCheck,
+      resolveSellingPriceQueryFactory()
+    );
     await cleanupTestYear();
   });
 

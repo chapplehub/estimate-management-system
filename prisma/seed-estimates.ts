@@ -204,7 +204,13 @@ function buildRevisedEstimate(fk: EstimateSeedFk) {
       },
     ],
   });
-  estimate.reviseForCustomer(estimate.variations[0].id);
+  // #431: reviseForCustomer は解決済み単価マップ（商品ID → Money）を要求する。seed は改訂元単価を
+  // 引き継ぐマップを渡す（表示系フィクスチャのため単価解決の実値は問わない）。
+  const revisionSource = estimate.variations[0];
+  estimate.reviseForCustomer(
+    revisionSource.id,
+    new Map(revisionSource.items.map((item) => [item.productId.value, item.unitPrice]))
+  );
   return estimate;
 }
 

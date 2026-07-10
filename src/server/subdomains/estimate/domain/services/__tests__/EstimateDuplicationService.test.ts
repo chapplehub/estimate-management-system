@@ -19,9 +19,30 @@ import { SubmissionType } from "../../values/SubmissionType";
 import { TaxRate } from "../../values/TaxRate";
 import { TaxRoundingType } from "../../values/TaxRoundingType";
 import { Unit } from "../../values/Unit";
-import { EstimateDuplicationService } from "../EstimateDuplicationService";
+import {
+  EstimateDuplicationService,
+  duplicatedUnitPriceKey,
+  type DuplicatedUnitPriceMap,
+} from "../EstimateDuplicationService";
 
 const UUID = "00000000-0000-7000-8000-000000000001";
+
+/**
+ * 複製元の全明細（各バリエーションの提出区分×商品ID）を一律 `yen` 円で解決した単価マップを作る。
+ * アプリ層が価格決定で構築するマップをドメインテストで代替する。
+ */
+function pricesFor(source: Estimate, yen = 800): DuplicatedUnitPriceMap {
+  const map = new Map<string, Money>();
+  for (const variation of source.variations) {
+    for (const item of variation.items) {
+      map.set(
+        duplicatedUnitPriceKey(variation.submissionType, item.productId.value),
+        Money.fromMajorUnits(yen)
+      );
+    }
+  }
+  return map;
+}
 
 /** 複製元（NEW・2 バリエーション、率・固定値引・メモ付き）を生成する。 */
 function buildSourceNew(): Estimate {
@@ -73,7 +94,7 @@ function buildSourceNew(): Estimate {
   });
 }
 
-function context(estimateNumber = "N2500099") {
+function context(source: Estimate, estimateNumber = "N2500099") {
   return {
     estimateNumber: EstimateNumber.parse(estimateNumber),
     estimateDate: new Date("2025-06-01T00:00:00.000Z"),
@@ -81,6 +102,7 @@ function context(estimateNumber = "N2500099") {
     taxRate: new TaxRate(0.1),
     createdBy: new EmployeeId(UUID),
     departmentId: new DepartmentId(UUID),
+    resolvedUnitPrices: pricesFor(source),
   };
 }
 
@@ -94,7 +116,7 @@ describe("EstimateDuplicationService", () => {
       const { estimate } = EstimateDuplicationService.duplicate({
         source,
         selectedVariationIds: [ids[1], ids[0]],
-        ...context(),
+        ...context(source),
       });
 
       expect(estimate.variations).toHaveLength(2);
@@ -104,23 +126,40 @@ describe("EstimateDuplicationService", () => {
       expect(estimate.variations[0].items[0].itemName.value).toBe("商品B");
     });
 
-    it("単価は 0 にクリアし、固定値引（明細・全体）もクリアする", () => {
+    it("単価は解決済み単価マップの値になり、固定値引（明細・全体）はクリアする", () => {
       const source = buildSourceNew();
       const ids = source.variations.map((v) => v.id);
 
       const { estimate } = EstimateDuplicationService.duplicate({
         source,
         selectedVariationIds: [ids[0]],
-        ...context(),
+        // ids[0]（納品先宛）の商品を 800 円で解決したマップを渡す
+        ...context(source),
+        resolvedUnitPrices: pricesFor(source, 800),
       });
 
       const variation = estimate.variations[0];
       const item = variation.items[0];
-      expect(item.unitPrice.isZero()).toBe(true);
+      // Money.zero() クリアではなく解決済み単価が入る（不変則 単価=f(宛先,商品,年月日) の回復）
+      expect(item.unitPrice.majorUnits).toBe(800);
+      // 固定値引（明細・全体）は複製先で付与しない（クリア）
       expect(item.itemDiscount.isZero()).toBe(true);
       expect(variation.overallDiscount.isZero()).toBe(true);
-      // 単価0なので金額は 0
-      expect(variation.subtotal.isZero()).toBe(true);
+    });
+
+    it("解決済み単価マップに該当キーが無い場合は BusinessRuleViolationError（黙って0円にしない）", () => {
+      const source = buildSourceNew();
+      const ids = source.variations.map((v) => v.id);
+
+      expect(() =>
+        EstimateDuplicationService.duplicate({
+          source,
+          selectedVariationIds: [ids[0]],
+          ...context(source),
+          // 空マップ = 解決済み単価が供給されていない
+          resolvedUnitPrices: new Map(),
+        })
+      ).toThrow(BusinessRuleViolationError);
     });
 
     it("率（discountRate）と品目・数量・メモは継承する", () => {
@@ -130,7 +169,7 @@ describe("EstimateDuplicationService", () => {
       const { estimate } = EstimateDuplicationService.duplicate({
         source,
         selectedVariationIds: [ids[0]],
-        ...context(),
+        ...context(source),
       });
 
       const variation = estimate.variations[0];
@@ -150,7 +189,7 @@ describe("EstimateDuplicationService", () => {
       const { estimate } = EstimateDuplicationService.duplicate({
         source,
         selectedVariationIds: [ids[1], ids[0]],
-        ...context(),
+        ...context(source),
       });
 
       // 1 番目の複製先 = 複製元 ids[1]（得意先宛）、2 番目 = ids[0]（納品先宛）
@@ -165,7 +204,7 @@ describe("EstimateDuplicationService", () => {
       const { estimate } = EstimateDuplicationService.duplicate({
         source,
         selectedVariationIds: ids,
-        ...context(),
+        ...context(source),
       });
 
       for (const variation of estimate.variations) {
@@ -180,7 +219,7 @@ describe("EstimateDuplicationService", () => {
       const { estimate, copies } = EstimateDuplicationService.duplicate({
         source,
         selectedVariationIds: [ids[1], ids[0]],
-        ...context(),
+        ...context(source),
       });
 
       expect(copies).toHaveLength(2);
@@ -196,7 +235,7 @@ describe("EstimateDuplicationService", () => {
       EstimateDuplicationService.duplicate({
         source,
         selectedVariationIds: [ids[0]],
-        ...context(),
+        ...context(source),
       });
 
       expect(source.variations).toHaveLength(2);
@@ -242,7 +281,7 @@ describe("EstimateDuplicationService", () => {
       const { estimate } = EstimateDuplicationService.duplicate({
         source,
         selectedVariationIds: [source.variations[0].id],
-        ...context("R2500009"),
+        ...context(source, "R2500009"),
       });
 
       expect(estimate.estimateType.value).toBe("REPAIR");
@@ -258,7 +297,7 @@ describe("EstimateDuplicationService", () => {
         EstimateDuplicationService.duplicate({
           source,
           selectedVariationIds: [],
-          ...context(),
+          ...context(source),
         })
       ).toThrow(BusinessRuleViolationError);
     });
@@ -270,7 +309,7 @@ describe("EstimateDuplicationService", () => {
         EstimateDuplicationService.duplicate({
           source,
           selectedVariationIds: [EstimateVariationId.generate()],
-          ...context(),
+          ...context(source),
         })
       ).toThrow(BusinessRuleViolationError);
     });

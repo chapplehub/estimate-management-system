@@ -133,8 +133,7 @@ const FLASH_MESSAGES: Record<RedirectReason, FlashMessage> = {
   },
   [REDIRECT_REASON.ESTIMATE_DUPLICATED]: {
     type: FLASH_MESSAGE_TYPE.SUCCESS,
-    message:
-      "見積を複製しました。複製先の見積単価はクリアされています。各バリエーションで再入力してください。",
+    message: "見積を複製しました。複製先の見積単価は複製先の見積年月日・宛先で再解決されています。",
   },
   [REDIRECT_REASON.ESTIMATE_REVISED]: {
     type: FLASH_MESSAGE_TYPE.SUCCESS,

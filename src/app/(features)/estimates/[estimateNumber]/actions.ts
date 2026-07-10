@@ -243,8 +243,8 @@ export async function reviseForCustomer(
  * 整合チェックと複製を app-shared `checkTaxRateThenDuplicate` に委譲する（コマンドは taxRate を
  * 生値で受けるのみで §8.7 を保証しないため・ADR-0056）。不一致（taxRateMismatch）は例外でなく
  * Result のためフォームエラーで提示しモーダルを維持する。成功時は新採番の見積詳細へ閲覧モードで
- * redirect し、単価クリアをフラッシュで促す（ESTIMATE_DUPLICATED）。redirect は try の外で行う
- * （redirect は例外送出で制御するため・既存アクションと同型）。
+ * redirect し、単価が複製先条件で再解決された旨をフラッシュで告知する（ESTIMATE_DUPLICATED・#431）。
+ * redirect は try の外で行う（redirect は例外送出で制御するため・既存アクションと同型）。
  */
 export async function duplicateEstimate(
   estimateNumber: string,
@@ -302,7 +302,7 @@ export async function duplicateEstimate(
     });
   }
 
-  // 成功: 複製元は不変。新採番の見積詳細へ閲覧モードで遷移し、単価クリアをフラッシュで促す。
+  // 成功: 複製元は不変。新採番の見積詳細へ閲覧モードで遷移し、単価が再解決された旨をフラッシュで告知する。
   const newEstimateNumber = result.estimate.estimateNumber.value;
   revalidatePath(`/estimates/${newEstimateNumber}`);
   redirect(`/estimates/${newEstimateNumber}?reason=${REDIRECT_REASON.ESTIMATE_DUPLICATED}`);

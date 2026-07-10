@@ -211,7 +211,11 @@ describe("GetEstimateDetailQuery", () => {
       const loaded = await repository.findById(estimate.id);
       expect(loaded).not.toBeNull();
       if (!loaded) return;
-      loaded.reviseForCustomer(loaded.variations[0].id);
+      const revisionSource = loaded.variations[0];
+      loaded.reviseForCustomer(
+        revisionSource.id,
+        new Map(revisionSource.items.map((i) => [i.productId.value, i.unitPrice]))
+      );
       await repository.update(loaded, 1);
 
       const dto = await query.execute({ estimateNumber: EN.revised });
@@ -240,7 +244,11 @@ describe("GetEstimateDetailQuery", () => {
       const loaded = await repository.findById(estimate.id);
       if (!loaded) return;
       const sourceId = loaded.variations[0].id.value;
-      loaded.reviseForCustomer(loaded.variations[0].id);
+      const revisionSource = loaded.variations[0];
+      loaded.reviseForCustomer(
+        revisionSource.id,
+        new Map(revisionSource.items.map((i) => [i.productId.value, i.unitPrice]))
+      );
       await repository.update(loaded, 1);
 
       const dto = await query.execute({ estimateNumber: EN.revised });

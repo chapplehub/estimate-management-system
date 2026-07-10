@@ -380,7 +380,12 @@ describe("PrismaEstimateRepository", () => {
         buildNewEstimate(ids, EN.revise, { submissionType: SubmissionType.DELIVERY_LOCATION })
       );
       const source = saved.variations[0]!;
-      const revised = saved.reviseForCustomer(source.id);
+      // 改訂先単価は #431 で得意先宛解決だが、本テストは系譜・凍結・スナップショットの永続化が対象。
+      // 改訂元単価を引き継ぐマップを渡し単価解決の影響を排除する。
+      const revised = saved.reviseForCustomer(
+        source.id,
+        new Map(source.items.map((i) => [i.productId.value, i.unitPrice]))
+      );
 
       await repository.update(saved, 1);
       const found = await repository.findById(saved.id);
@@ -409,7 +414,11 @@ describe("PrismaEstimateRepository", () => {
       const saved = await repository.insert(
         buildNewEstimate(ids, EN.reviseDelete, { submissionType: SubmissionType.DELIVERY_LOCATION })
       );
-      saved.reviseForCustomer(saved.variations[0]!.id);
+      const revisionSource = saved.variations[0]!;
+      saved.reviseForCustomer(
+        revisionSource.id,
+        new Map(revisionSource.items.map((i) => [i.productId.value, i.unitPrice]))
+      );
       await repository.update(saved, 1);
 
       await repository.delete(saved.id);
