@@ -14,6 +14,7 @@ import { cellInputClass, memoInputClass } from "../../_shared/formStyles";
 import { PRODUCT_CATEGORY_LABELS, formatYen } from "../../_shared/labels";
 import { previewGroupAmount, previewLineAmount } from "../previewAmounts";
 import type { WorkingLine, WorkingNode, WorkingSetGroup } from "../variationLines";
+import { UnitPriceDivergenceBadge } from "./UnitPriceDivergenceBadge";
 
 type Props = {
   nodes: WorkingNode[];
@@ -349,6 +350,7 @@ function EditRow({
         aria-label={`単価（${label}）`}
       >
         {formatYen(line.unitPrice)}
+        <UnitPriceDivergenceBadge divergence={line.unitPriceDivergence} />
       </td>
       <td className="px-3 py-2 align-top">
         <input

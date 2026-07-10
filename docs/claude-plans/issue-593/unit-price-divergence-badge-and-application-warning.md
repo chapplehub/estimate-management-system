@@ -93,7 +93,7 @@
 - コミットメッセージ: `feat: 見積詳細の明細行に単価乖離・解決不能バッジを表示 (#593)`
 
 ### Step 5: FE — C4 編集（LineEditTable）の行内バッジ
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/app/(features)/estimates/[estimateNumber]/components/LineEditTable.tsx`（および必要に応じ `VariationLineEditor.tsx` / `variationContentMapping.ts` / `variationLines.ts` で乖離情報を編集行モデルへ引き回す）
   - 対応するコンポーネントテスト（先に書く）

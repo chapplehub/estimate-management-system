@@ -1,6 +1,7 @@
 import type {
   LineDTO,
   SetGroupDTO,
+  UnitPriceDivergence,
 } from "@subdomains/estimate/application/queries/dto/EstimateDetailDTO";
 import type { ExpandedSetGroup } from "../_shared/setComponentExpansion";
 import type { VariationLineInput, VariationNodeInput } from "./variationSchema";
@@ -57,6 +58,12 @@ export type WorkingLine = {
   itemDiscount: number;
   customerMemo: string;
   internalMemo: string;
+  /**
+   * 単価乖離・解決不能（→CONTEXT・#593）。読み取り DTO 由来の既存行のみ持つ表示専用情報で、
+   * ページロード時点の判定を保持する（数量・掛率のインライン編集では変えない）。サーバへは送らない。
+   * 新規行・商品入れ替え行は未合成（undefined＝バッジなし）で、確定は保存後の再 read が担う。
+   */
+  unitPriceDivergence?: UnitPriceDivergence;
 };
 
 /**
@@ -145,6 +152,8 @@ export function fromLineDTO(line: LineDTO): WorkingLine {
     itemDiscount: line.itemDiscount,
     customerMemo: line.customerMemo,
     internalMemo: line.internalMemo,
+    // 表示専用の乖離情報をロード時点の判定として引き回す（バッジ描画に使う・#593）。
+    unitPriceDivergence: line.unitPriceDivergence,
   };
 }
 
