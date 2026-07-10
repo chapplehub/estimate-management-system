@@ -102,6 +102,7 @@
 | [20260627-86b](20260627-86b-selling-price-maintenance-temporal-guards.md) | 共通売単価の保守は「過去不変」を芯に、行の時点状態を集約の不変条件として強制し、参照日は実行時サーバー生成で注入する | 採用 | 2026-06-27 |
 | [20260709-5ea](20260709-5ea-c4-preserve-fixed-unit-price-by-item-id.md) | C4 内容編集は再解決契機とせず、既存明細の見積単価を itemId 突合で保全する | 採用 | 2026-07-09 |
 | [20260710-q7t](20260710-q7t-estimate-date-and-addressee-immutable-after-creation.md) | 見積年月日・宛先は作成時確定の不変属性とし、変更契機の一斉再解決を廃する | 採用 | 2026-07-10 |
+| [20260710-fg7](20260710-fg7-unit-price-divergence-derived-at-read-time-estimate-date-basis-non-blocking.md) | 単価乖離は見積年月日基準・表示時再解決の派生状態とし、永続化もブロックもしない | 採用 | 2026-07-10 |
 
 ## アプリケーション（コマンド）
 
