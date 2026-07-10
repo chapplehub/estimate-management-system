@@ -49,7 +49,7 @@
 ## ステップ
 
 ### Step 1: 解決不能収集つき一括解決ヘルパ（アプリ層共有）
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/server/subdomains/estimate/application/shared/resolveUnitPricesOrReject.ts`（新規・命名は実装時に調整可）
   - `src/server/subdomains/estimate/application/shared/__tests__/resolveUnitPricesOrReject.test.ts`（新規）
