@@ -1,5 +1,18 @@
 import { type ApprovalChainBlockedReason } from "@subdomains/estimate/domain/services/approval/ApprovalChainBuilder";
 
+/**
+ * 申請可能な preview（EXEMPT/REQUIRED）に添える単価乖離・解決不能の非ブロッキング警告件数（#593）。
+ *
+ * 対象バリエーションの価格付き末端行を見積年月日基準で再解決・突合した件数（→単価乖離・解決不能）。
+ * 申請可否とは直交で、`kind` は増やさない（警告は申請ブロックしない・ADR-20260710-fg7）。0 件なら警告なし。
+ */
+export type UnitPriceWarningDTO = {
+  /** 固定値≠再解決値の明細数（→単価乖離）。 */
+  divergentCount: number;
+  /** 見積年月日に有効な販売単価が無い明細数（→解決不能）。 */
+  unresolvableCount: number;
+};
+
 /** 承認チェーンの 1 ステップ（確認モーダル表示用・§6.2）。起点→ゴール順。 */
 export type PreviewApplicationStepDTO = {
   /** 1 始まりの順序（起点＝1）。 */
@@ -27,12 +40,13 @@ export type PreviewApplicationStepDTO = {
  * ゆえ `reason` を持たず固定の `label` 単体を載せる。
  */
 export type PreviewApplicationResultDTO =
-  | { kind: "EXEMPT"; reason: string; reasonLabel: string }
+  | { kind: "EXEMPT"; reason: string; reasonLabel: string; unitPriceWarning: UnitPriceWarningDTO }
   | {
       kind: "REQUIRED";
       goalPositionId: string;
       goalPositionName: string;
       steps: PreviewApplicationStepDTO[];
+      unitPriceWarning: UnitPriceWarningDTO;
     }
   | { kind: "BLOCKED"; reason: ApprovalChainBlockedReason; reasonLabel: string }
   | { kind: "INACTIVE"; label: string };

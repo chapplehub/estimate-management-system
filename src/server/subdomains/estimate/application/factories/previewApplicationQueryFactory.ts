@@ -1,3 +1,4 @@
+import { tryResolveSellingPriceQueryFactory } from "@subdomains/pricing/application/factories/pricingQueryFactory";
 import { PreviewApplicationQuery } from "../queries/PreviewApplicationQuery";
 import { buildApprovalChainLoaderDeps } from "./approvalChainLoaderDepsFactory";
 
@@ -16,6 +17,7 @@ export function previewApplicationQueryFactory(): PreviewApplicationQuery {
     deps.productQueryService,
     deps.employeeQueryService,
     deps.positionQueryService,
-    deps.roleQueryService
+    deps.roleQueryService,
+    tryResolveSellingPriceQueryFactory()
   );
 }

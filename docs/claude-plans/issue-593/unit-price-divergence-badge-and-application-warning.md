@@ -70,7 +70,7 @@
 - コミットメッセージ: `feat: 見積詳細readで単価乖離・解決不能を合成 (#593)`
 
 ### Step 3: 申請 preview — 警告フィールドの追加
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/server/subdomains/estimate/application/queries/dto/PreviewApplicationResultDTO.ts`（`REQUIRED`/`EXEMPT` に乖離件数・解決不能件数の警告情報を追加）
   - 申請 preview クエリ（`previewApplication` の BE 実体）
