@@ -118,6 +118,21 @@ export type VariationDTO = {
 };
 
 /**
+ * 見積単価（→見積単価・ADR-0064 で固定）と、現在マスタで価格決定を再実行した解決値との突合結果
+ * （→単価乖離・解決不能）。参照日は見積年月日で、保存されず表示のたびに導出される派生状態
+ * （ADR-20260710-fg7）。app 層（GetEstimateDetailQuery）が pricing の非throw解決を呼んで合成する。
+ *
+ * - `NONE`: 固定値＝再解決値（乖離なし）。バッジは出さない。
+ * - `DIVERGENT`: 固定値≠再解決値。`currentUnitPrice`＝現在の解決値（円）、`difference`＝再解決値−固定値
+ *   （符号つき。プラス＝現在マスタの方が高い）。
+ * - `UNRESOLVABLE`: 見積年月日に有効な販売単価が無く比較相手が存在しない（→解決不能）。
+ */
+export type UnitPriceDivergence =
+  | { kind: "NONE" }
+  | { kind: "DIVERGENT"; currentUnitPrice: number; difference: number }
+  | { kind: "UNRESOLVABLE" };
+
+/**
  * 明細行 DTO（通常明細・構成明細で共用）。
  *
  * 金額は永続化済みの保存値。`productCode`/`productCategory` は現在マスタ join による
@@ -151,6 +166,12 @@ export type LineDTO = {
   internalMemo: string;
   /** 得意先改訂で生まれた明細のみ持つ納品先価格スナップショット（§8.4）。なければ null。 */
   revisedDeliveryPrice: number | null;
+  /**
+   * 単価乖離・解決不能の突合結果（→{@link UnitPriceDivergence}・#593）。app 層が合成する派生状態で、
+   * 事実だけを返す query service は設定しない（未設定＝合成前）。詳細 read（GetEstimateDetailQuery）
+   * を経た LineDTO では常に設定される。
+   */
+  unitPriceDivergence?: UnitPriceDivergence;
 };
 
 /**

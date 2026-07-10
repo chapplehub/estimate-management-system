@@ -58,7 +58,7 @@
 - コミットメッセージ: `feat: 販売単価の非throw解決経路を追加（解決値or解決不能の判別ユニオン）`
 
 ### Step 2: estimate read — GetEstimateDetailQuery の乖離合成
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/server/subdomains/estimate/application/queries/GetEstimateDetailQuery.ts`（app 層で合成）
   - `src/server/subdomains/estimate/application/queries/dto/EstimateDetailDTO.ts`（LineDTO に判別ユニオン追加。例: 乖離なし／乖離（現在値つき）／解決不能）

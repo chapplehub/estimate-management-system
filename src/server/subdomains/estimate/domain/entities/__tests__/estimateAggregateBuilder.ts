@@ -214,17 +214,18 @@ export function makeSetGroup(
 export function buildEstimateWithSetGroup(
   ids: EstimateFixtureIds,
   estimateNumber: string,
-  opts: { memberCount?: number } = {}
+  opts: { memberCount?: number; componentProductId?: string; componentUnitPrice?: number } = {}
 ): Estimate {
   const memberCount = opts.memberCount ?? 2;
+  const componentProductId = opts.componentProductId ?? ids.productId;
   const members = Array.from({ length: memberCount }, (_, idx) =>
-    makeItem(ids.productId, {
+    makeItem(componentProductId, {
       sortOrder: idx + 1,
       itemName: `構成${idx + 1}`,
-      unitPrice: (idx + 1) * 1000,
+      unitPrice: opts.componentUnitPrice ?? (idx + 1) * 1000,
     })
   );
-  const normal = makeItem(ids.productId, {
+  const normal = makeItem(componentProductId, {
     sortOrder: memberCount + 1,
     itemName: "通常明細",
     unitPrice: 500,
