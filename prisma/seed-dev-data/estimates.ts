@@ -332,7 +332,12 @@ export async function seedDevEstimates(prisma: PrismaClient): Promise<number> {
       },
     ],
   });
-  revised.reviseForCustomer(revised.variations[0].id);
+  // #431: 改訂元単価を引き継ぐ解決済み単価マップ（商品ID → Money）を渡す（dev seed の表示用）。
+  const revisionSource = revised.variations[0];
+  revised.reviseForCustomer(
+    revisionSource.id,
+    new Map(revisionSource.items.map((item) => [item.productId.value, item.unitPrice]))
+  );
   await prisma.estimate.create({ data: EstimateMapper.toEstimateCreateInput(revised) });
   const revisedVariation = revised.variations.find((v) => v.revisedFrom !== null);
   if (revisedVariation) {

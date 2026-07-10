@@ -20,6 +20,18 @@
   `ReviseForCustomerCommand`（Step 5）と、改訂を利用する周辺テスト（PrismaEstimateRepository・
   GetEstimateDetailQuery）が落ちる。pre-commit が関連テストを実行するため中間 green を保てない。
 
+## 逸脱3: 計画外の追随修正（seed・成功フラッシュ文言）
+
+- **元の計画内容**: Step 6 の対象は「複製モーダル説明文・改訂 UI・関連 E2E」。
+- **実際の実装内容**: 加えて以下を修正した。
+  - seed（`prisma/seed-estimates.ts`・`prisma/seed-dev-data/estimates.ts`）の
+    `reviseForCustomer` 呼び出しに解決済み単価マップ引数を追加（Step 4 のシグネチャ変更の追随）。
+  - 複製成功フラッシュ（`redirect-reason-toast.tsx` の `ESTIMATE_DUPLICATED`）の文言を
+    「単価はクリアされています。再入力してください」→「複製先条件で再解決されています」に更新。
+    関連する actions.ts・duplicateSchema.ts のコメントも同調。
+- **逸脱の理由**: いずれも「単価クリア→再解決」への挙動変更の必然的な追随。seed は必須引数追加で
+  コンパイル/実行が壊れるため、フラッシュ文言は放置するとユーザに「再入力が必要」と誤誘導するため。
+
 ## 逸脱2: 宛先マッピング関数 `toSellingPriceTarget` を `resolveLinePrices.ts` から export
 
 - **元の計画内容**: Step 1 で「既存 `resolveLinePrices` は変更しない」。

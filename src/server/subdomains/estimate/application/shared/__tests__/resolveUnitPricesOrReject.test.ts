@@ -99,13 +99,13 @@ describe("resolveUnitPricesOrReject", () => {
   it("同名の未解決商品はエラー列挙で重複させない", async () => {
     const { resolver } = fakeResolver({});
 
-    const error = await resolveUnitPricesOrReject(
+    const error = (await resolveUnitPricesOrReject(
       [
         customerRequest("CUSTOMER:prod-b", "prod-b", "商品B"),
         customerRequest("DELIVERY_LOCATION:prod-b", "prod-b", "商品B"),
       ],
       resolver
-    ).catch((e: unknown) => e as Error);
+    ).catch((e: unknown) => e)) as Error;
 
     expect((error.message.match(/商品B/g) ?? []).length).toBe(1);
   });

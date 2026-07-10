@@ -102,7 +102,7 @@
 - コミットメッセージ: `feat: 得意先改訂先の生成に価格決定を接続し解決不能なら拒否する`
 
 ### Step 6: UI 説明文と E2E 整合
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/app/(features)/estimates/_shared/DuplicateEstimateModal.tsx`（説明文追記）
   - 改訂実行 UI（C7 の起点コンポーネント。実装時に特定）

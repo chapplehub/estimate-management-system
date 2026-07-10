@@ -49,7 +49,8 @@ type Props = {
  * - 選択は複製元の並び順（variationNumber 昇順）の DOM で描画し、ブラウザが checked のみを
  *   FormData へ同名収集するため送出順＝複製元順になる（複製先で連番に振り直す）。
  * - 税率はフォーム入力でなく見積年月日からライブ解決し read-only 表示（submit 時 §8.7 再確定・
- *   checkTaxRateThenDuplicate が所有・ADR-0056）。単価クリアは常設注記で明示する。
+ *   checkTaxRateThenDuplicate が所有・ADR-0056）。見積単価は複製先条件で再解決される旨を常設注記で
+ *   明示する（#431・複製元の単価は引き継がない）。
  * - 成功時は Server Action が新採番の見積詳細へ redirect するため、ここでは閉じ処理を持たない。
  */
 export function DuplicateEstimateModal({
@@ -278,9 +279,10 @@ function DuplicateForm({
         </div>
       </div>
 
-      {/* 単価クリアの常設注記（#334 §5 / ADR-0057）。 */}
+      {/* 単価再解決の常設注記（#431 / ADR-20260710-q7t）。複製元の単価は引き継がず、複製先条件で再解決する。 */}
       <p className="bg-amber-50 border border-amber-300 text-amber-800 text-sm px-3 py-2 rounded mb-4">
-        複製先では見積単価がクリアされます。複製後に各バリエーションで再入力してください。
+        複製先の見積単価は、複製先の見積年月日・宛先で価格マスタから自動で再解決されます（複製元の単価は
+        引き継がれません）。販売単価が未設定の商品があると複製できません。
       </p>
 
       <div className="flex gap-3 justify-end">
