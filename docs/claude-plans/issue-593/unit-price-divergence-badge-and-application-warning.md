@@ -82,7 +82,7 @@
 - コミットメッセージ: `feat: 申請previewに単価乖離・解決不能の警告件数を追加 (#593)`
 
 ### Step 4: FE — 見積詳細（LineTable）の行内バッジ
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/app/(features)/estimates/[estimateNumber]/components/LineTable.tsx`
   - バッジ部品（既存 tone 体系 `badgeToneClassName` / shadcn Badge を流用。code→tone 写像は `switch`＋`never` 網羅ガードの既存パターン）

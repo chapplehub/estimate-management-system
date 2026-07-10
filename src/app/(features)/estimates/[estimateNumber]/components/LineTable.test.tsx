@@ -78,6 +78,57 @@ describe("LineTable メモ列", () => {
   });
 });
 
+describe("LineTable 単価乖離・解決不能バッジ（#593）", () => {
+  it("乖離行に『単価乖離』バッジを出し、現在値・符号つき差額をツールチップに載せる", () => {
+    render(
+      <LineTable
+        lines={[
+          line({
+            itemName: "乖離行",
+            unitPrice: 1000,
+            unitPriceDivergence: { kind: "DIVERGENT", currentUnitPrice: 1200, difference: 200 },
+          }),
+        ]}
+        activeRowId={null}
+        onSelectRow={() => {}}
+      />
+    );
+
+    const badge = screen.getByText("単価乖離");
+    expect(badge).toBeInTheDocument();
+    const tooltip = badge.getAttribute("title") ?? "";
+    expect(tooltip).toContain("1,200円");
+    expect(tooltip).toContain("+200円");
+  });
+
+  it("解決不能行に『解決不能』バッジと説明ツールチップを出す", () => {
+    render(
+      <LineTable
+        lines={[line({ itemName: "解決不能行", unitPriceDivergence: { kind: "UNRESOLVABLE" } })]}
+        activeRowId={null}
+        onSelectRow={() => {}}
+      />
+    );
+
+    const badge = screen.getByText("解決不能");
+    expect(badge).toBeInTheDocument();
+    expect(badge.getAttribute("title") ?? "").not.toBe("");
+  });
+
+  it("乖離なし（NONE）行にはバッジを出さない", () => {
+    render(
+      <LineTable
+        lines={[line({ itemName: "一致行", unitPriceDivergence: { kind: "NONE" } })]}
+        activeRowId={null}
+        onSelectRow={() => {}}
+      />
+    );
+
+    expect(screen.queryByText("単価乖離")).not.toBeInTheDocument();
+    expect(screen.queryByText("解決不能")).not.toBeInTheDocument();
+  });
+});
+
 describe("LineTable 価格調整モード（priceEdit・#390）", () => {
   it("priceEdit で掛率・明細値引は編集セル、単価は読み取り専用表示（#430・ADR-0064）", () => {
     const onChangePrice = vi.fn();
