@@ -68,7 +68,7 @@ export async function resolveLinePrices(
   const resolvedByProductId = new Map<string, Money>();
   await Promise.all(
     [...productIdsToResolve].map(async (productId) => {
-      const price = await resolver.execute(toTarget(productId, context));
+      const price = await resolver.execute(toSellingPriceTarget(productId, context));
       resolvedByProductId.set(productId, price.money);
     })
   );
@@ -129,8 +129,15 @@ function preservedPriceFor(
   return existing.unitPrice;
 }
 
-/** 商品ID＋宛先コンテキストを、提出区分に応じた価格決定ターゲットへマップする。 */
-function toTarget(productId: string, context: LinePriceContext): SellingPriceResolutionTarget {
+/**
+ * 商品ID＋宛先コンテキストを、提出区分に応じた価格決定ターゲットへマップする（消費側マッピング・
+ * ADR-20260626-p3w）。C1/C3/C4 の {@link resolveLinePrices} と C6/C7 の複製・改訂コマンドで共用し、
+ * 「納品先宛なのに customerId」を型で排除する分岐を単一ソースに保つ。
+ */
+export function toSellingPriceTarget(
+  productId: string,
+  context: LinePriceContext
+): SellingPriceResolutionTarget {
   if (context.submissionType.isDeliveryLocation()) {
     return {
       addressee: "DELIVERY_LOCATION",

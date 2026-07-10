@@ -60,7 +60,7 @@
 - コミットメッセージ: `feat: 解決不能商品を一括列挙して拒否する単価一括解決ヘルパを追加`
 
 ### Step 2: 複製ドメイン — EstimateDuplicationService に解決済み単価を注入
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/server/subdomains/estimate/domain/services/EstimateDuplicationService.ts`
   - 同 `__tests__/EstimateDuplicationService.test.ts`
@@ -70,7 +70,7 @@
 - コミットメッセージ: `feat: 複製先明細の単価を解決済み単価マップから供給する（Money.zero を撤去）`
 
 ### Step 3: 複製アプリ層 — DuplicateEstimateCommand に価格決定を接続
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/server/subdomains/estimate/application/commands/DuplicateEstimateCommand.ts`
   - `src/server/subdomains/estimate/application/factories/duplicateEstimateCommandFactory.ts`

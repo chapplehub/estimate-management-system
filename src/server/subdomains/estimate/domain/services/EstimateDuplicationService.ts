@@ -11,7 +11,23 @@ import {
 import { EstimateNumber } from "../values/EstimateNumber";
 import { EstimateVariationId } from "../values/EstimateVariationId";
 import { Money } from "@server/shared/domain/values/Money";
+import { SubmissionType } from "../values/SubmissionType";
 import { TaxRate } from "../values/TaxRate";
+
+/**
+ * 複製先明細の解決済み見積単価。キーは提出区分×商品ID（{@link duplicatedUnitPriceKey}）。
+ *
+ * 1つの複製元でもバリエーションごとに提出区分（得意先宛/納品先宛）が異なりうるため、
+ * 商品IDだけでは単価が一意にならない（不変則 単価=f(宛先,商品,年月日)）。アプリ層が価格決定で
+ * 構築し {@link EstimateDuplicationService.duplicate} に渡す。ドメインは解決済み `Money` を引くだけで
+ * pricing を import しない（DDD レイヤ規約）。
+ */
+export type DuplicatedUnitPriceMap = ReadonlyMap<string, Money>;
+
+/** {@link DuplicatedUnitPriceMap} のキー生成。アプリ層の構築とドメインの参照で共有する。 */
+export function duplicatedUnitPriceKey(submissionType: SubmissionType, productId: string): string {
+  return `${submissionType.value}:${productId}`;
+}
 
 /**
  * 見積複製の入力。
@@ -31,6 +47,11 @@ export type EstimateDuplicationInput = {
   taxRate: TaxRate;
   createdBy: EmployeeId;
   departmentId: DepartmentId;
+  /**
+   * 複製先明細の解決済み見積単価（提出区分×商品ID → Money）。複製先の見積年月日・複製元の宛先・
+   * 各バリエーションの提出区分で価格決定した結果をアプリ層が構築して渡す（#431・ADR-20260710-q7t）。
+   */
+  resolvedUnitPrices: DuplicatedUnitPriceMap;
 };
 
 /** 複製の結果（新集約と系譜）。系譜は集約外の兄弟成果物（ADR-0040）。 */
@@ -62,7 +83,8 @@ export class EstimateDuplicationService {
     const variations = input.selectedVariationIds.map((id, index) =>
       EstimateDuplicationService.toCopiedDescriptor(
         EstimateDuplicationService.resolveVariation(input.source, id),
-        index + 1
+        index + 1,
+        input.resolvedUnitPrices
       )
     );
 
@@ -98,14 +120,16 @@ export class EstimateDuplicationService {
 
   /**
    * 複製先バリエーションの記述子を作る。
-   * - 単価 = 0 にクリア（要入力）。固定値引（itemDiscount / overallDiscount）は付与しない（クリア）。
-   * - 率（discountRate）は継承（単価0でも負数にならず、後の単価入力時に効く）。
+   * - 単価 = 複製先条件で解決済みの見積単価をマップから引く（#431。従来の Money.zero() クリアを撤去し、
+   *   不変則 単価=f(宛先,商品,年月日) を回復）。固定値引（itemDiscount / overallDiscount）は付与しない（クリア）。
+   * - 率（discountRate）は継承する。
    * - 品目・数量・単位・メモは複写。variationNumber は複製先で連番に振り直す。
    * - status は記述子に持たせず、ファクトリ既定の ACTIVE になる（すべて有効 / §5.3）。
    */
   private static toCopiedDescriptor(
     source: SourceVariation,
-    variationNumber: number
+    variationNumber: number,
+    resolvedUnitPrices: DuplicatedUnitPriceMap
   ): CopiedVariationDescriptor {
     return {
       variationNumber,
@@ -118,7 +142,11 @@ export class EstimateDuplicationService {
         itemName: item.itemName,
         quantity: item.quantity,
         unit: item.unit,
-        unitPrice: Money.zero(),
+        unitPrice: EstimateDuplicationService.resolvedUnitPriceOrThrow(
+          resolvedUnitPrices,
+          source.submissionType,
+          item
+        ),
         discountRate: item.discountRate,
         customerMemo: item.customerMemo,
         internalMemo: item.internalMemo,
@@ -126,6 +154,26 @@ export class EstimateDuplicationService {
       customerMemo: source.customerMemo,
       internalMemo: source.internalMemo,
     };
+  }
+
+  /**
+   * 解決済み単価マップから明細の見積単価を引く。欠落は黙って 0 円にせず
+   * BusinessRuleViolationError で拒否する（アプリ層が全明細を解決してから渡す前提の防御・#431）。
+   */
+  private static resolvedUnitPriceOrThrow(
+    resolvedUnitPrices: DuplicatedUnitPriceMap,
+    submissionType: SubmissionType,
+    item: SourceVariation["items"][number]
+  ): Money {
+    const price = resolvedUnitPrices.get(
+      duplicatedUnitPriceKey(submissionType, item.productId.value)
+    );
+    if (price === undefined) {
+      throw new BusinessRuleViolationError(
+        `複製先の見積単価が解決されていません（商品=${item.itemName.value}）`
+      );
+    }
+    return price;
   }
 
   private static copyRepairDetail(detail: Estimate["repairDetail"]): RepairDetailDescriptor | null {
