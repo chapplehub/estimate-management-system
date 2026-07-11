@@ -125,7 +125,7 @@ EOF
 judge サブエージェントへのプロンプトに以下を**すべて**渡す:
 
 1. **`/code-review` の指摘リスト**（**Phase 1 のセッション findings をそのまま**。Phase 1.5 でトップレベル投稿したものと同一の一次情報。PR のインラインコメントを読み直すのではなく、この findings を判定材料にする）
-2. **実装の変更内容**: `git diff develop..HEAD`
+2. **実装の変更内容**: `git diff {base}...HEAD`
 3. **計画ファイルの中身**: `docs/claude-plans/issue-{番号}/*.md`（`deviations.md` 含む。無い場合はその旨）
 4. 下記「バケツ分類基準」と「③ cleanup の採用基準」
 5. 下記「参考: severity ラベル（報告用）」
