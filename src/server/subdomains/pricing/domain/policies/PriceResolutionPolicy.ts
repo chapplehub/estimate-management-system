@@ -16,6 +16,25 @@ export type PriceResolutionInput = {
   addressee: ResolutionAddressee;
 };
 
+/** {@link PriceResolutionPolicy.tryResolve} の入力。候補単価のみで足り、メッセージ用コンテキストは持たない。 */
+export type PriceResolutionCandidates = {
+  /** 提出区分に応じた上書き層（得意先別 or 納品先別）の時点解決結果。該当なしは null。 */
+  override: SellingUnitPrice | null;
+  /** 共通層の時点解決結果。該当なしは null。 */
+  common: SellingUnitPrice | null;
+};
+
+/**
+ * {@link PriceResolutionPolicy.tryResolve} の結果。
+ *
+ * 読み取り契機（単価乖離・解決不能の可視化）では「解決できたか否か」を throw ではなく値で返す。
+ * `resolve` の throw 経路（書き込み契機の拒否）とは別経路で、解決不能を CONTEXT の独立状態として運ぶ
+ * （失効/未設定 3状態クエリ #487 と同構図）。
+ */
+export type PriceResolutionOutcome =
+  | { kind: "RESOLVED"; unitPrice: SellingUnitPrice }
+  | { kind: "UNRESOLVABLE" };
+
 /**
  * 価格決定ポリシー（2段解決・純）。
  *
@@ -34,5 +53,19 @@ export class PriceResolutionPolicy {
       );
     }
     return resolved;
+  }
+
+  /**
+   * 非 throw 版の2段解決（読み取り契機・単価乖離/解決不能の可視化用）。
+   *
+   * `resolve` と同じ `override ?? common` の先勝ちだが、両方 null でも throw せず `UNRESOLVABLE` を返す。
+   * 表示のたびに解決を再実行する派生状態（ADR-20260710-fg7）の判定土台で、書き込み契機の拒否には使わない。
+   */
+  static tryResolve(input: PriceResolutionCandidates): PriceResolutionOutcome {
+    const resolved = input.override ?? input.common;
+    if (resolved === null) {
+      return { kind: "UNRESOLVABLE" };
+    }
+    return { kind: "RESOLVED", unitPrice: resolved };
   }
 }

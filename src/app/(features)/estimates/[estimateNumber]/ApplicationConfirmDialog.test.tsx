@@ -167,6 +167,48 @@ describe("ApplicationConfirmDialog（申請プレビュー→確認）", () => {
     expect(mockSubmit).not.toHaveBeenCalled();
   });
 
+  test("単価乖離・解決不能があると黄色の非ブロッキング警告バナーを出す（申請ボタンは活性のまま）", async () => {
+    const user = userEvent.setup();
+    mockPreview.mockResolvedValue({
+      success: true,
+      data: {
+        ...REQUIRED_PREVIEW.data,
+        unitPriceWarning: { divergentCount: 2, unresolvableCount: 1 },
+      },
+    });
+    renderDialog();
+
+    await user.click(screen.getByRole("button", { name: "申請" }));
+
+    const banner = await screen.findByText(/単価乖離 2 件/);
+    expect(banner).toBeInTheDocument();
+    expect(banner).toHaveTextContent(/解決不能 1 件/);
+    // 非ブロッキング: 「申請する」は活性のまま。
+    const submit = screen.getByRole("button", { name: "申請する" });
+    expect(submit).toBeInTheDocument();
+    expect(submit).not.toBeDisabled();
+  });
+
+  test("乖離ゼロ・解決不能ゼロなら警告バナーを出さない", async () => {
+    const user = userEvent.setup();
+    mockPreview.mockResolvedValue({
+      success: true,
+      data: {
+        kind: "EXEMPT",
+        reason: "BELOW_THRESHOLD",
+        reasonLabel: "10万円未満",
+        unitPriceWarning: { divergentCount: 0, unresolvableCount: 0 },
+      },
+    });
+    renderDialog();
+
+    await user.click(screen.getByRole("button", { name: "申請" }));
+
+    await screen.findByText(/10万円未満/);
+    expect(screen.queryByText(/単価乖離/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/解決不能/)).not.toBeInTheDocument();
+  });
+
   test("canApply=false ではトリガーが無効化され状態に応じたツールチップを持つ", () => {
     const { rerender } = renderDialog({ canApply: false, variationStatus: "INACTIVE" });
     const button = screen.getByRole("button", { name: "申請" });

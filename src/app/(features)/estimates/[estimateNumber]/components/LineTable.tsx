@@ -8,6 +8,7 @@ import type {
 import { cellInputClass, memoInputClass } from "../../_shared/formStyles";
 import { PRODUCT_CATEGORY_LABELS, formatYen } from "../../_shared/labels";
 import { lineGross, previewLineAmount } from "../previewAmounts";
+import { UnitPriceDivergenceBadge } from "./UnitPriceDivergenceBadge";
 
 /** 明細メモの編集パッチ（顧客/社内のいずれか一方ずつ）。 */
 export type MemoPatch = { customerMemo?: string; internalMemo?: string };
@@ -215,6 +216,7 @@ function LineRow({
           {/* 単価は価格決定で確定・固定のため入力させず読み取り専用表示（ADR-0064・#430）。 */}
           <td className="px-3 py-2 text-right" aria-label={`単価（${line.itemName}）`}>
             {formatYen(line.unitPrice)}
+            <UnitPriceDivergenceBadge divergence={line.unitPriceDivergence} />
           </td>
           <td className="px-3 py-2 align-top" onClick={(e) => e.stopPropagation()}>
             <input
@@ -241,7 +243,10 @@ function LineRow({
         </>
       ) : (
         <>
-          <td className="px-3 py-2 text-right">{formatYen(line.unitPrice)}</td>
+          <td className="px-3 py-2 text-right">
+            {formatYen(line.unitPrice)}
+            <UnitPriceDivergenceBadge divergence={line.unitPriceDivergence} />
+          </td>
           <td className="px-3 py-2 text-right">{line.discountRate.toFixed(2)}</td>
           <td className="px-3 py-2 text-right">
             {line.itemDiscount > 0 ? `-${formatYen(line.itemDiscount)}` : "—"}

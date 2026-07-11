@@ -3,13 +3,19 @@ import { EmployeeQueryService } from "@subdomains/employee/application/queries/E
 import { PositionQueryService } from "@subdomains/position/application/queries/PositionQueryService";
 import { ProductQueryService } from "@subdomains/product/application/queries/ProductQueryService";
 import { RoleQueryService } from "@subdomains/role/application/queries/RoleQueryService";
+import { Estimate } from "@subdomains/estimate/domain/entities";
 import { EstimateRepository } from "@subdomains/estimate/domain/repositories/EstimateRepository";
 import { BLOCKED_REASON_LABELS } from "@subdomains/estimate/domain/services/approval/ApprovalChainBuilder";
 import { assembleApprovalChain } from "../shared/approval/assembleApprovalChain";
 import { loadApprovalChainInputs } from "../shared/approval/loadApprovalChainInputs";
 import {
+  resolveUnitPriceDivergences,
+  type UnitPriceDivergenceResolver,
+} from "../shared/resolveUnitPriceDivergences";
+import {
   type PreviewApplicationResultDTO,
   type PreviewApplicationStepDTO,
+  type UnitPriceWarningDTO,
 } from "./dto/PreviewApplicationResultDTO";
 
 export type PreviewApplicationInput = {
@@ -34,7 +40,8 @@ export class PreviewApplicationQuery {
     private readonly productQueryService: ProductQueryService,
     private readonly employeeQueryService: EmployeeQueryService,
     private readonly positionQueryService: PositionQueryService,
-    private readonly roleQueryService: RoleQueryService
+    private readonly roleQueryService: RoleQueryService,
+    private readonly divergenceResolver: UnitPriceDivergenceResolver
   ) {}
 
   async execute(input: PreviewApplicationInput): Promise<PreviewApplicationResultDTO> {
@@ -60,14 +67,23 @@ export class PreviewApplicationQuery {
 
     const result = assembleApprovalChain(loaded.assemblerInput);
 
-    if (result.kind === "EXEMPT") {
-      return { kind: "EXEMPT", reason: result.reason.value, reasonLabel: result.reason.label };
-    }
+    // BLOCKED は申請できないため警告は添えない（EXEMPT/REQUIRED の申請可能 preview のみ・#593）。
     if (result.kind === "BLOCKED") {
       return {
         kind: "BLOCKED",
         reason: result.reason,
         reasonLabel: BLOCKED_REASON_LABELS[result.reason],
+      };
+    }
+
+    const unitPriceWarning = await this.countUnitPriceWarnings(loaded.estimate, input.variationId);
+
+    if (result.kind === "EXEMPT") {
+      return {
+        kind: "EXEMPT",
+        reason: result.reason.value,
+        reasonLabel: result.reason.label,
+        unitPriceWarning,
       };
     }
 
@@ -89,6 +105,42 @@ export class PreviewApplicationQuery {
       goalPositionId: result.plan.goalPositionId.value,
       goalPositionName: steps[steps.length - 1].positionName,
       steps,
+      unitPriceWarning,
+    };
+  }
+
+  /**
+   * 対象バリエーションの価格付き末端行を見積年月日基準で再解決・突合し、単価乖離・解決不能の件数を数える
+   * （Step 2 と同じ {@link resolveUnitPriceDivergences} を共有。ドリフトしない）。宛先・見積年月日は
+   * ヘッダ不変属性、提出区分はバリエーション固定なので、この単位でのデデュープが「提出区分×商品ID」になる。
+   */
+  private async countUnitPriceWarnings(
+    estimate: Estimate,
+    variationId: string
+  ): Promise<UnitPriceWarningDTO> {
+    const variation = estimate.variations.find((v) => v.id.value === variationId);
+    // ローダーが対象バリエーションの存在を保証済み。念のため無ければ警告なし。
+    if (variation === undefined) {
+      return { divergentCount: 0, unresolvableCount: 0 };
+    }
+
+    const divergences = await resolveUnitPriceDivergences(
+      variation.items.map((item) => ({
+        productId: item.productId.value,
+        fixedUnitPrice: item.unitPrice.majorUnits,
+      })),
+      {
+        submissionType: variation.submissionType,
+        customerId: estimate.customerId.value,
+        deliveryLocationId: estimate.deliveryLocationId.value,
+        estimateDate: estimate.estimateDate,
+      },
+      this.divergenceResolver
+    );
+
+    return {
+      divergentCount: divergences.filter((d) => d.kind === "DIVERGENT").length,
+      unresolvableCount: divergences.filter((d) => d.kind === "UNRESOLVABLE").length,
     };
   }
 }

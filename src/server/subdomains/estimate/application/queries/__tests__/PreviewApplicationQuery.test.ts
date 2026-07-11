@@ -14,6 +14,11 @@ import {
   makeItem,
 } from "@subdomains/estimate/domain/entities/__tests__/estimateAggregateBuilder";
 import { PrismaEstimateRepository } from "@subdomains/estimate/infrastructure/prisma/PrismaEstimateRepository";
+import { tryResolveSellingPriceQueryFactory } from "@subdomains/pricing/application/factories/pricingQueryFactory";
+import {
+  ensurePricedProduct,
+  giveCommonSellingPrice,
+} from "@server/__tests__/helpers/sellingPriceScenario";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { PreviewApplicationQuery } from "../PreviewApplicationQuery";
 
@@ -29,6 +34,9 @@ describe("PreviewApplicationQuery", () => {
     noSuperior: "N9908003",
     sideEffect: "N9908004",
     inactive: "N9908005",
+    warnDivergent: "N9908006",
+    warnNone: "N9908007",
+    warnUnresolvable: "N9908008",
   } as const;
   const ALL_NUMBERS = Object.values(EN);
   const OPERATOR_CD = "EMP999096";
@@ -71,7 +79,8 @@ describe("PreviewApplicationQuery", () => {
       new PrismaProductQueryService(),
       new PrismaEmployeeQueryService(),
       new PrismaPositionQueryService(),
-      new PrismaRoleQueryService()
+      new PrismaRoleQueryService(),
+      tryResolveSellingPriceQueryFactory()
     );
     await cleanupApprovalFixtures(ALL_NUMBERS);
   });
@@ -90,7 +99,8 @@ describe("PreviewApplicationQuery", () => {
       operatorEmployeeId: operatorId,
     });
 
-    expect(result).toEqual({
+    // 承認判定は EXEMPT。単価警告は別テストで検証するためここでは approval フィールドのみ確認する。
+    expect(result).toMatchObject({
       kind: "EXEMPT",
       reason: "BELOW_THRESHOLD",
       reasonLabel: "10万円未満",
@@ -172,6 +182,89 @@ describe("PreviewApplicationQuery", () => {
     const exemptions = await prisma.estimateApprovalExemption.count({ where: { variationId } });
     expect(applications).toBe(0);
     expect(exemptions).toBe(0);
+  });
+
+  describe("単価乖離・解決不能の警告件数（#593）", () => {
+    // 見積年月日（buildNewEstimate 既定）は 2025-04-01。この日を含む期間で master 値を制御する。
+    const WARN_PRODUCT_CODE = "PRWARN59301";
+    const ESTIMATE_DATE = "2025-04-01";
+    let warnProductId: string;
+
+    beforeEach(async () => {
+      warnProductId = await ensurePricedProduct({
+        code: WARN_PRODUCT_CODE,
+        yen: 1000,
+        start: ESTIMATE_DATE,
+        today: ESTIMATE_DATE,
+      });
+    });
+
+    it("乖離明細があるバリの preview（EXEMPT）に乖離件数が載る", async () => {
+      // 固定単価 1000・現在マスタ 1200 → 乖離1件。金額は 10万円未満で EXEMPT。
+      await giveCommonSellingPrice(warnProductId, {
+        yen: 1200,
+        start: ESTIMATE_DATE,
+        today: ESTIMATE_DATE,
+      });
+      const estimate = await estimateRepository.insert(
+        buildNewEstimate(ids.estimate, EN.warnDivergent, {
+          items: [makeItem(warnProductId, { sortOrder: 1, unitPrice: 1000, quantity: 1 })],
+        })
+      );
+
+      const result = await query.execute({
+        estimateId: estimate.id.value,
+        variationId: estimate.variations[0].id.value,
+        operatorEmployeeId: operatorId,
+      });
+
+      expect(result.kind).toBe("EXEMPT");
+      if (result.kind !== "EXEMPT") return;
+      expect(result.unitPriceWarning).toEqual({ divergentCount: 1, unresolvableCount: 0 });
+    });
+
+    it("乖離ゼロなら警告件数は 0（バナーを出さない素材）", async () => {
+      await giveCommonSellingPrice(warnProductId, {
+        yen: 1000,
+        start: ESTIMATE_DATE,
+        today: ESTIMATE_DATE,
+      });
+      const estimate = await estimateRepository.insert(
+        buildNewEstimate(ids.estimate, EN.warnNone, {
+          items: [makeItem(warnProductId, { sortOrder: 1, unitPrice: 1000, quantity: 1 })],
+        })
+      );
+
+      const result = await query.execute({
+        estimateId: estimate.id.value,
+        variationId: estimate.variations[0].id.value,
+        operatorEmployeeId: operatorId,
+      });
+
+      expect(result.kind).toBe("EXEMPT");
+      if (result.kind !== "EXEMPT") return;
+      expect(result.unitPriceWarning).toEqual({ divergentCount: 0, unresolvableCount: 0 });
+    });
+
+    it("解決不能も件数に載る", async () => {
+      // 適用開始を今日（=見積年月日より後）にずらし、2025-04-01 では解決不能にする。
+      await giveCommonSellingPrice(warnProductId, { yen: 1000 });
+      const estimate = await estimateRepository.insert(
+        buildNewEstimate(ids.estimate, EN.warnUnresolvable, {
+          items: [makeItem(warnProductId, { sortOrder: 1, unitPrice: 1000, quantity: 1 })],
+        })
+      );
+
+      const result = await query.execute({
+        estimateId: estimate.id.value,
+        variationId: estimate.variations[0].id.value,
+        operatorEmployeeId: operatorId,
+      });
+
+      expect(result.kind).toBe("EXEMPT");
+      if (result.kind !== "EXEMPT") return;
+      expect(result.unitPriceWarning).toEqual({ divergentCount: 0, unresolvableCount: 1 });
+    });
   });
 
   it("プレビューは副作用を持たない（申請行・免除行を作らない）", async () => {

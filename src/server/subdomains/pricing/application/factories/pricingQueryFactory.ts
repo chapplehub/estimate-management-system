@@ -12,6 +12,7 @@ import { ResolveCostPriceQuery } from "../queries/ResolveCostPriceQuery";
 import { ResolveCustomerSellingPriceQuery } from "../queries/ResolveCustomerSellingPriceQuery";
 import { ResolveDeliveryLocationSellingPriceQuery } from "../queries/ResolveDeliveryLocationSellingPriceQuery";
 import { ResolveSellingPriceQuery } from "../queries/ResolveSellingPriceQuery";
+import { TryResolveSellingPriceQuery } from "../queries/TryResolveSellingPriceQuery";
 import { PrismaCommonSellingPriceEditQueryService } from "../../infrastructure/queries/PrismaCommonSellingPriceEditQueryService";
 import { PrismaCommonSellingPriceListQueryService } from "../../infrastructure/queries/PrismaCommonSellingPriceListQueryService";
 import { PrismaCommonSellingPricePriceStatusQueryService } from "../../infrastructure/queries/PrismaCommonSellingPricePriceStatusQueryService";
@@ -113,6 +114,20 @@ export function resolveDeliveryLocationSellingPriceQueryFactory(): ResolveDelive
  */
 export function resolveSellingPriceQueryFactory(): ResolveSellingPriceQuery {
   return new ResolveSellingPriceQuery(
+    resolveCommonSellingPriceQueryFactory(),
+    resolveCustomerSellingPriceQueryFactory(),
+    resolveDeliveryLocationSellingPriceQueryFactory()
+  );
+}
+
+/**
+ * 非 throw の2段解決オーケストレーション（#593・単価乖離/解決不能の可視化）を組み立てる。
+ *
+ * throw 版 {@link resolveSellingPriceQueryFactory} と同じ3層ラッパを注入するが、解決不能を
+ * `UNRESOLVABLE` として返す。消費側（見積詳細 read・申請 preview）はこの factory 経由で得る。
+ */
+export function tryResolveSellingPriceQueryFactory(): TryResolveSellingPriceQuery {
+  return new TryResolveSellingPriceQuery(
     resolveCommonSellingPriceQueryFactory(),
     resolveCustomerSellingPriceQueryFactory(),
     resolveDeliveryLocationSellingPriceQueryFactory()

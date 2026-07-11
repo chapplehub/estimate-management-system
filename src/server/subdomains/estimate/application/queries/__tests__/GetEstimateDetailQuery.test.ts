@@ -12,6 +12,12 @@ import {
 import { PrismaEstimateRepository } from "@subdomains/estimate/infrastructure/prisma/PrismaEstimateRepository";
 import { PrismaEstimateQueryService } from "@subdomains/estimate/infrastructure/queries/PrismaEstimateQueryService";
 import { SubmissionType } from "@subdomains/estimate/domain/values/SubmissionType";
+import { tryResolveSellingPriceQueryFactory } from "@subdomains/pricing/application/factories/pricingQueryFactory";
+import {
+  ensurePricedProduct,
+  giveCommonSellingPrice,
+} from "@server/__tests__/helpers/sellingPriceScenario";
+import { makeItem } from "@subdomains/estimate/domain/entities/__tests__/estimateAggregateBuilder";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { GetEstimateDetailQuery } from "../GetEstimateDetailQuery";
 
@@ -23,6 +29,10 @@ const EN = {
   setGroup: "N9901002",
   multiVariation: "N9901003",
   revised: "N9901004",
+  divergenceNone: "N9901005",
+  divergent: "N9901006",
+  unresolvable: "N9901007",
+  divergentSetGroup: "N9901008",
   repair: "R9901001",
   afterRepair: "A9901001",
   missing: "N9901099",
@@ -56,7 +66,10 @@ describe("GetEstimateDetailQuery", () => {
 
   beforeEach(async () => {
     repository = new PrismaEstimateRepository();
-    query = new GetEstimateDetailQuery(new PrismaEstimateQueryService());
+    query = new GetEstimateDetailQuery(
+      new PrismaEstimateQueryService(),
+      tryResolveSellingPriceQueryFactory()
+    );
     await cleanupEstimates();
   });
 
@@ -259,6 +272,115 @@ describe("GetEstimateDetailQuery", () => {
       const target = dto.variations.find((v) => v.variationId !== sourceId);
       expect(source?.revisionRole).toBe("REVISION_SOURCE");
       expect(target?.revisionRole).toBe("REVISION_TARGET");
+    });
+  });
+
+  describe("単価乖離・解決不能の合成（#593・ADR-20260710-fg7）", () => {
+    // 見積年月日（buildNewEstimate 既定）は 2025-04-01。この日を参照日に現在マスタで再解決した値と
+    // 固定済み見積単価を突合する。乖離を作るには「見積年月日を含む期間」の master 値を制御する。
+    const DIV_PRODUCT_CODE = "PRDIV59301";
+    const ESTIMATE_DATE = "2025-04-01";
+    let divProductId: string;
+
+    beforeEach(async () => {
+      // 見積年月日を含む期間（past-invariant を today 上書きで回避）で共通単価を用意する。
+      divProductId = await ensurePricedProduct({
+        code: DIV_PRODUCT_CODE,
+        yen: 1000,
+        start: ESTIMATE_DATE,
+        today: ESTIMATE_DATE,
+      });
+    });
+
+    it("固定単価＝再解決値なら乖離なし（NONE・バッジ素材を出さない）", async () => {
+      await giveCommonSellingPrice(divProductId, {
+        yen: 1000,
+        start: ESTIMATE_DATE,
+        today: ESTIMATE_DATE,
+      });
+      await repository.insert(
+        buildNewEstimate(ids, EN.divergenceNone, {
+          items: [
+            makeItem(divProductId, { sortOrder: 1, itemName: "乖離なし商品", unitPrice: 1000 }),
+          ],
+        })
+      );
+
+      const dto = await query.execute({ estimateNumber: EN.divergenceNone });
+      const line = dto?.variations[0].lines[0];
+      expect(line?.kind).toBe("line");
+      if (line?.kind !== "line") return;
+      expect(line.unitPriceDivergence).toEqual({ kind: "NONE" });
+    });
+
+    it("固定単価≠再解決値なら DIVERGENT（現在値・符号つき差額を載せる）", async () => {
+      // 見積は固定単価 1000 で保存、現在マスタは 1200 → 差額 +200。
+      await giveCommonSellingPrice(divProductId, {
+        yen: 1200,
+        start: ESTIMATE_DATE,
+        today: ESTIMATE_DATE,
+      });
+      await repository.insert(
+        buildNewEstimate(ids, EN.divergent, {
+          items: [makeItem(divProductId, { sortOrder: 1, itemName: "乖離商品", unitPrice: 1000 })],
+        })
+      );
+
+      const dto = await query.execute({ estimateNumber: EN.divergent });
+      const line = dto?.variations[0].lines[0];
+      expect(line?.kind).toBe("line");
+      if (line?.kind !== "line") return;
+      expect(line.unitPriceDivergence).toEqual({
+        kind: "DIVERGENT",
+        currentUnitPrice: 1200,
+        difference: 200,
+      });
+    });
+
+    it("見積年月日に有効な販売単価が無ければ UNRESOLVABLE（解決不能）", async () => {
+      // 適用開始を今日（=見積年月日より後）にずらし、2025-04-01 では解決不能にする。
+      await giveCommonSellingPrice(divProductId, { yen: 1000 });
+      await repository.insert(
+        buildNewEstimate(ids, EN.unresolvable, {
+          items: [
+            makeItem(divProductId, { sortOrder: 1, itemName: "解決不能商品", unitPrice: 1000 }),
+          ],
+        })
+      );
+
+      const dto = await query.execute({ estimateNumber: EN.unresolvable });
+      const line = dto?.variations[0].lines[0];
+      expect(line?.kind).toBe("line");
+      if (line?.kind !== "line") return;
+      expect(line.unitPriceDivergence).toEqual({ kind: "UNRESOLVABLE" });
+    });
+
+    it("セット構成明細も乖離判定される（セット群行自体は価格を持たず対象外）", async () => {
+      await giveCommonSellingPrice(divProductId, {
+        yen: 1200,
+        start: ESTIMATE_DATE,
+        today: ESTIMATE_DATE,
+      });
+      await repository.insert(
+        buildEstimateWithSetGroup(ids, EN.divergentSetGroup, {
+          memberCount: 2,
+          componentProductId: divProductId,
+          componentUnitPrice: 1000,
+        })
+      );
+
+      const dto = await query.execute({ estimateNumber: EN.divergentSetGroup });
+      const setGroup = dto?.variations[0].lines.find((l) => l.kind === "setGroup");
+      expect(setGroup?.kind).toBe("setGroup");
+      if (setGroup?.kind !== "setGroup") return;
+      // 構成明細は固定 1000・現在 1200 → DIVERGENT +200。
+      for (const component of setGroup.components) {
+        expect(component.unitPriceDivergence).toEqual({
+          kind: "DIVERGENT",
+          currentUnitPrice: 1200,
+          difference: 200,
+        });
+      }
     });
   });
 

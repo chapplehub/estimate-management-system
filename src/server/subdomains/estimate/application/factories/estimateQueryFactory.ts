@@ -7,10 +7,17 @@ import { PrismaEstimateApplicationSearchQueryService } from "../../infrastructur
 import { PrismaEstimateQueryService } from "../../infrastructure/queries/PrismaEstimateQueryService";
 import { PrismaVariationApplicationStateQueryService } from "../../infrastructure/queries/PrismaVariationApplicationStateQueryService";
 import { PrismaTaxRateRepository } from "../../infrastructure/prisma/PrismaTaxRateRepository";
+import { tryResolveSellingPriceQueryFactory } from "@subdomains/pricing/application/factories/pricingQueryFactory";
 
-/** 見積詳細取得クエリ（Q1）を組み立てる。読み取りは PrismaEstimateQueryService 実装に閉じる。 */
+/**
+ * 見積詳細取得クエリ（Q1）を組み立てる。事実取得は PrismaEstimateQueryService に閉じ、単価乖離・
+ * 解決不能（#593）の合成には pricing の非throw解決（{@link tryResolveSellingPriceQueryFactory}）を注入する。
+ */
 export function getEstimateDetailQueryFactory(): GetEstimateDetailQuery {
-  return new GetEstimateDetailQuery(new PrismaEstimateQueryService());
+  return new GetEstimateDetailQuery(
+    new PrismaEstimateQueryService(),
+    tryResolveSellingPriceQueryFactory()
+  );
 }
 
 /**
