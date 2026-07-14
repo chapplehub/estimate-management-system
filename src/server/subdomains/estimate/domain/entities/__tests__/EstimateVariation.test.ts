@@ -731,6 +731,94 @@ describe("EstimateVariation", () => {
     });
   });
 
+  describe("lineStructure - 平坦な items をセット群で仕分ける（#602）", () => {
+    it("セット群が無ければ全明細が通常明細として返る", () => {
+      const a = makeItem({ itemName: "商品A" });
+      const b = makeItem({ itemName: "商品B" });
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items: [a, b],
+      });
+
+      const structure = v.lineStructure;
+
+      expect(structure.normalItems.map((i) => i.itemName.value)).toEqual(["商品A", "商品B"]);
+      expect(structure.setGroups).toHaveLength(0);
+    });
+
+    it("構成明細は通常明細から除かれ、所属する群の components に実体として現れる", () => {
+      const m1 = makeItem({ itemName: "構成1" });
+      const m2 = makeItem({ itemName: "構成2" });
+      const normal = makeItem({ itemName: "通常" });
+      const group = makeSetGroup([m1, m2]);
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items: [m1, m2, normal],
+        setGroups: [group],
+      });
+
+      const structure = v.lineStructure;
+
+      expect(structure.normalItems.map((i) => i.itemName.value)).toEqual(["通常"]);
+      expect(structure.setGroups).toHaveLength(1);
+      expect(structure.setGroups[0].group.id.equals(group.id)).toBe(true);
+      expect(structure.setGroups[0].components.map((c) => c.itemName.value)).toEqual([
+        "構成1",
+        "構成2",
+      ]);
+    });
+
+    it("群が複数あってもそれぞれの構成明細に仕分けられる", () => {
+      const a1 = makeItem({ itemName: "A構成1" });
+      const a2 = makeItem({ itemName: "A構成2" });
+      const b1 = makeItem({ itemName: "B構成1" });
+      const normal = makeItem({ itemName: "通常" });
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items: [a1, a2, b1, normal],
+        setGroups: [makeSetGroup([a1, a2]), makeSetGroup([b1])],
+      });
+
+      const structure = v.lineStructure;
+
+      expect(structure.normalItems.map((i) => i.itemName.value)).toEqual(["通常"]);
+      expect(structure.setGroups.map((g) => g.components.map((c) => c.itemName.value))).toEqual([
+        ["A構成1", "A構成2"],
+        ["B構成1"],
+      ]);
+    });
+
+    it("構成明細は items の並びではなく memberItemIds の順（正準順序）で返る", () => {
+      const first = makeItem({ itemName: "先頭", sortOrder: 1 });
+      const second = makeItem({ itemName: "次", sortOrder: 2 });
+      const group = EstimateSetGroup.create({
+        productId: ProductId.generate(),
+        itemName: new ItemName("セット商品"),
+        unit: new Unit("式"),
+        memberItemIds: [first.id, second.id],
+      });
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        // items 側はあえて逆順で保持する
+        items: [second, first],
+        setGroups: [group],
+      });
+
+      expect(v.lineStructure.setGroups[0].components.map((c) => c.itemName.value)).toEqual([
+        "先頭",
+        "次",
+      ]);
+    });
+  });
+
   describe("replaceContent とセット群（C4 全置換）", () => {
     it("セット群も新セットで全置換され、構成明細が二重計上されない", () => {
       const v = EstimateVariation.create({

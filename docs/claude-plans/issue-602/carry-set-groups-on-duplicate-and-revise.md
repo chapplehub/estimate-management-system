@@ -51,7 +51,7 @@
 ## ステップ
 
 ### Step 1: `EstimateVariation.lineStructure` を追加する（平坦 ⇔ 入れ子の唯一の変換点）
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/server/subdomains/estimate/domain/entities/EstimateVariation.ts`
   - `src/server/subdomains/estimate/domain/entities/__tests__/EstimateVariation.test.ts`
