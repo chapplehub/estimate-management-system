@@ -901,6 +901,72 @@ describe("Estimate", () => {
         true
       );
     });
+
+    it("セット群が複数あっても、構成明細は所属する群だけに配線される（群をまたいだ取り違えが起きない）", () => {
+      // 構成明細は群ごとに create してから memberItemIds へ配線するが、実体は 1 本の items 配列へ
+      // 累積される。群が 1 件だと「累積した全構成明細」と「自群の構成明細」が一致してしまい、
+      // 配線の取り違えを検出できない。群 2 件・構成数を非対称（2 件と 1 件）にして固定する。
+      const makeComponent = (name: string, sortOrder: number) =>
+        EstimateItem.create({
+          productId: ProductId.generate(),
+          sortOrder,
+          itemName: new ItemName(name),
+          quantity: new Quantity(1),
+          unit: new Unit("個"),
+          unitPrice: Money.fromMajorUnits(1000),
+        });
+      const a1 = makeComponent("A構成1", 1);
+      const a2 = makeComponent("A構成2", 2);
+      const b1 = makeComponent("B構成1", 3);
+      const normal = makeComponent("通常明細", 4);
+      const groupA = EstimateSetGroup.create({
+        productId: ProductId.generate(),
+        itemName: new ItemName("セット商品A"),
+        unit: new Unit("式"),
+        memberItemIds: [a1.id, a2.id],
+      });
+      const groupB = EstimateSetGroup.create({
+        productId: ProductId.generate(),
+        itemName: new ItemName("セット商品B"),
+        unit: new Unit("式"),
+        memberItemIds: [b1.id],
+      });
+      const source = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.DELIVERY_LOCATION,
+        tax: TAX,
+        items: [a1, a2, b1, normal],
+        setGroups: [groupA, groupB],
+      });
+      const estimate = Estimate.create({
+        ...commonHeader(),
+        estimateNumber: EstimateNumber.parse("N2500001"),
+        variations: [source],
+      });
+
+      const revised = estimate.reviseForCustomer(source.id, revisionPricesFor(source));
+
+      // 群ごとの構成明細が入れ替わらず、他群の構成明細を吸い込みもしない
+      const structure = revised.lineStructure;
+      expect(structure.setGroups.map((g) => g.group.itemName.value)).toEqual([
+        "セット商品A",
+        "セット商品B",
+      ]);
+      expect(structure.setGroups.map((g) => g.components.map((c) => c.itemName.value))).toEqual([
+        ["A構成1", "A構成2"],
+        ["B構成1"],
+      ]);
+      expect(structure.normalItems.map((i) => i.itemName.value)).toEqual(["通常明細"]);
+
+      // 構成明細の実体は改訂先の items に 1 本ずつだけ存在する（群ごとの複製で二重化しない）
+      expect(revised.items).toHaveLength(4);
+      // memberItemIds は自群の構成明細のみを指し、群をまたいで重複しない（排他所属）
+      const [revisedA, revisedB] = revised.setGroups;
+      const idsOf = (g: (typeof revised.setGroups)[number]) => g.memberItemIds.map((m) => m.value);
+      expect(idsOf(revisedA!)).toHaveLength(2);
+      expect(idsOf(revisedB!)).toHaveLength(1);
+      expect(idsOf(revisedA!)).not.toContain(idsOf(revisedB!)[0]);
+    });
   });
 
   describe("改訂が存在する見積のヘッダ変更ガード（§7.2 / §8.7）", () => {
