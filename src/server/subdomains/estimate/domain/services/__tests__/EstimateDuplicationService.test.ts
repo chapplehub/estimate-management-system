@@ -26,6 +26,10 @@ import {
 } from "../EstimateDuplicationService";
 
 const UUID = "00000000-0000-7000-8000-000000000001";
+/** セット商品（群自身の productId。価格を持たないため単価解決の対象外）。 */
+const SET_PRODUCT_UUID = "00000000-0000-7000-8000-000000000002";
+/** 構成明細の商品（価格付き末端行なので単価解決の対象）。 */
+const COMPONENT_PRODUCT_UUID = "00000000-0000-7000-8000-000000000003";
 
 /**
  * 複製元の全明細（各バリエーションの提出区分×商品ID）を一律 `yen` 円で解決した単価マップを作る。
@@ -87,6 +91,67 @@ function buildSourceNew(): Estimate {
             quantity: new Quantity(1),
             unit: new Unit("式"),
             unitPrice: Money.fromMajorUnits(500),
+          },
+        ],
+      },
+    ],
+  });
+}
+
+/** 複製元（セット群 1 つ＝構成明細 2 件＋通常明細 1 件）を生成する（#602）。 */
+function buildSourceWithSetGroup(): Estimate {
+  return EstimateFactory.create({
+    estimateNumber: EstimateNumber.parse("N2500002"),
+    estimateDate: new Date("2025-04-01T00:00:00.000Z"),
+    deadline: new Date("2025-04-30T00:00:00.000Z"),
+    customerId: new CustomerId(UUID),
+    deliveryLocationId: new DeliveryLocationId(UUID),
+    taxRate: new TaxRate(0.1),
+    taxRoundingType: TaxRoundingType.ROUND_DOWN,
+    createdBy: new EmployeeId(UUID),
+    departmentId: new DepartmentId(UUID),
+    variations: [
+      {
+        variationNumber: 1,
+        submissionType: SubmissionType.DELIVERY_LOCATION,
+        items: [
+          {
+            productId: new ProductId(UUID),
+            sortOrder: 3,
+            itemName: new ItemName("通常明細"),
+            quantity: new Quantity(1),
+            unit: new Unit("個"),
+            unitPrice: Money.fromMajorUnits(500),
+          },
+        ],
+        setGroups: [
+          {
+            productId: new ProductId(SET_PRODUCT_UUID),
+            itemName: new ItemName("セット商品X"),
+            unit: new Unit("式"),
+            customerMemo: Memo.create("群の顧客メモ"),
+            internalMemo: Memo.create("群の社内メモ"),
+            components: [
+              {
+                productId: new ProductId(COMPONENT_PRODUCT_UUID),
+                sortOrder: 1,
+                itemName: new ItemName("構成1"),
+                quantity: new Quantity(2),
+                unit: new Unit("個"),
+                unitPrice: Money.fromMajorUnits(1000),
+                discountRate: new DiscountRate(0.9),
+                itemDiscount: Money.fromMajorUnits(100),
+                customerMemo: Memo.create("構成1メモ"),
+              },
+              {
+                productId: new ProductId(COMPONENT_PRODUCT_UUID),
+                sortOrder: 2,
+                itemName: new ItemName("構成2"),
+                quantity: new Quantity(1),
+                unit: new Unit("個"),
+                unitPrice: Money.fromMajorUnits(2000),
+              },
+            ],
           },
         ],
       },
@@ -240,6 +305,88 @@ describe("EstimateDuplicationService", () => {
 
       expect(source.variations).toHaveLength(2);
       expect(source.variations[0].items[0].unitPrice.majorUnits).toBe(1000);
+    });
+  });
+
+  describe("duplicate() - セット群の引き継ぎ（#602・ADR-20260714-k2m）", () => {
+    it("セット群が群ごと引き継がれ、構成明細は新しい実体として群に配線される", () => {
+      const source = buildSourceWithSetGroup();
+      const sourceVariation = source.variations[0];
+      const sourceGroup = sourceVariation.setGroups[0];
+
+      const { estimate } = EstimateDuplicationService.duplicate({
+        source,
+        selectedVariationIds: [sourceVariation.id],
+        ...context(source),
+      });
+
+      const copied = estimate.variations[0];
+      expect(copied.setGroups).toHaveLength(1);
+      const copiedGroup = copied.setGroups[0];
+
+      // 群は新採番され、構成明細も新実体になる（複製元の id を指してはならない）
+      expect(copiedGroup.id.equals(sourceGroup.id)).toBe(false);
+      const sourceComponentIds = sourceVariation.lineStructure.setGroups[0].components.map(
+        (c) => c.id
+      );
+      for (const memberId of copiedGroup.memberItemIds) {
+        expect(sourceComponentIds.some((id) => id.equals(memberId))).toBe(false);
+      }
+
+      // 群のスナップショット属性・メモは複製元から複写する
+      expect(copiedGroup.productId.value).toBe(SET_PRODUCT_UUID);
+      expect(copiedGroup.itemName.value).toBe("セット商品X");
+      expect(copiedGroup.unit.value).toBe("式");
+      expect(copiedGroup.customerMemo.value).toBe("群の顧客メモ");
+      expect(copiedGroup.internalMemo.value).toBe("群の社内メモ");
+
+      // 構成明細は複製先の items に同居し、通常明細は群に吸い込まれない
+      const structure = copied.lineStructure;
+      expect(structure.normalItems.map((i) => i.itemName.value)).toEqual(["通常明細"]);
+      expect(structure.setGroups[0].components.map((c) => c.itemName.value)).toEqual([
+        "構成1",
+        "構成2",
+      ]);
+    });
+
+    it("構成明細にも通常明細と同じ変換規則（単価は提出区分×商品IDで解決・掛率継承・固定値引クリア）が適用される", () => {
+      const source = buildSourceWithSetGroup();
+      const sourceVariation = source.variations[0];
+
+      const { estimate } = EstimateDuplicationService.duplicate({
+        source,
+        selectedVariationIds: [sourceVariation.id],
+        ...context(source),
+      });
+
+      const [component1] = estimate.variations[0].lineStructure.setGroups[0].components;
+      // 単価は複製元単価（1000）の複写ではなく、解決済みマップの値（800）
+      expect(component1.unitPrice.majorUnits).toBe(800);
+      expect(component1.quantity.value).toBe(2);
+      expect(component1.sortOrder).toBe(1);
+      expect(component1.discountRate.value).toBe(0.9);
+      expect(component1.itemDiscount.isZero()).toBe(true);
+      expect(component1.customerMemo.value).toBe("構成1メモ");
+      // 複製先は改訂ではないため粗利スナップショットを持たない
+      expect(component1.revisedDetail).toBeNull();
+    });
+
+    it("構成明細の単価が複製元の提出区分で解決されていないと BusinessRuleViolationError", () => {
+      const source = buildSourceWithSetGroup();
+      const sourceVariation = source.variations[0];
+      // 通常明細だけ解決し、構成明細の商品を落としたマップ（キーは 提出区分:商品ID）
+      const partial = new Map([
+        [duplicatedUnitPriceKey(sourceVariation.submissionType, UUID), Money.fromMajorUnits(800)],
+      ]);
+
+      expect(() =>
+        EstimateDuplicationService.duplicate({
+          source,
+          selectedVariationIds: [sourceVariation.id],
+          ...context(source),
+          resolvedUnitPrices: partial,
+        })
+      ).toThrow(BusinessRuleViolationError);
     });
   });
 

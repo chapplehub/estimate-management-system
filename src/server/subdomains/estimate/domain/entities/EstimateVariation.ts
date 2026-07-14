@@ -63,6 +63,27 @@ export type VariationContent = {
 };
 
 /**
+ * セット群 1 件と、その構成明細の実体（{@link EstimateVariation.lineStructure} の要素）。
+ * 構成明細は群の `memberItemIds` の順（＝正準順序＝sortOrder 順）で並ぶ。
+ */
+export type SetGroupLines = {
+  group: Readonly<EstimateSetGroup>;
+  components: ReadonlyArray<Readonly<EstimateItem>>;
+};
+
+/**
+ * 平坦な `items`（通常明細＋構成明細の同居・ADR-0047）を、セット群の所属で仕分けた入れ子ビュー。
+ * 生成側の記述子（`EstimateVariationDescriptor`）と同じ形状であり、複製・改訂はこれを起点に
+ * 自分の変換規則を適用する（ADR-20260714-k2m）。
+ */
+export type VariationLineStructure = {
+  /** どのセット群にも属さない明細。 */
+  normalItems: ReadonlyArray<Readonly<EstimateItem>>;
+  /** セット群と、その構成明細の実体。 */
+  setGroups: ReadonlyArray<SetGroupLines>;
+};
+
+/**
  * 見積バリエーションエンティティ（§11.3.1）。
  *
  * Estimate 集約の内部子エンティティ。バレル (entities/index.ts) からは
@@ -482,11 +503,16 @@ export class EstimateVariation {
   private findItemOrThrow(itemId: EstimateItemId): EstimateItem {
     const item = this._items.find((i) => i.id.equals(itemId));
     if (!item) {
-      throw new BusinessRuleViolationError(
-        `指定された明細はこのバリエーションに存在しません: ${itemId.value}`
-      );
+      throw EstimateVariation.itemNotFoundError(itemId);
     }
     return item;
+  }
+
+  /** 明細の解決失敗（id 指定・索引引きの双方で同一メッセージを使う）。 */
+  private static itemNotFoundError(itemId: EstimateItemId): BusinessRuleViolationError {
+    return new BusinessRuleViolationError(
+      `指定された明細はこのバリエーションに存在しません: ${itemId.value}`
+    );
   }
 
   private touch(): void {
@@ -595,6 +621,36 @@ export class EstimateVariation {
    */
   get setGroups(): ReadonlyArray<Readonly<EstimateSetGroup>> {
     return this._setGroups;
+  }
+
+  /**
+   * 明細をセット群の所属で仕分けた入れ子ビュー（#602・ADR-20260714-k2m）。
+   *
+   * `_items` は通常明細と構成明細を同居させ（ADR-0047）、所属は `_setGroups` が id で持つ。
+   * 実体と所属の両方を握るのはこのクラスだけなので、「平坦 → 入れ子」の組み直しをここに
+   * 一本化する。複製（C6）・改訂（C7）はこの getter を起点に自分の変換規則を適用する
+   * ——`items` を素通しすると構成明細がバラの通常明細として複写され、群が消える（#602 の原因）。
+   */
+  get lineStructure(): VariationLineStructure {
+    // 構成明細 id → 実体の索引を 1 度だけ作る。群ごとに _items を線形走査すると
+    // O(群数 × 構成数 × 明細数) になるため（明細 200 行・群 20 個で 2 万回の id 比較）。
+    const itemsById = new Map(this._items.map((item) => [item.id.value, item]));
+    const memberIds = new Set(
+      this._setGroups.flatMap((g) => g.memberItemIds.map((id) => id.value))
+    );
+    return {
+      normalItems: this._items.filter((item) => !memberIds.has(item.id.value)),
+      setGroups: this._setGroups.map((group) => ({
+        group,
+        components: group.memberItemIds.map((id) => {
+          const item = itemsById.get(id.value);
+          if (!item) {
+            throw EstimateVariation.itemNotFoundError(id);
+          }
+          return item;
+        }),
+      })),
+    };
   }
 
   get subtotal(): Money {

@@ -46,6 +46,7 @@ const EN = {
   setGroupAddRemove: "N9900015",
   setGroupMove: "N9900016",
   setGroupRemoveAdd: "N9900017",
+  reviseSetGroup: "N9900023",
   txRollback: "N9900018",
   bump: "N9900019",
   bumpNoChildWrite: "N9900020",
@@ -295,6 +296,48 @@ describe("PrismaEstimateRepository", () => {
       // 新群C が 構成3 を持つ
       const c = g2.find((g) => g.id.value !== groupA.id.value)!;
       expect(c.memberItemIds.map((m) => m.value)).toEqual([items[2].id.value]);
+    });
+
+    it("update: 改訂で生まれたセット群が既存見積に新規 INSERT され、改訂元の群も残る（#602）", async () => {
+      // 改訂は insert ではなく update の差分 upsert 経路を通る。既存見積に対して群衛星
+      // （estimate_set_groups）と交差表（estimate_set_components）が新規 INSERT され、
+      // 改訂元の群が deleteMany(notIn) に巻き込まれないことを固定する。
+      const saved = await repository.insert(
+        buildEstimateWithSetGroup(ids, EN.reviseSetGroup, {
+          memberCount: 2,
+          submissionType: SubmissionType.DELIVERY_LOCATION,
+        })
+      );
+      const source = saved.variations[0]!;
+      const sourceGroupId = source.setGroups[0]!.id;
+
+      const revised = saved.reviseForCustomer(
+        source.id,
+        new Map(source.items.map((i) => [i.productId.value, i.unitPrice]))
+      );
+      await repository.update(saved, 1);
+
+      const found = await repository.findById(saved.id);
+      expect(found).not.toBeNull();
+      if (!found) return;
+
+      // 改訂元の群は id ごと残る
+      const foundSource = found.variations.find((v) => v.id.value === source.id.value)!;
+      expect(foundSource.setGroups.map((g) => g.id.value)).toEqual([sourceGroupId.value]);
+
+      // 改訂先の群衛星・交差表が新規 INSERT され、構成明細は改訂先の明細を指す
+      const foundRevised = found.variations.find((v) => v.id.value === revised.id.value)!;
+      expect(foundRevised.setGroups).toHaveLength(1);
+      const revisedGroup = foundRevised.setGroups[0]!;
+      expect(revisedGroup.id.value).not.toBe(sourceGroupId.value);
+
+      const revisedItemIds = new Set(foundRevised.items.map((i) => i.id.value));
+      expect(revisedGroup.memberItemIds).toHaveLength(2);
+      for (const memberId of revisedGroup.memberItemIds) {
+        expect(revisedItemIds.has(memberId.value)).toBe(true);
+      }
+      // 群の金額・表示位置が再構築後も導出できる（構成明細への参照が解決できている）
+      expect(() => foundRevised.deriveSetGroup(revisedGroup.id)).not.toThrow();
     });
 
     it("delete: セット群・所属交差表もカスケード削除される", async () => {
