@@ -214,7 +214,13 @@ export function makeSetGroup(
 export function buildEstimateWithSetGroup(
   ids: EstimateFixtureIds,
   estimateNumber: string,
-  opts: { memberCount?: number; componentProductId?: string; componentUnitPrice?: number } = {}
+  opts: {
+    memberCount?: number;
+    componentProductId?: string;
+    componentUnitPrice?: number;
+    /** 提出区分。得意先改訂の改訂元にするテストでは DELIVERY_LOCATION を渡す（#602）。 */
+    submissionType?: SubmissionType;
+  } = {}
 ): Estimate {
   const memberCount = opts.memberCount ?? 2;
   const componentProductId = opts.componentProductId ?? ids.productId;
@@ -232,7 +238,7 @@ export function buildEstimateWithSetGroup(
   });
   const variation = EstimateVariation.create({
     variationNumber: 1,
-    submissionType: SubmissionType.CUSTOMER,
+    submissionType: opts.submissionType ?? SubmissionType.CUSTOMER,
     tax: TAX_CONTEXT,
     items: [...members, normal],
     setGroups: [makeSetGroup(ids.setProductId, members)],

@@ -91,7 +91,7 @@
 - コミットメッセージ: `fix: 見積複製でセット群が引き継がれず構成明細がバラの通常明細になる`
 
 ### Step 4: 既存見積へのセット群付きバリエーション追加を永続化できることを回帰テストで固定する
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/server/subdomains/estimate/infrastructure/prisma/__tests__/PrismaEstimateRepository.test.ts`
 - テスト戦略: TDD（`.claude/references/test-strategy.md` の表では Infrastructure 層は「テスト不要」だが、改訂は `insert` ではなく `update` の差分 upsert 経路を通り、既存見積に対して群衛星＋交差表が**新規 INSERT** される経路は型で守れない。会話で合意した回帰ガードとして 1 本だけ追加する）
