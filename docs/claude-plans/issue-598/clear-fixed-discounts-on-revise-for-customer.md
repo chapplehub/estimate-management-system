@@ -38,7 +38,7 @@
 ## ステップ
 
 ### Step 1: ドメイン — reviseForCustomer の固定値引クリア（TDD）
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/server/subdomains/estimate/domain/entities/__tests__/Estimate.test.ts`
   - `src/server/subdomains/estimate/domain/entities/Estimate.ts`

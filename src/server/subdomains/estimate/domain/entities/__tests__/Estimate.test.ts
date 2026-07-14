@@ -613,6 +613,7 @@ describe("Estimate", () => {
         quantity: new Quantity(2),
         unit: new Unit("個"),
         unitPrice: Money.fromMajorUnits(500000),
+        discountRate: new DiscountRate(0.9),
         itemDiscount: Money.fromMajorUnits(10000),
       });
       const itemB = EstimateItem.create({
@@ -638,7 +639,7 @@ describe("Estimate", () => {
       return { estimate, source, itemA, itemB };
     }
 
-    it("納品先宛から得意先宛の新バリエーションを生成し、単価は得意先宛の解決値・掛率値引は複写する", () => {
+    it("納品先宛から得意先宛の新バリエーションを生成し、単価は得意先宛の解決値・掛率は複写・固定値引はクリアする", () => {
       const { estimate, source, itemA, itemB } = buildDeliveryEstimate();
       // 得意先宛の解決単価は改訂元（納品先価格）と別値にし、複写でなく解決であることを観測可能にする
       const prices = revisionPricesFor(source, (item) =>
@@ -662,14 +663,73 @@ describe("Estimate", () => {
       expect(revisedA!.itemName.value).toBe("商品A");
       expect(revisedA!.unitPrice.majorUnits).toBe(300000);
       expect(revisedB!.unitPrice.majorUnits).toBe(150000);
-      // 掛率・固定値引・全体値引・数量は改訂元から複写
+      // 率（掛率）・数量は改訂元から複写する
       expect(revisedA!.quantity.value).toBe(2);
-      expect(revisedA!.itemDiscount.equals(itemA.itemDiscount)).toBe(true);
-      expect(revised.overallDiscount.equals(source.overallDiscount)).toBe(true);
+      expect(revisedA!.discountRate.equals(itemA.discountRate)).toBe(true);
+      // 絶対額（固定値引）は持ち込まずクリアする（ADR-20260714-pv8・#598）
+      expect(revisedA!.itemDiscount.isZero()).toBe(true);
+      expect(revised.overallDiscount.isZero()).toBe(true);
 
       // deliveryPrice スナップショット = 改訂元明細の finalAmount（納品先価格・§8.4）。単価解決に影響されない
       expect(revisedA!.revisedDetail?.deliveryPrice.equals(itemA.finalAmount)).toBe(true);
       expect(revisedB!.revisedDetail?.deliveryPrice.equals(itemB.finalAmount)).toBe(true);
+    });
+
+    it("得意先単価が改訂元の明細値引を下回っても改訂できる（値引を持ち込まないため負値にならない・#598）", () => {
+      const item = EstimateItem.create({
+        productId: ProductId.generate(),
+        sortOrder: 1,
+        itemName: new ItemName("商品C"),
+        quantity: new Quantity(1),
+        unit: new Unit("個"),
+        unitPrice: Money.fromMajorUnits(1000),
+        itemDiscount: Money.fromMajorUnits(500),
+      });
+      const source = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.DELIVERY_LOCATION,
+        tax: TAX,
+        items: [item],
+      });
+      const estimate = Estimate.create({
+        ...commonHeader(),
+        estimateNumber: EstimateNumber.parse("N2500001"),
+        variations: [source],
+      });
+      // 得意先単価 300 < 改訂元の明細値引 500。値引を複写すると 300 − 500 = −200 で負値ガードが throw していた
+      const prices = revisionPricesFor(source, () => Money.fromMajorUnits(300));
+
+      const revised = estimate.reviseForCustomer(source.id, prices);
+
+      const [revisedItem] = revised.items;
+      expect(revisedItem!.itemDiscount.isZero()).toBe(true);
+      expect(revisedItem!.finalAmount.equals(Money.fromMajorUnits(300))).toBe(true);
+      // 粗利スナップショットは改訂元の finalAmount（値引後 500）のまま（§8.4）
+      expect(revisedItem!.revisedDetail?.deliveryPrice.equals(Money.fromMajorUnits(500))).toBe(
+        true
+      );
+    });
+
+    it("得意先側の小計が改訂元の全体値引を下回っても改訂できる（全体値引も持ち込まない・#598）", () => {
+      const source = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.DELIVERY_LOCATION,
+        tax: TAX,
+        items: [makeItem(1000)],
+        overallDiscount: Money.fromMajorUnits(900),
+      });
+      const estimate = Estimate.create({
+        ...commonHeader(),
+        estimateNumber: EstimateNumber.parse("N2500001"),
+        variations: [source],
+      });
+      // 得意先側の小計 300 < 改訂元の全体値引 900。複写すると 300 − 900 = −600 で負値ガードが throw していた
+      const prices = revisionPricesFor(source, () => Money.fromMajorUnits(300));
+
+      const revised = estimate.reviseForCustomer(source.id, prices);
+
+      expect(revised.overallDiscount.isZero()).toBe(true);
+      expect(revised.finalSubtotal.equals(Money.fromMajorUnits(300))).toBe(true);
     });
 
     it("解決済み単価マップに該当商品が無い場合は BusinessRuleViolationError（黙って複写しない）", () => {
