@@ -51,7 +51,7 @@
 - コミットメッセージ: `fix: 改訂先生成で固定値引を複写せずクリアする（ADR-20260714-pv8）`
 
 ### Step 2: UI 説明文と E2E コメントの整合
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/app/(features)/estimates/[estimateNumber]/ReviseForCustomerDialog.tsx`
   - `src/app/(features)/estimates/estimates-revise-for-customer.e2e.ts`
