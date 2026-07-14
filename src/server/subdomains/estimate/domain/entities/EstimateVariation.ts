@@ -503,11 +503,16 @@ export class EstimateVariation {
   private findItemOrThrow(itemId: EstimateItemId): EstimateItem {
     const item = this._items.find((i) => i.id.equals(itemId));
     if (!item) {
-      throw new BusinessRuleViolationError(
-        `指定された明細はこのバリエーションに存在しません: ${itemId.value}`
-      );
+      throw EstimateVariation.itemNotFoundError(itemId);
     }
     return item;
+  }
+
+  /** 明細の解決失敗（id 指定・索引引きの双方で同一メッセージを使う）。 */
+  private static itemNotFoundError(itemId: EstimateItemId): BusinessRuleViolationError {
+    return new BusinessRuleViolationError(
+      `指定された明細はこのバリエーションに存在しません: ${itemId.value}`
+    );
   }
 
   private touch(): void {
@@ -627,6 +632,9 @@ export class EstimateVariation {
    * ——`items` を素通しすると構成明細がバラの通常明細として複写され、群が消える（#602 の原因）。
    */
   get lineStructure(): VariationLineStructure {
+    // 構成明細 id → 実体の索引を 1 度だけ作る。群ごとに _items を線形走査すると
+    // O(群数 × 構成数 × 明細数) になるため（明細 200 行・群 20 個で 2 万回の id 比較）。
+    const itemsById = new Map(this._items.map((item) => [item.id.value, item]));
     const memberIds = new Set(
       this._setGroups.flatMap((g) => g.memberItemIds.map((id) => id.value))
     );
@@ -634,7 +642,13 @@ export class EstimateVariation {
       normalItems: this._items.filter((item) => !memberIds.has(item.id.value)),
       setGroups: this._setGroups.map((group) => ({
         group,
-        components: group.memberItemIds.map((id) => this.findItemOrThrow(id)),
+        components: group.memberItemIds.map((id) => {
+          const item = itemsById.get(id.value);
+          if (!item) {
+            throw EstimateVariation.itemNotFoundError(id);
+          }
+          return item;
+        }),
       })),
     };
   }
