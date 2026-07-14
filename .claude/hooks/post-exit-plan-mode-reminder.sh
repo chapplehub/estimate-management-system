@@ -6,6 +6,7 @@ INPUT=$(cat)
 
 CONTEXT="📋 Plan Mode 終了リマインド:
 - Plan file naming: ファイル名が {kebab-case-description}.md になっているか確認（plan.md やランダム名は不可）
+- Test strategy: 各ステップに テスト戦略（TDD / 実装後テスト / テスト不要）が記載されているか確認
 - Commit plan before implementation: 計画ファイルを実装開始前にコミットすること"
 
 echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":$(echo "$CONTEXT" | jq -Rs .)}}"
