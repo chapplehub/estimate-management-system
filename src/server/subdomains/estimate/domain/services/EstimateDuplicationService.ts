@@ -6,6 +6,7 @@ import {
   EstimateFactory,
   type AfterRepairDetailDescriptor,
   type CopiedVariationDescriptor,
+  type EstimateItemDescriptor,
   type RepairDetailDescriptor,
 } from "../entities";
 import { EstimateNumber } from "../values/EstimateNumber";
@@ -63,8 +64,9 @@ type SourceVariation = Estimate["variations"][number];
 /**
  * 見積複製の横断ドメインサービス（C6 / 設計書 §5）。
  *
- * 複製元（読み取り）から、選択バリエーションを「単価クリア・固定値引クリア・率継承・
- * 連番振り直し・品目/数量/メモ複写」で記述子化し、複製時更新項目と継承項目を合成して
+ * 複製元（読み取り）から、選択バリエーションを「単価再解決・固定値引クリア・率継承・
+ * 連番振り直し・品目/数量/メモ複写・セット群の群ごと複写（ADR-20260714-k2m）」で記述子化し、
+ * 複製時更新項目と継承項目を合成して
  * EstimateFactory.duplicate に渡す。子エンティティの構築と系譜のペア化はファクトリの責務
  * （集約境界規約 / ADR-0027・0036）。複製元は一切変更しない。
  *
@@ -124,6 +126,9 @@ export class EstimateDuplicationService {
    *   不変則 単価=f(宛先,商品,年月日) を回復）。固定値引（itemDiscount / overallDiscount）は付与しない（クリア）。
    * - 率（discountRate）は継承する。
    * - 品目・数量・単位・メモは複写。variationNumber は複製先で連番に振り直す。
+   * - セット群は群ごとスナップショット複写する（ADR-20260714-k2m・#602。セット商品マスタから
+   *   再展開しない）。構成明細は通常明細と同型の価格付き末端行（ADR-0047）なので同じ変換規則を
+   *   適用し、群の入れ子 `components` に積む（id 配線は EstimateFactory.buildSetGroups が行う）。
    * - status は記述子に持たせず、ファクトリ既定の ACTIVE になる（すべて有効 / §5.3）。
    */
   private static toCopiedDescriptor(
@@ -131,25 +136,39 @@ export class EstimateDuplicationService {
     variationNumber: number,
     resolvedUnitPrices: DuplicatedUnitPriceMap
   ): CopiedVariationDescriptor {
+    // 平坦な items（通常明細＋構成明細の同居・ADR-0047）を群の所属で仕分けてから変換する。
+    // 素通しすると構成明細がバラの通常明細として複写され、群が消える（#602）。
+    const structure = source.lineStructure;
+    const copyItem = (item: SourceVariation["items"][number]): EstimateItemDescriptor => ({
+      productId: item.productId,
+      sortOrder: item.sortOrder,
+      itemName: item.itemName,
+      quantity: item.quantity,
+      unit: item.unit,
+      unitPrice: EstimateDuplicationService.resolvedUnitPriceOrThrow(
+        resolvedUnitPrices,
+        source.submissionType,
+        item
+      ),
+      discountRate: item.discountRate,
+      customerMemo: item.customerMemo,
+      internalMemo: item.internalMemo,
+    });
+
     return {
       variationNumber,
       sourceVariationId: source.id,
       // 提出区分は複製元バリエーション単位で継承する（ADR-0045 / §5.3）
       submissionType: source.submissionType,
-      items: source.items.map((item) => ({
-        productId: item.productId,
-        sortOrder: item.sortOrder,
-        itemName: item.itemName,
-        quantity: item.quantity,
-        unit: item.unit,
-        unitPrice: EstimateDuplicationService.resolvedUnitPriceOrThrow(
-          resolvedUnitPrices,
-          source.submissionType,
-          item
-        ),
-        discountRate: item.discountRate,
-        customerMemo: item.customerMemo,
-        internalMemo: item.internalMemo,
+      items: structure.normalItems.map(copyItem),
+      setGroups: structure.setGroups.map(({ group, components }) => ({
+        productId: group.productId,
+        itemName: group.itemName,
+        unit: group.unit,
+        // 群自身は価格を持たない（価格保守対象商品ではない）ため単価解決の対象に入れない
+        components: components.map(copyItem),
+        customerMemo: group.customerMemo,
+        internalMemo: group.internalMemo,
       })),
       customerMemo: source.customerMemo,
       internalMemo: source.internalMemo,

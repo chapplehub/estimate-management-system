@@ -78,7 +78,7 @@
 - コミットメッセージ: `fix: 得意先改訂でセット群が引き継がれず構成明細がバラの通常明細になる`
 
 ### Step 3: 見積複製でセット群を引き継ぐ
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/server/subdomains/estimate/domain/services/EstimateDuplicationService.ts`（`toCopiedDescriptor`）
   - `src/server/subdomains/estimate/domain/services/__tests__/EstimateDuplicationService.test.ts`
