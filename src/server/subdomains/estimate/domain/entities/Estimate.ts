@@ -212,7 +212,12 @@ export class Estimate {
    * 生成規則:
    * - 単価は得意先宛で解決した見積単価（`resolvedUnitPrices`）を用いる（#431。従来の改訂元単価の
    *   全複写を撤去し、不変則 単価=f(宛先,商品,年月日) を回復。得意先卸値を出発点にする）
-   * - 掛率・固定値引・メモ・全体値引は改訂元から複写する
+   * - 率（掛率 discountRate）・メモは改訂元から複写する
+   * - 絶対額の固定値引（明細値引 itemDiscount / 全体値引 overallDiscount）は持ち込まずクリアする
+   *   （ADR-20260714-pv8・#598。絶対額は改訂元の単価を基準に決めた譲歩額であり、単価を得意先宛へ
+   *   再解決した時点で根拠を失う。複写すると値引が再解決後の金額を上回って負値ガードに掛かり、
+   *   有効な見積が改訂不能になりうる。担当者は改訂先で得意先価格を基準に入れ直す。
+   *   複製 EstimateDuplicationService も同じ原則でクリアする）
    * - 明細ごとに改訂元明細の finalAmount を deliveryPrice としてスナップショットする
    *   （明細単位の粗利 = 納品先価格 − 得意先価格 の真実の源・§8.4。改訂元は凍結される
    *   が、見積書に印字される確定値のため導出ではなくスナップショットを真実の源とする）
@@ -247,7 +252,7 @@ export class Estimate {
         // 単価は得意先宛で解決した値。マップ欠落は黙って複写・0円にせず拒否する（#431）。
         unitPrice: Estimate.resolvedRevisedUnitPriceOrThrow(resolvedUnitPrices, item),
         discountRate: item.discountRate,
-        itemDiscount: item.itemDiscount,
+        // itemDiscount は付与しない（クリア・ADR-20260714-pv8）
         customerMemo: item.customerMemo,
         internalMemo: item.internalMemo,
         revisedDetail: RevisedEstimateItemDetail.create(item.finalAmount),
@@ -259,7 +264,7 @@ export class Estimate {
       revisedFrom: source.id,
       tax: this.taxContext(),
       items,
-      overallDiscount: source.overallDiscount,
+      // overallDiscount は付与しない（クリア・ADR-20260714-pv8）
       customerMemo: source.customerMemo,
       internalMemo: source.internalMemo,
     });
