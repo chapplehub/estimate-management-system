@@ -21,6 +21,7 @@ import { TaxRate } from "../values/TaxRate";
 import { TaxRoundingType } from "../values/TaxRoundingType";
 import type { AfterRepairEstimateDetail } from "./AfterRepairEstimateDetail";
 import { EstimateItem } from "./EstimateItem";
+import { EstimateSetGroup } from "./EstimateSetGroup";
 import {
   EstimateVariation,
   type ItemPriceAdjustment,
@@ -218,6 +219,9 @@ export class Estimate {
    *   再解決した時点で根拠を失う。複写すると値引が再解決後の金額を上回って負値ガードに掛かり、
    *   有効な見積が改訂不能になりうる。担当者は改訂先で得意先価格を基準に入れ直す。
    *   複製 EstimateDuplicationService も同じ原則でクリアする）
+   * - セット群は群ごとスナップショット複写する（ADR-20260714-k2m・#602。群の存在・構成・
+   *   スナップショット属性・メモを複写し、セット商品マスタから再展開しない。構成明細は通常明細と
+   *   同型の価格付き末端行なので上記と同じ変換規則を適用する）
    * - 明細ごとに改訂元明細の finalAmount を deliveryPrice としてスナップショットする
    *   （明細単位の粗利 = 納品先価格 − 得意先価格 の真実の源・§8.4。改訂元は凍結される
    *   が、見積書に印字される確定値のため導出ではなくスナップショットを真実の源とする）
@@ -242,7 +246,10 @@ export class Estimate {
       );
     }
 
-    const items = source.items.map((item) =>
+    // 平坦な items（通常明細＋構成明細の同居・ADR-0047）を群の所属で仕分けてから変換する。
+    // 素通しすると構成明細がバラの通常明細として複写され、群が消える（#602）。
+    const structure = source.lineStructure;
+    const reviseItem = (item: Readonly<EstimateItem>): EstimateItem =>
       EstimateItem.create({
         productId: item.productId,
         sortOrder: item.sortOrder,
@@ -256,14 +263,35 @@ export class Estimate {
         customerMemo: item.customerMemo,
         internalMemo: item.internalMemo,
         revisedDetail: RevisedEstimateItemDetail.create(item.finalAmount),
-      })
-    );
+      });
+
+    const normalItems = structure.normalItems.map(reviseItem);
+    // 構成明細は通常明細と同型の価格付き末端行（ADR-0047）なので同じ変換規則を適用する。
+    // 構成明細を先に create して id を確定させてから群の memberItemIds へ配線する
+    // （EstimateFactory.buildSetGroups と同じ手順・ADR-20260714-k2m）。
+    const componentItems: EstimateItem[] = [];
+    const setGroups = structure.setGroups.map(({ group, components }) => {
+      const revisedComponents = components.map(reviseItem);
+      componentItems.push(...revisedComponents);
+      return EstimateSetGroup.create({
+        productId: group.productId,
+        itemName: group.itemName,
+        unit: group.unit,
+        memberItemIds: revisedComponents.map((c) => c.id),
+        // 群メモは複写する。改訂先は行構成固定で C4 全置換の経路が塞がれており、群メモを
+        // 入れ直す手段が無いためクリアすると復旧不能になる（固定値引との非対称・ADR-20260714-k2m）。
+        customerMemo: group.customerMemo,
+        internalMemo: group.internalMemo,
+      });
+    });
+
     const revised = EstimateVariation.create({
       variationNumber: this.nextVariationNumber(),
       submissionType: SubmissionType.CUSTOMER,
       revisedFrom: source.id,
       tax: this.taxContext(),
-      items,
+      items: [...normalItems, ...componentItems],
+      setGroups,
       // overallDiscount は付与しない（クリア・ADR-20260714-pv8）
       customerMemo: source.customerMemo,
       internalMemo: source.internalMemo,

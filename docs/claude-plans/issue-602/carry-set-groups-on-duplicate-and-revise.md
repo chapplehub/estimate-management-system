@@ -64,7 +64,7 @@
 - コミットメッセージ: `feat: EstimateVariation に lineStructure を追加しセット群の平坦⇔入れ子変換を一本化`
 
 ### Step 2: 得意先改訂でセット群を引き継ぐ
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/server/subdomains/estimate/domain/entities/Estimate.ts`（`reviseForCustomer`）
   - `src/server/subdomains/estimate/domain/entities/__tests__/Estimate.test.ts`

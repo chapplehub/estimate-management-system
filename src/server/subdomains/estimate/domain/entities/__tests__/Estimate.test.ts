@@ -21,6 +21,7 @@ import { TaxRoundingType } from "../../values/TaxRoundingType";
 import { AfterRepairEstimateDetail } from "../AfterRepairEstimateDetail";
 import { Estimate, type RevisedUnitPriceMap } from "../Estimate";
 import { EstimateItem } from "../EstimateItem";
+import { EstimateSetGroup } from "../EstimateSetGroup";
 import { EstimateVariation, type TaxContext } from "../EstimateVariation";
 import { RepairEstimateDetail } from "../RepairEstimateDetail";
 
@@ -785,6 +786,119 @@ describe("Estimate", () => {
 
       expect(() => estimate.updateVariation(source.id, { items: [makeItem()] })).toThrow(
         BusinessRuleViolationError
+      );
+    });
+  });
+
+  describe("reviseForCustomer() とセット群の引き継ぎ（#602・ADR-20260714-k2m）", () => {
+    /** 納品先宛バリエーション（セット群1つ＝構成明細2件＋通常明細1件）の見積を組み立てる。 */
+    function buildDeliveryEstimateWithSetGroup() {
+      const component1 = EstimateItem.create({
+        productId: ProductId.generate(),
+        sortOrder: 1,
+        itemName: new ItemName("構成1"),
+        quantity: new Quantity(2),
+        unit: new Unit("個"),
+        unitPrice: Money.fromMajorUnits(1000),
+        discountRate: new DiscountRate(0.9),
+        itemDiscount: Money.fromMajorUnits(100),
+        customerMemo: Memo.create("構成1の顧客メモ"),
+        internalMemo: Memo.create("構成1の社内メモ"),
+      });
+      const component2 = EstimateItem.create({
+        productId: ProductId.generate(),
+        sortOrder: 2,
+        itemName: new ItemName("構成2"),
+        quantity: new Quantity(1),
+        unit: new Unit("個"),
+        unitPrice: Money.fromMajorUnits(2000),
+      });
+      const normal = EstimateItem.create({
+        productId: ProductId.generate(),
+        sortOrder: 3,
+        itemName: new ItemName("通常明細"),
+        quantity: new Quantity(1),
+        unit: new Unit("個"),
+        unitPrice: Money.fromMajorUnits(500),
+      });
+      const setProductId = ProductId.generate();
+      const group = EstimateSetGroup.create({
+        productId: setProductId,
+        itemName: new ItemName("セット商品X"),
+        unit: new Unit("式"),
+        memberItemIds: [component1.id, component2.id],
+        customerMemo: Memo.create("群の顧客メモ"),
+        internalMemo: Memo.create("群の社内メモ"),
+      });
+      const source = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.DELIVERY_LOCATION,
+        tax: TAX,
+        items: [component1, component2, normal],
+        setGroups: [group],
+      });
+      const estimate = Estimate.create({
+        ...commonHeader(),
+        estimateNumber: EstimateNumber.parse("N2500001"),
+        variations: [source],
+      });
+      return { estimate, source, group, component1, component2, normal, setProductId };
+    }
+
+    it("セット群が群ごと引き継がれ、構成明細は新しい実体として群に配線される", () => {
+      const { estimate, source, group, component1, component2, setProductId } =
+        buildDeliveryEstimateWithSetGroup();
+
+      const revised = estimate.reviseForCustomer(source.id, revisionPricesFor(source));
+
+      expect(revised.setGroups).toHaveLength(1);
+      const revisedGroup = revised.setGroups[0]!;
+      // 群は新採番され、構成明細も新実体になる（改訂元の id を指してはならない）
+      expect(revisedGroup.id.equals(group.id)).toBe(false);
+      expect(revisedGroup.memberItemIds).toHaveLength(2);
+      for (const memberId of revisedGroup.memberItemIds) {
+        expect(memberId.equals(component1.id)).toBe(false);
+        expect(memberId.equals(component2.id)).toBe(false);
+      }
+
+      // 群のスナップショット属性・メモは改訂元から複写する（群メモは改訂先で編集経路が無く復旧不能なため）
+      expect(revisedGroup.productId.equals(setProductId)).toBe(true);
+      expect(revisedGroup.itemName.value).toBe("セット商品X");
+      expect(revisedGroup.unit.value).toBe("式");
+      expect(revisedGroup.customerMemo.value).toBe("群の顧客メモ");
+      expect(revisedGroup.internalMemo.value).toBe("群の社内メモ");
+
+      // 構成明細は改訂先バリエーションの items に同居し、通常明細は群に吸い込まれない
+      const structure = revised.lineStructure;
+      expect(structure.normalItems.map((i) => i.itemName.value)).toEqual(["通常明細"]);
+      expect(structure.setGroups[0]!.components.map((c) => c.itemName.value)).toEqual([
+        "構成1",
+        "構成2",
+      ]);
+    });
+
+    it("構成明細にも通常明細と同じ変換規則（単価再解決・掛率継承・固定値引クリア・deliveryPrice）が適用される", () => {
+      const { estimate, source, component1 } = buildDeliveryEstimateWithSetGroup();
+      // 得意先宛の解決単価は改訂元（納品先価格）と別値にし、複写でなく解決であることを観測可能にする
+      const prices = revisionPricesFor(source, (item) =>
+        item.productId.equals(component1.productId)
+          ? Money.fromMajorUnits(700)
+          : Money.fromMajorUnits(300)
+      );
+
+      const revised = estimate.reviseForCustomer(source.id, prices);
+
+      const [revisedComponent1] = revised.lineStructure.setGroups[0]!.components;
+      expect(revisedComponent1!.unitPrice.majorUnits).toBe(700);
+      expect(revisedComponent1!.quantity.value).toBe(2);
+      expect(revisedComponent1!.sortOrder).toBe(1);
+      expect(revisedComponent1!.discountRate.equals(component1.discountRate)).toBe(true);
+      expect(revisedComponent1!.itemDiscount.isZero()).toBe(true);
+      expect(revisedComponent1!.customerMemo.value).toBe("構成1の顧客メモ");
+      expect(revisedComponent1!.internalMemo.value).toBe("構成1の社内メモ");
+      // 粗利スナップショットは改訂元 構成明細の finalAmount（§8.4）
+      expect(revisedComponent1!.revisedDetail?.deliveryPrice.equals(component1.finalAmount)).toBe(
+        true
       );
     });
   });
