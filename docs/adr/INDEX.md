@@ -130,3 +130,4 @@
 | [0020](0020-e2e-test-composition-and-execution-strategy.md) | E2Eテストの構成・実行戦略 | 採用 | 2026-04-17 |
 | [20260629-3x5](20260629-3x5-e2e-time-dependent-tests-use-today-relative-seed.md) | E2E の時点依存テストは today 相対シードで扱う（クロック固定しない） | 採用 | 2026-06-29 |
 | [20260709-f2q](20260709-f2q-dev-and-e2e-seed-fixtures-fully-separated.md) | dev と e2e の見積・申請 seed フィクスチャを完全分離する（共有をやめ重複を許す） | 採用 | 2026-07-09 |
+| [20260715-f71](20260715-f71-shared-db-test-code-registry-static-uniqueness.md) | 共有DB単体テストのコード割当をコードキー・レジストリで静的に一意化する | 採用 | 2026-07-15 |
