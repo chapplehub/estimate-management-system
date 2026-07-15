@@ -39,7 +39,7 @@ type Owners<M extends CodeMap> = M[keyof M]["owner"];
  */
 type OwnerEntry<M extends CodeMap, O extends string> = {
   readonly [K in keyof M as M[K]["owner"] extends O ? M[K]["use"] : never]: K;
-} & { readonly codes: readonly string[] };
+} & { readonly codes: string[] };
 
 /** 宣言マップ `M` から構築される派生索引型（所有者 → 用途別コード＋全コード配列）。 */
 type DerivedIndex<M extends CodeMap> = {

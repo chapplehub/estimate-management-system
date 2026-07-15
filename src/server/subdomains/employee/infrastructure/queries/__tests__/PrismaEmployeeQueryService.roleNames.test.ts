@@ -1,4 +1,6 @@
 import { ensureTestDepartment } from "@server/__tests__/helpers/ensureTestDepartment";
+import { roleTestCodes } from "@server/__tests__/helpers/test-codes/roleTestCodes";
+import { employeeTestCodes } from "@server/__tests__/helpers/test-codes/employeeTestCodes";
 import prisma from "@server/prisma";
 import { generateId } from "@server/shared/generateId";
 import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
@@ -15,9 +17,9 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
  *   どちらも無     → null
  */
 describe("PrismaEmployeeQueryService 役割名(assignedRoleName / superiorRoleName)", () => {
-  // ファイル別プレフィックスで並列実行の P2002 を避ける（#327）。
-  const TEST_EMP_CDS = ["EMP990710", "EMP990711", "EMP990712", "EMP990713"];
-  const TEST_ROLE_CDS = ["ROLE971", "ROLE972", "ROLE973"];
+  // コード割当はレジストリを唯一のソースとする（#608 / ADR 20260715-f71）。二重占有は TS1117。
+  const TEST_EMP_CDS = employeeTestCodes["employee.roleNames"].codes;
+  const TEST_ROLE_CDS = roleTestCodes["employee.roleNames"].codes;
 
   let service: PrismaEmployeeQueryService;
   let deptId: string;

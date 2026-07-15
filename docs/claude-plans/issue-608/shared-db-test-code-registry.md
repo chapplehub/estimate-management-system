@@ -72,7 +72,7 @@ DB依存の単体テスト（vitest）は単一の共有テストDB上でファ�
 - コミットメッセージ: `test: role/employee のDBテストコードをレジストリに集約し二重割当を解消 (#608)`
 
 ### Step 3: 衝突2ファイルをレジストリ参照へ移行（実害の解消）
-- [ ] **完了**
+- [x] **完了**（EMP990710-711 衝突相手の isSoleMember も前倒しで移行。deviations.md #2 参照）
 - 対象ファイル:
   - `src/server/subdomains/role/application/commands/__tests__/UpdateRoleCommand.test.ts`
   - `src/server/subdomains/employee/infrastructure/queries/__tests__/PrismaEmployeeQueryService.roleNames.test.ts`

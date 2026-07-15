@@ -1,4 +1,5 @@
 import prisma from "@server/prisma";
+import { roleTestCodes } from "@server/__tests__/helpers/test-codes/roleTestCodes";
 import { BusinessRuleViolationError, ValidationError } from "@server/shared/errors/DomainError";
 import { ConflictError, NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { Role } from "@subdomains/role/domain/entities/Role";
@@ -16,7 +17,7 @@ describe("UpdateRoleCommand", () => {
   let command: UpdateRoleCommand;
   let roleRepository: PrismaRoleRepository;
 
-  const TEST_ROLE_CDS = ["ROLE971", "ROLE972", "ROLE973"];
+  const TEST_ROLE_CDS = roleTestCodes["role.updateCommand"].codes;
 
   let kachouPositionId: string;
   let buchouPositionId: string;
