@@ -83,7 +83,8 @@ DB依存の単体テスト（vitest）は単一の共有テストDB上でファ�
 - コミットメッセージ: `fix: 役割コード二重占有による role/employee テストの並列 flaky を解消 (#608)`
 
 ### Step 4: 同2空間の残り全消費者をレジストリ参照へ移行（完全統治）
-- [ ] **完了**
+- [x] **完了**（残り23ファイルを移行。純ドメイン値テスト RoleCd/EmployeeCd と EMP999999
+  センチネル、estimate/approval 系フィクスチャは対象外。詳細は概要・レジストリ doc 参照）
 - 対象ファイル: ROLE9xx/EMP9xxxx を使う role/employee 系テストの残り全ファイル（`PrismaRoleQueryService.*`・`Search/Get/Create/Delete*Query|Command`・各 DomainService テスト・`PrismaEmployeeRepository`・`PrismaEmployeeQueryService.*` ほか。着手時に `grep -rl "ROLE9\|EMP99" src/**/__tests__` で全量確定）
 - テスト戦略: 実装後テスト（対象は既存テスト群。移行後にフルスイート反復で緑安定を確認）
 - 作業内容:

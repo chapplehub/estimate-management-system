@@ -1,4 +1,5 @@
 import prisma from "@server/prisma";
+import { roleTestCodes } from "@server/__tests__/helpers/test-codes/roleTestCodes";
 import { Role } from "@subdomains/role/domain/entities/Role";
 import { RoleCd } from "@subdomains/role/domain/values/RoleCd";
 import { RoleId } from "@subdomains/role/domain/values/RoleId";
@@ -14,7 +15,7 @@ describe("SuperiorRoleValidationDomainService", () => {
   let service: SuperiorRoleValidationDomainService;
   let roleRepository: PrismaRoleRepository;
 
-  const TEST_ROLE_CDS = ["ROLE995", "ROLE996"];
+  const TEST_ROLE_CDS = roleTestCodes["role.superiorValidation"].codes;
 
   // シードデータの役職ID
   let kachouPositionId: string; // 課長 (POS001) - 上位: 部長

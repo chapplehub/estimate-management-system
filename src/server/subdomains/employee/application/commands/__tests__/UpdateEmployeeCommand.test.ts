@@ -1,5 +1,7 @@
 import { ensureTestDepartment } from "@server/__tests__/helpers/ensureTestDepartment";
 import prisma from "@server/prisma";
+import { roleTestCodes } from "@server/__tests__/helpers/test-codes/roleTestCodes";
+import { employeeTestCodes } from "@server/__tests__/helpers/test-codes/employeeTestCodes";
 import { FakeUserManagementService } from "@server/shared/auth/fake/FakeUserManagementService";
 import { USER_ROLES } from "@server/shared/auth/types";
 import { ConflictError, NotFoundEntityError } from "@server/shared/errors/ApplicationError";
@@ -23,8 +25,8 @@ describe("UpdateEmployeeCommand", () => {
 
   const TEST_EMPLOYEE_ID = "00000000-0000-7000-8000-100000000001";
   const ANOTHER_EMPLOYEE_ID = "00000000-0000-7000-8000-100000000002";
-  const TEST_EMP_CDS = ["EMP999912", "EMP999913"];
-  const TEST_ROLE_CDS = ["ROLE954", "ROLE955", "ROLE960"];
+  const TEST_EMP_CDS = employeeTestCodes["employee.updateCommand"].codes;
+  const TEST_ROLE_CDS = roleTestCodes["employee.updateCommand"].codes;
   let TEST_DEPT_ID: string;
   let roleAId: string; // 課長級（POS001）
   let roleBId: string; // 課長級（POS001）
@@ -65,7 +67,7 @@ describe("UpdateEmployeeCommand", () => {
     await prisma.employee.create({
       data: {
         id: TEST_EMPLOYEE_ID,
-        employeeCd: "EMP999912",
+        employeeCd: TEST_EMP_CDS[0],
         email: "existing@example.com",
         name: "既存従業員",
         departmentId: TEST_DEPT_ID,
@@ -76,7 +78,7 @@ describe("UpdateEmployeeCommand", () => {
     await prisma.employee.create({
       data: {
         id: ANOTHER_EMPLOYEE_ID,
-        employeeCd: "EMP999913",
+        employeeCd: TEST_EMP_CDS[1],
         email: "another@example.com",
         name: "別従業員",
         departmentId: TEST_DEPT_ID,
@@ -116,7 +118,7 @@ describe("UpdateEmployeeCommand", () => {
   it("従業員情報を更新できる（email変更なし）", async () => {
     await command.execute({
       id: TEST_EMPLOYEE_ID,
-      employeeCd: "EMP999912",
+      employeeCd: TEST_EMP_CDS[0],
       email: "existing@example.com", // 変更なし
       name: "更新後従業員",
       departmentId: TEST_DEPT_ID,
@@ -136,7 +138,7 @@ describe("UpdateEmployeeCommand", () => {
   it("email変更時に認証ユーザーのemailも同期される", async () => {
     await command.execute({
       id: TEST_EMPLOYEE_ID,
-      employeeCd: "EMP999912",
+      employeeCd: TEST_EMP_CDS[0],
       email: "newemail@example.com", // 変更
       name: "既存従業員",
       departmentId: TEST_DEPT_ID,
@@ -158,7 +160,7 @@ describe("UpdateEmployeeCommand", () => {
   it("role変更時に認証ユーザーのroleも同期される", async () => {
     await command.execute({
       id: TEST_EMPLOYEE_ID,
-      employeeCd: "EMP999912",
+      employeeCd: TEST_EMP_CDS[0],
       email: "existing@example.com",
       name: "既存従業員",
       departmentId: TEST_DEPT_ID,
@@ -175,7 +177,7 @@ describe("UpdateEmployeeCommand", () => {
     // 別ユーザーが先に保存して version が進んだ状況（1 → 2）を再現
     await command.execute({
       id: TEST_EMPLOYEE_ID,
-      employeeCd: "EMP999912",
+      employeeCd: TEST_EMP_CDS[0],
       email: "existing@example.com",
       name: "先行ユーザーの変更",
       departmentId: TEST_DEPT_ID,
@@ -187,7 +189,7 @@ describe("UpdateEmployeeCommand", () => {
     await expect(
       command.execute({
         id: TEST_EMPLOYEE_ID,
-        employeeCd: "EMP999912",
+        employeeCd: TEST_EMP_CDS[0],
         email: "stale@example.com",
         name: "後追いユーザーの変更",
         departmentId: TEST_DEPT_ID,
@@ -214,7 +216,7 @@ describe("UpdateEmployeeCommand", () => {
     await expect(
       command.execute({
         id: "00000000-0000-7000-8000-000000000003",
-        employeeCd: "EMP999912",
+        employeeCd: TEST_EMP_CDS[0],
         email: "existing@example.com",
         name: "更新テスト",
         departmentId: TEST_DEPT_ID,
@@ -225,7 +227,7 @@ describe("UpdateEmployeeCommand", () => {
     await expect(
       command.execute({
         id: "00000000-0000-7000-8000-000000000003",
-        employeeCd: "EMP999912",
+        employeeCd: TEST_EMP_CDS[0],
         email: "existing@example.com",
         name: "更新テスト",
         departmentId: TEST_DEPT_ID,
@@ -239,7 +241,7 @@ describe("UpdateEmployeeCommand", () => {
     await expect(
       command.execute({
         id: TEST_EMPLOYEE_ID,
-        employeeCd: "EMP999912",
+        employeeCd: TEST_EMP_CDS[0],
         email: "another@example.com", // 別従業員と同じemail
         name: "既存従業員",
         departmentId: TEST_DEPT_ID,
@@ -250,7 +252,7 @@ describe("UpdateEmployeeCommand", () => {
     await expect(
       command.execute({
         id: TEST_EMPLOYEE_ID,
-        employeeCd: "EMP999912",
+        employeeCd: TEST_EMP_CDS[0],
         email: "another@example.com",
         name: "既存従業員",
         departmentId: TEST_DEPT_ID,
@@ -270,7 +272,7 @@ describe("UpdateEmployeeCommand", () => {
     // roleA を割り当て（version 1 → 2）
     await command.execute({
       id: TEST_EMPLOYEE_ID,
-      employeeCd: "EMP999912",
+      employeeCd: TEST_EMP_CDS[0],
       email: "existing@example.com",
       name: "既存従業員",
       departmentId: TEST_DEPT_ID,
@@ -285,7 +287,7 @@ describe("UpdateEmployeeCommand", () => {
     // roleB へ置換（version 2 → 3）
     await command.execute({
       id: TEST_EMPLOYEE_ID,
-      employeeCd: "EMP999912",
+      employeeCd: TEST_EMP_CDS[0],
       email: "existing@example.com",
       name: "既存従業員",
       departmentId: TEST_DEPT_ID,
@@ -302,7 +304,7 @@ describe("UpdateEmployeeCommand", () => {
     // まず roleA を割り当て
     await command.execute({
       id: TEST_EMPLOYEE_ID,
-      employeeCd: "EMP999912",
+      employeeCd: TEST_EMP_CDS[0],
       email: "existing@example.com",
       name: "既存従業員",
       departmentId: TEST_DEPT_ID,
@@ -314,7 +316,7 @@ describe("UpdateEmployeeCommand", () => {
     // roleId 省略で更新 → 解除（次の状態で上書き）
     await command.execute({
       id: TEST_EMPLOYEE_ID,
-      employeeCd: "EMP999912",
+      employeeCd: TEST_EMP_CDS[0],
       email: "existing@example.com",
       name: "既存従業員",
       departmentId: TEST_DEPT_ID,
@@ -330,7 +332,7 @@ describe("UpdateEmployeeCommand", () => {
     // 課員（役割なし）に上位役割 roleA（課長級）を設定
     await command.execute({
       id: TEST_EMPLOYEE_ID,
-      employeeCd: "EMP999912",
+      employeeCd: TEST_EMP_CDS[0],
       email: "existing@example.com",
       name: "既存従業員",
       departmentId: TEST_DEPT_ID,
@@ -346,7 +348,7 @@ describe("UpdateEmployeeCommand", () => {
     // superiorRoleId 省略で更新 → 解除
     await command.execute({
       id: TEST_EMPLOYEE_ID,
-      employeeCd: "EMP999912",
+      employeeCd: TEST_EMP_CDS[0],
       email: "existing@example.com",
       name: "既存従業員",
       departmentId: TEST_DEPT_ID,
@@ -362,7 +364,7 @@ describe("UpdateEmployeeCommand", () => {
     await expect(
       command.execute({
         id: TEST_EMPLOYEE_ID,
-        employeeCd: "EMP999912",
+        employeeCd: TEST_EMP_CDS[0],
         email: "existing@example.com",
         name: "部長級上位役割",
         departmentId: TEST_DEPT_ID,
@@ -382,7 +384,7 @@ describe("UpdateEmployeeCommand", () => {
     // まず課員に上位役割を設定
     await command.execute({
       id: TEST_EMPLOYEE_ID,
-      employeeCd: "EMP999912",
+      employeeCd: TEST_EMP_CDS[0],
       email: "existing@example.com",
       name: "既存従業員",
       departmentId: TEST_DEPT_ID,
@@ -394,7 +396,7 @@ describe("UpdateEmployeeCommand", () => {
     // 担当役割 roleB を割り当て（superiorRoleId は同時指定しても無視される）
     await command.execute({
       id: TEST_EMPLOYEE_ID,
-      employeeCd: "EMP999912",
+      employeeCd: TEST_EMP_CDS[0],
       email: "existing@example.com",
       name: "既存従業員",
       departmentId: TEST_DEPT_ID,

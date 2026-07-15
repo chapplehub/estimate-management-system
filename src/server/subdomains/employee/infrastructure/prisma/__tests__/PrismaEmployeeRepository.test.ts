@@ -8,14 +8,16 @@ import { DepartmentId } from "@subdomains/department/domain/values/DepartmentId"
 import { RoleId } from "@subdomains/role/domain/values/RoleId";
 import { PrismaEmployeeRepository } from "../PrismaEmployeeRepository";
 import prisma from "@server/prisma";
+import { roleTestCodes } from "@server/__tests__/helpers/test-codes/roleTestCodes";
+import { employeeTestCodes } from "@server/__tests__/helpers/test-codes/employeeTestCodes";
 import { generateId } from "@server/shared/generateId";
 import { ConflictError } from "@server/shared/errors/ApplicationError";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 describe("PrismaEmployeeRepository", () => {
   // ファイル別プレフィックスで並列実行の P2002 を避ける（#327）。roleCd は VarChar(7)。
-  const TEST_EMP_CDS = ["EMP999001", "EMP999002", "EMP999003"];
-  const TEST_ROLE_CDS = ["ROLE951", "ROLE952"];
+  const TEST_EMP_CDS = employeeTestCodes["employee.repository"].codes;
+  const TEST_ROLE_CDS = roleTestCodes["employee.repository"].codes;
 
   let repository: PrismaEmployeeRepository;
   let TEST_DEPT_ID: DepartmentId;
@@ -59,7 +61,7 @@ describe("PrismaEmployeeRepository", () => {
   describe("insert", () => {
     it("新規従業員を保存でき、version は 1 で始まる", async () => {
       const employee = Employee.create(
-        new EmployeeCd("EMP999001"),
+        new EmployeeCd(TEST_EMP_CDS[0]),
         new MailAddress("test-save@example.com"),
         new EmployeeName("テスト太郎"),
         TEST_DEPT_ID
@@ -70,17 +72,17 @@ describe("PrismaEmployeeRepository", () => {
       // 保存されたエンティティを確認
       expect(savedEmployee).not.toBeNull();
       expect(savedEmployee.id.value).toBeTruthy();
-      expect(savedEmployee.employeeCd.value).toBe("EMP999001");
+      expect(savedEmployee.employeeCd.value).toBe(TEST_EMP_CDS[0]);
       expect(savedEmployee.email.value).toBe("test-save@example.com");
       expect(savedEmployee.name.value).toBe("テスト太郎");
 
       // DBから取得して確認（version 列は @default(1)）
       const saved = await prisma.employee.findUnique({
-        where: { employeeCd: "EMP999001" },
+        where: { employeeCd: TEST_EMP_CDS[0] },
       });
 
       expect(saved).not.toBeNull();
-      expect(saved?.employeeCd).toBe("EMP999001");
+      expect(saved?.employeeCd).toBe(TEST_EMP_CDS[0]);
       expect(saved?.email).toBe("test-save@example.com");
       expect(saved?.name).toBe("テスト太郎");
       expect(saved?.version).toBe(1);
@@ -91,7 +93,7 @@ describe("PrismaEmployeeRepository", () => {
     it("一致する expectedVersion で更新でき、version が 1 進む", async () => {
       // まず保存
       const employee = Employee.create(
-        new EmployeeCd("EMP999001"),
+        new EmployeeCd(TEST_EMP_CDS[0]),
         new MailAddress("test-update@example.com"),
         new EmployeeName("更新前の名前"),
         TEST_DEPT_ID
@@ -108,7 +110,7 @@ describe("PrismaEmployeeRepository", () => {
 
       // DBから再取得して確認（version は 1 → 2 へ進む）
       const updated = await prisma.employee.findUnique({
-        where: { employeeCd: "EMP999001" },
+        where: { employeeCd: TEST_EMP_CDS[0] },
       });
 
       expect(updated?.name).toBe("更新後の名前");
@@ -120,7 +122,7 @@ describe("PrismaEmployeeRepository", () => {
     it("古い expectedVersion での更新は ConflictError になり、先行の変更は失われない", async () => {
       const saved = await repository.insert(
         Employee.create(
-          new EmployeeCd("EMP999001"),
+          new EmployeeCd(TEST_EMP_CDS[0]),
           new MailAddress("test-lock@example.com"),
           new EmployeeName("競合テスト"),
           TEST_DEPT_ID
@@ -152,7 +154,7 @@ describe("PrismaEmployeeRepository", () => {
     it("従業員を削除できる", async () => {
       // まず保存
       const employee = Employee.create(
-        new EmployeeCd("EMP999001"),
+        new EmployeeCd(TEST_EMP_CDS[0]),
         new MailAddress("test-delete@example.com"),
         new EmployeeName("削除テスト"),
         TEST_DEPT_ID
@@ -172,7 +174,7 @@ describe("PrismaEmployeeRepository", () => {
     it("担当役割を持つ従業員を削除でき、EmployeeRole 子行も一緒に消える（FK CASCADE 回帰）", async () => {
       // 役割保有従業員を保存（insert で EmployeeRole 子行が 1 件作られる）
       const employee = Employee.create(
-        new EmployeeCd("EMP999001"),
+        new EmployeeCd(TEST_EMP_CDS[0]),
         new MailAddress("role-delete@example.com"),
         new EmployeeName("役割あり削除テスト"),
         TEST_DEPT_ID,
@@ -206,7 +208,7 @@ describe("PrismaEmployeeRepository", () => {
     it("IDで従業員を検索できる", async () => {
       // テストデータを保存
       const employee = Employee.create(
-        new EmployeeCd("EMP999001"),
+        new EmployeeCd(TEST_EMP_CDS[0]),
         new MailAddress("test-findbyid@example.com"),
         new EmployeeName("ID検索テスト"),
         TEST_DEPT_ID
@@ -220,7 +222,7 @@ describe("PrismaEmployeeRepository", () => {
       expect(found?.id.value).toBe(savedEmployee.id.value);
       expect(found?.name.value).toBe("ID検索テスト");
       expect(found?.email.value).toBe("test-findbyid@example.com");
-      expect(found?.employeeCd.value).toBe("EMP999001");
+      expect(found?.employeeCd.value).toBe(TEST_EMP_CDS[0]);
     });
 
     it("存在しないIDの場合nullを返す", async () => {
@@ -236,7 +238,7 @@ describe("PrismaEmployeeRepository", () => {
     it("社員コードで従業員を検索できる", async () => {
       // テストデータを保存
       const employee = Employee.create(
-        new EmployeeCd("EMP999002"),
+        new EmployeeCd(TEST_EMP_CDS[1]),
         new MailAddress("test-findbycd@example.com"),
         new EmployeeName("社員コード検索テスト"),
         TEST_DEPT_ID
@@ -244,10 +246,10 @@ describe("PrismaEmployeeRepository", () => {
       await repository.insert(employee);
 
       // findByEmployeeCdで検索
-      const found = await repository.findByEmployeeCd(new EmployeeCd("EMP999002"));
+      const found = await repository.findByEmployeeCd(new EmployeeCd(TEST_EMP_CDS[1]));
 
       expect(found).not.toBeNull();
-      expect(found?.employeeCd.value).toBe("EMP999002");
+      expect(found?.employeeCd.value).toBe(TEST_EMP_CDS[1]);
       expect(found?.name.value).toBe("社員コード検索テスト");
       expect(found?.email.value).toBe("test-findbycd@example.com");
     });
@@ -261,13 +263,13 @@ describe("PrismaEmployeeRepository", () => {
     it("複数の従業員から正しい従業員を検索できる", async () => {
       // 複数のテストデータを保存
       const employee1 = Employee.create(
-        new EmployeeCd("EMP999002"),
+        new EmployeeCd(TEST_EMP_CDS[1]),
         new MailAddress("test1@example.com"),
         new EmployeeName("テスト1"),
         TEST_DEPT_ID
       );
       const employee2 = Employee.create(
-        new EmployeeCd("EMP999003"),
+        new EmployeeCd(TEST_EMP_CDS[2]),
         new MailAddress("test2@example.com"),
         new EmployeeName("テスト2"),
         TEST_DEPT_ID
@@ -277,10 +279,10 @@ describe("PrismaEmployeeRepository", () => {
       await repository.insert(employee2);
 
       // EMP999003を検索
-      const found = await repository.findByEmployeeCd(new EmployeeCd("EMP999003"));
+      const found = await repository.findByEmployeeCd(new EmployeeCd(TEST_EMP_CDS[2]));
 
       expect(found).not.toBeNull();
-      expect(found?.employeeCd.value).toBe("EMP999003");
+      expect(found?.employeeCd.value).toBe(TEST_EMP_CDS[2]);
       expect(found?.name.value).toBe("テスト2");
     });
   });
@@ -288,7 +290,7 @@ describe("PrismaEmployeeRepository", () => {
   describe("担当役割の永続化（EmployeeRole 子行の 0/1 件同期）", () => {
     it("担当役割ありで保存すると EmployeeRole 子行が 1 件作られ、findById で復元される", async () => {
       const employee = Employee.create(
-        new EmployeeCd("EMP999001"),
+        new EmployeeCd(TEST_EMP_CDS[0]),
         new MailAddress("role-insert@example.com"),
         new EmployeeName("役割あり従業員"),
         TEST_DEPT_ID,
@@ -309,7 +311,7 @@ describe("PrismaEmployeeRepository", () => {
 
     it("担当役割なしで保存すると EmployeeRole 子行は作られず、assignedRoleId は null になる", async () => {
       const employee = Employee.create(
-        new EmployeeCd("EMP999001"),
+        new EmployeeCd(TEST_EMP_CDS[0]),
         new MailAddress("role-none@example.com"),
         new EmployeeName("役割なし従業員"),
         TEST_DEPT_ID
@@ -329,7 +331,7 @@ describe("PrismaEmployeeRepository", () => {
     it("更新で担当役割を別の役割に置換すると、旧行が消え新行だけが残る", async () => {
       const saved = await repository.insert(
         Employee.create(
-          new EmployeeCd("EMP999001"),
+          new EmployeeCd(TEST_EMP_CDS[0]),
           new MailAddress("role-replace@example.com"),
           new EmployeeName("役割置換従業員"),
           TEST_DEPT_ID,
@@ -352,7 +354,7 @@ describe("PrismaEmployeeRepository", () => {
     it("更新で担当役割を解除すると、EmployeeRole 子行が消える", async () => {
       const saved = await repository.insert(
         Employee.create(
-          new EmployeeCd("EMP999001"),
+          new EmployeeCd(TEST_EMP_CDS[0]),
           new MailAddress("role-clear@example.com"),
           new EmployeeName("役割解除従業員"),
           TEST_DEPT_ID,
@@ -375,7 +377,7 @@ describe("PrismaEmployeeRepository", () => {
   describe("課員の上位役割の永続化（EmployeeSuperiorRole 行の 0/1 件同期）", () => {
     it("課員に明示上位役割ありで保存すると行が 1 件作られ、findById で復元される", async () => {
       const employee = Employee.create(
-        new EmployeeCd("EMP999001"),
+        new EmployeeCd(TEST_EMP_CDS[0]),
         new MailAddress("sup-insert@example.com"),
         new EmployeeName("上位役割あり課員"),
         TEST_DEPT_ID,
@@ -397,7 +399,7 @@ describe("PrismaEmployeeRepository", () => {
 
     it("課員に明示上位役割なしで保存すると行は作られず、explicitSuperiorRoleId は null になる", async () => {
       const employee = Employee.create(
-        new EmployeeCd("EMP999001"),
+        new EmployeeCd(TEST_EMP_CDS[0]),
         new MailAddress("sup-none@example.com"),
         new EmployeeName("上位役割なし課員"),
         TEST_DEPT_ID
@@ -416,7 +418,7 @@ describe("PrismaEmployeeRepository", () => {
 
     it("役割持ちで保存すると EmployeeSuperiorRole 行は作られない（I1）", async () => {
       const employee = Employee.create(
-        new EmployeeCd("EMP999001"),
+        new EmployeeCd(TEST_EMP_CDS[0]),
         new MailAddress("sup-roleholder@example.com"),
         new EmployeeName("役割持ち従業員"),
         TEST_DEPT_ID,
@@ -434,7 +436,7 @@ describe("PrismaEmployeeRepository", () => {
     it("更新で課員の上位役割を別役割へ置換すると、旧行が消え新行だけが残る", async () => {
       const saved = await repository.insert(
         Employee.create(
-          new EmployeeCd("EMP999001"),
+          new EmployeeCd(TEST_EMP_CDS[0]),
           new MailAddress("sup-replace@example.com"),
           new EmployeeName("上位役割置換課員"),
           TEST_DEPT_ID,
@@ -458,7 +460,7 @@ describe("PrismaEmployeeRepository", () => {
     it("更新で課員の上位役割を解除すると、EmployeeSuperiorRole 行が消える", async () => {
       const saved = await repository.insert(
         Employee.create(
-          new EmployeeCd("EMP999001"),
+          new EmployeeCd(TEST_EMP_CDS[0]),
           new MailAddress("sup-clear@example.com"),
           new EmployeeName("上位役割解除課員"),
           TEST_DEPT_ID,

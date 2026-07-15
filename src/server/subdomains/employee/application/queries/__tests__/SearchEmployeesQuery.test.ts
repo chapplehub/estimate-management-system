@@ -1,6 +1,7 @@
 import { ensureTestDepartment } from "@server/__tests__/helpers/ensureTestDepartment";
 import { generateId } from "@server/shared/generateId";
 import prisma from "@server/prisma";
+import { employeeTestCodes } from "@server/__tests__/helpers/test-codes/employeeTestCodes";
 import type { UserRole } from "@server/shared/auth/types";
 import { USER_ROLES } from "@server/shared/auth/types";
 import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
@@ -12,7 +13,7 @@ describe("SearchEmployeesQuery", () => {
   const testEmployeeIds: string[] = [];
   const testUserIds: string[] = [];
 
-  const TEST_CODES = ["EMP999957", "EMP999958", "EMP999959", "EMP999960"];
+  const TEST_CODES = employeeTestCodes["employee.searchEmployees"].codes;
   let TEST_DEPT_ID: string;
 
   async function createTestEmployeeWithUser(data: {

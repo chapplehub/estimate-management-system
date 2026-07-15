@@ -3,6 +3,8 @@ import { FakeUserManagementService } from "@server/shared/auth/fake/FakeUserMana
 import { USER_ROLES } from "@server/shared/auth/types";
 import { ValidationError } from "@server/shared/errors/DomainError";
 import prisma from "@server/prisma";
+import { roleTestCodes } from "@server/__tests__/helpers/test-codes/roleTestCodes";
+import { employeeTestCodes } from "@server/__tests__/helpers/test-codes/employeeTestCodes";
 import { EmployeeCdDuplicationCheckDomainService } from "@subdomains/employee/domain/services/EmployeeCdDuplicationCheckDomainService";
 import { MailAddressDuplicationCheckDomainService } from "@subdomains/employee/domain/services/MailAddressDuplicationCheckDomainService";
 import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
@@ -22,9 +24,9 @@ describe("CreateEmployeeCommand", () => {
   let mailDuplicationCheckService: MailAddressDuplicationCheckDomainService;
   let fakeUserManagementService: FakeUserManagementService;
 
-  const TEST_CODES = ["EMP999911", "EMP999914"];
+  const TEST_CODES = employeeTestCodes["employee.createCommand"].codes;
   // ROLE953 は SearchRolesQuery テストと衝突するため未使用コードを専有する（並列実行時の削除競合回避・#327）
-  const TEST_ROLE_CDS = ["ROLE944", "ROLE959"];
+  const TEST_ROLE_CDS = roleTestCodes["employee.createCommand"].codes;
   let TEST_DEPT_ID: string;
   let roleId: string; // 課長級（POS001）。担当役割／課員の上位役割の双方に使える
   let buchouRoleId: string; // 部長級（POS002）。課長級でない＝上位役割に不可

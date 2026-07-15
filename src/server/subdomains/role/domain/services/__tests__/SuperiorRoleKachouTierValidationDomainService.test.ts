@@ -1,4 +1,5 @@
 import prisma from "@server/prisma";
+import { roleTestCodes } from "@server/__tests__/helpers/test-codes/roleTestCodes";
 import { Role } from "@subdomains/role/domain/entities/Role";
 import { RoleCd } from "@subdomains/role/domain/values/RoleCd";
 import { RoleId } from "@subdomains/role/domain/values/RoleId";
@@ -21,7 +22,7 @@ describe("SuperiorRoleKachouTierValidationDomainService", () => {
   let service: SuperiorRoleKachouTierValidationDomainService;
   let roleRepository: PrismaRoleRepository;
 
-  const TEST_ROLE_CDS = ["ROLE993", "ROLE994"];
+  const TEST_ROLE_CDS = roleTestCodes["role.superiorKachouTier"].codes;
 
   let kachouPositionId: string; // 課長 (POS001) - 葉
   let buchouPositionId: string; // 部長 (POS002) - 葉ではない

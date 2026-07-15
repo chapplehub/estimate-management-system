@@ -1,5 +1,6 @@
 import { ensureTestDepartment } from "@server/__tests__/helpers/ensureTestDepartment";
 import prisma from "@server/prisma";
+import { employeeTestCodes } from "@server/__tests__/helpers/test-codes/employeeTestCodes";
 import { FakeUserManagementService } from "@server/shared/auth/fake/FakeUserManagementService";
 import { USER_ROLES } from "@server/shared/auth/types";
 import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
@@ -13,7 +14,7 @@ describe("DeleteEmployeeCommand", () => {
   let fakeUserManagementService: FakeUserManagementService;
 
   const TEST_EMPLOYEE_ID = "00000000-0000-7000-8000-100000000003";
-  const TEST_EMPLOYEE_CD = "EMP999909";
+  const TEST_EMPLOYEE_CD = employeeTestCodes["employee.deleteCommand"].codes[0];
   let TEST_DEPT_ID: string;
 
   beforeEach(async () => {

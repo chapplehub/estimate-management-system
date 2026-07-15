@@ -1,5 +1,7 @@
 import { ensureTestDepartment } from "@server/__tests__/helpers/ensureTestDepartment";
 import prisma from "@server/prisma";
+import { roleTestCodes } from "@server/__tests__/helpers/test-codes/roleTestCodes";
+import { employeeTestCodes } from "@server/__tests__/helpers/test-codes/employeeTestCodes";
 import { generateId } from "@server/shared/generateId";
 import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -10,8 +12,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
  */
 describe("PrismaEmployeeQueryService 担当役割ID(assignedRoleId)", () => {
   // ファイル別プレフィックスで並列実行の P2002 を避ける（#327）。
-  const TEST_EMP_CDS = ["EMP990510", "EMP990511"];
-  const TEST_ROLE_CDS = ["ROLE956"];
+  const TEST_EMP_CDS = employeeTestCodes["employee.assignedRoleId"].codes;
+  const TEST_ROLE_CDS = roleTestCodes["employee.assignedRoleId"].codes;
 
   let service: PrismaEmployeeQueryService;
   let deptId: string;

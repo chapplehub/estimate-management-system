@@ -1,4 +1,5 @@
 import prisma from "@server/prisma";
+import { roleTestCodes } from "@server/__tests__/helpers/test-codes/roleTestCodes";
 import { Role } from "@subdomains/role/domain/entities/Role";
 import { RoleCd } from "@subdomains/role/domain/values/RoleCd";
 import { RoleName } from "@subdomains/role/domain/values/RoleName";
@@ -11,7 +12,7 @@ describe("RoleNameDuplicationCheckDomainService", () => {
   let service: RoleNameDuplicationCheckDomainService;
   let repository: PrismaRoleRepository;
 
-  const TEST_ROLE_CD = "ROLE997";
+  const TEST_ROLE_CD = roleTestCodes["role.roleNameDuplication"].codes[0];
   const TEST_ROLE_NAME = "テスト用ユニーク役割名";
   const TEST_POSITION_CD = "POS001";
 

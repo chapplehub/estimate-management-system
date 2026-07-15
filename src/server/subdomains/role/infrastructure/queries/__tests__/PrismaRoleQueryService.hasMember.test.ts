@@ -1,5 +1,7 @@
 import { ensureTestDepartment } from "@server/__tests__/helpers/ensureTestDepartment";
 import prisma from "@server/prisma";
+import { roleTestCodes } from "@server/__tests__/helpers/test-codes/roleTestCodes";
+import { employeeTestCodes } from "@server/__tests__/helpers/test-codes/employeeTestCodes";
 import { generateId } from "@server/shared/generateId";
 import { PrismaRoleQueryService } from "@subdomains/role/infrastructure/queries/PrismaRoleQueryService";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -11,8 +13,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
  */
 describe("PrismaRoleQueryService.hasMember", () => {
   // ファイル別プレフィックスで並列実行の P2002 を避ける（#327）。roleCd は VarChar(7)。
-  const TEST_ROLE_CDS = ["ROLE933", "ROLE934"];
-  const TEST_EMP_CDS = ["EMP990310", "EMP990311"];
+  const TEST_ROLE_CDS = roleTestCodes["role.hasMember"].codes;
+  const TEST_EMP_CDS = employeeTestCodes["role.hasMember"].codes;
 
   let service: PrismaRoleQueryService;
   let deptId: string;
