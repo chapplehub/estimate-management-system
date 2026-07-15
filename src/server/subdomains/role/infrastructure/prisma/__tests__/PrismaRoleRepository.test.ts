@@ -1,5 +1,7 @@
 import { ensureTestDepartment } from "@server/__tests__/helpers/ensureTestDepartment";
 import prisma from "@server/prisma";
+import { roleTestCodes } from "@server/__tests__/helpers/test-codes/roleTestCodes";
+import { employeeTestCodes } from "@server/__tests__/helpers/test-codes/employeeTestCodes";
 import { generateId } from "@server/shared/generateId";
 import { ConflictError } from "@server/shared/errors/ApplicationError";
 import { Role } from "@subdomains/role/domain/entities/Role";
@@ -20,9 +22,9 @@ describe("PrismaRoleRepository", () => {
   let repository: PrismaRoleRepository;
 
   // 他テストファイルとの並列実行衝突を避けるため未使用の roleCd を専有する
-  const TEST_ROLE_CDS = ["ROLE901", "ROLE902", "ROLE903"];
+  const TEST_ROLE_CDS = roleTestCodes["role.repository"].codes;
   // isInUse 検証用の従業員（被参照側）
-  const TEST_EMP_CDS = ["EMP990410", "EMP990411"];
+  const TEST_EMP_CDS = employeeTestCodes["role.repository"].codes;
 
   let kachouPositionId: string;
   let deptId: string;

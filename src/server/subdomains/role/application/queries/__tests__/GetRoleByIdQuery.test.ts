@@ -1,4 +1,5 @@
 import prisma from "@server/prisma";
+import { roleTestCodes } from "@server/__tests__/helpers/test-codes/roleTestCodes";
 import { Role } from "@subdomains/role/domain/entities/Role";
 import { RoleCd } from "@subdomains/role/domain/values/RoleCd";
 import { RoleName } from "@subdomains/role/domain/values/RoleName";
@@ -12,7 +13,7 @@ describe("GetRoleByIdQuery", () => {
   let query: GetRoleByIdQuery;
   let roleRepository: PrismaRoleRepository;
 
-  const TEST_ROLE_CDS = ["ROLE931"];
+  const TEST_ROLE_CDS = roleTestCodes["role.getRoleById"].codes;
 
   let kachouPositionId: string;
 

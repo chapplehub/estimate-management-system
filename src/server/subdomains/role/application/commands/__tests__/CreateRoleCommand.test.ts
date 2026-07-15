@@ -1,4 +1,5 @@
 import prisma from "@server/prisma";
+import { roleTestCodes } from "@server/__tests__/helpers/test-codes/roleTestCodes";
 import { ValidationError } from "@server/shared/errors/DomainError";
 import { RoleCd } from "@subdomains/role/domain/values/RoleCd";
 import { PrismaRoleRepository } from "@subdomains/role/infrastructure/prisma/PrismaRoleRepository";
@@ -13,7 +14,7 @@ describe("CreateRoleCommand", () => {
   let command: CreateRoleCommand;
   let roleRepository: PrismaRoleRepository;
 
-  const TEST_ROLE_CDS = ["ROLE981", "ROLE982"];
+  const TEST_ROLE_CDS = roleTestCodes["role.createCommand"].codes;
 
   let kachouPositionId: string;
   let buchouPositionId: string;

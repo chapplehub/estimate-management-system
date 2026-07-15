@@ -1,4 +1,5 @@
 import prisma from "@server/prisma";
+import { roleTestCodes } from "@server/__tests__/helpers/test-codes/roleTestCodes";
 import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
 import { ConflictError, NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { Role } from "@subdomains/role/domain/entities/Role";
@@ -13,7 +14,7 @@ describe("DeleteRoleCommand", () => {
   let command: DeleteRoleCommand;
   let roleRepository: PrismaRoleRepository;
 
-  const TEST_ROLE_CDS = ["ROLE961", "ROLE962"];
+  const TEST_ROLE_CDS = roleTestCodes["role.deleteCommand"].codes;
 
   let kachouPositionId: string;
   let buchouPositionId: string;

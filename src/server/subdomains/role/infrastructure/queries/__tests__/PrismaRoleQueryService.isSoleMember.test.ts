@@ -1,4 +1,6 @@
 import { ensureTestDepartment } from "@server/__tests__/helpers/ensureTestDepartment";
+import { roleTestCodes } from "@server/__tests__/helpers/test-codes/roleTestCodes";
+import { employeeTestCodes } from "@server/__tests__/helpers/test-codes/employeeTestCodes";
 import prisma from "@server/prisma";
 import { generateId } from "@server/shared/generateId";
 import { PrismaRoleQueryService } from "@subdomains/role/infrastructure/queries/PrismaRoleQueryService";
@@ -10,9 +12,9 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
  * 実 Prisma で検証する（モック禁止・ADR-0012）。
  */
 describe("PrismaRoleQueryService.isSoleMember", () => {
-  // ファイル別プレフィックスで並列実行の P2002 を避ける（#327）。
-  const TEST_ROLE_CDS = ["ROLE957", "ROLE958"];
-  const TEST_EMP_CDS = ["EMP990710", "EMP990711"];
+  // コード割当はレジストリを唯一のソースとする（#608 / ADR 20260715-f71）。二重占有は TS1117。
+  const TEST_ROLE_CDS = roleTestCodes["role.isSoleMember"].codes;
+  const TEST_EMP_CDS = employeeTestCodes["role.isSoleMember"].codes;
 
   let service: PrismaRoleQueryService;
   let deptId: string;

@@ -1,5 +1,6 @@
 import { ensureTestDepartment } from "@server/__tests__/helpers/ensureTestDepartment";
 import prisma from "@server/prisma";
+import { employeeTestCodes } from "@server/__tests__/helpers/test-codes/employeeTestCodes";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
 import { DepartmentId } from "@subdomains/department/domain/values/DepartmentId";
 import { Employee } from "@subdomains/employee/domain/entities/Employee";
@@ -13,7 +14,7 @@ describe("MailAddressDuplicationCheckDomainService", () => {
   let service: MailAddressDuplicationCheckDomainService;
   let repository: PrismaEmployeeRepository;
 
-  const TEST_CODES = ["EMP999831"];
+  const TEST_CODES = employeeTestCodes["employee.mailDuplication"].codes;
   let TEST_DEPT_ID: DepartmentId;
 
   async function cleanup() {

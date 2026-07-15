@@ -1,4 +1,6 @@
 import { ensureTestDepartment } from "@server/__tests__/helpers/ensureTestDepartment";
+import { roleTestCodes } from "@server/__tests__/helpers/test-codes/roleTestCodes";
+import { employeeTestCodes } from "@server/__tests__/helpers/test-codes/employeeTestCodes";
 import prisma from "@server/prisma";
 import { generateId } from "@server/shared/generateId";
 import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
@@ -15,9 +17,11 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
  *   どちらも無     → null
  */
 describe("PrismaEmployeeQueryService 役割名(assignedRoleName / superiorRoleName)", () => {
-  // ファイル別プレフィックスで並列実行の P2002 を避ける（#327）。
-  const TEST_EMP_CDS = ["EMP990710", "EMP990711", "EMP990712", "EMP990713"];
-  const TEST_ROLE_CDS = ["ROLE971", "ROLE972", "ROLE973"];
+  // コード割当はレジストリを唯一のソースとする（#608 / ADR 20260715-f71）。二重占有は TS1117。
+  const TEST_EMP_CDS = employeeTestCodes["employee.roleNames"].codes;
+  // 生成は用途キー（assignedRole/seniorRole/leafRole）で引き、cleanup は全コード配列 codes を使う。
+  const roleCds = roleTestCodes["employee.roleNames"];
+  const TEST_ROLE_CDS = roleCds.codes;
 
   let service: PrismaEmployeeQueryService;
   let deptId: string;
@@ -48,7 +52,7 @@ describe("PrismaEmployeeQueryService 役割名(assignedRoleName / superiorRoleNa
     await prisma.role.create({
       data: {
         id: seniorRoleId,
-        roleCd: TEST_ROLE_CDS[1],
+        roleCd: roleCds.seniorRole,
         name: "上位役割（部長級）",
         positionId: buchou!.id,
       },
@@ -56,7 +60,7 @@ describe("PrismaEmployeeQueryService 役割名(assignedRoleName / superiorRoleNa
     await prisma.role.create({
       data: {
         id: assignedRoleId,
-        roleCd: TEST_ROLE_CDS[0],
+        roleCd: roleCds.assignedRole,
         name: "担当役割（課長級）",
         positionId: kachou!.id,
         superiorRoleId: seniorRoleId,
@@ -65,7 +69,7 @@ describe("PrismaEmployeeQueryService 役割名(assignedRoleName / superiorRoleNa
     await prisma.role.create({
       data: {
         id: leafRoleId,
-        roleCd: TEST_ROLE_CDS[2],
+        roleCd: roleCds.leafRole,
         name: "上位なし役割（課長級）",
         positionId: kachou!.id,
       },

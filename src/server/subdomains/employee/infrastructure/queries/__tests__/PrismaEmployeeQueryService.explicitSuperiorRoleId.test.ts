@@ -1,5 +1,7 @@
 import { ensureTestDepartment } from "@server/__tests__/helpers/ensureTestDepartment";
 import prisma from "@server/prisma";
+import { roleTestCodes } from "@server/__tests__/helpers/test-codes/roleTestCodes";
+import { employeeTestCodes } from "@server/__tests__/helpers/test-codes/employeeTestCodes";
 import { generateId } from "@server/shared/generateId";
 import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -16,9 +18,9 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
  */
 describe("PrismaEmployeeQueryService 明示上位役割ID(explicitSuperiorRoleId)", () => {
   // ファイル別プレフィックスで並列実行の P2002 を避ける（#327）。
-  const TEST_EMP_CDS = ["EMP990610", "EMP990611", "EMP990612"];
+  const TEST_EMP_CDS = employeeTestCodes["employee.explicitSuperiorRoleId"].codes;
   // ROLE961/962 は DeleteRoleCommand テストと衝突するため未使用コードを専有する（並列実行時の削除競合回避・#327）
-  const TEST_ROLE_CDS = ["ROLE963", "ROLE964"];
+  const TEST_ROLE_CDS = roleTestCodes["employee.explicitSuperiorRoleId"].codes;
 
   let service: PrismaEmployeeQueryService;
   let deptId: string;
