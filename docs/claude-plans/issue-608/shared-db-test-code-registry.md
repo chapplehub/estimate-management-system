@@ -48,7 +48,7 @@ DB依存の単体テスト（vitest）は単一の共有テストDB上でファ�
 ## ステップ
 
 ### Step 1: `defineTestCodes` 共有ファクトリの実装
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/server/__tests__/helpers/test-codes/defineTestCodes.ts`（新規）
   - `src/server/__tests__/helpers/test-codes/__tests__/defineTestCodes.test.ts`（新規）
