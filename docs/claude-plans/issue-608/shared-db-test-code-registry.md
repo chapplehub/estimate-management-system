@@ -60,7 +60,7 @@ DB依存の単体テスト（vitest）は単一の共有テストDB上でファ�
 - コミットメッセージ: `test: 共有DBテストのコード割当を静的一意化する defineTestCodes ファクトリを追加 (#608)`
 
 ### Step 2: role/employee コードレジストリの定義（全消費者分を採番）
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/server/__tests__/helpers/test-codes/roleTestCodes.ts`（新規）
   - `src/server/__tests__/helpers/test-codes/employeeTestCodes.ts`（新規）
