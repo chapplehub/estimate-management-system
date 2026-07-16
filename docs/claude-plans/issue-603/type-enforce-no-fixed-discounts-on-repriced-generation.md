@@ -94,7 +94,7 @@
 - コミットメッセージ: `refactor: 単価再解決経路専用の repriced 記述子型を新設し複製経路を型で固定値引不可に`
 
 ### Step 3: 改訂専用 buildRevisedVariation を追加し改訂経路を repriced 化
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/server/subdomains/estimate/domain/entities/estimateChildBuilders.ts`（`buildRevisedVariation` 追加、`buildVariation` を `revisedFrom` なしに確定）
   - `src/server/subdomains/estimate/domain/entities/Estimate.ts`（`reviseForCustomer` を repriced 記述子組み立て＋`buildRevisedVariation` 経由へ）

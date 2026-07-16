@@ -1,3 +1,5 @@
+import { SubmissionType } from "../values/SubmissionType";
+import type { EstimateVariationId } from "../values/EstimateVariationId";
 import { EstimateItem } from "./EstimateItem";
 import { EstimateSetGroup } from "./EstimateSetGroup";
 import { EstimateVariation, type TaxContext } from "./EstimateVariation";
@@ -6,6 +8,7 @@ import type {
   EstimateItemDescriptor,
   EstimateSetGroupDescriptor,
   EstimateVariationDescriptor,
+  RepricedVariationDescriptor,
 } from "./EstimateFactory";
 
 /**
@@ -110,5 +113,35 @@ export function buildVariation(
     overallDiscount: variation.overallDiscount,
     customerMemo: variation.customerMemo,
     internalMemo: variation.internalMemo,
+  });
+}
+
+/**
+ * 得意先改訂で生まれるバリエーションを repriced 記述子から構築する（#603・C7・§7.2）。
+ *
+ * 通常の {@link buildVariation} と分離し、改訂固有の系譜（`revisedFrom` 必須）と固定属性を
+ * ビルダー側で確定する:
+ * - `submissionType` は得意先宛（CUSTOMER）固定。
+ * - `revisedFrom` を必須引数で受け取り出自を刻む（通常経路が名乗れない状態を型で保つ）。
+ * - 全体値引 `overallDiscount` は付与しない（クリア・ADR-20260714-pv8）。記述子型が `Omit` 済み。
+ *
+ * 明細の固定値引クリア・改訂明細詳細（deliveryPrice スナップショット）・セット群の群ごと複写は、
+ * {@link buildVariationChildren}（＝複製経路と共有の土台）と repriced 記述子型が担保する。
+ */
+export function buildRevisedVariation(
+  descriptor: RepricedVariationDescriptor,
+  ctx: { tax: TaxContext; revisedFrom: EstimateVariationId }
+): EstimateVariation {
+  const { items, setGroups } = buildVariationChildren(descriptor);
+  return EstimateVariation.create({
+    variationNumber: descriptor.variationNumber,
+    submissionType: SubmissionType.CUSTOMER,
+    revisedFrom: ctx.revisedFrom,
+    tax: ctx.tax,
+    items,
+    setGroups,
+    // overallDiscount は付与しない（クリア・ADR-20260714-pv8）
+    customerMemo: descriptor.customerMemo,
+    internalMemo: descriptor.internalMemo,
   });
 }
