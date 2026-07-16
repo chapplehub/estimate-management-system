@@ -78,7 +78,7 @@
 - コミットメッセージ: `refactor: 見積の子エンティティ構築を estimateChildBuilders へ抽出し EstimateFactory を委譲 facade 化`
 
 ### Step 2: repriced 記述子型を新設し複製経路を repriced 化
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/server/subdomains/estimate/domain/entities/EstimateFactory.ts`（`Repriced*` 型定義、`CopiedVariationDescriptor` の再定義）
   - `src/server/subdomains/estimate/domain/services/EstimateDuplicationService.ts`（`copyItem` の戻り型・setGroups マップの型を repriced へ）

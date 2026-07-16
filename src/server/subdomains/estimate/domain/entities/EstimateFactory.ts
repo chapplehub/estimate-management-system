@@ -130,10 +130,38 @@ export type EstimateFactoryInput = {
 };
 
 /**
+ * 単価再解決を伴う引き継ぎ生成（複製先・改訂先）専用の明細記述子。
+ *
+ * 固定値引 `itemDiscount` を型から `Omit` で消す。これにより単価を宛先へ再解決した経路で
+ * うっかり固定値引を持ち込む記述を書くと excess property でコンパイルエラーになる
+ * （不変則 ADR-20260714-pv8・#598 を型で強制）。`itemDiscount` は optional のため、本型は
+ * 元の {@link EstimateItemDescriptor} へ構造的に代入可能で、共有ビルダーの引数型は変更不要。
+ */
+export type RepricedItemDescriptor = Omit<EstimateItemDescriptor, "itemDiscount">;
+
+/** 単価再解決経路のセット群記述子。構成明細を repriced 明細記述子で持つ（構成明細も固定値引不可）。 */
+export type RepricedSetGroupDescriptor = Omit<EstimateSetGroupDescriptor, "components"> & {
+  components: RepricedItemDescriptor[];
+};
+
+/**
+ * 単価再解決経路のバリエーション記述子。全体値引 `overallDiscount` を型から消し、
+ * 通常明細・セット群を repriced 記述子に差し替える（固定値引を型で禁止）。
+ */
+export type RepricedVariationDescriptor = Omit<
+  EstimateVariationDescriptor,
+  "overallDiscount" | "items" | "setGroups"
+> & {
+  items: RepricedItemDescriptor[];
+  setGroups?: RepricedSetGroupDescriptor[];
+};
+
+/**
  * 複製で生まれるバリエーションの記述子。複製元バリエーション（出自）を id 参照として添える。
  * C6 DuplicateEstimate で「新バリエーションの生成 id ↔ 複製元 id」の系譜を作るために用いる。
+ * 単価再解決経路のため repriced 記述子を土台にし、固定値引は型で禁止する（#603・ADR-20260714-pv8）。
  */
-export type CopiedVariationDescriptor = EstimateVariationDescriptor & {
+export type CopiedVariationDescriptor = RepricedVariationDescriptor & {
   sourceVariationId: EstimateVariationId;
 };
 

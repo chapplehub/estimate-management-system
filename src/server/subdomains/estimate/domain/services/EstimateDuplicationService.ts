@@ -6,7 +6,8 @@ import {
   EstimateFactory,
   type AfterRepairDetailDescriptor,
   type CopiedVariationDescriptor,
-  type EstimateItemDescriptor,
+  type RepricedItemDescriptor,
+  type RepricedSetGroupDescriptor,
   type RepairDetailDescriptor,
 } from "../entities";
 import { EstimateNumber } from "../values/EstimateNumber";
@@ -139,7 +140,7 @@ export class EstimateDuplicationService {
     // 平坦な items（通常明細＋構成明細の同居・ADR-0047）を群の所属で仕分けてから変換する。
     // 素通しすると構成明細がバラの通常明細として複写され、群が消える（#602）。
     const structure = source.lineStructure;
-    const copyItem = (item: SourceVariation["items"][number]): EstimateItemDescriptor => ({
+    const copyItem = (item: SourceVariation["items"][number]): RepricedItemDescriptor => ({
       productId: item.productId,
       sortOrder: item.sortOrder,
       itemName: item.itemName,
@@ -161,15 +162,17 @@ export class EstimateDuplicationService {
       // 提出区分は複製元バリエーション単位で継承する（ADR-0045 / §5.3）
       submissionType: source.submissionType,
       items: structure.normalItems.map(copyItem),
-      setGroups: structure.setGroups.map(({ group, components }) => ({
-        productId: group.productId,
-        itemName: group.itemName,
-        unit: group.unit,
-        // 群自身は価格を持たない（価格保守対象商品ではない）ため単価解決の対象に入れない
-        components: components.map(copyItem),
-        customerMemo: group.customerMemo,
-        internalMemo: group.internalMemo,
-      })),
+      setGroups: structure.setGroups.map(
+        ({ group, components }): RepricedSetGroupDescriptor => ({
+          productId: group.productId,
+          itemName: group.itemName,
+          unit: group.unit,
+          // 群自身は価格を持たない（価格保守対象商品ではない）ため単価解決の対象に入れない
+          components: components.map(copyItem),
+          customerMemo: group.customerMemo,
+          internalMemo: group.internalMemo,
+        })
+      ),
       customerMemo: source.customerMemo,
       internalMemo: source.internalMemo,
     };
