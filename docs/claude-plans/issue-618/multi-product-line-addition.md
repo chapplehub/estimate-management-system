@@ -97,7 +97,7 @@
 - コミットメッセージ: `fix: 見積の明細追加で複数商品を選択しても先頭1件しか追加されない (#618)`
 
 ### Step 3: 販売単価 解決不能の E2E を新しい拒否 UX に合わせる
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: `src/app/(features)/estimates/estimates-price-unresolvable.e2e.ts`
 - テスト戦略: 実装後テスト（E2E）
 - 作業内容:
