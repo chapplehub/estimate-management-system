@@ -53,6 +53,7 @@
 | [0016](0016-exclude-filtering-on-client-side.md) | 選択モーダルの除外フィルタリングをクライアント側で行う | 採用 | 2026-04-13 |
 | [0050](0050-serialize-dynamic-line-array-as-json-hidden-field.md) | 動的明細配列は conform field-array でなく単一 JSON hidden field で往復する | 採用 | 2026-06-15 |
 | [0057](0057-estimate-duplication-ui-as-detail-modal-driving-duplicate-command.md) | 見積複製(C6)の UI は作成画面統合ではなく詳細画面モーダル＋DuplicateEstimate 経路で実装する | 採用 | 2026-06-18 |
+| [20260716-r4d](20260716-r4d-selection-modal-confirm-veto-by-return-value.md) | SelectionModal の確定拒否は onConfirm の戻り値で表現する（閉じずにエラー＋該当行ハイライト） | 採用 | 2026-07-16 |
 
 ## ドメイン（設計パターン）
 
