@@ -58,7 +58,8 @@ export class EstimateItem {
     private _itemDiscount: Money,
     private _customerMemo: Memo,
     private _internalMemo: Memo,
-    private _revisedDetail: RevisedEstimateItemDetail | null,
+    /** 改訂明細詳細は create / reconstruct 時に確定し以後不変（#617）。 */
+    private readonly _revisedDetail: RevisedEstimateItemDetail | null,
     private _baseAmount: Money,
     private _discountedAmount: Money,
     private _finalAmount: Money,
@@ -187,16 +188,6 @@ export class EstimateItem {
 
   changeInternalMemo(newMemo: Memo): void {
     this._internalMemo = newMemo;
-    this.touch();
-  }
-
-  attachRevisedDetail(detail: RevisedEstimateItemDetail): void {
-    this._revisedDetail = detail;
-    this.touch();
-  }
-
-  detachRevisedDetail(): void {
-    this._revisedDetail = null;
     this.touch();
   }
 

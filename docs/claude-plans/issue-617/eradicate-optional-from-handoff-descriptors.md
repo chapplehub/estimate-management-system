@@ -133,7 +133,7 @@
 - コミットメッセージ: `refactor: 引き継ぎ記述子を Required 導出と経路分割で再定義し optional を根絶する (#617)`
 
 ### Step 3: 死んだ `attachRevisedDetail` / `detachRevisedDetail` を削除する
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/server/subdomains/estimate/domain/entities/EstimateItem.ts`（193-200 行のメソッド削除・`_revisedDetail` を `readonly` 化）
   - `src/server/subdomains/estimate/domain/entities/__tests__/EstimateItem.test.ts`（162-172 行の専用テスト削除）

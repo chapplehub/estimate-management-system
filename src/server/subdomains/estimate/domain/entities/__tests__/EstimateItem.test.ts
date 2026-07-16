@@ -8,7 +8,6 @@ import { Money } from "@server/shared/domain/values/Money";
 import { Quantity } from "../../values/Quantity";
 import { Unit } from "../../values/Unit";
 import { EstimateItem, type EstimateItemCreateInput } from "../EstimateItem";
-import { RevisedEstimateItemDetail } from "../RevisedEstimateItemDetail";
 
 function buildInput(overrides: Partial<EstimateItemCreateInput> = {}): EstimateItemCreateInput {
   return {
@@ -155,22 +154,6 @@ describe("EstimateItem", () => {
       expect(item.customerMemo.value).toBe("初期メモ");
       item.changeCustomerMemo(Memo.empty());
       expect(item.customerMemo.isEmpty()).toBe(true);
-    });
-  });
-
-  describe("revisedDetail の attach/detach", () => {
-    it("attachRevisedDetail で改訂明細を付加できる", () => {
-      const item = EstimateItem.create(buildInput());
-      const detail = RevisedEstimateItemDetail.create(Money.fromMajorUnits(8000));
-      item.attachRevisedDetail(detail);
-      expect(item.revisedDetail).toBe(detail);
-    });
-
-    it("detachRevisedDetail で外せる", () => {
-      const item = EstimateItem.create(buildInput());
-      item.attachRevisedDetail(RevisedEstimateItemDetail.create(Money.fromMajorUnits(8000)));
-      item.detachRevisedDetail();
-      expect(item.revisedDetail).toBeNull();
     });
   });
 
