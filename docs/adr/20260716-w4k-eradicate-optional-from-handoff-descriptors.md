@@ -44,7 +44,7 @@ buildSetGroups(descriptor.setGroups ?? [])   // estimateChildBuilders.ts
 
 ### `setGroups` の optional をどこで断つか
 
-- **reprice 側だけ必須化（不採用）**: 発生源（`EstimateVariationDescriptor.setGroups?`）が残るため、`?? []` が `estimateChildBuilders` / `assertSetComponentsValid` / `resolveLinePrices` の 3 読点に残存し、将来の経路がまた踏む。
+- **reprice 側だけ必須化（不採用）**: 発生源（`EstimateVariationDescriptor.setGroups?`）が残るため、ドメイン側の `?? []`（`estimateChildBuilders` / `assertSetComponentsValid`）が残存し、将来の経路がまた踏む。
 - **`EstimateVariationDescriptor` でも必須化し `??` をアプリ層マッパへ押し出す（採用）**: optional の発生源はドメインではなく**フォーム境界**（`setGroups?: EstimateSetGroupInput[]`）であり、それが `input.setGroups?.map(...)` でドメイン記述子へ素通しされていた。境界で `(input.setGroups ?? []).map(...)` と正規化すれば、ドメインは「ゼロ件＝`[]`」の単一表現になる。空配列はコレクションにとっての null object であり、`undefined` を併存させる理由がない。
 
 なお `discountRate?` / `customerMemo?` / `internalMemo?` / `overallDiscount?` を `EstimateItemDescriptor` 等で optional のまま据え置くのは、次の規則による。
@@ -65,7 +65,9 @@ buildSetGroups(descriptor.setGroups ?? [])   // estimateChildBuilders.ts
 
 ## 決定
 
-引き継ぎ生成（複製先・改訂先）の記述子から optional を根絶する。すなわち **①「維持」フィールドは `Required<Omit<...>>` の機械導出で必須化し、②「クリア」フィールドは `Omit` で型から消し（35a を吸収）、③ 経路で意味が変わるフィールドは複製用／改訂用に型を割り、④ 2 系統は明細型で径数化して単一定義から得て、⑤「optional キーがゼロ本」を構造ガードで固定する**。`setGroups` は発生源（`EstimateVariationDescriptor`）でも必須化し、`??` による正規化はフォーム境界のアプリ層マッパ 1 箇所へ押し出す。
+引き継ぎ生成（複製先・改訂先）の記述子から optional を根絶する。すなわち **①「維持」フィールドは `Required<Omit<...>>` の機械導出で必須化し、②「クリア」フィールドは `Omit` で型から消し（35a を吸収）、③ 経路で意味が変わるフィールドは複製用／改訂用に型を割り、④ 2 系統は明細型で径数化して単一定義から得て、⑤「optional キーがゼロ本」を構造ガードで固定する**。`setGroups` は発生源（`EstimateVariationDescriptor`）でも必須化し、`??` による正規化は**フォーム入力をドメイン記述子へ写すアプリ層マッパ**（`CreateEstimateCommand` / `variationContentInput`）へ押し出す。
+
+境界の位置は次のとおり。マッパより**上流**（フォーム入力を直接扱う `resolveLinePrices` の `LinePriceTree`）は `setGroups?` のままとする——そこはキーが来ないことが実在する HTTP の世界であり、optional が事実を正しく表している。マッパより**下流**（記述子・エンティティ）には `undefined` を入れない。
 
 ## 根拠
 
@@ -78,7 +80,7 @@ buildSetGroups(descriptor.setGroups ?? [])   // estimateChildBuilders.ts
 
 - **ADR-20260716-35a は有効なまま。** 35a の 3 決定（型で禁止する／子構築の共有ビルダー一本化／通常・改訂のバリエーション組み立て分割）はいずれも存続し、本 ADR はその機構を optional 全般へ一般化する。ただし 35a が定義した `RepricedItemDescriptor = Omit<EstimateItemDescriptor, "itemDiscount">` の定義のみ本 ADR が更新する（`Required` で包み、`revisedDeliveryPrice` を `Omit` し、複製用／改訂用に割る）。
 - **`EstimateItemDescriptor` は据え置く。** 新規作成経路の optional は「所有者が既定化する」規則を満たしており正当。とくに `revisedDeliveryPrice?: Money | null` の `undefined ≡ null` 冗長は wart だが、引き継ぎ側は `Omit` して自前で定義し直すため無関係であり、締めるとテスト約 100 箇所に `null` を書き足すだけの編集が発生して費用が便益を上回る。
-- **`setGroups` はドメインで必須になる。** `EstimateVariationDescriptor` / `VariationChildrenDescriptor` が必須化され、`estimateChildBuilders` / `assertSetComponentsValid` / `resolveLinePrices` の `??` は不要になる。アプリ層マッパ（`CreateEstimateCommand` / `variationContentInput`）が境界で正規化する。
+- **`setGroups` はドメインで必須になる。** `EstimateVariationDescriptor` / `VariationChildrenDescriptor` が必須化され、`estimateChildBuilders` の `?? []` は不要になる。`assertSetComponentsValid` の `SetComponentValidationTarget.setGroups?` も必須化できる（呼び出し元は `estimate.variations` / `buildVariationContent` の戻り値＝**エンティティ**を渡しており、エンティティは常に `setGroups` 配列を持つため）。一方 `resolveLinePrices` の `LinePriceTree.setGroups?` は**据え置く**——同関数は記述子化より前のフォーム入力を扱う上流であり、そこでの optional は境界の事実を正しく表している。
 - **`EstimateItem.attachRevisedDetail` / `detachRevisedDetail` を削除する。** 本番コードからの呼び出しが存在せず（テストのみ）、非改訂明細へ事後に改訂詳細を付けられる唯一の経路だった。削除により `_revisedDetail` は `create` 時確定・以後不変になり、記述子の経路分割（生成時の防御）と併せて入口・事後の双方が塞がる。
 - **エンティティ分割には踏み込まない。** 「改訂先である」事実が `EstimateVariation.revisedFrom` と `EstimateItem.revisedDetail` の有無で二重に符号化され整合が守られていない構造は #620 に切り出した。`EstimateItem` を割っても二重符号化は解けず（`revisedFrom` があるバリの items は必ず改訂明細型、という不変則を型の外で守る羽目になる）、`EstimateItem`（18 ファイル）と `EstimateVariation`（29 読点）の同時分割は本 ADR とは別物の大手術になるため。
 - **ビルダーの引数型は変更不要。** `Required<Omit<T, K>>` は（K が T で optional である限り）`T` へ、`RevisedItemDescriptor` は `EstimateItemDescriptor` へ構造的に代入可能なため、共有ビルダーは両系統をそのまま受ける。
