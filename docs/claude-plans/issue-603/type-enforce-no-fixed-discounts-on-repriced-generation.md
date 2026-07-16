@@ -119,7 +119,7 @@
 - コミットメッセージ: `test: repriced 記述子と通常 buildVariation の型不変則を @ts-expect-error で固定`
 
 ### Step 5: 型強制機構の新規 ADR 起票と pv8 相互参照
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - 新規: `docs/adr/{YYYYMMDD}-{code}-type-enforce-no-fixed-discounts-on-repriced-generation.md`
   - 変更: `docs/adr/20260714-pv8-revised-variation-drops-fixed-discounts-on-unit-price-resolution.md`（新 ADR への相互参照リンク追記）
