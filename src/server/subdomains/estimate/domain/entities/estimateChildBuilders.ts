@@ -8,7 +8,7 @@ import type {
   EstimateItemDescriptor,
   EstimateSetGroupDescriptor,
   EstimateVariationDescriptor,
-  RepricedVariationDescriptor,
+  RevisedVariationDescriptor,
 } from "./EstimateFactory";
 
 /**
@@ -129,7 +129,7 @@ export function buildVariation(
  * {@link buildVariationChildren}（＝複製経路と共有の土台）と repriced 記述子型が担保する。
  */
 export function buildRevisedVariation(
-  descriptor: RepricedVariationDescriptor,
+  descriptor: RevisedVariationDescriptor,
   ctx: { tax: TaxContext; revisedFrom: EstimateVariationId }
 ): EstimateVariation {
   const { items, setGroups } = buildVariationChildren(descriptor);

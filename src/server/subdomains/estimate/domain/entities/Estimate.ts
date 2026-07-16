@@ -21,7 +21,7 @@ import { TaxRate } from "../values/TaxRate";
 import { TaxRoundingType } from "../values/TaxRoundingType";
 import type { AfterRepairEstimateDetail } from "./AfterRepairEstimateDetail";
 import { buildRevisedVariation } from "./estimateChildBuilders";
-import type { RepricedItemDescriptor, RepricedVariationDescriptor } from "./EstimateFactory";
+import type { RevisedItemDescriptor, RevisedVariationDescriptor } from "./EstimateFactory";
 import type { EstimateItem } from "./EstimateItem";
 import {
   EstimateVariation,
@@ -253,7 +253,7 @@ export class Estimate {
     // repriced 記述子型が Omit で禁止しており、書こうとするとコンパイルエラーになる（#603・
     // ADR-20260714-pv8 を型で強制）。子の構築（改訂明細詳細・セット群の id 配線）と系譜の付与は
     // 複製経路と共有の buildRevisedVariation / buildVariationChildren に委ねる（#602 の再発防止）。
-    const toRepricedItem = (item: Readonly<EstimateItem>): RepricedItemDescriptor => ({
+    const toRepricedItem = (item: Readonly<EstimateItem>): RevisedItemDescriptor => ({
       productId: item.productId,
       sortOrder: item.sortOrder,
       itemName: item.itemName,
@@ -268,7 +268,7 @@ export class Estimate {
       revisedDeliveryPrice: item.finalAmount,
     });
 
-    const descriptor: RepricedVariationDescriptor = {
+    const descriptor: RevisedVariationDescriptor = {
       variationNumber: this.nextVariationNumber(),
       submissionType: SubmissionType.CUSTOMER,
       items: structure.normalItems.map(toRepricedItem),

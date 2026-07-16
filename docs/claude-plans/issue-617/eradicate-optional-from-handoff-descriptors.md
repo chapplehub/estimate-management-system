@@ -90,7 +90,7 @@
 - コミットメッセージ: `refactor: setGroups をドメインで必須化し undefined 正規化をアプリ境界へ押し出す (#617)`
 
 ### Step 2: 引き継ぎ記述子を Required 機械導出・経路分割・generics で再定義する
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/server/subdomains/estimate/domain/entities/EstimateFactory.ts`（記述子ファミリ再定義）
   - `src/server/subdomains/estimate/domain/entities/index.ts`（バレルの公開型）

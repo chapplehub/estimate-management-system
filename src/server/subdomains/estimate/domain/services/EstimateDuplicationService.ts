@@ -6,7 +6,7 @@ import {
   EstimateFactory,
   type AfterRepairDetailDescriptor,
   type CopiedVariationDescriptor,
-  type RepricedItemDescriptor,
+  type CopiedItemDescriptor,
   type RepricedSetGroupDescriptor,
   type RepairDetailDescriptor,
 } from "../entities";
@@ -140,7 +140,7 @@ export class EstimateDuplicationService {
     // 平坦な items（通常明細＋構成明細の同居・ADR-0047）を群の所属で仕分けてから変換する。
     // 素通しすると構成明細がバラの通常明細として複写され、群が消える（#602）。
     const structure = source.lineStructure;
-    const copyItem = (item: SourceVariation["items"][number]): RepricedItemDescriptor => ({
+    const copyItem = (item: SourceVariation["items"][number]): CopiedItemDescriptor => ({
       productId: item.productId,
       sortOrder: item.sortOrder,
       itemName: item.itemName,

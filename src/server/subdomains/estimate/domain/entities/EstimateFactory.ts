@@ -136,40 +136,71 @@ export type EstimateFactoryInput = {
 };
 
 /**
- * 単価再解決を伴う引き継ぎ生成（複製先・改訂先）専用の明細記述子。
+ * 単価再解決を伴う引き継ぎ生成（複製先・改訂先）専用の明細記述子の土台（#617・ADR-20260716-w4k）。
  *
- * 固定値引 `itemDiscount` を型から `Omit` で消す。これにより単価を宛先へ再解決した経路で
- * うっかり固定値引を持ち込む記述を書くと excess property でコンパイルエラーになる
- * （不変則 ADR-20260714-pv8・#598 を型で強制）。`itemDiscount` は optional のため、本型は
- * 元の {@link EstimateItemDescriptor} へ構造的に代入可能で、共有ビルダーの引数型は変更不要。
+ * **2 つの `Omit` の用途を区別すること**:
+ * - ここでの `Omit` は**クリア**（＝引き継ぎ先へ持ち込まない項目を「名前すら書けない」状態にする）。
+ *   `itemDiscount` は単価を宛先へ再解決した経路で持ち込むと不整合になるため型から消す
+ *   （不変則 ADR-20260714-pv8・#598）。`revisedDeliveryPrice` は経路で意味が変わるため土台からは
+ *   消し、改訂経路 {@link RevisedItemDescriptor} でのみ必須として足し直す。
+ * - 下位の {@link RepricedSetGroupDescriptor} 等での `Omit` は**置換**（入れ子の明細型差し替え）。
+ *
+ * **`Required<>` で機械導出する理由**: 維持フィールドを手で列挙すると、将来
+ * {@link EstimateItemDescriptor} に optional が増えたとき引き継ぎ側へ optional のまま流れ込み、
+ * コンパイルが通るので誰も気づかない（#602 / #603 と同型の silent data loss）。`Required<>` なら
+ * 新フィールドが自動で必須化され、populate 箇所がコンパイルエラーになる＝判断を書き手に強制できる。
  */
-export type RepricedItemDescriptor = Omit<EstimateItemDescriptor, "itemDiscount">;
-
-/** 単価再解決経路のセット群記述子。構成明細を repriced 明細記述子で持つ（構成明細も固定値引不可）。 */
-export type RepricedSetGroupDescriptor = Omit<EstimateSetGroupDescriptor, "components"> & {
-  components: RepricedItemDescriptor[];
-};
+export type RepricedItemDescriptor = Required<
+  Omit<EstimateItemDescriptor, "itemDiscount" | "revisedDeliveryPrice">
+>;
 
 /**
- * 単価再解決経路のバリエーション記述子。全体値引 `overallDiscount` を型から消し、
- * 通常明細・セット群を repriced 記述子に差し替える（固定値引を型で禁止）。
+ * 複製で生まれる明細の記述子。改訂明細詳細は複製先に生えないため `revisedDeliveryPrice` は
+ * 土台の `Omit` のまま（名前すら書けない）。
  */
-export type RepricedVariationDescriptor = Omit<
-  EstimateVariationDescriptor,
-  "overallDiscount" | "items" | "setGroups"
-> & {
-  items: RepricedItemDescriptor[];
-  setGroups: RepricedSetGroupDescriptor[];
-};
+export type CopiedItemDescriptor = RepricedItemDescriptor;
+
+/**
+ * 得意先改訂で生まれる明細の記述子。改訂元 `finalAmount` のスナップショットを**必須**で持つ。
+ *
+ * **必須の理由（#617）**: optional に残すと改訂経路の書き忘れで改訂明細詳細が黙って生成されず、
+ * §8.4 の比較基準が消える（#602 と同型の未発火 silent data loss）。逆に複製経路でうっかり
+ * 書ける穴も塞ぐため、複製用と改訂用で記述子を割る。
+ */
+export type RevisedItemDescriptor = RepricedItemDescriptor & { revisedDeliveryPrice: Money };
+
+/**
+ * 単価再解決経路のセット群記述子。構成明細を明細型 `I` で径数化する（構成明細も固定値引不可）。
+ * ここでの `Omit` は**置換**（入れ子の `components` を経路ごとの明細型へ差し替える）。
+ */
+export type RepricedSetGroupDescriptor<I extends RepricedItemDescriptor = RepricedItemDescriptor> =
+  Required<Omit<EstimateSetGroupDescriptor, "components">> & { components: I[] };
+
+/**
+ * 単価再解決経路のバリエーション記述子。全体値引 `overallDiscount` を型から消し（クリア）、
+ * 通常明細・セット群を経路ごとの明細型 `I` に差し替える（置換）。
+ *
+ * **generics で径数化する理由**: 複製系・改訂系を別々に定義すると `Required<Omit<...>>`
+ * （＝クリア判断の全量）が 2 箇所に重複し、将来クリア対象が増えたとき片方だけ直る余地が
+ * 生まれる（#602 と同型の再生産）。
+ */
+export type RepricedVariationDescriptor<I extends RepricedItemDescriptor = RepricedItemDescriptor> =
+  Required<Omit<EstimateVariationDescriptor, "overallDiscount" | "items" | "setGroups">> & {
+    items: I[];
+    setGroups: RepricedSetGroupDescriptor<I>[];
+  };
 
 /**
  * 複製で生まれるバリエーションの記述子。複製元バリエーション（出自）を id 参照として添える。
  * C6 DuplicateEstimate で「新バリエーションの生成 id ↔ 複製元 id」の系譜を作るために用いる。
  * 単価再解決経路のため repriced 記述子を土台にし、固定値引は型で禁止する（#603・ADR-20260714-pv8）。
  */
-export type CopiedVariationDescriptor = RepricedVariationDescriptor & {
+export type CopiedVariationDescriptor = RepricedVariationDescriptor<CopiedItemDescriptor> & {
   sourceVariationId: EstimateVariationId;
 };
+
+/** 得意先改訂で生まれるバリエーションの記述子。明細は改訂納品価格必須の記述子で持つ（#617）。 */
+export type RevisedVariationDescriptor = RepricedVariationDescriptor<RevisedItemDescriptor>;
 
 /** 見積複製の入力。variations 以外は新規生成と同じ記述子で、variations のみ系譜付き記述子。 */
 export type EstimateDuplicateInput = Omit<EstimateFactoryInput, "variations"> & {

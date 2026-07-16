@@ -6,10 +6,12 @@ import { ProductId } from "@subdomains/product/domain/values/ProductId";
 import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
 import { describe, expect, it } from "vitest";
 
+import { DiscountRate } from "../../values/DiscountRate";
 import { EmergencyReason } from "../../values/approval/EmergencyReason";
 import { EstimateNumber } from "../../values/EstimateNumber";
 import { FaultDescription } from "../../values/FaultDescription";
 import { ItemName } from "../../values/ItemName";
+import { Memo } from "../../values/Memo";
 import { Money } from "@server/shared/domain/values/Money";
 import { Quantity } from "../../values/Quantity";
 import { SubmissionType } from "../../values/SubmissionType";
@@ -19,6 +21,7 @@ import { Unit } from "../../values/Unit";
 import { EstimateVariationId } from "../../values/EstimateVariationId";
 import {
   EstimateFactory,
+  type CopiedItemDescriptor,
   type CopiedVariationDescriptor,
   type EstimateDuplicateInput,
   type EstimateFactoryInput,
@@ -36,6 +39,28 @@ function item(overrides: Partial<EstimateItemDescriptor> = {}): EstimateItemDesc
     quantity: new Quantity(2),
     unit: new Unit("個"),
     unitPrice: Money.fromMajorUnits(1000),
+    ...overrides,
+  };
+}
+
+/**
+ * 引き継ぎ（複製）経路の明細記述子。維持フィールドは `Required<>` で必須のため（#617）、
+ * optional を持つ {@link item} とは別に全フィールドを明示する。
+ *
+ * 実際の複製経路は「複製元エンティティの getter」から値を引くため常に具体値が揃う
+ * （既定化は `EstimateItem.create` が 1 回だけ行う所有者）。ここでもその既定値と同じ値を置く。
+ */
+function copiedItem(overrides: Partial<CopiedItemDescriptor> = {}): CopiedItemDescriptor {
+  return {
+    productId: new ProductId(UUID),
+    sortOrder: 1,
+    itemName: new ItemName("テスト商品"),
+    quantity: new Quantity(2),
+    unit: new Unit("個"),
+    unitPrice: Money.fromMajorUnits(1000),
+    discountRate: new DiscountRate(1.0),
+    customerMemo: Memo.empty(),
+    internalMemo: Memo.empty(),
     ...overrides,
   };
 }
@@ -207,8 +232,12 @@ describe("EstimateFactory", () => {
       const variations: CopiedVariationDescriptor[] = sources.map((sourceVariationId, i) => ({
         variationNumber: i + 1,
         submissionType: SubmissionType.CUSTOMER,
-        items: [item({ unitPrice: Money.zero() })],
+        items: [copiedItem({ unitPrice: Money.zero() })],
         setGroups: [],
+        // 引き継ぎ記述子は維持フィールドを機械導出で必須化しており（#617）、複写有無の判断を
+        // 省略で誤魔化せない。複製元バリエーションのメモを複写する経路に相当する値を明示する。
+        customerMemo: Memo.empty(),
+        internalMemo: Memo.empty(),
         sourceVariationId,
       }));
       return { ...baseInput(), variations, ...overrides };
