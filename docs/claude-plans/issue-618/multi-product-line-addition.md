@@ -78,7 +78,7 @@
 - コミットメッセージ: `feat: SelectionModal の確定を onConfirm の戻り値で拒否できるようにする (#618)`
 
 ### Step 2: 複数商品の一括追加に対応する
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/app/(features)/estimates/[estimateNumber]/useVariationLineEditor.ts`
   - `src/app/(features)/estimates/[estimateNumber]/useVariationLineEditor.test.ts`

@@ -65,7 +65,8 @@ export function VariationLineEditor({
         </button>
       </div>
 
-      {/* 販売単価が解決できず追加を拒否したときの通知（ADR-0064: 0円明細を作らない）。 */}
+      {/* 周辺商品サジェストで販売単価が解決できずスキップした商品の通知（ADR-0064: 0円明細を作らない）。
+          商品選択モーダル経由の拒否はモーダル内に出るためここには現れない（#618・ADR-20260716-r4d）。 */}
       {editor.selectionError && (
         <div
           role="alert"

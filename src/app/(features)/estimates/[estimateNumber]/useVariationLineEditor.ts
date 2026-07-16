@@ -1,12 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import type { SelectionRejection } from "@/app/_components/shared/SelectionModal";
 import {
   expandSetComponents,
   getProductLineSnapshot,
   getProductSuggestions,
+  type ProductLineSnapshot,
   type SuggestedProduct,
 } from "../_shared/selection-actions";
+import type { ExpandedSetGroup } from "../_shared/setComponentExpansion";
 import { resolveSellingPricesForDisplay } from "../_shared/selling-price-actions";
 import type { ProductSelectionRow } from "../_shared/selectionColumns";
 import { previewVariationTotals, type PreviewTotals } from "./previewAmounts";
@@ -28,6 +31,14 @@ type SuggestState = {
   mainName: string;
   suggestions: SuggestedProduct[];
 };
+
+/**
+ * 選択行1件の解決結果（相1）。原子的な拒否には全件の解決完了が前提のため、取得と検証を分ける。
+ * 拒否時の `invalidIds` に載せる ID は**選択行の ID**（セットは構成ではなくセット商品の ID）。
+ */
+type PreparedSelection =
+  | { kind: "set"; row: ProductSelectionRow; expanded: ExpandedSetGroup }
+  | { kind: "product"; row: ProductSelectionRow; snapshot: ProductLineSnapshot };
 
 /**
  * 明細追加時に見積単価を価格決定（#428・ADR-0064）へ問い合わせるための宛先コンテキスト。
@@ -73,7 +84,8 @@ export function useVariationLineEditor({
   const [productModalOpen, setProductModalOpen] = useState(false);
   // 本体追加直後の周辺商品サジェスト（提案あり時のみ）。挿入は本体行（mainRowId）の直下。
   const [suggestState, setSuggestState] = useState<SuggestState | null>(null);
-  // 販売単価が解決できず追加を拒否したときのエラー文言（ADR-0064: 0円明細を作らず操作を拒否）。
+  // 周辺商品サジェストで販売単価が解決できずスキップした商品の通知（ADR-0064: 0円明細を作らない）。
+  // 商品選択モーダル経由の拒否はモーダル内に表示するため、ここには載らない（#618・ADR-20260716-r4d）。
   const [selectionError, setSelectionError] = useState<string | null>(null);
 
   // 選択商品群の見積単価を価格決定でライブ解決する（提出区分→宛先へマップ・解決不能は null）。
@@ -115,62 +127,97 @@ export function useVariationLineEditor({
     setNodes((prev) => reorderComponents(prev, groupRowId, from, to));
   };
 
-  // 商品選択: セット商品なら構成を自動展開して群ノードを挿入、通常商品ならスナップショット解決して
-  // 通常行を挿入する。いずれも見積単価を価格決定でライブ解決し、解決不能なら行を追加せずエラー表示
-  // する（ADR-0064: 0円明細を作らない・セットは不能な構成があれば展開ごと拒否）。挿入位置はアクティブ
-  // ノード直下（構成/群がアクティブなら群の直後＝トップレベル）。
-  const handleProductSelect = async (rows: ProductSelectionRow[]) => {
-    const picked = rows[0];
-    if (!picked) return;
+  // 商品選択（複数可・#618）: セット商品なら構成を自動展開して群ノードを、通常商品ならスナップショット
+  // 解決して通常行を作る。見積単価は価格決定でライブ解決し、**1件でも解決不能なら1件も追加せず拒否**
+  // する（ADR-0064: 0円明細を作らない、の一括版）。拒否は SelectionRejection を返してモーダル側に
+  // 委ね、ユーザーが原因商品のチェックだけ外して再確定できるようにする（ADR-20260716-r4d）。
+  // 挿入位置はアクティブノード直下（構成/群がアクティブなら群の直後＝トップレベル）。
+  const handleProductSelect = async (
+    rows: ProductSelectionRow[]
+  ): Promise<void | SelectionRejection> => {
+    if (rows.length === 0) return;
 
-    if (picked.category === "SET") {
-      const expanded = await expandSetComponents(picked.id);
-      if (!expanded) return;
-      const componentIds = expanded.components.map((c) => c.productId);
-      const prices = await resolvePricesFor(componentIds);
-      // 1構成でも解決不能なら展開ごと拒否し、不能な構成商品名を列挙する（重複は除く）。
-      // `== null` で undefined（見積年月日未入力時の空マップ）も解決不能として拾う（通常明細157・サジェスト182と対称）。
-      const unresolved = expanded.components.filter((c) => prices[c.productId] == null);
-      if (unresolved.length > 0) {
-        const names = [...new Set(unresolved.map((c) => c.name))];
-        setSelectionError(
-          `セット「${expanded.name}」は次の構成商品に有効な販売単価が無いため展開できません: ${names.join("、")}`
-        );
-        return;
+    // 相1: 選択行ごとに展開/スナップショットを並列取得する（一括選択は数件〜十数件のため
+    // 一括版 Server Action は設けず既存の単体 Action を並列で叩く）。
+    const prepared = await Promise.all(
+      rows.map(async (row): Promise<PreparedSelection | null> => {
+        if (row.category === "SET") {
+          const expanded = await expandSetComponents(row.id);
+          return expanded ? { kind: "set", row, expanded } : null;
+        }
+        const snapshot = await getProductLineSnapshot(row.id);
+        return snapshot ? { kind: "product", row, snapshot } : null;
+      })
+    );
+    // 取得できない商品が混ざったら（並行削除等）何も追加しない（単一選択時の従来の no-op と同義）。
+    if (prepared.some((item) => item === null)) return;
+    const items = prepared as PreparedSelection[];
+
+    // 相2: 通常商品＋全セット構成の商品 ID を集約し、価格解決は1往復に集約する。
+    const productIds = items.flatMap((item) =>
+      item.kind === "set" ? item.expanded.components.map((c) => c.productId) : [item.snapshot.id]
+    );
+    const prices = await resolvePricesFor([...new Set(productIds)]);
+
+    // 相3: 検証。`== null` で undefined（見積年月日未入力時の空マップ）も解決不能として拾う。
+    // 1件でも不能なら1ノードも挿入せず、原因の選択行 ID と理由を返す。
+    const invalidIds: string[] = [];
+    const reasons: string[] = [];
+    for (const item of items) {
+      if (item.kind === "set") {
+        const unresolved = item.expanded.components.filter((c) => prices[c.productId] == null);
+        if (unresolved.length > 0) {
+          const names = [...new Set(unresolved.map((c) => c.name))];
+          invalidIds.push(item.row.id);
+          // セット構成はモーダルの一覧に現れないため、行の色だけでは原因が分からない。構成名を出す。
+          reasons.push(`セット「${item.expanded.name}」の構成商品: ${names.join("、")}`);
+        }
+        continue;
       }
-      const groupRowId = crypto.randomUUID();
-      const group = createWorkingSetGroup(
-        groupRowId,
-        expanded,
-        () => crypto.randomUUID(),
-        (productId) => prices[productId]!
-      );
-      setSelectionError(null);
-      setNodes((prev) => insertNodesBelow(prev, activeRowId, [group]));
-      setActiveRowId(groupRowId);
-      // セット商品は周辺商品サジェストの対象外（構成は自動展開で確定）。
-      return;
+      if (prices[item.snapshot.id] == null) {
+        invalidIds.push(item.row.id);
+        reasons.push(`「${item.snapshot.name}」`);
+      }
+    }
+    if (invalidIds.length > 0) {
+      return {
+        message: `次の商品に有効な販売単価が無いため追加できません（チェックを外して再度お試しください）: ${reasons.join(" / ")}`,
+        invalidIds,
+      };
     }
 
-    const snapshot = await getProductLineSnapshot(picked.id);
-    if (!snapshot) return;
-    const prices = await resolvePricesFor([snapshot.id]);
-    if (prices[snapshot.id] == null) {
-      setSelectionError(
-        `「${snapshot.name}」には有効な販売単価が設定されていないため明細に追加できません。`
-      );
-      return;
-    }
-    const newLine = createWorkingLine(crypto.randomUUID(), snapshot, {
-      unitPrice: prices[snapshot.id]!,
-    });
+    // 相4: 全件解決できたのでノードを構築し、1回の setNodes で表示順のまま1ブロックとして挿入する。
+    const newNodes: WorkingNode[] = items.map((item) =>
+      item.kind === "set"
+        ? createWorkingSetGroup(
+            crypto.randomUUID(),
+            item.expanded,
+            () => crypto.randomUUID(),
+            (productId) => prices[productId]!
+          )
+        : createWorkingLine(crypto.randomUUID(), item.snapshot, {
+            unitPrice: prices[item.snapshot.id]!,
+          })
+    );
+    const lastNode = newNodes[newNodes.length - 1]!;
     setSelectionError(null);
-    setNodes((prev) => insertNodesBelow(prev, activeRowId, [newLine]));
-    setActiveRowId(newLine.rowId);
+    setNodes((prev) => insertNodesBelow(prev, activeRowId, newNodes));
+    // 最後の1件をアクティブにすると、続けて追加したぶんが下へ積まれる（「さっき足した続きに足す」）。
+    setActiveRowId(lastNode.rowId);
 
-    const suggestions = await getProductSuggestions(snapshot.id);
-    if (suggestions.length > 0) {
-      setSuggestState({ mainRowId: newLine.rowId, mainName: snapshot.name, suggestions });
+    // 周辺商品サジェストは単一の通常商品を選んだときだけ従来どおり発火させる。suggestState は単数
+    // state のため複数件でループすると後勝ちで「最後の1件だけ提案が出る」不可解な挙動になる（#619 で
+    // ボタン化されるため、この分岐は将来自然に消える）。セット商品は元から対象外（構成は展開で確定）。
+    const only = items.length === 1 ? items[0] : undefined;
+    if (only?.kind === "product") {
+      const suggestions = await getProductSuggestions(only.snapshot.id);
+      if (suggestions.length > 0) {
+        setSuggestState({
+          mainRowId: lastNode.rowId,
+          mainName: only.snapshot.name,
+          suggestions,
+        });
+      }
     }
   };
 
