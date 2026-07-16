@@ -77,11 +77,8 @@ describe("複数商品の一括追加（#618）", () => {
     });
 
     expect(result.current.nodes).toHaveLength(3);
-    expect(result.current.nodes.map((n) => (n.kind === "line" ? n.itemName : n.itemName))).toEqual([
-      "商品A",
-      "商品B",
-      "商品C",
-    ]);
+    // itemName は通常明細・セット群の双方が持つため判別不要。次行の unitPrice は群が持たないため判別が要る。
+    expect(result.current.nodes.map((n) => n.itemName)).toEqual(["商品A", "商品B", "商品C"]);
     expect(result.current.nodes.map((n) => (n.kind === "line" ? n.unitPrice : null))).toEqual([
       100, 200, 300,
     ]);
