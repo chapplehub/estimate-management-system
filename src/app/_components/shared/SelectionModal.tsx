@@ -6,6 +6,12 @@ import type { SearchFieldDef } from "@/app/_components/shared/SearchForm";
 import { ModalSearchForm } from "@/app/_components/shared/ModalSearchForm";
 import { DataTable, type ColumnDef } from "@/app/_components/shared/DataTable";
 
+/**
+ * 親が確定を拒否するときに `onConfirm` から返す結果（ADR-20260716-r4d）。
+ * `message` を出しつつモーダルに留まり、`invalidIds` の行をハイライトする。
+ */
+export type SelectionRejection = { message: string; invalidIds: string[] };
+
 type SelectionModalProps<TData> = {
   isOpen: boolean;
   onClose: () => void;
@@ -13,7 +19,11 @@ type SelectionModalProps<TData> = {
   searchFields: SearchFieldDef[];
   searchAction: (criteria: Record<string, string>) => Promise<TData[]>;
   columns: ColumnDef<TData, unknown>[];
-  onConfirm: (selectedItems: TData[]) => void;
+  /**
+   * 確定時に選択行を受け取る。`undefined` を返せば成功としてモーダルを閉じ、
+   * `SelectionRejection` を返せば閉じずに理由と原因行を表示する（ADR-20260716-r4d）。
+   */
+  onConfirm: (selectedItems: TData[]) => void | Promise<void | SelectionRejection>;
   getRowId: (row: TData) => string;
   emptyMessage: string;
   excludeIds?: string[];
@@ -35,11 +45,15 @@ export function SelectionModal<TData>({
   const [isLoading, setIsLoading] = useState(false);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [hasSearched, setHasSearched] = useState(false);
+  // 親が確定を拒否したときの理由と原因行（ADR-0015: 表示状態はモーダル内部に閉じる）。
+  const [rejection, setRejection] = useState<SelectionRejection | null>(null);
+  const [isConfirming, setIsConfirming] = useState(false);
 
   const handleSearch = useCallback(
     async (criteria: Record<string, string>) => {
       setIsLoading(true);
       setRowSelection({});
+      setRejection(null);
       try {
         const results = await searchAction(criteria);
         const excludeSet = new Set(excludeIds);
@@ -54,17 +68,31 @@ export function SelectionModal<TData>({
   );
 
   const selectedCount = Object.values(rowSelection).filter(Boolean).length;
+  const invalidIdSet = new Set(rejection?.invalidIds ?? []);
 
-  const handleConfirm = () => {
+  // 確定は親の判定待ち。拒否（SelectionRejection）なら閉じずに理由を出し、選択状態は保つ
+  // （ユーザーが原因商品のチェックだけ外して再確定できることが拒否経路の目的・ADR-20260716-r4d）。
+  const handleConfirm = async () => {
     const selectedItems = data.filter((row) => rowSelection[getRowId(row)]);
-    onConfirm(selectedItems);
-    handleClose();
+    setRejection(null);
+    setIsConfirming(true);
+    try {
+      const result = await onConfirm(selectedItems);
+      if (result) {
+        setRejection(result);
+        return;
+      }
+      handleClose();
+    } finally {
+      setIsConfirming(false);
+    }
   };
 
   const handleClose = () => {
     setData([]);
     setRowSelection({});
     setHasSearched(false);
+    setRejection(null);
     onClose();
   };
 
@@ -89,6 +117,18 @@ export function SelectionModal<TData>({
         <ModalSearchForm fields={searchFields} onSearch={handleSearch} isLoading={isLoading} />
       </div>
 
+      {/* 確定拒否の理由（原因行は data-invalid でハイライトする） */}
+      {rejection && (
+        <div className="px-6 pb-2">
+          <p
+            role="alert"
+            className="rounded border border-red-300 bg-red-50 px-4 py-2 text-red-700"
+          >
+            {rejection.message}
+          </p>
+        </div>
+      )}
+
       {/* テーブル */}
       <div className="flex-1 flex flex-col min-h-0">
         {hasSearched ? (
@@ -100,6 +140,11 @@ export function SelectionModal<TData>({
             rowSelection={rowSelection}
             onRowSelectionChange={setRowSelection}
             getRowId={getRowId}
+            getRowAttributes={(row) =>
+              invalidIdSet.has(getRowId(row))
+                ? { className: "bg-red-50", "data-invalid": true }
+                : {}
+            }
           />
         ) : (
           <div className="flex-1 flex items-center justify-center text-gray-400">
@@ -120,7 +165,7 @@ export function SelectionModal<TData>({
         <button
           type="button"
           onClick={handleConfirm}
-          disabled={selectedCount === 0}
+          disabled={selectedCount === 0 || isConfirming}
           className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           {selectedCount}件を追加

@@ -164,6 +164,16 @@ const eslintConfig = defineConfig([
           selector: "import",
           format: ["camelCase", "PascalCase"],
         },
+        // data-* 属性（HTML の命名規約でありケバブケースが正）は camelCase 化できないため除外する。
+        // 対象は DOM へそのまま展開される属性オブジェクトの key に限る。
+        {
+          selector: ["objectLiteralProperty", "typeProperty"],
+          format: null,
+          filter: {
+            regex: "^data-",
+            match: true,
+          },
+        },
       ],
     },
   },

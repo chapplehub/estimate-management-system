@@ -61,7 +61,7 @@
 ## ステップ
 
 ### Step 1: SelectionModal に確定拒否の経路を作る（ADR-20260716-r4d）
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/app/_components/shared/DataTable.tsx`
   - `src/app/_components/shared/SelectionModal.tsx`
