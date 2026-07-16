@@ -62,3 +62,4 @@
 - `EstimateDuplicationService` の `copyItem` 戻り型・セット群マップが repriced 記述子型になる。
 - `Estimate.reviseForCustomer` は repriced 記述子を組み立て `buildRevisedVariation` へ委譲する形になり、自前のセット群 id 配線が共有 `buildSetGroups` に一本化される（#602 の再発防止）。挙動は不変。
 - 本 ADR は pv8（業務判断）の機構面を担う。将来「repriced 記述子の optional 全般（例: `setGroups?` 必須化）」に踏み込む場合は本 ADR とは別軸の判断として扱う（#603 スコープ外）。
+  - → ADR-20260716-w4k（#617）がこの別軸を担った。本 ADR の 3 決定は存続するが、`RepricedItemDescriptor` の定義のみ w4k が更新する（`Required` で包み `revisedDeliveryPrice` を `Omit` し、複製用／改訂用に割る）。

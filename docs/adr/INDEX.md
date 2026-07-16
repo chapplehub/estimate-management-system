@@ -106,6 +106,7 @@
 | [20260714-pv8](20260714-pv8-revised-variation-drops-fixed-discounts-on-unit-price-resolution.md) | 改訂先生成では固定値引を持ち込まない（単価再解決に伴う絶対額クリア・複製と対称化） | 採用 | 2026-07-14 |
 | [20260714-k2m](20260714-k2m-copy-and-revise-carry-set-groups-by-snapshot-not-master-reexpansion.md) | 複製・改訂はセット群を群ごとスナップショット複写する（マスタから再展開しない） | 採用 | 2026-07-14 |
 | [20260716-35a](20260716-35a-type-enforce-no-fixed-discounts-on-repriced-generation.md) | 単価再解決を伴う生成の固定値引不変則を型で強制する（repriced 記述子＋子構築の共有ビルダー一本化） | 採用 | 2026-07-16 |
+| [20260716-w4k](20260716-w4k-eradicate-optional-from-handoff-descriptors.md) | 引き継ぎ生成の記述子から optional を根絶する（維持は Required で強制・クリアは Omit・経路は分割） | 採用 | 2026-07-16 |
 
 ## アプリケーション（コマンド）
 
