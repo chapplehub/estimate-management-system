@@ -2,8 +2,9 @@ import { expect, test, type Page } from "@playwright/test";
 
 /**
  * 見積新規作成画面 S1（C1）の E2E。seed-e2e の決定的マスタ（得意先・納品先・部署・商品・税率
- * 8%/10% 境界）に対し、(1) NEW 作成→詳細遷移、(2) 自動展開セット群を含む作成、(3) 区分別情報
- * （修理）入力での作成、(4) §8.7 税率不一致のフォーム警告を検証する（ADR-0017/0020）。
+ * 8%/10% 境界）に対し、(1) 複数商品の一括明細追加（#618）、(2) NEW 作成→詳細遷移、(3) 自動展開
+ * セット群を含む作成、(4) 区分別情報（修理）入力での作成、(5) §8.7 税率不一致のフォーム警告を
+ * 検証する（ADR-0017/0020）。
  *
  * 単一フォーム＋単一アクションで原子的に作成し、成功時は詳細画面へ遷移する。作成系のため各テストは
  * 独立に1見積を作る（採番は再シードで決定的・厳密な採番値は assert しない）。
@@ -43,6 +44,43 @@ async function addProductLine(page: Page, productName: string) {
 }
 
 test.describe("見積新規作成（C1）", () => {
+  test("明細追加モーダルで複数商品を選ぶと全件が表示順のまま明細に乗る（#618）", async ({
+    page,
+  }) => {
+    await page.goto("/estimates/new");
+
+    await selectCustomerAndDelivery(page);
+    await page.getByLabel("部署").selectOption({ label: "営業部" });
+
+    // 商品コード部分一致で複数の有効単価あり商品（PRD001 標準デスク・PRD002 オフィスチェア）を
+    // 同一の検索結果に並べ、1回の確定で両方を選ぶ。
+    await page.getByRole("button", { name: "明細追加" }).click();
+    await page.locator("#modal-search-code").fill("PRD00");
+    await page.getByRole("button", { name: "検索" }).click();
+    await page
+      .getByRole("row", { name: /標準デスク/ })
+      .getByRole("checkbox")
+      .click();
+    await page
+      .getByRole("row", { name: /オフィスチェア/ })
+      .getByRole("checkbox")
+      .click();
+    await page.getByRole("button", { name: "2件を追加" }).click();
+
+    // 選んだ全商品が明細に乗り、モーダルの表示順（商品コード順）のまま並ぶ。
+    const deleteButtons = page.getByRole("button", { name: /明細を削除/ });
+    await expect(deleteButtons).toHaveCount(2);
+    await expect(deleteButtons.nth(0)).toHaveAccessibleName("明細を削除（標準デスク）");
+    await expect(deleteButtons.nth(1)).toHaveAccessibleName("明細を削除（オフィスチェア）");
+
+    // 一括追加した明細のまま作成でき、両方が保存される。
+    await page.getByRole("button", { name: "作成", exact: true }).click();
+
+    await expect(page.getByText("見積を登録しました。")).toBeVisible();
+    await expect(page.locator("table tbody tr", { hasText: "標準デスク" })).toBeVisible();
+    await expect(page.locator("table tbody tr", { hasText: "オフィスチェア" })).toBeVisible();
+  });
+
   test("NEW を作成すると詳細画面へ遷移し登録トーストが出る", async ({ page }) => {
     await page.goto("/estimates/new");
 
