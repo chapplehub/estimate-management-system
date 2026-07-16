@@ -75,7 +75,8 @@ onConfirm: (selectedItems: TData[]) => void | Promise<void | SelectionRejection>
 ## 影響
 
 - `SelectionModal` は `onConfirm` を `await` する必要があり、確定処理中は二重確定を防ぐ必要がある（確定ボタンの非活性）
-- 行ハイライトのため `DataTable` に汎用の `getRowClassName?: (row: TData) => string` を足す。「無効」という意味は `DataTable` は知らず、`SelectionModal` に閉じる（テーブルは表示の汎用部品のまま保つ）
+- 行ハイライトのため `DataTable` に汎用の行属性フック `getRowAttributes?: (row: TData) => { className?: string; "data-invalid"?: boolean }` を足す。「無効」という意味は `DataTable` は知らず、何を返すかを決める `SelectionModal` に閉じる（テーブルは表示の汎用部品のまま保つ）
+- ハイライトは配色クラスと併せて `data-invalid` を立てる。テスト（単体・E2E）は `data-invalid` を検証の継ぎ目にし、配色クラスを assert しない（`LineEditTable` の `data-active` / `data-kind` と同じ流儀）。これにより見た目の変更でテストが割れない
 - 拒否状態（エラー文言・ハイライト）は、新しい検索の実行時・モーダルを閉じたとき・次の確定試行時にクリアする。ユーザーが原因行のチェックを外している間は保持し、どれが原因だったかを見失わせない
 - 拒否時に選択状態（`rowSelection`）はリセットしない。ユーザーが該当商品のチェックだけを外して再確定できることが、この決定の目的そのものであるため
 - 対象ファイル: `src/app/_components/shared/SelectionModal.tsx`, `src/app/_components/shared/DataTable.tsx`
