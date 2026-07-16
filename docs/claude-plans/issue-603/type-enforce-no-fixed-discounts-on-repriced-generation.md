@@ -107,7 +107,7 @@
 - コミットメッセージ: `refactor: 得意先改訂を repriced 記述子＋buildRevisedVariation 経由にし固定値引・revisedFrom を型で強制`
 
 ### Step 4: @ts-expect-error 型ガードテストを新設
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - 新規: `src/server/subdomains/estimate/domain/entities/__tests__/repricedDescriptor.type.test.ts`（配置・命名は repo の既存 `__tests__` 前例に合わせる）
 - テスト戦略: 実装後テスト（`@ts-expect-error` 型ガードは対象の `Repriced*` 型・`buildVariation` シグネチャが存在してから書ける。`tsc --noEmit`（pre-push）で担保。型が緩むと未使用 `@ts-expect-error` で赤になる）
