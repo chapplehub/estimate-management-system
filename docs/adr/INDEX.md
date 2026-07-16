@@ -105,6 +105,7 @@
 | [20260710-fg7](20260710-fg7-unit-price-divergence-derived-at-read-time-estimate-date-basis-non-blocking.md) | 単価乖離は見積年月日基準・表示時再解決の派生状態とし、永続化もブロックもしない | 採用 | 2026-07-10 |
 | [20260714-pv8](20260714-pv8-revised-variation-drops-fixed-discounts-on-unit-price-resolution.md) | 改訂先生成では固定値引を持ち込まない（単価再解決に伴う絶対額クリア・複製と対称化） | 採用 | 2026-07-14 |
 | [20260714-k2m](20260714-k2m-copy-and-revise-carry-set-groups-by-snapshot-not-master-reexpansion.md) | 複製・改訂はセット群を群ごとスナップショット複写する（マスタから再展開しない） | 採用 | 2026-07-14 |
+| [20260716-35a](20260716-35a-type-enforce-no-fixed-discounts-on-repriced-generation.md) | 単価再解決を伴う生成の固定値引不変則を型で強制する（repriced 記述子＋子構築の共有ビルダー一本化） | 採用 | 2026-07-16 |
 
 ## アプリケーション（コマンド）
 

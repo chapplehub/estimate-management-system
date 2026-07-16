@@ -39,6 +39,9 @@ export {
   type VariationContentDescriptor,
   type RepairDetailDescriptor,
   type AfterRepairDetailDescriptor,
+  type RepricedItemDescriptor,
+  type RepricedSetGroupDescriptor,
+  type RepricedVariationDescriptor,
   type CopiedVariationDescriptor,
   type EstimateDuplicateInput,
 } from "./EstimateFactory";

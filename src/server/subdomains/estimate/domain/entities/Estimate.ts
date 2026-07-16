@@ -20,8 +20,9 @@ import { SubmissionType } from "../values/SubmissionType";
 import { TaxRate } from "../values/TaxRate";
 import { TaxRoundingType } from "../values/TaxRoundingType";
 import type { AfterRepairEstimateDetail } from "./AfterRepairEstimateDetail";
-import { EstimateItem } from "./EstimateItem";
-import { EstimateSetGroup } from "./EstimateSetGroup";
+import { buildRevisedVariation } from "./estimateChildBuilders";
+import type { RepricedItemDescriptor, RepricedVariationDescriptor } from "./EstimateFactory";
+import type { EstimateItem } from "./EstimateItem";
 import {
   EstimateVariation,
   type ItemPriceAdjustment,
@@ -29,7 +30,6 @@ import {
   type VariationContent,
 } from "./EstimateVariation";
 import type { RepairEstimateDetail } from "./RepairEstimateDetail";
-import { RevisedEstimateItemDetail } from "./RevisedEstimateItemDetail";
 
 /**
  * 得意先改訂先明細の解決済み見積単価（商品ID → Money）。改訂先は常に得意先宛のため、
@@ -249,52 +249,47 @@ export class Estimate {
     // 平坦な items（通常明細＋構成明細の同居・ADR-0047）を群の所属で仕分けてから変換する。
     // 素通しすると構成明細がバラの通常明細として複写され、群が消える（#602）。
     const structure = source.lineStructure;
-    const reviseItem = (item: Readonly<EstimateItem>): EstimateItem =>
-      EstimateItem.create({
-        productId: item.productId,
-        sortOrder: item.sortOrder,
-        itemName: item.itemName,
-        quantity: item.quantity,
-        unit: item.unit,
-        // 単価は得意先宛で解決した値。マップ欠落は黙って複写・0円にせず拒否する（#431）。
-        unitPrice: Estimate.resolvedRevisedUnitPriceOrThrow(resolvedUnitPrices, item),
-        discountRate: item.discountRate,
-        // itemDiscount は付与しない（クリア・ADR-20260714-pv8）
-        customerMemo: item.customerMemo,
-        internalMemo: item.internalMemo,
-        revisedDetail: RevisedEstimateItemDetail.create(item.finalAmount),
-      });
+    // 単価再解決経路の repriced 記述子を組み立てる。固定値引（itemDiscount / overallDiscount）は
+    // repriced 記述子型が Omit で禁止しており、書こうとするとコンパイルエラーになる（#603・
+    // ADR-20260714-pv8 を型で強制）。子の構築（改訂明細詳細・セット群の id 配線）と系譜の付与は
+    // 複製経路と共有の buildRevisedVariation / buildVariationChildren に委ねる（#602 の再発防止）。
+    const toRepricedItem = (item: Readonly<EstimateItem>): RepricedItemDescriptor => ({
+      productId: item.productId,
+      sortOrder: item.sortOrder,
+      itemName: item.itemName,
+      quantity: item.quantity,
+      unit: item.unit,
+      // 単価は得意先宛で解決した値。マップ欠落は黙って複写・0円にせず拒否する（#431）。
+      unitPrice: Estimate.resolvedRevisedUnitPriceOrThrow(resolvedUnitPrices, item),
+      discountRate: item.discountRate,
+      customerMemo: item.customerMemo,
+      internalMemo: item.internalMemo,
+      // 改訂元明細の finalAmount を deliveryPrice としてスナップショットする（§8.4）。
+      revisedDeliveryPrice: item.finalAmount,
+    });
 
-    const normalItems = structure.normalItems.map(reviseItem);
-    // 構成明細は通常明細と同型の価格付き末端行（ADR-0047）なので同じ変換規則を適用する。
-    // 構成明細を先に create して id を確定させてから群の memberItemIds へ配線する
-    // （EstimateFactory.buildSetGroups と同じ手順・ADR-20260714-k2m）。
-    const componentItems: EstimateItem[] = [];
-    const setGroups = structure.setGroups.map(({ group, components }) => {
-      const revisedComponents = components.map(reviseItem);
-      componentItems.push(...revisedComponents);
-      return EstimateSetGroup.create({
+    const descriptor: RepricedVariationDescriptor = {
+      variationNumber: this.nextVariationNumber(),
+      submissionType: SubmissionType.CUSTOMER,
+      items: structure.normalItems.map(toRepricedItem),
+      // 構成明細は通常明細と同型の価格付き末端行（ADR-0047）なので同じ変換規則を適用する。
+      setGroups: structure.setGroups.map(({ group, components }) => ({
         productId: group.productId,
         itemName: group.itemName,
         unit: group.unit,
-        memberItemIds: revisedComponents.map((c) => c.id),
+        components: components.map(toRepricedItem),
         // 群メモは複写する。改訂先は行構成固定で C4 全置換の経路が塞がれており、群メモを
         // 入れ直す手段が無いためクリアすると復旧不能になる（固定値引との非対称・ADR-20260714-k2m）。
         customerMemo: group.customerMemo,
         internalMemo: group.internalMemo,
-      });
-    });
-
-    const revised = EstimateVariation.create({
-      variationNumber: this.nextVariationNumber(),
-      submissionType: SubmissionType.CUSTOMER,
-      revisedFrom: source.id,
-      tax: this.taxContext(),
-      items: [...normalItems, ...componentItems],
-      setGroups,
-      // overallDiscount は付与しない（クリア・ADR-20260714-pv8）
+      })),
       customerMemo: source.customerMemo,
       internalMemo: source.internalMemo,
+    };
+
+    const revised = buildRevisedVariation(descriptor, {
+      tax: this.taxContext(),
+      revisedFrom: source.id,
     });
     this.addVariation(revised);
     return revised;
