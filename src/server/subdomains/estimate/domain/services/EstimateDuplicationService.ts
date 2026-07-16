@@ -163,7 +163,7 @@ export class EstimateDuplicationService {
       submissionType: source.submissionType,
       items: structure.normalItems.map(copyItem),
       setGroups: structure.setGroups.map(
-        ({ group, components }): RepricedSetGroupDescriptor => ({
+        ({ group, components }): RepricedSetGroupDescriptor<CopiedItemDescriptor> => ({
           productId: group.productId,
           itemName: group.itemName,
           unit: group.unit,
