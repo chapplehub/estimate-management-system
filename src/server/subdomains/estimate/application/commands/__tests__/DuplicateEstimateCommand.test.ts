@@ -93,6 +93,7 @@ describe("DuplicateEstimateCommand", () => {
           unitPrice: Money.fromMajorUnits(unitPrice),
         },
       ],
+      setGroups: [],
     });
     return EstimateFactory.create({
       estimateNumber: EstimateNumber.parse("N9300001"),

@@ -535,7 +535,10 @@ describe("Estimate", () => {
     it("max+1 で採番した新バリエーションを追加して返す", () => {
       const e = makeEstimate([makeVariation(1)]);
 
-      const added = e.appendVariation({ items: [makeItem(2000, 1)] }, SubmissionType.CUSTOMER);
+      const added = e.appendVariation(
+        { setGroups: [], items: [makeItem(2000, 1)] },
+        SubmissionType.CUSTOMER
+      );
 
       expect(added.variationNumber).toBe(2);
       expect(e.variations).toHaveLength(2);
@@ -545,7 +548,10 @@ describe("Estimate", () => {
     it("歯抜けがあっても max+1 で採番する（count+1 ではない）", () => {
       const e = makeEstimate([makeVariation(1), makeVariation(3)]);
 
-      const added = e.appendVariation({ items: [makeItem()] }, SubmissionType.CUSTOMER);
+      const added = e.appendVariation(
+        { setGroups: [], items: [makeItem()] },
+        SubmissionType.CUSTOMER
+      );
 
       // 既存 [1,3] → count+1=3 だと衝突。max+1=4 が正
       expect(added.variationNumber).toBe(4);
@@ -555,10 +561,7 @@ describe("Estimate", () => {
       const e = makeEstimate([makeVariation(1)]);
 
       const added = e.appendVariation(
-        {
-          items: [makeItem(10000, 1)],
-          overallDiscount: Money.fromMajorUnits(1000),
-        },
+        { setGroups: [], items: [makeItem(10000, 1)], overallDiscount: Money.fromMajorUnits(1000) },
         SubmissionType.CUSTOMER
       );
 
@@ -568,7 +571,10 @@ describe("Estimate", () => {
     it("指定した提出区分が新バリエーションに保持される（ADR-0045）", () => {
       const e = makeEstimate([makeVariation(1)]);
 
-      const added = e.appendVariation({ items: [makeItem()] }, SubmissionType.DELIVERY_LOCATION);
+      const added = e.appendVariation(
+        { setGroups: [], items: [makeItem()] },
+        SubmissionType.DELIVERY_LOCATION
+      );
 
       expect(added.submissionType.isDeliveryLocation()).toBe(true);
     });
@@ -587,7 +593,7 @@ describe("Estimate", () => {
       const target = makeVariation(1, [makeItem(1000, 1)]);
       const e = makeEstimate([target]);
 
-      e.updateVariation(target.id, { items: [makeItem(500, 2), makeItem(3000, 1)] });
+      e.updateVariation(target.id, { setGroups: [], items: [makeItem(500, 2), makeItem(3000, 1)] });
 
       const updated = e.variations.find((v) => v.id.equals(target.id))!;
       expect(updated.items).toHaveLength(2);
@@ -598,7 +604,7 @@ describe("Estimate", () => {
       const e = makeEstimate([makeVariation(1)]);
       const other = makeVariation(2);
 
-      expect(() => e.updateVariation(other.id, { items: [makeItem()] })).toThrow(
+      expect(() => e.updateVariation(other.id, { setGroups: [], items: [makeItem()] })).toThrow(
         "指定されたバリエーションは存在しません"
       );
     });
@@ -784,9 +790,9 @@ describe("Estimate", () => {
 
       estimate.reviseForCustomer(source.id, revisionPricesFor(source));
 
-      expect(() => estimate.updateVariation(source.id, { items: [makeItem()] })).toThrow(
-        BusinessRuleViolationError
-      );
+      expect(() =>
+        estimate.updateVariation(source.id, { setGroups: [], items: [makeItem()] })
+      ).toThrow(BusinessRuleViolationError);
     });
   });
 
@@ -1064,9 +1070,9 @@ describe("Estimate", () => {
     it("改訂元（凍結）は内容の一括差替え（C4）ができない", () => {
       const { estimate, source } = buildRevisedEstimate();
 
-      expect(() => estimate.updateVariation(source.id, { items: [makeItem()] })).toThrow(
-        BusinessRuleViolationError
-      );
+      expect(() =>
+        estimate.updateVariation(source.id, { setGroups: [], items: [makeItem()] })
+      ).toThrow(BusinessRuleViolationError);
     });
 
     it("改訂元（凍結）には明細操作（追加・掛率変更・全体値引変更）ができない", () => {

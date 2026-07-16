@@ -117,6 +117,7 @@ describe("assertSetComponentsValid", () => {
 
   it("セット群が無ければ商品クエリを呼ばずに空を返す", async () => {
     const content = EstimateFactory.buildVariationContent({
+      setGroups: [],
       items: [
         {
           productId: new ProductId(NORMAL_PID),

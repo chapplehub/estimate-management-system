@@ -119,6 +119,7 @@ function buildEstimate(fk: ApplicationSeedFk, estimateNumber: string, amount: nu
     estimateNumber: EstimateNumber.parse(estimateNumber),
     variations: [
       {
+        setGroups: [],
         variationNumber: 1,
         submissionType: SubmissionType.CUSTOMER,
         items: [

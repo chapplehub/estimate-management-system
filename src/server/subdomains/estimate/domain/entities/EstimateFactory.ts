@@ -80,8 +80,14 @@ export type EstimateVariationDescriptor = {
   submissionType: SubmissionType;
   /** 通常明細（非セット）の記述子。構成明細は setGroups の入れ子側に持つ。 */
   items: EstimateItemDescriptor[];
-  /** セット群（ADR-0047）。各群が構成明細を入れ子で持つ。省略時は空。 */
-  setGroups?: EstimateSetGroupDescriptor[];
+  /**
+   * セット群（ADR-0047）。各群が構成明細を入れ子で持つ。セット群が無い場合は空配列を明示する。
+   *
+   * **必須の理由（#617）**: optional は「正規化する単一の所有者」が居るときだけ許す。undefined の
+   * 発生源はフォーム入力境界であってドメインではないため、`?? []` による正規化はアプリ層の
+   * マッパ（フォーム入力 → 記述子）へ押し出し、ドメインには常に配列が届く状態を型で保つ。
+   */
+  setGroups: EstimateSetGroupDescriptor[];
   overallDiscount?: Money;
   customerMemo?: Memo;
   internalMemo?: Memo;
@@ -153,7 +159,7 @@ export type RepricedVariationDescriptor = Omit<
   "overallDiscount" | "items" | "setGroups"
 > & {
   items: RepricedItemDescriptor[];
-  setGroups?: RepricedSetGroupDescriptor[];
+  setGroups: RepricedSetGroupDescriptor[];
 };
 
 /**

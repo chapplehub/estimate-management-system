@@ -18,7 +18,11 @@ export type SetComponentValidationTarget = {
     productId: { value: string };
     itemName: { value: string };
   }>;
-  setGroups?: ReadonlyArray<{ memberItemIds: ReadonlyArray<{ value: string }> }>;
+  /**
+   * セット群。呼び出し元は生成済み集約（`estimate.variations`）か `buildVariationContent` の
+   * 戻り値＝エンティティを渡しており、常に配列を持つため必須とする（#617）。
+   */
+  setGroups: ReadonlyArray<{ memberItemIds: ReadonlyArray<{ value: string }> }>;
 };
 
 /**
@@ -39,7 +43,7 @@ export async function assertSetComponentsValid(
   content: SetComponentValidationTarget,
   productQueryService: ProductQueryService
 ): Promise<SetComponentWarning[]> {
-  const setGroups = content.setGroups ?? [];
+  const setGroups = content.setGroups;
   if (setGroups.length === 0) {
     return [];
   }

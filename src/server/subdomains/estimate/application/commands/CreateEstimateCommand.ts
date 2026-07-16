@@ -221,7 +221,10 @@ export class CreateEstimateCommand {
       variationNumber: variation.variationNumber,
       submissionType: SubmissionType.from(variation.submissionType),
       items: variation.items.map((item) => this.toItemDescriptor(item, priceMap)),
-      setGroups: variation.setGroups?.map((group) => this.toSetGroupDescriptor(group, priceMap)),
+      // フォーム入力境界の undefined をここで空配列へ正規化する（記述子側は必須・#617）
+      setGroups: (variation.setGroups ?? []).map((group) =>
+        this.toSetGroupDescriptor(group, priceMap)
+      ),
       overallDiscount:
         variation.overallDiscount != null
           ? Money.fromMajorUnits(variation.overallDiscount)

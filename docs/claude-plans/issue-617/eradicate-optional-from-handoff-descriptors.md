@@ -63,7 +63,7 @@
 ## ステップ
 
 ### Step 1: `setGroups` をドメインで必須化し正規化をアプリ境界へ押し出す
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/server/subdomains/estimate/domain/entities/EstimateFactory.ts`（`EstimateVariationDescriptor.setGroups` / `RepricedVariationDescriptor.setGroups`）
   - `src/server/subdomains/estimate/domain/entities/estimateChildBuilders.ts`（`VariationChildrenDescriptor.setGroups` / `?? []` 削除）

@@ -448,9 +448,9 @@ describe("PrismaEstimateRepository", () => {
       expect(foundRevised?.items.every((i) => i.revisedDetail !== null)).toBe(true);
 
       // 再構築後の集約でも凍結（導出）が機能する
-      expect(() => found.updateVariation(source.id, { items: [makeItem(ids.productId)] })).toThrow(
-        BusinessRuleViolationError
-      );
+      expect(() =>
+        found.updateVariation(source.id, { setGroups: [], items: [makeItem(ids.productId)] })
+      ).toThrow(BusinessRuleViolationError);
     });
 
     it("改訂を含む見積を削除できる（系譜・改訂明細詳細ごと消える）", async () => {

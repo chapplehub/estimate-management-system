@@ -51,7 +51,14 @@ function baseInput(overrides: Partial<EstimateFactoryInput> = {}): EstimateFacto
     taxRoundingType: TaxRoundingType.ROUND_DOWN,
     createdBy: new EmployeeId(UUID),
     departmentId: new DepartmentId(UUID),
-    variations: [{ variationNumber: 1, submissionType: SubmissionType.CUSTOMER, items: [item()] }],
+    variations: [
+      {
+        setGroups: [],
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        items: [item()],
+      },
+    ],
     ...overrides,
   };
 }
@@ -62,6 +69,7 @@ describe("EstimateFactory", () => {
       baseInput({
         variations: [
           {
+            setGroups: [],
             variationNumber: 1,
             submissionType: SubmissionType.CUSTOMER,
             items: [
@@ -96,11 +104,13 @@ describe("EstimateFactory", () => {
       baseInput({
         variations: [
           {
+            setGroups: [],
             variationNumber: 1,
             submissionType: SubmissionType.DELIVERY_LOCATION,
             items: [item()],
           },
           {
+            setGroups: [],
             variationNumber: 2,
             submissionType: SubmissionType.CUSTOMER,
             items: [item()],
@@ -118,6 +128,7 @@ describe("EstimateFactory", () => {
       baseInput({
         variations: [
           {
+            setGroups: [],
             variationNumber: 1,
             submissionType: SubmissionType.CUSTOMER,
             items: [item({ revisedDeliveryPrice: Money.fromMajorUnits(800) })],
@@ -197,6 +208,7 @@ describe("EstimateFactory", () => {
         variationNumber: i + 1,
         submissionType: SubmissionType.CUSTOMER,
         items: [item({ unitPrice: Money.zero() })],
+        setGroups: [],
         sourceVariationId,
       }));
       return { ...baseInput(), variations, ...overrides };
@@ -248,6 +260,7 @@ describe("EstimateFactory", () => {
   describe("buildVariationContent - C3/C4 用の番号なし内容構築", () => {
     it("番号なし内容から構築済み明細を含む VariationContent を生成する", () => {
       const content = EstimateFactory.buildVariationContent({
+        setGroups: [],
         items: [item({ unitPrice: Money.fromMajorUnits(1000), quantity: new Quantity(2) })],
         overallDiscount: Money.fromMajorUnits(500),
       });

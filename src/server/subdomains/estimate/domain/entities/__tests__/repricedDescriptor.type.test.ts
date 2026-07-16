@@ -41,6 +41,15 @@ describe("repriced 記述子・通常 buildVariation の型不変則", () => {
     expect(typeof guard).toBe("function");
   });
 
+  it("RepricedVariationDescriptor はセット群 setGroups の省略を型で拒否する", () => {
+    const guard = (
+      base: Omit<RepricedVariationDescriptor, "setGroups">
+    ): RepricedVariationDescriptor =>
+      // @ts-expect-error setGroups は省略できない（#602 の火元・#617）
+      ({ ...base });
+    expect(typeof guard).toBe("function");
+  });
+
   it("通常 buildVariation は改訂系譜 revisedFrom を受け取らない", () => {
     const guard = (
       descriptor: EstimateVariationDescriptor,

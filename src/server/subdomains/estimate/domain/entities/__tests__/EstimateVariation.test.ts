@@ -447,6 +447,7 @@ describe("EstimateVariation", () => {
 
       v.replaceContent(
         {
+          setGroups: [],
           items: [
             makeItem({ quantity: 2, unitPrice: 500 }),
             makeItem({ quantity: 1, unitPrice: 3000 }),
@@ -469,7 +470,7 @@ describe("EstimateVariation", () => {
       });
       v.deactivate();
 
-      expect(() => v.replaceContent({ items: [makeItem()] }, TAX)).toThrow(
+      expect(() => v.replaceContent({ setGroups: [], items: [makeItem()] }, TAX)).toThrow(
         BusinessRuleViolationError
       );
     });
@@ -483,6 +484,7 @@ describe("EstimateVariation", () => {
 
       v.replaceContent(
         {
+          setGroups: [],
           items: [makeItem({ quantity: 1, unitPrice: 10000 })],
           overallDiscount: Money.fromMajorUnits(1000),
           customerMemo: Memo.create("客先メモ"),
@@ -504,7 +506,7 @@ describe("EstimateVariation", () => {
         items: [makeItem({ unitPrice: 5000 })],
       });
 
-      v.replaceContent({ items: [] }, TAX);
+      v.replaceContent({ setGroups: [], items: [] }, TAX);
 
       expect(v.items).toHaveLength(0);
       expect(v.subtotal.isZero()).toBe(true);
@@ -567,7 +569,7 @@ describe("EstimateVariation", () => {
     it("改訂で生まれたバリエーションは内容の一括差替え（C4）ができない", () => {
       const v = makeRevisedVariation();
 
-      expect(() => v.replaceContent({ items: [makeItem()] }, TAX)).toThrow(
+      expect(() => v.replaceContent({ setGroups: [], items: [makeItem()] }, TAX)).toThrow(
         BusinessRuleViolationError
       );
     });
@@ -877,7 +879,7 @@ describe("EstimateVariation", () => {
       });
       expect(v.setGroups).toHaveLength(1);
 
-      v.replaceContent({ items: [makeItem({ unitPrice: 2000 })] }, TAX);
+      v.replaceContent({ setGroups: [], items: [makeItem({ unitPrice: 2000 })] }, TAX);
 
       expect(v.setGroups).toHaveLength(0);
     });

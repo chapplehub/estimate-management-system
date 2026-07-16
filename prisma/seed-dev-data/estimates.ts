@@ -139,6 +139,7 @@ function buildSingleLine(
     estimateNumber: EstimateNumber.parse(estimateNumber),
     variations: [
       {
+        setGroups: [],
         variationNumber: 1,
         submissionType: SubmissionType.CUSTOMER,
         items: [mkItem(productId, 1, itemName, 1, amount)],
@@ -230,6 +231,7 @@ export async function seedDevEstimates(prisma: PrismaClient): Promise<number> {
     estimateNumber: EstimateNumber.parse(N.exemptConsumableOnly),
     variations: [
       {
+        setGroups: [],
         variationNumber: 1,
         submissionType: SubmissionType.CUSTOMER,
         items: [
@@ -246,6 +248,7 @@ export async function seedDevEstimates(prisma: PrismaClient): Promise<number> {
     estimateNumber: EstimateNumber.parse(N.exemptAfterRepair),
     variations: [
       {
+        setGroups: [],
         variationNumber: 1,
         submissionType: SubmissionType.CUSTOMER,
         items: [mkItem(fk.repairTargetId, 1, "事後修理明細", 1, 300000)], // 税込330,000 でも事後→免除
@@ -263,6 +266,7 @@ export async function seedDevEstimates(prisma: PrismaClient): Promise<number> {
   // 構造: 全部入り（複数バリ・明細値引・全体値引・改訂価格・無効バリ）。
   const fullVariations: EstimateVariationDescriptor[] = [
     {
+      setGroups: [],
       variationNumber: 1,
       submissionType: SubmissionType.CUSTOMER,
       overallDiscount: Money.fromMajorUnits(5000),
@@ -273,11 +277,13 @@ export async function seedDevEstimates(prisma: PrismaClient): Promise<number> {
       ],
     },
     {
+      setGroups: [],
       variationNumber: 2,
       submissionType: SubmissionType.DELIVERY_LOCATION,
       items: [mkItem(fk.individualBId, 1, "納品先向け明細", 3, 20000)],
     },
     {
+      setGroups: [],
       variationNumber: 3,
       submissionType: SubmissionType.CUSTOMER,
       items: [mkItem(fk.individualAId, 1, "旧バリエーション（無効化予定）", 1, 10000)],
@@ -326,6 +332,7 @@ export async function seedDevEstimates(prisma: PrismaClient): Promise<number> {
     estimateNumber: EstimateNumber.parse(N.structRevised),
     variations: [
       {
+        setGroups: [],
         variationNumber: 1,
         submissionType: SubmissionType.DELIVERY_LOCATION,
         items: [mkItem(fk.individualAId, 1, "改訂元明細（納品先）", 1, 40000)],
@@ -352,6 +359,7 @@ export async function seedDevEstimates(prisma: PrismaClient): Promise<number> {
     estimateNumber: EstimateNumber.parse(N.structRepair),
     variations: [
       {
+        setGroups: [],
         variationNumber: 1,
         submissionType: SubmissionType.CUSTOMER,
         items: [mkItem(fk.repairTargetId, 1, "修理見積明細", 1, 80000)],

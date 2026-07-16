@@ -122,6 +122,7 @@ function header(fk: EstimateSeedFk) {
 function buildFullEstimate(fk: EstimateSeedFk) {
   const variations: EstimateVariationDescriptor[] = [
     {
+      setGroups: [],
       variationNumber: 1,
       submissionType: SubmissionType.CUSTOMER,
       overallDiscount: Money.fromMajorUnits(1000),
@@ -132,11 +133,13 @@ function buildFullEstimate(fk: EstimateSeedFk) {
       ],
     },
     {
+      setGroups: [],
       variationNumber: 2,
       submissionType: SubmissionType.DELIVERY_LOCATION,
       items: [mkItem(fk.productBId, 1, "納品先向け明細", 3, 3000)],
     },
     {
+      setGroups: [],
       variationNumber: 3,
       submissionType: SubmissionType.CUSTOMER,
       items: [mkItem(fk.productAId, 1, "旧バリエーション", 1, 1000)],
@@ -160,6 +163,7 @@ function buildEditableEstimate(fk: EstimateSeedFk) {
     estimateNumber: EstimateNumber.parse(SEED_ESTIMATE_NUMBERS.editable),
     variations: [
       {
+        setGroups: [],
         variationNumber: 1,
         submissionType: SubmissionType.CUSTOMER,
         items: [mkItem(fk.productAId, 1, "編集対象明細", 1, 1000)],
@@ -175,6 +179,7 @@ function buildRepairSeedEstimate(fk: EstimateSeedFk) {
     estimateNumber: EstimateNumber.parse(SEED_ESTIMATE_NUMBERS.repair),
     variations: [
       {
+        setGroups: [],
         variationNumber: 1,
         submissionType: SubmissionType.CUSTOMER,
         items: [mkItem(fk.productAId, 1, "修理見積明細", 1, 5000)],
@@ -198,6 +203,7 @@ function buildRevisedEstimate(fk: EstimateSeedFk) {
     estimateNumber: EstimateNumber.parse(SEED_ESTIMATE_NUMBERS.revised),
     variations: [
       {
+        setGroups: [],
         variationNumber: 1,
         submissionType: SubmissionType.DELIVERY_LOCATION,
         items: [mkItem(fk.productAId, 1, "改訂元明細", 1, 4000)],
@@ -226,11 +232,13 @@ function buildReviseSourceEstimate(fk: EstimateSeedFk) {
     estimateNumber: EstimateNumber.parse(SEED_ESTIMATE_NUMBERS.reviseSource),
     variations: [
       {
+        setGroups: [],
         variationNumber: 1,
         submissionType: SubmissionType.DELIVERY_LOCATION,
         items: [mkItem(fk.productAId, 1, "改訂元明細(納品先)", 1, 5000)],
       },
       {
+        setGroups: [],
         variationNumber: 2,
         submissionType: SubmissionType.CUSTOMER,
         items: [mkItem(fk.productBId, 1, "得意先明細", 1, 6000)],
@@ -246,11 +254,13 @@ function buildAllInactiveEstimate(fk: EstimateSeedFk) {
     estimateNumber: EstimateNumber.parse(SEED_ESTIMATE_NUMBERS.allInactive),
     variations: [
       {
+        setGroups: [],
         variationNumber: 1,
         submissionType: SubmissionType.CUSTOMER,
         items: [mkItem(fk.productAId, 1, "無効明細1", 1, 1000)],
       },
       {
+        setGroups: [],
         variationNumber: 2,
         submissionType: SubmissionType.DELIVERY_LOCATION,
         items: [mkItem(fk.productBId, 1, "無効明細2", 1, 2000)],
@@ -274,11 +284,13 @@ function buildS7ToggleEstimate(fk: EstimateSeedFk) {
     estimateNumber: EstimateNumber.parse(SEED_ESTIMATE_NUMBERS.s7Toggle),
     variations: [
       {
+        setGroups: [],
         variationNumber: 1,
         submissionType: SubmissionType.CUSTOMER,
         items: [mkItem(fk.productAId, 1, "S7トグル明細1", 1, 1000)],
       },
       {
+        setGroups: [],
         variationNumber: 2,
         submissionType: SubmissionType.DELIVERY_LOCATION,
         items: [mkItem(fk.productBId, 1, "S7トグル明細2", 1, 2000)],
@@ -297,6 +309,7 @@ function buildApplyExemptEstimate(fk: EstimateSeedFk) {
     estimateNumber: EstimateNumber.parse(SEED_ESTIMATE_NUMBERS.applyExempt),
     variations: [
       {
+        setGroups: [],
         variationNumber: 1,
         submissionType: SubmissionType.CUSTOMER,
         items: [mkItem(fk.productAId, 1, "免除対象明細", 1, 50000)],
@@ -316,6 +329,7 @@ function buildApplyRequiredEstimate(fk: EstimateSeedFk) {
     estimateNumber: EstimateNumber.parse(SEED_ESTIMATE_NUMBERS.applyRequired),
     variations: [
       {
+        setGroups: [],
         variationNumber: 1,
         submissionType: SubmissionType.CUSTOMER,
         items: [mkItem(fk.productAId, 1, "承認必要明細", 1, 300000)],
@@ -334,11 +348,13 @@ function buildApplyInactiveEstimate(fk: EstimateSeedFk) {
     estimateNumber: EstimateNumber.parse(SEED_ESTIMATE_NUMBERS.applyInactive),
     variations: [
       {
+        setGroups: [],
         variationNumber: 1,
         submissionType: SubmissionType.CUSTOMER,
         items: [mkItem(fk.productAId, 1, "申請可明細", 1, 50000)],
       },
       {
+        setGroups: [],
         variationNumber: 2,
         submissionType: SubmissionType.DELIVERY_LOCATION,
         items: [mkItem(fk.productBId, 1, "無効バリ明細", 1, 60000)],

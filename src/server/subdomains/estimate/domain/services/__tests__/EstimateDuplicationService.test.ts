@@ -62,6 +62,7 @@ function buildSourceNew(): Estimate {
     departmentId: new DepartmentId(UUID),
     variations: [
       {
+        setGroups: [],
         variationNumber: 1,
         submissionType: SubmissionType.DELIVERY_LOCATION,
         overallDiscount: Money.fromMajorUnits(300),
@@ -81,6 +82,7 @@ function buildSourceNew(): Estimate {
         ],
       },
       {
+        setGroups: [],
         variationNumber: 2,
         submissionType: SubmissionType.CUSTOMER,
         items: [
@@ -404,6 +406,7 @@ describe("EstimateDuplicationService", () => {
         departmentId: new DepartmentId(UUID),
         variations: [
           {
+            setGroups: [],
             variationNumber: 1,
             submissionType: SubmissionType.CUSTOMER,
             items: [

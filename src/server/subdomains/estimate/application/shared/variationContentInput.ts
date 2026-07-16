@@ -81,7 +81,10 @@ export function toVariationContentDescriptor(
 ): VariationContentDescriptor {
   return {
     items: input.items.map((item) => toEstimateItemDescriptor(item, priceMap)),
-    setGroups: input.setGroups?.map((group) => toEstimateSetGroupDescriptor(group, priceMap)),
+    // フォーム入力境界の undefined をここで空配列へ正規化する（記述子側は必須・#617）
+    setGroups: (input.setGroups ?? []).map((group) =>
+      toEstimateSetGroupDescriptor(group, priceMap)
+    ),
     overallDiscount:
       input.overallDiscount != null ? Money.fromMajorUnits(input.overallDiscount) : undefined,
     customerMemo: input.customerMemo != null ? Memo.create(input.customerMemo) : undefined,

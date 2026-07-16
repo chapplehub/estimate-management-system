@@ -651,6 +651,7 @@ export async function seedDevApplications(prisma: PrismaClient): Promise<number>
       estimateNumber: EstimateNumber.parse(opts.number),
       variations: [
         {
+          setGroups: [],
           variationNumber: 1,
           submissionType: SubmissionType.CUSTOMER,
           items: [
@@ -746,6 +747,7 @@ export async function seedDevApplications(prisma: PrismaClient): Promise<number>
         estimateNumber: EstimateNumber.parse(spec.number),
         variations: [
           {
+            setGroups: [],
             variationNumber: 1,
             submissionType: SubmissionType.CUSTOMER,
             items: [

@@ -28,7 +28,7 @@ import type {
 /** 記述子の共通形状（通常明細＋セット群）。バリエーション記述子・内容記述子・repriced 記述子が構造的に満たす。 */
 type VariationChildrenDescriptor = {
   items: EstimateItemDescriptor[];
-  setGroups?: EstimateSetGroupDescriptor[];
+  setGroups: EstimateSetGroupDescriptor[];
 };
 
 /** 明細記述子（値オブジェクト止まり）から末端明細を構築する。改訂明細詳細は納品価格 VO から構築する。 */
@@ -91,7 +91,7 @@ export function buildVariationChildren(descriptor: VariationChildrenDescriptor):
   setGroups: EstimateSetGroup[];
 } {
   const normalItems = descriptor.items.map(buildItem);
-  const { groups, componentItems } = buildSetGroups(descriptor.setGroups ?? []);
+  const { groups, componentItems } = buildSetGroups(descriptor.setGroups);
   return { items: [...normalItems, ...componentItems], setGroups: groups };
 }
 
