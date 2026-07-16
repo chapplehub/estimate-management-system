@@ -76,6 +76,24 @@ describe("SelectionModal の確定拒否", () => {
     expect(rowOf("商品B")).not.toHaveAttribute("data-invalid");
   });
 
+  it("原因行には既定の hover 配色が出力されない（hover でハイライトが消えないこと）", async () => {
+    const user = userEvent.setup();
+    const onConfirm = vi
+      .fn()
+      .mockResolvedValue({ message: "商品Aには販売単価がありません", invalidIds: ["p1"] });
+
+    renderModal({ onConfirm });
+    await searchAndSelect(user, "商品A", "商品B");
+    await user.click(screen.getByRole("button", { name: "2件を追加" }));
+    await screen.findByRole("alert");
+
+    // 既定の hover 配色を残したままハイライト色を追記すると、hover の詳細度（0-2-0）が
+    // ハイライト（0-1-0）に勝ち、原因行にマウスを乗せた瞬間＝チェックを外そうとした瞬間に
+    // ハイライトが消える。ハイライトの色味は assert しない（見た目の変更で割れるため）。
+    expect(rowOf("商品A")).not.toHaveClass("hover:bg-gray-50");
+    expect(rowOf("商品B")).toHaveClass("hover:bg-gray-50");
+  });
+
   it("拒否後も選択状態は保たれ、原因商品のチェックを外すだけで再確定できる", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();

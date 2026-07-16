@@ -142,12 +142,16 @@ export function DataTable<TData>({
               ) : (
                 table.getRowModel().rows.map((row) => {
                   const attributes = getRowAttributes?.(row.original);
+                  // 利用側が配色を指定したら既定の hover 配色は出力しない（追記だと hover の詳細度
+                  // 0-2-0 が指定色 0-1-0 に勝ち、マウスを乗せた瞬間に指定色が消えるため）。
+                  // 既定 hover は「利用側が配色を指定しないとき」のフォールバック（LineEditTable と同じ作法）。
+                  const rowClassName = attributes?.className
+                    ? `border-b ${attributes.className}`
+                    : "border-b hover:bg-gray-50";
                   return (
                     <tr
                       key={row.id}
-                      className={`border-b hover:bg-gray-50${
-                        attributes?.className ? ` ${attributes.className}` : ""
-                      }`}
+                      className={rowClassName}
                       {...(attributes?.["data-invalid"] ? { "data-invalid": true } : {})}
                     >
                       {row.getVisibleCells().map((cell) => (
