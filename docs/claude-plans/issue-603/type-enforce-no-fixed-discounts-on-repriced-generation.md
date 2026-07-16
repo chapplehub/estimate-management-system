@@ -65,7 +65,7 @@
 ## ステップ
 
 ### Step 1: 子構築ロジックを共有ビルダーモジュールへ抽出（挙動不変）
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - 新規: `src/server/subdomains/estimate/domain/entities/estimateChildBuilders.ts`
   - 変更: `src/server/subdomains/estimate/domain/entities/EstimateFactory.ts`
