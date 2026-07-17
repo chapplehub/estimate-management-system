@@ -121,7 +121,7 @@ optional `Money | null` に代入可）。
   - ボディに設計判断（核4フィールドの根拠・submissionType 排除・revisedDeliveryPrice 必須化・型テスト削除の理由）を記載
 
 ### Step 2: ADR 起票と ADR-35a への注記追記
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `docs/adr/20260717-<短ランダム接尾辞>-additive-descriptor-base-over-subtractive-commonalization.md`（新規）
   - `docs/adr/20260716-35a-type-enforce-no-fixed-discounts-on-repriced-generation.md`（改訂履歴＋部分置換の注記のみ追記）
