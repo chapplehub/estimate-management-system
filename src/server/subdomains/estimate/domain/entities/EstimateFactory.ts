@@ -37,8 +37,15 @@ import { RepairEstimateDetail } from "./RepairEstimateDetail";
  * 組み立てのみを責務とし、子エンティティ型を一切外部へ露出しない。
  */
 
-/** 明細の記述子（値オブジェクト止まり。改訂明細詳細は納品価格 VO から本ファクトリが構築）。 */
-export type EstimateItemDescriptor = {
+/**
+ * 全経路（新規生成・複製先・改訂先）に共通する明細記述子の核。
+ *
+ * **加算拡張の方針（ADR-20260717-w4d）**: 核には全経路で意味を持つフィールドだけを置き、
+ * 経路固有のフィールドは各記述子が交差型で「足す」。禁止フィールド（単価再解決経路の固定値引・
+ * ADR-20260714-pv8）は核に無いため、`Copied*` の構築サイトで書こうとすると excess property で
+ * コンパイルエラーになる。減算（`Omit`）と違い、禁止は「消し忘れ」で復活しない。
+ */
+export type ItemDescriptorBase = {
   productId: ProductId;
   sortOrder: number;
   itemName: ItemName;
@@ -46,11 +53,36 @@ export type EstimateItemDescriptor = {
   unit: Unit;
   unitPrice: Money;
   discountRate?: DiscountRate;
-  itemDiscount?: Money;
   customerMemo?: Memo;
   internalMemo?: Memo;
-  /** 得意先改訂で生まれた明細のみ持つ納品価格。指定時のみ改訂明細詳細を構築する。 */
+};
+
+/** 新規生成・C3/C4 経路の明細記述子（値オブジェクト止まり。改訂明細詳細は納品価格 VO から本ファクトリが構築）。 */
+export type EstimateItemDescriptor = ItemDescriptorBase & {
+  /** 固定値引。単価を宛先へ再解決しない経路（担当者が単価を決めた見積）でのみ意味を持つ。 */
+  itemDiscount?: Money;
+  /** 改訂済み明細の納品価格。指定時のみ改訂明細詳細を構築する（seed が改訂済み見積を直接生成する経路）。 */
   revisedDeliveryPrice?: Money | null;
+};
+
+/**
+ * 複製先の明細記述子。核そのもの。
+ *
+ * 固定値引（単価再解決で根拠を失う・ADR-20260714-pv8 / #598）も改訂明細詳細（複製に改訂の出自は無い）も
+ * 名前ごと現れない。核の全フィールドが optional 込みで {@link EstimateItemDescriptor} の部分集合のため、
+ * 共有ビルダー（`buildItem` / `buildVariationChildren`）へ構造的にそのまま渡せる。
+ */
+export type CopiedItemDescriptor = ItemDescriptorBase;
+
+/**
+ * 改訂先（得意先改訂）の明細記述子。核＋納品価格。
+ *
+ * `reviseForCustomer` は全明細に改訂元の `finalAmount` を必ずスナップショットする（§8.4）ため、
+ * 納品価格は必須・非 null が honest。populate 漏れは本物の不変則違反としてコンパイルエラーになる。
+ * 固定値引は核に無いので複製先と同じく型で禁止される。
+ */
+export type RevisedItemDescriptor = ItemDescriptorBase & {
+  revisedDeliveryPrice: Money;
 };
 
 /**
@@ -60,43 +92,62 @@ export type EstimateItemDescriptor = {
  * 記述子の段階では「どの構成明細がこの群に属すか」を id では参照できない。群に構成明細を
  * 入れ子で持たせることで、ファクトリが構成を構築 → 生成 id を捕捉 → 群へ配線できる。
  * これは読み取り DTO（`SetGroupDTO.components`）・作業コピー（往復形状 A）と対称。
+ *
+ * **明細型 `I` による径数化**: 構成明細は通常明細と同型の価格付き末端行（ADR-0047）なので、
+ * 経路ごとの明細制約（複製先＝固定値引不可、改訂先＝納品価格必須）は `I` の差し替えだけで
+ * 群の内側まで伝播する。群自身は価格を持たない（価格保守対象商品ではない）ため経路差は無い。
+ * `I` は核（{@link ItemDescriptorBase}）を満たす明細記述子に制約する。制約が無いと明細でない型での
+ * instantiation が宣言時に通り、誤りは共有ビルダーの呼び出し地点まで表面化しない。
  */
-export type EstimateSetGroupDescriptor = {
+export type SetGroupDescriptor<I extends ItemDescriptorBase> = {
   productId: ProductId;
   /** 商品名スナップショット（SET 商品マスタからの複写）。 */
   itemName: ItemName;
   /** 単位スナップショット。 */
   unit: Unit;
   /** 構成明細（入れ子）。空配列は不可（空群禁止は EstimateSetGroup.create が担保）。 */
-  components: EstimateItemDescriptor[];
+  components: I[];
   customerMemo?: Memo;
   internalMemo?: Memo;
 };
 
-/** バリエーションの記述子（値オブジェクト止まり）。 */
-export type EstimateVariationDescriptor = {
-  variationNumber: number;
-  /** 提出区分（ADR-0045: バリエーション単位の不変保存属性。記述子ごとに指定する） */
-  submissionType: SubmissionType;
+/** 新規生成・C3/C4 経路のセット群記述子。アプリ層の既存 import 名を保つエイリアス。 */
+export type EstimateSetGroupDescriptor = SetGroupDescriptor<EstimateItemDescriptor>;
+
+/**
+ * 全経路に共通するバリエーション記述子の核（行の中身とメモ）。
+ *
+ * 核は全経路で意味を持つ 4 フィールドのみ。`variationNumber` / `submissionType` は経路ごとに
+ * 有無が割れる（C3/C4 は番号も提出区分も外側、改訂先は提出区分をビルダーが固定）ため核に入れず、
+ * 必要な拡張だけが加算する。核に入れると「核なのに一部経路で使えない」嘘が生まれる（#617 の教訓）。
+ *
+ * 明細型 `I` は {@link SetGroupDescriptor} と同じく核（{@link ItemDescriptorBase}）に制約する。
+ */
+export type VariationDescriptorBase<I extends ItemDescriptorBase> = {
   /** 通常明細（非セット）の記述子。構成明細は setGroups の入れ子側に持つ。 */
-  items: EstimateItemDescriptor[];
+  items: I[];
   /** セット群（ADR-0047）。各群が構成明細を入れ子で持つ。省略時は空。 */
-  setGroups?: EstimateSetGroupDescriptor[];
-  overallDiscount?: Money;
+  setGroups?: SetGroupDescriptor<I>[];
   customerMemo?: Memo;
   internalMemo?: Memo;
 };
 
 /**
- * 番号を含まないバリエーション内容の記述子。C3 AddVariation（番号は集約が採番）と
+ * 番号・提出区分を含まないバリエーション内容の記述子。C3 AddVariation（番号は集約が採番）と
  * C4 UpdateVariation（番号は変更しない）で共用する。
- * 提出区分は不変属性（ADR-0045）のため C4 で指定できず、ここから型レベルで除外する。
- * C3 では番号同様にバリエーション内容の外側で受け取る。
+ * 提出区分は不変属性（ADR-0045）のため C4 で指定できず、C3 では番号同様に内容の外側で受け取る。
+ * どちらも核に無いので、この型には名前ごと現れない。
  */
-export type VariationContentDescriptor = Omit<
-  EstimateVariationDescriptor,
-  "variationNumber" | "submissionType"
->;
+export type VariationContentDescriptor = VariationDescriptorBase<EstimateItemDescriptor> & {
+  overallDiscount?: Money;
+};
+
+/** バリエーションの記述子（値オブジェクト止まり）。内容記述子に番号と提出区分を加算する。 */
+export type EstimateVariationDescriptor = VariationContentDescriptor & {
+  variationNumber: number;
+  /** 提出区分（ADR-0045: バリエーション単位の不変保存属性。記述子ごとに指定する） */
+  submissionType: SubmissionType;
+};
 
 /** 修理見積（事前）サブタイプ詳細の記述子。 */
 export type RepairDetailDescriptor = {
@@ -113,8 +164,33 @@ export type AfterRepairDetailDescriptor = {
   emergencyReason: EmergencyReason;
 };
 
-/** 見積集約生成の入力（すべて値オブジェクト／記述子で構成）。 */
-export type EstimateFactoryInput = {
+/**
+ * 複製で生まれるバリエーションの記述子。複製元バリエーション（出自）を id 参照として添える。
+ * C6 DuplicateEstimate で「新バリエーションの生成 id ↔ 複製元 id」の系譜を作るために用いる。
+ *
+ * 核＋（番号・提出区分・系譜）。全体値引も固定値引も核に無いため、単価を複製先条件へ再解決した
+ * 経路に絶対額の値引を持ち込む記述は名前ごと書けない（ADR-20260714-pv8・#598・#603 を型で強制）。
+ * 提出区分は複製元バリエーション単位で継承する（ADR-0045）ため記述子が運ぶ。
+ */
+export type CopiedVariationDescriptor = VariationDescriptorBase<CopiedItemDescriptor> & {
+  variationNumber: number;
+  submissionType: SubmissionType;
+  sourceVariationId: EstimateVariationId;
+};
+
+/**
+ * 得意先改訂で生まれるバリエーションの記述子（C7・§7.2）。核＋番号。
+ *
+ * 提出区分は加算しない。「改訂先は常に得意先宛」は `buildRevisedVariation` が CUSTOMER を固定して
+ * 表現する不変則であり、記述子に持たせても値はビルダーに無視される死にフィールドになるため
+ * （そこが #598 型の取りこぼしの温床）。系譜 `revisedFrom` も同じ理由でビルダーの必須引数側に置く。
+ */
+export type RevisedVariationDescriptor = VariationDescriptorBase<RevisedItemDescriptor> & {
+  variationNumber: number;
+};
+
+/** 見積集約生成の入力のうち、バリエーション以外の全フィールド（生成・複製で共通）。 */
+export type EstimateFactoryInputBase = {
   estimateNumber: EstimateNumber;
   estimateDate: Date;
   deadline: Date;
@@ -124,49 +200,17 @@ export type EstimateFactoryInput = {
   taxRoundingType: TaxRoundingType;
   createdBy: EmployeeId;
   departmentId: DepartmentId;
-  variations: EstimateVariationDescriptor[];
   repairDetail?: RepairDetailDescriptor | null;
   afterRepairDetail?: AfterRepairDetailDescriptor | null;
 };
 
-/**
- * 単価再解決を伴う引き継ぎ生成（複製先・改訂先）専用の明細記述子。
- *
- * 固定値引 `itemDiscount` を型から `Omit` で消す。これにより単価を宛先へ再解決した経路で
- * うっかり固定値引を持ち込む記述を書くと excess property でコンパイルエラーになる
- * （不変則 ADR-20260714-pv8・#598 を型で強制）。`itemDiscount` は optional のため、本型は
- * 元の {@link EstimateItemDescriptor} へ構造的に代入可能で、共有ビルダーの引数型は変更不要。
- */
-export type RepricedItemDescriptor = Omit<EstimateItemDescriptor, "itemDiscount">;
-
-/** 単価再解決経路のセット群記述子。構成明細を repriced 明細記述子で持つ（構成明細も固定値引不可）。 */
-export type RepricedSetGroupDescriptor = Omit<EstimateSetGroupDescriptor, "components"> & {
-  components: RepricedItemDescriptor[];
+/** 見積集約生成の入力（すべて値オブジェクト／記述子で構成）。 */
+export type EstimateFactoryInput = EstimateFactoryInputBase & {
+  variations: EstimateVariationDescriptor[];
 };
 
-/**
- * 単価再解決経路のバリエーション記述子。全体値引 `overallDiscount` を型から消し、
- * 通常明細・セット群を repriced 記述子に差し替える（固定値引を型で禁止）。
- */
-export type RepricedVariationDescriptor = Omit<
-  EstimateVariationDescriptor,
-  "overallDiscount" | "items" | "setGroups"
-> & {
-  items: RepricedItemDescriptor[];
-  setGroups?: RepricedSetGroupDescriptor[];
-};
-
-/**
- * 複製で生まれるバリエーションの記述子。複製元バリエーション（出自）を id 参照として添える。
- * C6 DuplicateEstimate で「新バリエーションの生成 id ↔ 複製元 id」の系譜を作るために用いる。
- * 単価再解決経路のため repriced 記述子を土台にし、固定値引は型で禁止する（#603・ADR-20260714-pv8）。
- */
-export type CopiedVariationDescriptor = RepricedVariationDescriptor & {
-  sourceVariationId: EstimateVariationId;
-};
-
-/** 見積複製の入力。variations 以外は新規生成と同じ記述子で、variations のみ系譜付き記述子。 */
-export type EstimateDuplicateInput = Omit<EstimateFactoryInput, "variations"> & {
+/** 見積複製の入力。variations 以外は新規生成と同じで、variations のみ複製先記述子。 */
+export type EstimateDuplicateInput = EstimateFactoryInputBase & {
   variations: CopiedVariationDescriptor[];
 };
 
@@ -224,7 +268,7 @@ export class EstimateFactory {
 
   /** 構築済みの子バリエーションと記述子から集約ルートを組み立てる（create / duplicate 共通）。 */
   private static assembleEstimate(
-    input: Omit<EstimateFactoryInput, "variations">,
+    input: EstimateFactoryInputBase,
     variations: EstimateVariation[]
   ): Estimate {
     return Estimate.create({

@@ -5,9 +5,9 @@ import {
   Estimate,
   EstimateFactory,
   type AfterRepairDetailDescriptor,
+  type CopiedItemDescriptor,
   type CopiedVariationDescriptor,
-  type RepricedItemDescriptor,
-  type RepricedSetGroupDescriptor,
+  type SetGroupDescriptor,
   type RepairDetailDescriptor,
 } from "../entities";
 import { EstimateNumber } from "../values/EstimateNumber";
@@ -129,7 +129,7 @@ export class EstimateDuplicationService {
    * - 品目・数量・単位・メモは複写。variationNumber は複製先で連番に振り直す。
    * - セット群は群ごとスナップショット複写する（ADR-20260714-k2m・#602。セット商品マスタから
    *   再展開しない）。構成明細は通常明細と同型の価格付き末端行（ADR-0047）なので同じ変換規則を
-   *   適用し、群の入れ子 `components` に積む（id 配線は EstimateFactory.buildSetGroups が行う）。
+   *   適用し、群の入れ子 `components` に積む（id 配線は estimateChildBuilders.buildSetGroups が行う）。
    * - status は記述子に持たせず、ファクトリ既定の ACTIVE になる（すべて有効 / §5.3）。
    */
   private static toCopiedDescriptor(
@@ -140,7 +140,7 @@ export class EstimateDuplicationService {
     // 平坦な items（通常明細＋構成明細の同居・ADR-0047）を群の所属で仕分けてから変換する。
     // 素通しすると構成明細がバラの通常明細として複写され、群が消える（#602）。
     const structure = source.lineStructure;
-    const copyItem = (item: SourceVariation["items"][number]): RepricedItemDescriptor => ({
+    const copyItem = (item: SourceVariation["items"][number]): CopiedItemDescriptor => ({
       productId: item.productId,
       sortOrder: item.sortOrder,
       itemName: item.itemName,
@@ -163,7 +163,7 @@ export class EstimateDuplicationService {
       submissionType: source.submissionType,
       items: structure.normalItems.map(copyItem),
       setGroups: structure.setGroups.map(
-        ({ group, components }): RepricedSetGroupDescriptor => ({
+        ({ group, components }): SetGroupDescriptor<CopiedItemDescriptor> => ({
           productId: group.productId,
           itemName: group.itemName,
           unit: group.unit,
