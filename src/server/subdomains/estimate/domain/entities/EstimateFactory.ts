@@ -96,8 +96,10 @@ export type RevisedItemDescriptor = ItemDescriptorBase & {
  * **明細型 `I` による径数化**: 構成明細は通常明細と同型の価格付き末端行（ADR-0047）なので、
  * 経路ごとの明細制約（複製先＝固定値引不可、改訂先＝納品価格必須）は `I` の差し替えだけで
  * 群の内側まで伝播する。群自身は価格を持たない（価格保守対象商品ではない）ため経路差は無い。
+ * `I` は核（{@link ItemDescriptorBase}）を満たす明細記述子に制約する。制約が無いと明細でない型での
+ * instantiation が宣言時に通り、誤りは共有ビルダーの呼び出し地点まで表面化しない。
  */
-export type SetGroupDescriptor<I> = {
+export type SetGroupDescriptor<I extends ItemDescriptorBase> = {
   productId: ProductId;
   /** 商品名スナップショット（SET 商品マスタからの複写）。 */
   itemName: ItemName;
@@ -118,8 +120,10 @@ export type EstimateSetGroupDescriptor = SetGroupDescriptor<EstimateItemDescript
  * 核は全経路で意味を持つ 4 フィールドのみ。`variationNumber` / `submissionType` は経路ごとに
  * 有無が割れる（C3/C4 は番号も提出区分も外側、改訂先は提出区分をビルダーが固定）ため核に入れず、
  * 必要な拡張だけが加算する。核に入れると「核なのに一部経路で使えない」嘘が生まれる（#617 の教訓）。
+ *
+ * 明細型 `I` は {@link SetGroupDescriptor} と同じく核（{@link ItemDescriptorBase}）に制約する。
  */
-export type VariationDescriptorBase<I> = {
+export type VariationDescriptorBase<I extends ItemDescriptorBase> = {
   /** 通常明細（非セット）の記述子。構成明細は setGroups の入れ子側に持つ。 */
   items: I[];
   /** セット群（ADR-0047）。各群が構成明細を入れ子で持つ。省略時は空。 */
