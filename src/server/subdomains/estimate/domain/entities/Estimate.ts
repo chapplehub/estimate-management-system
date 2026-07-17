@@ -21,7 +21,7 @@ import { TaxRate } from "../values/TaxRate";
 import { TaxRoundingType } from "../values/TaxRoundingType";
 import type { AfterRepairEstimateDetail } from "./AfterRepairEstimateDetail";
 import { buildRevisedVariation } from "./estimateChildBuilders";
-import type { RepricedItemDescriptor, RepricedVariationDescriptor } from "./EstimateFactory";
+import type { RevisedItemDescriptor, RevisedVariationDescriptor } from "./EstimateFactory";
 import type { EstimateItem } from "./EstimateItem";
 import {
   EstimateVariation,
@@ -249,11 +249,12 @@ export class Estimate {
     // 平坦な items（通常明細＋構成明細の同居・ADR-0047）を群の所属で仕分けてから変換する。
     // 素通しすると構成明細がバラの通常明細として複写され、群が消える（#602）。
     const structure = source.lineStructure;
-    // 単価再解決経路の repriced 記述子を組み立てる。固定値引（itemDiscount / overallDiscount）は
-    // repriced 記述子型が Omit で禁止しており、書こうとするとコンパイルエラーになる（#603・
-    // ADR-20260714-pv8 を型で強制）。子の構築（改訂明細詳細・セット群の id 配線）と系譜の付与は
-    // 複製経路と共有の buildRevisedVariation / buildVariationChildren に委ねる（#602 の再発防止）。
-    const toRepricedItem = (item: Readonly<EstimateItem>): RepricedItemDescriptor => ({
+    // 改訂先の記述子を組み立てる。固定値引（itemDiscount / overallDiscount）は改訂先記述子の
+    // 核に無く、書こうとすると excess property でコンパイルエラーになる（#603・ADR-20260714-pv8 を
+    // 型で強制）。逆に納品価格は型が必須にしており、スナップショット漏れもコンパイルエラーになる（§8.4）。
+    // 子の構築（改訂明細詳細・セット群の id 配線）と系譜・提出区分の付与は複製経路と共有の
+    // buildRevisedVariation / buildVariationChildren に委ねる（#602 の再発防止）。
+    const toRevisedItem = (item: Readonly<EstimateItem>): RevisedItemDescriptor => ({
       productId: item.productId,
       sortOrder: item.sortOrder,
       itemName: item.itemName,
@@ -268,16 +269,15 @@ export class Estimate {
       revisedDeliveryPrice: item.finalAmount,
     });
 
-    const descriptor: RepricedVariationDescriptor = {
+    const descriptor: RevisedVariationDescriptor = {
       variationNumber: this.nextVariationNumber(),
-      submissionType: SubmissionType.CUSTOMER,
-      items: structure.normalItems.map(toRepricedItem),
+      items: structure.normalItems.map(toRevisedItem),
       // 構成明細は通常明細と同型の価格付き末端行（ADR-0047）なので同じ変換規則を適用する。
       setGroups: structure.setGroups.map(({ group, components }) => ({
         productId: group.productId,
         itemName: group.itemName,
         unit: group.unit,
-        components: components.map(toRepricedItem),
+        components: components.map(toRevisedItem),
         // 群メモは複写する。改訂先は行構成固定で C4 全置換の経路が塞がれており、群メモを
         // 入れ直す手段が無いためクリアすると復旧不能になる（固定値引との非対称・ADR-20260714-k2m）。
         customerMemo: group.customerMemo,

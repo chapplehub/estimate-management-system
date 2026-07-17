@@ -103,7 +103,7 @@ optional `Money | null` に代入可）。
 ## ステップ
 
 ### Step 1: 記述子型の組み替え一式（consumer 追随・型テスト削除込み）
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/server/subdomains/estimate/domain/entities/EstimateFactory.ts`（核＋加算拡張へ型再定義、`Omit` 一掃）
   - `src/server/subdomains/estimate/domain/entities/estimateChildBuilders.ts`（`buildRevisedVariation` の引数型を `RevisedVariationDescriptor` へ）

@@ -39,10 +39,9 @@ export {
   type VariationContentDescriptor,
   type RepairDetailDescriptor,
   type AfterRepairDetailDescriptor,
-  type RepricedItemDescriptor,
-  type RepricedSetGroupDescriptor,
-  type RepricedVariationDescriptor,
+  type CopiedItemDescriptor,
   type CopiedVariationDescriptor,
+  type SetGroupDescriptor,
   type EstimateDuplicateInput,
 } from "./EstimateFactory";
 // VariationContent は appendVariation / updateVariation の引数型（集約ルートの公開 API）。

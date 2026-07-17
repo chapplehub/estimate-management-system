@@ -8,7 +8,8 @@ import type {
   EstimateItemDescriptor,
   EstimateSetGroupDescriptor,
   EstimateVariationDescriptor,
-  RepricedVariationDescriptor,
+  RevisedVariationDescriptor,
+  VariationDescriptorBase,
 } from "./EstimateFactory";
 
 /**
@@ -25,11 +26,13 @@ import type {
  * 記述子型は `EstimateFactory` から `import type`（実体は伴わない）で参照する。
  */
 
-/** 記述子の共通形状（通常明細＋セット群）。バリエーション記述子・内容記述子・repriced 記述子が構造的に満たす。 */
-type VariationChildrenDescriptor = {
-  items: EstimateItemDescriptor[];
-  setGroups?: EstimateSetGroupDescriptor[];
-};
+/**
+ * 子構築に必要な記述子の形状（通常明細＋セット群）。バリエーション記述子・内容記述子・
+ * 引き継ぎ生成記述子（`Copied*` / `Revised*`）が構造的に満たす。後者の明細型は
+ * {@link EstimateItemDescriptor} の部分集合ないし強化（必須 `Money` → optional `Money | null`）
+ * のため、追加の変換なしにそのまま渡せる。
+ */
+type VariationChildrenDescriptor = VariationDescriptorBase<EstimateItemDescriptor>;
 
 /** 明細記述子（値オブジェクト止まり）から末端明細を構築する。改訂明細詳細は納品価格 VO から構築する。 */
 export function buildItem(item: EstimateItemDescriptor): EstimateItem {
@@ -117,19 +120,20 @@ export function buildVariation(
 }
 
 /**
- * 得意先改訂で生まれるバリエーションを repriced 記述子から構築する（#603・C7・§7.2）。
+ * 得意先改訂で生まれるバリエーションを改訂先記述子から構築する（#603・C7・§7.2）。
  *
  * 通常の {@link buildVariation} と分離し、改訂固有の系譜（`revisedFrom` 必須）と固定属性を
  * ビルダー側で確定する:
- * - `submissionType` は得意先宛（CUSTOMER）固定。
+ * - `submissionType` は得意先宛（CUSTOMER）固定。「改訂先は常に得意先宛」の不変則はここ 1 箇所で
+ *   表現し、記述子には持たせない（持たせても無視される死にフィールドになる）。
  * - `revisedFrom` を必須引数で受け取り出自を刻む（通常経路が名乗れない状態を型で保つ）。
- * - 全体値引 `overallDiscount` は付与しない（クリア・ADR-20260714-pv8）。記述子型が `Omit` 済み。
+ * - 全体値引 `overallDiscount` は付与しない（クリア・ADR-20260714-pv8）。記述子の核に無い。
  *
- * 明細の固定値引クリア・改訂明細詳細（deliveryPrice スナップショット）・セット群の群ごと複写は、
- * {@link buildVariationChildren}（＝複製経路と共有の土台）と repriced 記述子型が担保する。
+ * 明細の固定値引不可・改訂明細詳細（deliveryPrice スナップショット）・セット群の群ごと複写は、
+ * {@link buildVariationChildren}（＝複製経路と共有の土台）と {@link RevisedVariationDescriptor} が担保する。
  */
 export function buildRevisedVariation(
-  descriptor: RepricedVariationDescriptor,
+  descriptor: RevisedVariationDescriptor,
   ctx: { tax: TaxContext; revisedFrom: EstimateVariationId }
 ): EstimateVariation {
   const { items, setGroups } = buildVariationChildren(descriptor);
