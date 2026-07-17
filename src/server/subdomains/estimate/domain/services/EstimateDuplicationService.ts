@@ -129,7 +129,7 @@ export class EstimateDuplicationService {
    * - 品目・数量・単位・メモは複写。variationNumber は複製先で連番に振り直す。
    * - セット群は群ごとスナップショット複写する（ADR-20260714-k2m・#602。セット商品マスタから
    *   再展開しない）。構成明細は通常明細と同型の価格付き末端行（ADR-0047）なので同じ変換規則を
-   *   適用し、群の入れ子 `components` に積む（id 配線は EstimateFactory.buildSetGroups が行う）。
+   *   適用し、群の入れ子 `components` に積む（id 配線は estimateChildBuilders.buildSetGroups が行う）。
    * - status は記述子に持たせず、ファクトリ既定の ACTIVE になる（すべて有効 / §5.3）。
    */
   private static toCopiedDescriptor(
