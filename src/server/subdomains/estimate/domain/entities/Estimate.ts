@@ -21,7 +21,11 @@ import { TaxRate } from "../values/TaxRate";
 import { TaxRoundingType } from "../values/TaxRoundingType";
 import type { AfterRepairEstimateDetail } from "./AfterRepairEstimateDetail";
 import { buildRevisedVariation } from "./estimateChildBuilders";
-import type { RevisedItemDescriptor, RevisedVariationDescriptor } from "./EstimateFactory";
+import type {
+  RevisedItemDescriptor,
+  RevisedVariationDescriptor,
+  SetGroupDescriptor,
+} from "./EstimateFactory";
 import type { EstimateItem } from "./EstimateItem";
 import {
   EstimateVariation,
@@ -273,16 +277,21 @@ export class Estimate {
       variationNumber: this.nextVariationNumber(),
       items: structure.normalItems.map(toRevisedItem),
       // 構成明細は通常明細と同型の価格付き末端行（ADR-0047）なので同じ変換規則を適用する。
-      setGroups: structure.setGroups.map(({ group, components }) => ({
-        productId: group.productId,
-        itemName: group.itemName,
-        unit: group.unit,
-        components: components.map(toRevisedItem),
-        // 群メモは複写する。改訂先は行構成固定で C4 全置換の経路が塞がれており、群メモを
-        // 入れ直す手段が無いためクリアすると復旧不能になる（固定値引との非対称・ADR-20260714-k2m）。
-        customerMemo: group.customerMemo,
-        internalMemo: group.internalMemo,
-      })),
+      // 戻り型を明示するのは群リテラルへ excess property チェックを効かせるため。注釈を省くと
+      // map の U がコールバック戻り値から推論され、検査が配列同士の代入性に落ちて freshness が
+      // 消えるので、群に禁止フィールドを書いてもコンパイルエラーにならない。
+      setGroups: structure.setGroups.map(
+        ({ group, components }): SetGroupDescriptor<RevisedItemDescriptor> => ({
+          productId: group.productId,
+          itemName: group.itemName,
+          unit: group.unit,
+          components: components.map(toRevisedItem),
+          // 群メモは複写する。改訂先は行構成固定で C4 全置換の経路が塞がれており、群メモを
+          // 入れ直す手段が無いためクリアすると復旧不能になる（固定値引との非対称・ADR-20260714-k2m）。
+          customerMemo: group.customerMemo,
+          internalMemo: group.internalMemo,
+        })
+      ),
       customerMemo: source.customerMemo,
       internalMemo: source.internalMemo,
     };
