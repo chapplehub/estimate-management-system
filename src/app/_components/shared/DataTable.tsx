@@ -19,6 +19,11 @@ type DataTableProps<TData> = {
   rowSelection?: RowSelectionState;
   onRowSelectionChange?: (updated: RowSelectionState) => void;
   getRowId?: (row: TData) => string;
+  /**
+   * 行ごとの追加属性を返すフック。`DataTable` は属性の意味（「無効」等）を知らず、
+   * 何を返すかは利用側が決める（テーブルは表示の汎用部品のまま保つ・ADR-20260716-r4d）。
+   */
+  getRowAttributes?: (row: TData) => { className?: string; "data-invalid"?: boolean };
 };
 
 export function DataTable<TData>({
@@ -30,6 +35,7 @@ export function DataTable<TData>({
   rowSelection,
   onRowSelectionChange,
   getRowId,
+  getRowAttributes,
 }: DataTableProps<TData>) {
   "use no memo";
 
@@ -134,15 +140,28 @@ export function DataTable<TData>({
                   </td>
                 </tr>
               ) : (
-                table.getRowModel().rows.map((row) => (
-                  <tr key={row.id} className="border-b hover:bg-gray-50">
-                    {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className="px-4 py-2">
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </td>
-                    ))}
-                  </tr>
-                ))
+                table.getRowModel().rows.map((row) => {
+                  const attributes = getRowAttributes?.(row.original);
+                  // 利用側が配色を指定したら既定の hover 配色は出力しない（追記だと hover の詳細度
+                  // 0-2-0 が指定色 0-1-0 に勝ち、マウスを乗せた瞬間に指定色が消えるため）。
+                  // 既定 hover は「利用側が配色を指定しないとき」のフォールバック（LineEditTable と同じ作法）。
+                  const rowClassName = attributes?.className
+                    ? `border-b ${attributes.className}`
+                    : "border-b hover:bg-gray-50";
+                  return (
+                    <tr
+                      key={row.id}
+                      className={rowClassName}
+                      {...(attributes?.["data-invalid"] ? { "data-invalid": true } : {})}
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <td key={cell.id} className="px-4 py-2">
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
