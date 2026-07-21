@@ -62,7 +62,7 @@ App Router にエラー境界を導入し、未処理例外が Next.js デフォ
 - コミットメッセージ: `feat: エラー表示の共通コンポーネント ErrorFallback を追加する (#587)`
 
 ### Step 3: (features)/error.tsx を配置する
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/app/(features)/error.tsx`（新規）
 - テスト戦略: テスト不要（境界の配線は Next 規約が保証。描画内容は Step 2 の ErrorFallback テストで担保済み）
