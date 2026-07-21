@@ -34,7 +34,12 @@ const ESTIMATE_DETAIL_INCLUDE = {
       items: {
         orderBy: { sortOrder: "asc" },
         // product は read-through（ADR-0048）で code/区分を解決。revisedDetail は §8.4 改訂価格。
-        include: { product: true, revisedDetail: true },
+        // relatedProducts は周辺関係行を FK 1列だけ引き、有無で hasPeripheral を導出する（#619）。
+        // 相手商品本体への入れ子 join を張らない軽い取得（有無だけ・相手の有効性は問わない）。
+        include: {
+          product: { include: { relatedProducts: { select: { relatedProductId: true } } } },
+          revisedDetail: true,
+        },
       },
       // セット群（ADR-0047）。product は read-through、components は所属交差表（itemId）。
       setGroups: {
@@ -359,6 +364,8 @@ export class PrismaEstimateQueryService implements EstimateQueryService {
       productCode: i.product.code,
       productCategory: i.product.category,
       isActive: i.product.isActive,
+      // 周辺関係が1件以上なら周辺商品を持つ（read-through・#619。相手の有効性は問わない）。
+      hasPeripheral: i.product.relatedProducts.length > 0,
       itemName: i.itemName,
       sortOrder: i.sortOrder,
       quantity: i.quantity,

@@ -15,6 +15,7 @@ function line(overrides: Partial<LineDTO> = {}): LineDTO {
     productCode: "P001",
     productCategory: "GENERAL",
     isActive: true,
+    hasPeripheral: false,
     itemName: "通常明細",
     sortOrder: 1,
     quantity: 2,

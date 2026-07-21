@@ -145,6 +145,8 @@ describe("GetEstimateDetailQuery", () => {
       expect(lineA.productCategory).toBe("INDIVIDUAL");
       // 無効構成のインライン警告を状態導出するための read-through（ADR-0048・ADR-0052）。
       expect(lineA.isActive).toBe(true);
+      // フィクスチャ商品は周辺関係を持たないため hasPeripheral=false（read-through・#619）。
+      expect(lineA.hasPeripheral).toBe(false);
       expect(lineA.revisedDeliveryPrice).toBeNull();
 
       const lineB = v.lines[1];

@@ -50,7 +50,7 @@
 ## ステップ
 
 ### Step 1: 見積詳細 read-through に `hasPeripheral` を追加
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/server/subdomains/estimate/application/queries/dto/EstimateDetailDTO.ts`（`LineDTO` に `hasPeripheral: boolean` を追加）
   - `src/server/subdomains/estimate/infrastructure/queries/PrismaEstimateQueryService.ts`（product read-through に周辺関係の件数を含め、`hasPeripheral = 件数 > 0` を導出）

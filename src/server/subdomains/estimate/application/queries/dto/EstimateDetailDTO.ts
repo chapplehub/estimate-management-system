@@ -151,6 +151,13 @@ export type LineDTO = {
    * UI が状態導出するために用いる（ADR-0052）。
    */
   isActive: boolean;
+  /**
+   * 周辺商品を持つか（read-through・非スナップショット・#619）。現在マスタの周辺関係
+   * （`ProductRelation`）が1件以上あれば true（相手の有効性は問わない軽い判定）。UI は
+   * トップレベル通常明細の「周辺追加」ボタン出し分けにのみ使う（構成明細では参照しない）。
+   * ダイアログ中身の真実は押下時の `getProductSuggestions`（有効フィルタ済み）が握る。
+   */
+  hasPeripheral: boolean;
   /** 商品名スナップショット（作成時凍結・§8）。 */
   itemName: string;
   sortOrder: number;
