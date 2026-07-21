@@ -85,7 +85,7 @@ App Router にエラー境界を導入し、未処理例外が Next.js デフォ
 - コミットメッセージ: `feat: (features) 配下の 404 境界 not-found.tsx を配置する (#587)`
 
 ### Step 5: global-error.tsx を配置する
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/app/global-error.tsx`（新規）
 - テスト戦略: テスト不要（自前 `<html><body>` を描き RTL フル render が扱いにくいため ADR でテスト省略を決定。中身は依存の無い自己完結 markup）
