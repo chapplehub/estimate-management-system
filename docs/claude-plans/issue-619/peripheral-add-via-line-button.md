@@ -87,7 +87,7 @@
 - コミットメッセージ: `feat: 周辺商品サジェストを自動表示からボタン駆動に変更する (#619)`
 
 ### Step 4: 明細行に「周辺追加」ボタンを設置・配線
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/app/(features)/estimates/[estimateNumber]/components/LineEditTable.tsx`（トップレベル `EditRow` の操作列に、`line.hasPeripheral` のときだけ「周辺追加」ボタン。構成明細＝`indent` 行とセット群には出さない）
   - `src/app/(features)/estimates/[estimateNumber]/components/VariationLineEditor.tsx`（`LineEditTable` へ `onRequestSuggestions` を渡し、`editor.requestSuggestions` に配線）
