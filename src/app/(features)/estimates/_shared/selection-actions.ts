@@ -125,8 +125,9 @@ export async function getProductLineSnapshot(
  * 本体商品の周辺商品（ProductRelation）を、明細サジェスト用に解決する（D6・計画§6）。
  *
  * relatedProducts は unit/isActive を持たないため、周辺ごとに findById で単位・有効性を引く
- * （有効な周辺のみ提案）。カスケードは1段のみ（周辺の周辺は辿らない）。挿入行の数量は relation
- * の quantity を初期値にし、他項目は新規行既定（呼び出し側の createWorkingLine が適用）。
+ * （有効な周辺のみ提案）。この関数自体は1段のみ解決するが、各周辺に hasPeripheral を付与し、
+ * UI のボタン押下で次段を取得する（UI 駆動カスケード・#619）。挿入行の数量は relation の
+ * quantity を初期値にし、他項目は新規行既定（呼び出し側の createWorkingLine が適用）。
  */
 export async function getProductSuggestions(productId: string): Promise<SuggestedProduct[]> {
   await verifySession();

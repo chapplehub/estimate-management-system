@@ -33,7 +33,7 @@ type Props = {
    * 構成明細（indent）・セット群には配線しない（周辺商品は別売り通常明細のため）。
    */
   onRequestSuggestions?: (rowId: string, productId: string) => void | Promise<void>;
-  /** フォーム送信中フラグ（送信中はボタン群を非活性）。 */
+  /** フォーム送信中フラグ（送信中は「周辺追加」ボタンを非活性）。 */
   isPending?: boolean;
 };
 
