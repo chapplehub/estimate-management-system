@@ -39,7 +39,7 @@ App Router にエラー境界を導入し、未処理例外が Next.js デフォ
 各ステップは関連テストが緑になる単位で区切る（pre-commit の `vitest related` を通す）。
 
 ### Step 1: reportError シームを定義する
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/app/_lib/report-error.ts`（新規）
   - `src/app/_lib/__tests__/report-error.test.ts`（新規）
