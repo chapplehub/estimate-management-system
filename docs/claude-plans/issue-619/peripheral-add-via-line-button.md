@@ -75,7 +75,7 @@
 - コミットメッセージ: `feat: クライアント明細行に周辺商品の有無を搬送する (#619)`
 
 ### Step 3: フックを自動サジェスト廃止＋ボタン駆動へ書き換え
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/app/(features)/estimates/[estimateNumber]/useVariationLineEditor.ts`
   - `src/app/(features)/estimates/[estimateNumber]/useVariationLineEditor.test.ts`

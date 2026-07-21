@@ -108,14 +108,11 @@ describe("複数商品の一括追加（#618）", () => {
     expect(rejection?.message).not.toContain("商品A");
   });
 
-  it("複数選択では周辺商品サジェストを出さない（単数 state の後勝ちを避ける）", async () => {
+  it("複数選択では周辺商品サジェストを出さない（自動表示廃止・#619）", async () => {
     getProductLineSnapshot.mockImplementation(async (id: string) =>
       snapshotOf(id, { p1: "商品A", p2: "商品B" }[id]!)
     );
     resolveSellingPricesForDisplay.mockResolvedValue({ p1: 100, p2: 200 });
-    getProductSuggestions.mockResolvedValue([
-      { id: "s1", code: "S1", name: "周辺商品", category: "INDIVIDUAL", unit: "個", quantity: 1 },
-    ]);
 
     const { result } = setup();
     await act(async () => {
@@ -130,11 +127,20 @@ describe("複数商品の一括追加（#618）", () => {
     expect(getProductSuggestions).not.toHaveBeenCalled();
   });
 
-  it("単一選択なら従来どおり周辺商品サジェストを出す", async () => {
+  it("単一選択でも自動サジェストは出さない（ボタン駆動へ変更・#619）", async () => {
     getProductLineSnapshot.mockResolvedValue(snapshotOf("p1", "商品A"));
     resolveSellingPricesForDisplay.mockResolvedValue({ p1: 100 });
+    // マスタに周辺があってもダイアログは自動で開かない。
     getProductSuggestions.mockResolvedValue([
-      { id: "s1", code: "S1", name: "周辺商品", category: "INDIVIDUAL", unit: "個", quantity: 1 },
+      {
+        id: "s1",
+        code: "S1",
+        name: "周辺商品",
+        category: "INDIVIDUAL",
+        unit: "個",
+        hasPeripheral: false,
+        quantity: 1,
+      },
     ]);
 
     const { result } = setup();
@@ -142,8 +148,71 @@ describe("複数商品の一括追加（#618）", () => {
       await result.current.handleProductSelect([productRow({ id: "p1", name: "商品A" })]);
     });
 
+    expect(result.current.nodes).toHaveLength(1);
+    // 追加しただけではサジェストは開かず、getProductSuggestions も呼ばない（ボタン押下が契機）。
+    expect(result.current.suggestState).toBeNull();
+    expect(getProductSuggestions).not.toHaveBeenCalled();
+  });
+});
+
+describe("周辺商品サジェスト（ボタン駆動・#619）", () => {
+  /** 通常商品を1行追加し、その rowId を返す（requestSuggestions の対象行を用意する）。 */
+  async function addLine(
+    result: { current: ReturnType<typeof useVariationLineEditor> },
+    { id = "p1", name = "商品A" }: { id?: string; name?: string } = {}
+  ): Promise<string> {
+    getProductLineSnapshot.mockResolvedValue({
+      id,
+      code: id.toUpperCase(),
+      name,
+      category: "INDIVIDUAL",
+      unit: "個",
+      hasPeripheral: true,
+    });
+    resolveSellingPricesForDisplay.mockResolvedValue({ [id]: 100 });
+    await act(async () => {
+      await result.current.handleProductSelect([productRow({ id, name })]);
+    });
+    return result.current.nodes[0]!.rowId;
+  }
+
+  it("周辺が1件以上ならダイアログを開く（本体名・本体行 id・提案を載せる）", async () => {
+    const { result } = setup();
+    const rowId = await addLine(result, { id: "p1", name: "商品A" });
+
+    getProductSuggestions.mockResolvedValue([
+      {
+        id: "s1",
+        code: "S1",
+        name: "周辺商品",
+        category: "INDIVIDUAL",
+        unit: "個",
+        hasPeripheral: false,
+        quantity: 2,
+      },
+    ]);
+    await act(async () => {
+      await result.current.requestSuggestions(rowId, "p1");
+    });
+
+    expect(getProductSuggestions).toHaveBeenCalledWith("p1");
     expect(result.current.suggestState?.mainName).toBe("商品A");
-    expect(result.current.suggestState?.mainRowId).toBe(result.current.nodes[0]?.rowId);
+    expect(result.current.suggestState?.mainRowId).toBe(rowId);
+    expect(result.current.suggestState?.suggestions).toHaveLength(1);
+    expect(result.current.selectionError).toBeNull();
+  });
+
+  it("有効な周辺が0件ならダイアログを開かず selectionError に通知する", async () => {
+    const { result } = setup();
+    const rowId = await addLine(result, { id: "p1", name: "商品A" });
+
+    getProductSuggestions.mockResolvedValue([]);
+    await act(async () => {
+      await result.current.requestSuggestions(rowId, "p1");
+    });
+
+    expect(result.current.suggestState).toBeNull();
+    expect(result.current.selectionError).toBe("有効な周辺商品がありません");
   });
 });
 
