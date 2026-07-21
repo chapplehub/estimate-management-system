@@ -8,7 +8,7 @@ App Router のエラー境界（`error.tsx` / `global-error.tsx` / `not-found.ts
 
 2. **意図的なカバレッジの穴を許容する。** `(auth)` 配下の例外と `(features)/layout.tsx` 自体の例外はルートまで上がり `global-error` が受ける（素の全画面差し替え）。任意 URL のグローバル 404 は素の Next デフォルトに落ちる（ルート `app/not-found.tsx` は置かない）。auth は実質 signin 1 画面かつ未ログイン状態で発火頻度が低く、Header 描画例外・URL 打ち間違いも稀なため、これらに丁寧な UI を先回りで用意する費用対効果は低いと判断する。
 
-3. **`global-error` は重い UI 依存を持たず自己完結させる。** `global-error` は最終防波堤であり、共通 `ErrorFallback`／shadcn／フォント等の依存そのものが壊れて例外が出た場合に共倒れしないよう、`globals.css` の Tailwind クラスのみで素朴に自前描画する。共通化するのは `(features)/error.tsx` 側の薄い `ErrorFallback`（shadcn Card/Button）に限る。
+3. **`global-error` は重い UI 依存を持たず自己完結させる。** `global-error` は最終防波堤であり、共通 `ErrorFallback`／shadcn／フォント等の依存そのものが壊れて例外が出た場合に共倒れしないよう、**外部依存を一切持たず inline style だけで素朴に自前描画する**（`globals.css` も import しない）。理由: `global-error` はルート `layout.tsx` を丸ごと置換するため、`layout.tsx` の `import "./globals.css"` は `global-error` レンダリング時に走らず Tailwind クラスが当たる保証がない。CSS が一切効かなくても文意が壊れない構成にすることで「依存ゼロで単独で必ず描ける」という本決定の趣旨を確実にする。共通化するのは `(features)/error.tsx` 側の薄い `ErrorFallback`（shadcn Card/Button）に限る。
 
 4. **例外のログ接続点は単一の `reportError` シームに隔離する。** 各境界は送り先を直接知らず `reportError(error, context)` を呼ぶだけとし、中身は現状 `console.error`＋`digest`（サーバーログとの相関 ID）に留める。実監視（Sentry 等）の接続は本 issue のスコープ外とし、将来この 1 関数だけを差し替える。
 
