@@ -260,10 +260,9 @@ test.describe("従業員CRUD（管理者）", () => {
   });
 
   test("存在しない従業員コードで404が表示される", async ({ page }) => {
-    await page.goto("/employees/EMP999999");
+    const response = await page.goto("/employees/EMP999999");
 
-    // 404ページが表示されること
-    await expect(page.getByText("404")).toBeVisible({ timeout: 10000 });
+    expect(response?.status()).toBe(404);
   });
 });
 

@@ -188,10 +188,9 @@ test.describe("部署CRUD（管理者）", () => {
   });
 
   test("存在しない部署コードで404が表示される", async ({ page }) => {
-    await page.goto("/departments/DEPT999");
+    const response = await page.goto("/departments/DEPT999");
 
-    // 404ページが表示されること
-    await expect(page.getByText("404")).toBeVisible({ timeout: 10000 });
+    expect(response?.status()).toBe(404);
   });
 });
 

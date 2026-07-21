@@ -156,10 +156,9 @@ test.describe("役割CRUD（管理者）", () => {
   });
 
   test("存在しない役割コードで404が表示される", async ({ page }) => {
-    await page.goto("/roles/ROLE999");
+    const response = await page.goto("/roles/ROLE999");
 
-    // 404ページが表示されること
-    await expect(page.getByText("404")).toBeVisible({ timeout: 10000 });
+    expect(response?.status()).toBe(404);
   });
 });
 
