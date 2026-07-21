@@ -21,6 +21,8 @@ export type ProductSnapshot = {
   name: string;
   category: string;
   unit: string;
+  /** 周辺商品を持つか（read-through・#619）。作業行へ搬送し、周辺追加ボタンの出し分けに使う。 */
+  hasPeripheral: boolean;
 };
 
 /**
@@ -48,6 +50,11 @@ export type WorkingLine = {
    * （ADR-0052）。サーバへは送らない（保存後の再 read で導出し直す）。
    */
   isActive: boolean;
+  /**
+   * 周辺商品を持つか（read-through・#619）。トップレベル通常明細の周辺追加ボタン出し分けに使う
+   * （構成明細では参照しない）。サーバへは送らない（保存後の再 read で導出し直す）。
+   */
+  hasPeripheral: boolean;
   /** 商品名スナップショット（§8・編集不可）。 */
   itemName: string;
   /** 単位スナップショット（§8・編集不可）。 */
@@ -120,6 +127,8 @@ export function createWorkingLine(
     productCategory: product.category,
     // 商品選択モーダルは有効商品のみを返す（selection-actions）ため新規通常行は常に有効。
     isActive: true,
+    // 周辺商品の有無を搬送する（read-through・#619。カスケードのボタン表示に使う）。
+    hasPeripheral: product.hasPeripheral,
     itemName: product.name,
     unit: product.unit,
     ...NEW_LINE_DEFAULTS,
@@ -144,6 +153,8 @@ export function fromLineDTO(line: LineDTO): WorkingLine {
     productCode: line.productCode,
     productCategory: line.productCategory,
     isActive: line.isActive,
+    // 既存明細の周辺有無を read-through で引き回す（#619）。
+    hasPeripheral: line.hasPeripheral,
     itemName: line.itemName,
     unit: line.unit,
     quantity: line.quantity,
@@ -213,6 +224,8 @@ export function createWorkingSetGroup(
       productCode: component.code,
       productCategory: component.category,
       isActive: component.isActive,
+      // 構成明細はトップレベルにならず周辺追加ボタンの非対象のため false 固定（#619）。
+      hasPeripheral: false,
       itemName: component.name,
       unit: component.unit,
       quantity: component.quantity,

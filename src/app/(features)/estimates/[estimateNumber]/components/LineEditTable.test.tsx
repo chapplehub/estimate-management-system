@@ -12,6 +12,7 @@ function line(overrides: Partial<WorkingLine> = {}): WorkingLine {
     productCode: "P001",
     productCategory: "INDIVIDUAL",
     isActive: true,
+    hasPeripheral: false,
     itemName: "通常明細",
     unit: "個",
     quantity: 2,

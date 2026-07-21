@@ -8,6 +8,7 @@ const product = {
   name: "商品A",
   category: "INDIVIDUAL",
   unit: "個",
+  hasPeripheral: true,
 };
 
 describe("createWorkingLine（商品スナップショット＋新規行既定値）", () => {
@@ -21,6 +22,7 @@ describe("createWorkingLine（商品スナップショット＋新規行既定�
       productCategory: "INDIVIDUAL",
       itemName: "商品A",
       unit: "個",
+      hasPeripheral: true, // 周辺有無をスナップショットから搬送（#619）
       quantity: 1, // 既定 数量1
       unitPrice: 0, // 既定 単価0（販売単価マスタ未確定＝要入力）
       discountRate: 1.0, // 既定 掛率1.0（値引なし）
@@ -46,7 +48,7 @@ describe("fromLineDTO（既存明細 DTO → 作業行）", () => {
     productCode: "P001",
     productCategory: "INDIVIDUAL",
     isActive: true,
-    hasPeripheral: false,
+    hasPeripheral: true,
     itemName: "商品A",
     sortOrder: 1,
     quantity: 2,
@@ -73,6 +75,7 @@ describe("fromLineDTO（既存明細 DTO → 作業行）", () => {
       productCode: "P001",
       productCategory: "INDIVIDUAL",
       isActive: true,
+      hasPeripheral: true,
       itemName: "商品A",
       unit: "個",
       quantity: 2,

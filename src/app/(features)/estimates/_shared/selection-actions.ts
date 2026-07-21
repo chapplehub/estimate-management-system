@@ -11,13 +11,15 @@ import {
 import type { CompanyRow, ProductSelectionRow } from "./selectionColumns";
 import { toExpandedSetGroup, type ExpandedSetGroup } from "./setComponentExpansion";
 
-/** 明細追加で固定表示する商品スナップショット（id/コード/名称/区分/単位）。 */
+/** 明細追加で固定表示する商品スナップショット（id/コード/名称/区分/単位/周辺有無）。 */
 export type ProductLineSnapshot = {
   id: string;
   code: string;
   name: string;
   category: string;
   unit: string;
+  /** 周辺商品を持つか（read-through・#619）。周辺追加ボタンの出し分けに使う（相手の有効性は問わない）。 */
+  hasPeripheral: boolean;
 };
 
 /** 周辺商品サジェスト1件（スナップショット＋relation の推奨数量）。 */
@@ -114,6 +116,8 @@ export async function getProductLineSnapshot(
     name: product.name,
     category: product.category,
     unit: product.unit,
+    // 周辺関係が1件以上なら周辺商品を持つ（read-through・#619。相手の有効性は問わない）。
+    hasPeripheral: product.relatedProducts.length > 0,
   };
 }
 
@@ -144,6 +148,8 @@ export async function getProductSuggestions(productId: string): Promise<Suggeste
         name: related.name,
         category: related.category,
         unit: related.unit,
+        // 周辺商品自身の周辺有無（read-through・#619）。カスケード（周辺の周辺）のボタン表示に使う。
+        hasPeripheral: related.relatedProducts.length > 0,
         quantity: relation.quantity,
       } satisfies SuggestedProduct;
     })

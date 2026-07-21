@@ -63,7 +63,7 @@
 - コミットメッセージ: `feat: 見積明細DTOに周辺商品の有無(hasPeripheral)をread-throughで追加 (#619)`
 
 ### Step 2: クライアント行モデルへ `hasPeripheral` を供給
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/app/(features)/estimates/_shared/selection-actions.ts`（`ProductLineSnapshot` に `hasPeripheral` を追加し、`getProductLineSnapshot` が `product` の周辺関係有無から埋める）
   - `src/app/(features)/estimates/[estimateNumber]/variationLines.ts`（`WorkingLine` に `hasPeripheral` を追加。`createWorkingLine`＝スナップショット由来、`fromLineDTO`＝DTO 由来の双方で搬送）
