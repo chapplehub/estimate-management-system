@@ -73,7 +73,7 @@ App Router にエラー境界を導入し、未処理例外が Next.js デフォ
 - コミットメッセージ: `feat: (features) 配下のエラー境界 error.tsx を配置する (#587)`
 
 ### Step 4: (features)/not-found.tsx を配置する
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/app/(features)/not-found.tsx`（新規）
   - `src/app/(features)/not-found.test.tsx`（新規、RTL で中身のみ検証）
