@@ -50,7 +50,7 @@ App Router にエラー境界を導入し、未処理例外が Next.js デフォ
 - コミットメッセージ: `feat: 例外ログの単一接続点となる reportError シームを定義する (#587)`
 
 ### Step 2: ErrorFallback 共通コンポーネントを実装する
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/app/_components/shared/ErrorFallback.tsx`（新規）
   - `src/app/_components/shared/ErrorFallback.test.tsx`（新規）
