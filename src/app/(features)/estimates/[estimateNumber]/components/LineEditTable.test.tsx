@@ -12,6 +12,7 @@ function line(overrides: Partial<WorkingLine> = {}): WorkingLine {
     productCode: "P001",
     productCategory: "INDIVIDUAL",
     isActive: true,
+    hasPeripheral: false,
     itemName: "通常明細",
     unit: "個",
     quantity: 2,
@@ -40,8 +41,11 @@ function setGroup(overrides: Partial<WorkingSetGroup> = {}): WorkingSetGroup {
   };
 }
 
-/** 各種ハンドラを no-op で埋めた最小 props で描画する。 */
-function renderTable(nodes: WorkingNode[]) {
+/** 各種ハンドラを no-op で埋めた最小 props で描画する（周辺追加ハンドラは任意）。 */
+function renderTable(
+  nodes: WorkingNode[],
+  onRequestSuggestions?: (rowId: string, productId: string) => void | Promise<void>
+) {
   return render(
     <LineEditTable
       nodes={nodes}
@@ -51,6 +55,7 @@ function renderTable(nodes: WorkingNode[]) {
       onRemoveNode={() => {}}
       onReorderNodes={() => {}}
       onReorderComponents={() => {}}
+      onRequestSuggestions={onRequestSuggestions}
     />
   );
 }
@@ -120,6 +125,47 @@ describe("LineEditTable の HTML 構造（#369 hydration エラー修正）", ()
     const table = container.querySelector("table");
     expect(table).not.toBeNull();
     expect(table?.querySelector(":scope > div")).toBeNull();
+  });
+});
+
+describe("周辺追加ボタンの出し分け（#619）", () => {
+  const noopRequest = () => {};
+
+  it("周辺を持つトップレベル通常明細にボタンを出す", () => {
+    renderTable([line({ itemName: "ポンプ", hasPeripheral: true })], noopRequest);
+
+    expect(screen.getByLabelText("周辺商品を追加（ポンプ）")).toBeInTheDocument();
+  });
+
+  it("周辺を持たない行にはボタンを出さない", () => {
+    renderTable([line({ itemName: "ポンプ", hasPeripheral: false })], noopRequest);
+
+    expect(screen.queryByLabelText("周辺商品を追加（ポンプ）")).not.toBeInTheDocument();
+  });
+
+  it("セット構成明細（周辺ありでも）にはボタンを出さない", () => {
+    renderTable(
+      [
+        setGroup({
+          components: [line({ rowId: "comp-1", itemName: "構成ポンプ", hasPeripheral: true })],
+        }),
+      ],
+      noopRequest
+    );
+
+    expect(screen.queryByLabelText("周辺商品を追加（構成ポンプ）")).not.toBeInTheDocument();
+  });
+
+  it("セット群ヘッダ行にはボタンを出さない", () => {
+    renderTable([setGroup({ itemName: "セットA" })], noopRequest);
+
+    expect(screen.queryByLabelText("周辺商品を追加（セットA）")).not.toBeInTheDocument();
+  });
+
+  it("onRequestSuggestions 未配線ならボタンを出さない", () => {
+    renderTable([line({ itemName: "ポンプ", hasPeripheral: true })]);
+
+    expect(screen.queryByLabelText("周辺商品を追加（ポンプ）")).not.toBeInTheDocument();
   });
 });
 

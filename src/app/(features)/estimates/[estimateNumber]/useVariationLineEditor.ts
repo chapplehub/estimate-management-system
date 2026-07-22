@@ -82,7 +82,8 @@ export function useVariationLineEditor({
   const [overallDiscount, setOverallDiscount] = useState(initialOverallDiscount);
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
   const [productModalOpen, setProductModalOpen] = useState(false);
-  // 本体追加直後の周辺商品サジェスト（提案あり時のみ）。挿入は本体行（mainRowId）の直下。
+  // 明細行の「周辺追加」ボタンで開く周辺商品サジェスト（#619・提案が1件以上のときのみ非 null）。
+  // 挿入は本体行（mainRowId）の直下。
   const [suggestState, setSuggestState] = useState<SuggestState | null>(null);
   // 周辺商品サジェストで販売単価が解決できずスキップした商品の通知（ADR-0064: 0円明細を作らない）。
   // 商品選択モーダル経由の拒否はモーダル内に表示するため、ここには載らない（#618・ADR-20260716-r4d）。
@@ -204,21 +205,21 @@ export function useVariationLineEditor({
     setNodes((prev) => insertNodesBelow(prev, activeRowId, newNodes));
     // 最後の1件をアクティブにすると、続けて追加したぶんが下へ積まれる（「さっき足した続きに足す」）。
     setActiveRowId(lastNode.rowId);
+  };
 
-    // 周辺商品サジェストは単一の通常商品を選んだときだけ従来どおり発火させる。suggestState は単数
-    // state のため複数件でループすると後勝ちで「最後の1件だけ提案が出る」不可解な挙動になる（#619 で
-    // ボタン化されるため、この分岐は将来自然に消える）。セット商品は元から対象外（構成は展開で確定）。
-    const only = items.length === 1 ? items[0] : undefined;
-    if (only?.kind === "product") {
-      const suggestions = await getProductSuggestions(only.snapshot.id);
-      if (suggestions.length > 0) {
-        setSuggestState({
-          mainRowId: lastNode.rowId,
-          mainName: only.snapshot.name,
-          suggestions,
-        });
-      }
+  // 明細行の「周辺追加」ボタン契機で周辺商品サジェストを開く（#619・自動割り込みを廃止）。
+  // 現在マスタの周辺（有効フィルタ済み）を getProductSuggestions で引き、≥1 件のときだけダイアログを
+  // 開く（suggestState は「必ず中身がある」不変を保つ）。0 件なら開かず selectionError に一言出す
+  // （空モーダルの無駄足を避ける）。mainName は対象行の itemName（トップレベル通常明細）から引く。
+  const requestSuggestions = async (rowId: string, productId: string) => {
+    const mainName = nodes.find((n) => n.kind === "line" && n.rowId === rowId)?.itemName ?? "";
+    const suggestions = await getProductSuggestions(productId);
+    if (suggestions.length === 0) {
+      setSelectionError("有効な周辺商品がありません");
+      return;
     }
+    setSelectionError(null);
+    setSuggestState({ mainRowId: rowId, mainName, suggestions });
   };
 
   // 提案された周辺商品（選択分）を本体直下に通常行として挿入する（数量＝relation・他は新規行既定）。
@@ -264,6 +265,7 @@ export function useVariationLineEditor({
     reorderTopLevel,
     reorderInGroup,
     handleProductSelect,
+    requestSuggestions,
     confirmSuggestions,
   };
 }

@@ -10,6 +10,7 @@ import {
 } from "@dnd-kit/core";
 import { restrictToParentElement, restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { useState } from "react";
 import { cellInputClass, memoInputClass } from "../../_shared/formStyles";
 import { PRODUCT_CATEGORY_LABELS, formatYen } from "../../_shared/labels";
 import { previewGroupAmount, previewLineAmount } from "../previewAmounts";
@@ -27,6 +28,13 @@ type Props = {
   onReorderNodes: (from: number, to: number) => void;
   /** 指定セット群内の構成明細の D&D 並べ替え（群内のみ）。 */
   onReorderComponents: (groupRowId: string, from: number, to: number) => void;
+  /**
+   * 周辺商品追加を要求する（#619）。トップレベル通常明細の「周辺追加」ボタン契機。
+   * 構成明細（indent）・セット群には配線しない（周辺商品は別売り通常明細のため）。
+   */
+  onRequestSuggestions?: (rowId: string, productId: string) => void | Promise<void>;
+  /** フォーム送信中フラグ（送信中は「周辺追加」ボタンを非活性）。 */
+  isPending?: boolean;
 };
 
 const COLUMN_COUNT = 12;
@@ -47,6 +55,8 @@ export function LineEditTable({
   onRemoveNode,
   onReorderNodes,
   onReorderComponents,
+  onRequestSuggestions,
+  isPending,
 }: Props) {
   // クリックとドラッグを区別するため 6px 動いてからドラッグ開始。
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
@@ -131,6 +141,8 @@ export function LineEditTable({
                     onSelectRow={onSelectRow}
                     onChangeLine={onChangeLine}
                     onRemoveNode={onRemoveNode}
+                    onRequestSuggestions={onRequestSuggestions}
+                    isPending={isPending}
                   />
                 )
               )}
@@ -268,6 +280,8 @@ function EditRow({
   onSelectRow,
   onChangeLine,
   onRemoveNode,
+  onRequestSuggestions,
+  isPending,
 }: {
   line: WorkingLine;
   isActive: boolean;
@@ -275,10 +289,27 @@ function EditRow({
   onSelectRow: (rowId: string) => void;
   onChangeLine: (rowId: string, patch: Partial<WorkingLine>) => void;
   onRemoveNode: (rowId: string) => void;
+  onRequestSuggestions?: (rowId: string, productId: string) => void | Promise<void>;
+  isPending?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: line.rowId,
   });
+  // 周辺追加ボタンのフェッチ中フラグ（連打防止・#619）。
+  const [requesting, setRequesting] = useState(false);
+  // トップレベル通常明細（!indent）かつ周辺を持つ行だけボタンを出す（構成明細・別売り基準・#619）。
+  const showPeripheralButton = !indent && line.hasPeripheral && onRequestSuggestions !== undefined;
+
+  const handleRequestSuggestions = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!onRequestSuggestions) return;
+    setRequesting(true);
+    try {
+      await onRequestSuggestions(line.rowId, line.productId);
+    } finally {
+      setRequesting(false);
+    }
+  };
   // restrictToVerticalAxis 前提で縦移動のみ（@dnd-kit/utilities 非依存）。
   const style: React.CSSProperties = {
     transform: transform ? `translate3d(0, ${transform.y}px, 0)` : undefined,
@@ -397,17 +428,31 @@ function EditRow({
         />
       </td>
       <td className="px-3 py-2 align-top text-center">
-        <button
-          type="button"
-          aria-label={`明細を削除（${label}）`}
-          onClick={(e) => {
-            e.stopPropagation();
-            onRemoveNode(line.rowId);
-          }}
-          className="text-red-600 hover:text-red-800 text-sm font-bold"
-        >
-          削除
-        </button>
+        <div className="flex flex-col items-center gap-1">
+          {/* 周辺を持つトップレベル通常明細だけに出す（別売り＝親に金額集約しない通常明細・#619）。 */}
+          {showPeripheralButton && (
+            <button
+              type="button"
+              aria-label={`周辺商品を追加（${label}）`}
+              onClick={handleRequestSuggestions}
+              disabled={requesting || isPending}
+              className="text-blue-600 hover:text-blue-800 text-sm font-bold disabled:text-gray-400"
+            >
+              周辺追加
+            </button>
+          )}
+          <button
+            type="button"
+            aria-label={`明細を削除（${label}）`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemoveNode(line.rowId);
+            }}
+            className="text-red-600 hover:text-red-800 text-sm font-bold"
+          >
+            削除
+          </button>
+        </div>
       </td>
     </tr>
   );

@@ -28,6 +28,7 @@ function lineDTO(overrides: Partial<LineDTO> = {}): LineDTO {
     productCode: "P001",
     productCategory: "INDIVIDUAL",
     isActive: true,
+    hasPeripheral: false,
     itemName: "商品",
     sortOrder: 1,
     quantity: 1,
@@ -65,7 +66,14 @@ function setGroupDTO(overrides: Partial<SetGroupDTO> = {}): SetGroupDTO {
   };
 }
 
-const lineProduct = { id: "p", code: "P", name: "商品", category: "INDIVIDUAL", unit: "個" };
+const lineProduct = {
+  id: "p",
+  code: "P",
+  name: "商品",
+  category: "INDIVIDUAL",
+  unit: "個",
+  hasPeripheral: false,
+};
 
 /** トップレベル通常明細ノード（rowId 指定）。 */
 function line(rowId: string): WorkingNode {

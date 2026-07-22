@@ -92,6 +92,8 @@ export function VariationLineEditor({
         onRemoveNode={editor.deleteNode}
         onReorderNodes={editor.reorderTopLevel}
         onReorderComponents={editor.reorderInGroup}
+        onRequestSuggestions={editor.requestSuggestions}
+        isPending={isPending}
       />
       {nodesField.errors && <p className="text-red-500 text-xs mt-1">{nodesField.errors[0]}</p>}
 

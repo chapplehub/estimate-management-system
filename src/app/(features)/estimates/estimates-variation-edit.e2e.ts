@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 /**
  * 見積詳細画面 S4（バリ内容編集 / C4）の E2E。seed-estimates / seed-e2e の決定的データに対し、
  * 編集可否ゲート・インライン編集の金額ライブプレビュー・明細追加（直下挿入）・削除・全体値引/メモ・
- * 周辺商品サジェストを検証する（ADR-0017/0020）。
+ * 周辺商品追加（明細行のボタン駆動・#619）を検証する（ADR-0017/0020）。
  *
  * D&D 並べ替えは dnd-kit のポインタ操作が Playwright で不安定なため E2E に含めず、並べ替え
  * ロジックは reorderNodes のユニットテストで担保する（ヘッダー編集 E2E が税率不一致を除外するのと同方針）。
@@ -60,6 +60,8 @@ test.describe.serial("バリ内容編集（S4・C4 / N9905003）", () => {
 
     // 商品スナップショットは非同期解決（getProductLineSnapshot）。行が現れる＝作業コピー反映済み。
     await expect(page.getByRole("button", { name: "明細を削除（標準デスク）" })).toBeVisible();
+    // 標準デスクは周辺を持たないため「周辺追加」ボタンは出ない（出し分け・#619）。
+    await expect(page.getByRole("button", { name: "周辺商品を追加（標準デスク）" })).toHaveCount(0);
     await page.getByRole("button", { name: "保存" }).click();
 
     await expect(page.getByText("見積を更新しました。")).toBeVisible();
@@ -93,7 +95,9 @@ test.describe.serial("バリ内容編集（S4・C4 / N9905003）", () => {
     await expect(page.getByText("E2E顧客メモ", { exact: true })).toBeVisible();
   });
 
-  test("周辺商品サジェスト：本体追加で提案が出て周辺も追加→保存→両方表示", async ({ page }) => {
+  test("周辺商品追加：本体行のボタンで提案が出て周辺も追加→保存→両方表示（#619）", async ({
+    page,
+  }) => {
     await page.goto(`/estimates/${EDITABLE}`);
     await page.getByRole("button", { name: "内容を編集" }).click();
 
@@ -107,7 +111,14 @@ test.describe.serial("バリ内容編集（S4・C4 / N9905003）", () => {
       .click();
     await page.getByRole("button", { name: /件を追加/ }).click();
 
-    // 周辺商品サジェストダイアログが開き、周辺が既定でチェック済み。
+    // 追加直後にサジェストダイアログが自動で割り込まないこと（自動表示廃止・#619）。
+    await expect(
+      page.getByRole("button", { name: "明細を削除（S4周辺テスト本体）" })
+    ).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "周辺商品の提案" })).toHaveCount(0);
+
+    // 本体行の「周辺追加」ボタン押下でダイアログが開き、周辺が既定でチェック済み。
+    await page.getByRole("button", { name: "周辺商品を追加（S4周辺テスト本体）" }).click();
     const dialog = page.getByRole("dialog", { name: "周辺商品の提案" });
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole("checkbox", { name: "周辺商品 S4周辺テスト周辺" })).toBeChecked();
@@ -120,6 +131,10 @@ test.describe.serial("バリ内容編集（S4・C4 / N9905003）", () => {
     await expect(
       page.getByRole("button", { name: "明細を削除（S4周辺テスト周辺）" })
     ).toBeVisible();
+    // 追加した周辺は葉（周辺を持たない）なので、その行にはボタンが出ない（カスケード自然終端・#619）。
+    await expect(
+      page.getByRole("button", { name: "周辺商品を追加（S4周辺テスト周辺）" })
+    ).toHaveCount(0);
     await page.getByRole("button", { name: "保存" }).click();
 
     await expect(page.getByText("見積を更新しました。")).toBeVisible();

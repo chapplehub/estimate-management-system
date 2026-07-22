@@ -11,13 +11,15 @@ import {
 import type { CompanyRow, ProductSelectionRow } from "./selectionColumns";
 import { toExpandedSetGroup, type ExpandedSetGroup } from "./setComponentExpansion";
 
-/** 明細追加で固定表示する商品スナップショット（id/コード/名称/区分/単位）。 */
+/** 明細追加で固定表示する商品スナップショット（id/コード/名称/区分/単位/周辺有無）。 */
 export type ProductLineSnapshot = {
   id: string;
   code: string;
   name: string;
   category: string;
   unit: string;
+  /** 周辺商品を持つか（read-through・#619）。周辺追加ボタンの出し分けに使う（相手の有効性は問わない）。 */
+  hasPeripheral: boolean;
 };
 
 /** 周辺商品サジェスト1件（スナップショット＋relation の推奨数量）。 */
@@ -114,6 +116,8 @@ export async function getProductLineSnapshot(
     name: product.name,
     category: product.category,
     unit: product.unit,
+    // 周辺関係が1件以上なら周辺商品を持つ（read-through・#619。相手の有効性は問わない）。
+    hasPeripheral: product.relatedProducts.length > 0,
   };
 }
 
@@ -121,8 +125,9 @@ export async function getProductLineSnapshot(
  * 本体商品の周辺商品（ProductRelation）を、明細サジェスト用に解決する（D6・計画§6）。
  *
  * relatedProducts は unit/isActive を持たないため、周辺ごとに findById で単位・有効性を引く
- * （有効な周辺のみ提案）。カスケードは1段のみ（周辺の周辺は辿らない）。挿入行の数量は relation
- * の quantity を初期値にし、他項目は新規行既定（呼び出し側の createWorkingLine が適用）。
+ * （有効な周辺のみ提案）。この関数自体は1段のみ解決するが、各周辺に hasPeripheral を付与し、
+ * UI のボタン押下で次段を取得する（UI 駆動カスケード・#619）。挿入行の数量は relation の
+ * quantity を初期値にし、他項目は新規行既定（呼び出し側の createWorkingLine が適用）。
  */
 export async function getProductSuggestions(productId: string): Promise<SuggestedProduct[]> {
   await verifySession();
@@ -144,6 +149,8 @@ export async function getProductSuggestions(productId: string): Promise<Suggeste
         name: related.name,
         category: related.category,
         unit: related.unit,
+        // 周辺商品自身の周辺有無（read-through・#619）。カスケード（周辺の周辺）のボタン表示に使う。
+        hasPeripheral: related.relatedProducts.length > 0,
         quantity: relation.quantity,
       } satisfies SuggestedProduct;
     })

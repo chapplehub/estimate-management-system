@@ -20,6 +20,7 @@ function line(overrides: Partial<LineDTO> = {}): LineDTO {
     productCode: "PRD001",
     productCategory: "INDIVIDUAL",
     isActive: true,
+    hasPeripheral: false,
     itemName: "明細",
     sortOrder: 0,
     quantity: 1,
