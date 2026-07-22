@@ -75,9 +75,9 @@ test.describe("原価 詳細（UC-2）", () => {
   });
 
   test("存在しない商品コードで404が表示される", async ({ page }) => {
-    await page.goto("/cost-prices/PRD000NOTEXIST");
+    const response = await page.goto("/cost-prices/PRD000NOTEXIST");
 
-    await expect(page.getByText("404")).toBeVisible({ timeout: 10000 });
+    expect(response?.status()).toBe(404);
   });
 });
 
