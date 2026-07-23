@@ -44,6 +44,7 @@ export function CustomerSelector({ label }: { label: string }) {
         title="得意先を選択"
         searchFields={customerSearchFields}
         searchAction={searchCustomersForSelection}
+        searchActionName="searchCustomersForSelection"
         columns={companySelectionColumns}
         onConfirm={handleConfirm}
         getRowId={(row) => row.id}

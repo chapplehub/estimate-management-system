@@ -55,6 +55,7 @@
 | [0057](0057-estimate-duplication-ui-as-detail-modal-driving-duplicate-command.md) | 見積複製(C6)の UI は作成画面統合ではなく詳細画面モーダル＋DuplicateEstimate 経路で実装する | 採用 | 2026-06-18 |
 | [20260716-r4d](20260716-r4d-selection-modal-confirm-veto-by-return-value.md) | SelectionModal の確定拒否は onConfirm の戻り値で表現する（閉じずにエラー＋該当行ハイライト） | 採用 | 2026-07-16 |
 | [20260721-ef0](20260721-ef0-error-boundary-minimal-set-coverage-tradeoff.md) | App Router のエラー境界は global-error＋(features) 直下の error/not-found の最小セットに絞り、auth・レイアウト・任意 URL は Next デフォルトに落とす | 採用 | 2026-07-21 |
+| [20260723-h7r](20260723-h7r-read-action-raw-return-client-wrapper-over-result-envelope.md) | read/query 系 Server Action は生の戻り値を保ち、非業務例外は呼び出し層の共通ラッパー（callReadAction）で toast + reportError に集約する | 採用 | 2026-07-23 |
 
 ## ドメイン（設計パターン）
 

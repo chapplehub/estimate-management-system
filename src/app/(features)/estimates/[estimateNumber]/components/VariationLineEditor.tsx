@@ -166,6 +166,7 @@ export function VariationLineEditorOverlays({ editor }: { editor: VariationLineE
         title="明細追加 — 商品を選択"
         searchFields={productSearchFields}
         searchAction={searchProductsForSelection}
+        searchActionName="searchProductsForSelection"
         columns={productSelectionColumns}
         onConfirm={editor.handleProductSelect}
         getRowId={(row) => row.id}

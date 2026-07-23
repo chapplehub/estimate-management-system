@@ -47,6 +47,7 @@ export function DeliveryLocationSelector({ label }: { label: string }) {
         title="納品先を選択"
         searchFields={deliveryLocationSearchFields}
         searchAction={searchDeliveryLocationsGlobal}
+        searchActionName="searchDeliveryLocationsGlobal"
         columns={deliveryLocationSelectionColumns}
         onConfirm={handleConfirm}
         getRowId={(row) => row.id}

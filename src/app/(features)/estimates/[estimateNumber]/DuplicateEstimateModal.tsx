@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/app/_components/shadcnui/dialog";
 import { useServerForm } from "@/app/_hooks/useServerForm";
+import { callReadAction } from "@/app/_lib/callReadAction";
 import type { VariationDTO } from "@subdomains/estimate/application/queries/dto/EstimateDetailDTO";
 import { inputClassDisabled } from "../_shared/formStyles";
 import { SUBMISSION_TYPE_LABELS, VARIATION_STATUS_LABELS } from "../_shared/labels";
@@ -142,7 +143,14 @@ function DuplicateForm({
   const handleEstimateDateChange = (value: string) => {
     setEstimateDate(value);
     startTaxResolve(async () => {
-      setTaxRate(await resolveEffectiveTaxRate(value));
+      const resolved = await callReadAction(
+        () => resolveEffectiveTaxRate(value),
+        "resolveEffectiveTaxRate"
+      );
+      // 非業務例外での失敗時は表示中の税率を維持する。`null`（＝税率未設定という業務値）へ
+      // 落とすと嘘の業務状態を見せることになるため（#633・ADR-20260723-h7r）。
+      if (resolved === undefined) return;
+      setTaxRate(resolved);
     });
   };
 

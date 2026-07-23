@@ -1,5 +1,10 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  SELECTION_ABORTED,
+  type SelectionAborted,
+  type SelectionRejection,
+} from "@/app/_components/shared/SelectionModal";
 import type { ProductSelectionRow } from "../_shared/selectionColumns";
 import { useVariationLineEditor, type LineEditorPriceContext } from "./useVariationLineEditor";
 import type { WorkingSetGroup } from "./variationLines";
@@ -17,6 +22,9 @@ const resolveSellingPricesForDisplay = vi.fn();
 vi.mock("../_shared/selling-price-actions", () => ({
   resolveSellingPricesForDisplay: (...args: unknown[]) => resolveSellingPricesForDisplay(...args),
 }));
+
+// 非業務例外の経路（callReadAction）は toast を出すため、通知先だけモックして黙らせる。
+vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
 
 const getProductLineSnapshot = vi.fn();
 const expandSetComponents = vi.fn();
@@ -48,6 +56,17 @@ function setup() {
 
 function productRow(overrides: Partial<ProductSelectionRow> = {}): ProductSelectionRow {
   return { id: "p1", code: "P1", name: "商品A", category: "INDIVIDUAL", ...overrides };
+}
+
+/**
+ * `handleProductSelect` の戻り値から業務拒否（SelectionRejection）を取り出す。
+ * 非業務例外の中断 sentinel（`SELECTION_ABORTED`・#633）と同じ union に載るため、
+ * 拒否を期待するテストでは「中断ではないこと」までここで固定する。
+ */
+function expectRejection(actual: void | SelectionRejection | SelectionAborted): SelectionRejection {
+  expect(actual).not.toBe(SELECTION_ABORTED);
+  expect(actual).toBeTruthy();
+  return actual as SelectionRejection;
 }
 
 beforeEach(() => {
@@ -93,19 +112,21 @@ describe("複数商品の一括追加（#618）", () => {
     resolveSellingPricesForDisplay.mockResolvedValue({ p1: 100, p2: null, p3: 300 });
 
     const { result } = setup();
-    const rejection = await act(() =>
-      result.current.handleProductSelect([
-        productRow({ id: "p1", name: "商品A" }),
-        productRow({ id: "p2", name: "商品B" }),
-        productRow({ id: "p3", name: "商品C" }),
-      ])
+    const rejection = expectRejection(
+      await act(() =>
+        result.current.handleProductSelect([
+          productRow({ id: "p1", name: "商品A" }),
+          productRow({ id: "p2", name: "商品B" }),
+          productRow({ id: "p3", name: "商品C" }),
+        ])
+      )
     );
 
     // 部分追加せず原子的に拒否する（解決できた商品A・商品Cも追加しない）。
     expect(result.current.nodes).toHaveLength(0);
-    expect(rejection?.invalidIds).toEqual(["p2"]);
-    expect(rejection?.message).toContain("商品B");
-    expect(rejection?.message).not.toContain("商品A");
+    expect(rejection.invalidIds).toEqual(["p2"]);
+    expect(rejection.message).toContain("商品B");
+    expect(rejection.message).not.toContain("商品A");
   });
 
   it("複数選択では周辺商品サジェストを出さない（自動表示廃止・#619）", async () => {
@@ -251,12 +272,14 @@ describe("通常商品の選択時の見積単価解決", () => {
     resolveSellingPricesForDisplay.mockResolvedValue({ p1: null });
 
     const { result } = setup();
-    const rejection = await act(() => result.current.handleProductSelect([productRow()]));
+    const rejection = expectRejection(
+      await act(() => result.current.handleProductSelect([productRow()]))
+    );
 
     expect(result.current.nodes).toHaveLength(0);
     // エラーはモーダル内に出すため、バナー用の selectionError は使わない（#618・ADR-20260716-r4d）。
-    expect(rejection?.message).toContain("商品A");
-    expect(rejection?.invalidIds).toEqual(["p1"]);
+    expect(rejection.message).toContain("商品A");
+    expect(rejection.invalidIds).toEqual(["p1"]);
   });
 });
 
@@ -309,16 +332,18 @@ describe("セット商品の選択時の見積単価解決", () => {
     resolveSellingPricesForDisplay.mockResolvedValue({ ca: 500, cb: null });
 
     const { result } = setup();
-    const rejection = await act(() =>
-      result.current.handleProductSelect([productRow({ id: "set1", category: "SET" })])
+    const rejection = expectRejection(
+      await act(() =>
+        result.current.handleProductSelect([productRow({ id: "set1", category: "SET" })])
+      )
     );
 
     expect(result.current.nodes).toHaveLength(0);
-    expect(rejection?.message).toContain("セットA");
-    expect(rejection?.message).toContain("構成B");
-    expect(rejection?.message).not.toContain("構成A");
+    expect(rejection.message).toContain("セットA");
+    expect(rejection.message).toContain("構成B");
+    expect(rejection.message).not.toContain("構成A");
     // ハイライトはモーダルの一覧に存在する行＝セット商品の行に立てる（構成は一覧に現れない）。
-    expect(rejection?.invalidIds).toEqual(["set1"]);
+    expect(rejection.invalidIds).toEqual(["set1"]);
   });
 
   it("見積年月日未入力で解決が空マップを返す場合、NaN群を作らず展開ごと拒否する", async () => {
@@ -329,13 +354,78 @@ describe("セット商品の選択時の見積単価解決", () => {
     resolveSellingPricesForDisplay.mockResolvedValue({});
 
     const { result } = setup();
-    const rejection = await act(() =>
-      result.current.handleProductSelect([productRow({ id: "set1", category: "SET" })])
+    const rejection = expectRejection(
+      await act(() =>
+        result.current.handleProductSelect([productRow({ id: "set1", category: "SET" })])
+      )
     );
 
     expect(result.current.nodes).toHaveLength(0);
-    expect(rejection?.message).toContain("セットA");
-    expect(rejection?.message).toContain("構成A");
-    expect(rejection?.message).toContain("構成B");
+    expect(rejection.message).toContain("セットA");
+    expect(rejection.message).toContain("構成A");
+    expect(rejection.message).toContain("構成B");
+  });
+});
+
+/**
+ * 非業務例外（DB 障害・ネットワーク断）で確定に必要なデータを取れなかったときの中断（#633）。
+ *
+ * 中断は `SELECTION_ABORTED` を返してモーダル側に「閉じるな・理由も出すな」を伝える
+ * （ADR-20260723-h7r の操作中断・state 凍結）。素の `undefined` で抜けるとモーダルは
+ * 「確定成功」と解釈して閉じ、検索結果と選択状態を捨ててしまう（ADR-20260716-r4d の契約）。
+ * 業務値 `null`（商品の並行削除）は中断ではなく従来どおりの no-op で、両者は区別する。
+ */
+describe("非業務例外での選択中断（#633）", () => {
+  const SNAPSHOT = {
+    id: "p1",
+    code: "P1",
+    name: "商品A",
+    category: "INDIVIDUAL",
+    unit: "個",
+  };
+
+  it("スナップショット取得が失敗したら中断を返し、1行も追加しない", async () => {
+    getProductLineSnapshot.mockRejectedValue(new Error("boom"));
+
+    const { result } = setup();
+    const outcome = await act(() => result.current.handleProductSelect([productRow()]));
+
+    expect(outcome).toBe(SELECTION_ABORTED);
+    expect(result.current.nodes).toHaveLength(0);
+  });
+
+  it("セット構成の展開が失敗したら中断を返す", async () => {
+    expandSetComponents.mockRejectedValue(new Error("boom"));
+
+    const { result } = setup();
+    const outcome = await act(() =>
+      result.current.handleProductSelect([productRow({ id: "set1", category: "SET" })])
+    );
+
+    expect(outcome).toBe(SELECTION_ABORTED);
+    expect(result.current.nodes).toHaveLength(0);
+  });
+
+  it("価格解決が失敗したら中断を返す（業務上の解決不能＝拒否とは区別する）", async () => {
+    getProductLineSnapshot.mockResolvedValue(SNAPSHOT);
+    resolveSellingPricesForDisplay.mockRejectedValue(new Error("boom"));
+
+    const { result } = setup();
+    const outcome = await act(() => result.current.handleProductSelect([productRow()]));
+
+    // 拒否（SelectionRejection）ではないこと＝モーダルに理由バナーを出さないことまで固定する。
+    expect(outcome).toBe(SELECTION_ABORTED);
+    expect(result.current.nodes).toHaveLength(0);
+  });
+
+  it("商品が並行削除されていた場合（業務値 null）は中断ではなく従来どおりの no-op", async () => {
+    getProductLineSnapshot.mockResolvedValue(null);
+
+    const { result } = setup();
+    const outcome = await act(() => result.current.handleProductSelect([productRow()]));
+
+    // ここが `SELECTION_ABORTED` に変わるとモーダルが閉じなくなり、通知も出ないまま固まる。
+    expect(outcome).toBeUndefined();
+    expect(result.current.nodes).toHaveLength(0);
   });
 });

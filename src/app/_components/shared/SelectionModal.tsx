@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import type { RowSelectionState } from "@tanstack/react-table";
+import { callReadAction } from "@/app/_lib/callReadAction";
 import type { SearchFieldDef } from "@/app/_components/shared/SearchForm";
 import { ModalSearchForm } from "@/app/_components/shared/ModalSearchForm";
 import { DataTable, type ColumnDef } from "@/app/_components/shared/DataTable";
@@ -12,18 +13,42 @@ import { DataTable, type ColumnDef } from "@/app/_components/shared/DataTable";
  */
 export type SelectionRejection = { message: string; invalidIds: string[] };
 
+/**
+ * 親が確定処理を**中断**したときに `onConfirm` から返す sentinel（ADR-20260723-h7r）。
+ *
+ * 非業務例外（DB 障害・ネットワーク断）で確定に必要なデータを取得できなかった場合に使う。
+ * モーダルは閉じず、`SelectionRejection` と違い理由も表示しない（通知は `callReadAction` の
+ * toast が担うため、モーダル内にも出すと二重表示になる）。検索結果・選択状態をそのまま残し、
+ * ユーザーが同じ選択のまま再確定してリトライできるようにする（操作中断・state 凍結）。
+ *
+ * 拒否（`SelectionRejection`）は「業務上追加できない」という予測可能な正常結果であり、
+ * 中断は「取得そのものに失敗した」で意味が異なるため、同じ union の別の枝として区別する。
+ */
+export const SELECTION_ABORTED = Symbol("SELECTION_ABORTED");
+export type SelectionAborted = typeof SELECTION_ABORTED;
+
 type SelectionModalProps<TData> = {
   isOpen: boolean;
   onClose: () => void;
   title: string;
   searchFields: SearchFieldDef[];
   searchAction: (criteria: Record<string, string>) => Promise<TData[]>;
+  /**
+   * `searchAction` に渡した Server Action の**関数名リテラル**（例: `"searchCustomersForSelection"`）。
+   * 失敗ログの context に使う（ADR-20260723-h7r）。関数名を知るのは注入側の親だけのため、
+   * 包む処理はモーダル内 1 箇所に集約したまま、メタ情報だけを親から供給する。
+   * 必須 prop にすることで、新しい親の渡し忘れを TypeScript が検出する。
+   */
+  searchActionName: string;
   columns: ColumnDef<TData, unknown>[];
   /**
    * 確定時に選択行を受け取る。`undefined` を返せば成功としてモーダルを閉じ、
    * `SelectionRejection` を返せば閉じずに理由と原因行を表示する（ADR-20260716-r4d）。
+   * `SELECTION_ABORTED` を返せば閉じず、理由も出さずに state を凍結する（ADR-20260723-h7r）。
    */
-  onConfirm: (selectedItems: TData[]) => void | Promise<void | SelectionRejection>;
+  onConfirm: (
+    selectedItems: TData[]
+  ) => void | Promise<void | SelectionRejection | SelectionAborted>;
   getRowId: (row: TData) => string;
   emptyMessage: string;
   excludeIds?: string[];
@@ -35,6 +60,7 @@ export function SelectionModal<TData>({
   title,
   searchFields,
   searchAction,
+  searchActionName,
   columns,
   onConfirm,
   getRowId,
@@ -55,7 +81,11 @@ export function SelectionModal<TData>({
       setRowSelection({});
       setRejection(null);
       try {
-        const results = await searchAction(criteria);
+        const results = await callReadAction(() => searchAction(criteria), searchActionName);
+        // 非業務例外での検索失敗時は `data` / `hasSearched` を触らず、直前の検索結果を維持する
+        // （操作中断・state 凍結・#633）。通知は callReadAction の toast が担い、`isLoading` は
+        // 下の finally が戻すので、ユーザーはそのまま再検索でリトライできる。
+        if (results === undefined) return;
         const excludeSet = new Set(excludeIds);
         const filtered = results.filter((row) => !excludeSet.has(getRowId(row)));
         setData(filtered);
@@ -64,7 +94,7 @@ export function SelectionModal<TData>({
         setIsLoading(false);
       }
     },
-    [searchAction, excludeIds, getRowId]
+    [searchAction, searchActionName, excludeIds, getRowId]
   );
 
   const selectedCount = Object.values(rowSelection).filter(Boolean).length;
@@ -78,6 +108,10 @@ export function SelectionModal<TData>({
     setIsConfirming(true);
     try {
       const result = await onConfirm(selectedItems);
+      // 中断（非業務例外で確定に必要なデータを取れなかった）は閉じも拒否表示もせず、画面 state を
+      // 一切触らずに抜ける。`rejection` を出さないのは toast と二重表示になるため（#633）。
+      // `isConfirming` は下の finally が戻すので、同じ選択のまま再確定でリトライできる。
+      if (result === SELECTION_ABORTED) return;
       if (result) {
         setRejection(result);
         return;
