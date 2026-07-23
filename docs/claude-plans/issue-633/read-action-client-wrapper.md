@@ -60,7 +60,7 @@ read/query 系 Server Action（生データを返す系）の裸 await 箇所で
 - コミットメッセージ: `docs: read/query系Server Actionの非業務例外を呼び出し層ラッパーに集約するADRを追加 (#633)`
 
 ### Step 2: callReadAction 新設 + reportError 接頭辞一般化
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: `src/app/_lib/callReadAction.ts`（新規）, `src/app/_lib/__tests__/callReadAction.test.ts`（新規）, `src/app/_lib/report-error.ts`, `src/app/_lib/__tests__/report-error.test.ts`（存在すれば接頭辞の期待値を更新）
 - テスト戦略: TDD（純粋なクライアントユーティリティで、期待する振る舞い＝成功時の透過・失敗時の `undefined` / reportError / toast を実装前に言い切れる。sonner と reportError は vi.mock で spy する）
 - 作業内容:
