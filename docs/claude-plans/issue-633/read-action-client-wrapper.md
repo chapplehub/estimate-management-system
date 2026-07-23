@@ -39,6 +39,12 @@ read/query 系 Server Action（生データを返す系）の裸 await 箇所で
 - 税率解決（CreateEstimateForm / DuplicateEstimateModal）: 表示中の税率を維持。`null`（税率未設定）に落とさない
 - `SelectionModal`: 検索結果を維持。requesting フラグは既存 finally が戻す
 
+### SelectionModal への context 供給方式
+- ① モーダル内部で包み固定文字列 `"searchAction"` を使う
+- ② 親側で包んでから渡す
+- ③ 必須 prop `searchActionName` で親から実関数名リテラルを供給し、モーダル内部で包む
+- 採用: ③（包む処理は 1 箇所に集約したまま、リテラルは名前を知る注入側から供給。必須 prop なので渡し忘れを TypeScript が強制検出する。①は実関数名規約の例外を作り、②は将来の親の包み忘れで無言失敗が再発しうる）
+
 ### テスト方針
 - ラッパーは「捕まえた後に何をするか」（`undefined` 返却・reportError 呼び出し・toast 発火）のみ unit で検証
 - 9 箇所の配線自体の E2E は足さない（ADR-20260721-ef0 の検証方針と同型）
@@ -75,10 +81,12 @@ read/query 系 Server Action（生データを返す系）の裸 await 箇所で
 
 ### Step 4: 残り 3 コンポーネントに適用
 - [ ] **完了**
-- 対象ファイル: `src/app/(features)/estimates/new/CreateEstimateForm.tsx`, `src/app/(features)/estimates/[estimateNumber]/DuplicateEstimateModal.tsx`（実パスは適用時に確認）, `SelectionModal.tsx`
-- テスト戦略: テスト不要（Step 3 と同じ理由）
+- 対象ファイル: `src/app/(features)/estimates/new/CreateEstimateForm.tsx`, `src/app/(features)/estimates/[estimateNumber]/DuplicateEstimateModal.tsx`（実パスは適用時に確認）, `src/app/_components/shared/SelectionModal.tsx`, `SelectionModal.test.tsx`, および `searchAction` を渡している親 10 箇所（`CreateEstimateForm` / `EstimateHeaderForm` / `VariationLineEditor` / `CustomerSelector` / `DeliveryLocationSelector` / `ProductRelationsForm`）
+- テスト戦略: テスト不要（Step 3 と同じ理由。`SelectionModal.test.tsx` は必須 prop 追加に伴う既存テストの修正のみ）
 - 作業内容:
   - `resolveEffectiveTaxRate` の 2 呼び出しを包む（失敗時は表示中の税率を維持、`null` に落とさない）
-  - `SelectionModal` の `search*ForSelection` 呼び出しを包む（失敗時は検索結果を維持。context は渡された Action の関数名リテラルを親から受ける形にせず、まず `SelectionModal` 内の単一適用点で対応できるか実装時に確認し、リテラル制約を守れる最小の形を選ぶ）
+  - `SelectionModal` に**必須 prop `searchActionName: string`** を追加し、`handleSearch` 内の 1 箇所で `callReadAction(() => searchAction(criteria), searchActionName)` と包む。`undefined` なら `data` / `hasSearched` を触らず終了（state 凍結。`isLoading` は既存 finally が戻す）
+    - 方式の理由: 関数名リテラルを知るのは注入側の親だけのため、メタ情報（関数名）も親から注入する。prop を必須にすることで新しい親の context 渡し忘れを TypeScript がコンパイルエラーで強制検出する（②親側で包む案は包み忘れをレビューでしか検出できない）
+  - 親 10 箇所に `searchActionName="searchCustomersForSelection"` 等の実関数名リテラルを追加
   - `LineEditTable.tsx:307` の try-finally はそのまま（requesting フラグ復帰用。フィードバックはフック側の適用で解消される）
 - コミットメッセージ: `fix: 税率解決と選択モーダル検索を callReadAction で包み無言失敗を解消する (#633)`
