@@ -16,4 +16,4 @@ fi
 
 # 全体型チェック → フルスイート（どちらも全プログラム検査なのでここに集約）
 pnpm tsc --noEmit
-pnpm vitest run
+tsx prisma/seed-unit.ts && vitest run
