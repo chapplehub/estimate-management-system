@@ -70,7 +70,7 @@ read/query 系 Server Action（生データを返す系）の裸 await 箇所で
 - コミットメッセージ: `feat: read/query系Server Action呼び出しの共通ラッパー callReadAction を追加 (#633)`
 
 ### Step 3: useVariationLineEditor の 5 呼び出しに適用
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: `src/app/(features)/estimates/[estimateNumber]/useVariationLineEditor.ts`
 - テスト戦略: テスト不要（配線のみ。捕捉後の挙動は Step 2 の unit が担保し、既存の関連テストの green は pre-commit の vitest related が担保する。ADR の「配線はテストしない」方針）
 - 作業内容:
