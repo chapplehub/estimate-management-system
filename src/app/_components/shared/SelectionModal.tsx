@@ -13,6 +13,20 @@ import { DataTable, type ColumnDef } from "@/app/_components/shared/DataTable";
  */
 export type SelectionRejection = { message: string; invalidIds: string[] };
 
+/**
+ * 親が確定処理を**中断**したときに `onConfirm` から返す sentinel（ADR-20260723-h7r）。
+ *
+ * 非業務例外（DB 障害・ネットワーク断）で確定に必要なデータを取得できなかった場合に使う。
+ * モーダルは閉じず、`SelectionRejection` と違い理由も表示しない（通知は `callReadAction` の
+ * toast が担うため、モーダル内にも出すと二重表示になる）。検索結果・選択状態をそのまま残し、
+ * ユーザーが同じ選択のまま再確定してリトライできるようにする（操作中断・state 凍結）。
+ *
+ * 拒否（`SelectionRejection`）は「業務上追加できない」という予測可能な正常結果であり、
+ * 中断は「取得そのものに失敗した」で意味が異なるため、同じ union の別の枝として区別する。
+ */
+export const SELECTION_ABORTED = Symbol("SELECTION_ABORTED");
+export type SelectionAborted = typeof SELECTION_ABORTED;
+
 type SelectionModalProps<TData> = {
   isOpen: boolean;
   onClose: () => void;
@@ -30,8 +44,11 @@ type SelectionModalProps<TData> = {
   /**
    * 確定時に選択行を受け取る。`undefined` を返せば成功としてモーダルを閉じ、
    * `SelectionRejection` を返せば閉じずに理由と原因行を表示する（ADR-20260716-r4d）。
+   * `SELECTION_ABORTED` を返せば閉じず、理由も出さずに state を凍結する（ADR-20260723-h7r）。
    */
-  onConfirm: (selectedItems: TData[]) => void | Promise<void | SelectionRejection>;
+  onConfirm: (
+    selectedItems: TData[]
+  ) => void | Promise<void | SelectionRejection | SelectionAborted>;
   getRowId: (row: TData) => string;
   emptyMessage: string;
   excludeIds?: string[];
@@ -91,6 +108,10 @@ export function SelectionModal<TData>({
     setIsConfirming(true);
     try {
       const result = await onConfirm(selectedItems);
+      // 中断（非業務例外で確定に必要なデータを取れなかった）は閉じも拒否表示もせず、画面 state を
+      // 一切触らずに抜ける。`rejection` を出さないのは toast と二重表示になるため（#633）。
+      // `isConfirming` は下の finally が戻すので、同じ選択のまま再確定でリトライできる。
+      if (result === SELECTION_ABORTED) return;
       if (result) {
         setRejection(result);
         return;

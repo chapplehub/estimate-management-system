@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import { callReadAction } from "@/app/_lib/callReadAction";
-import type { SelectionRejection } from "@/app/_components/shared/SelectionModal";
+import {
+  SELECTION_ABORTED,
+  type SelectionAborted,
+  type SelectionRejection,
+} from "@/app/_components/shared/SelectionModal";
 import {
   expandSetComponents,
   getProductLineSnapshot,
@@ -144,29 +148,35 @@ export function useVariationLineEditor({
   // 挿入位置はアクティブノード直下（構成/群がアクティブなら群の直後＝トップレベル）。
   const handleProductSelect = async (
     rows: ProductSelectionRow[]
-  ): Promise<void | SelectionRejection> => {
+  ): Promise<void | SelectionRejection | SelectionAborted> => {
     if (rows.length === 0) return;
 
     // 相1: 選択行ごとに展開/スナップショットを並列取得する（一括選択は数件〜十数件のため
     // 一括版 Server Action は設けず既存の単体 Action を並列で叩く）。
+    // `undefined` = 非業務例外による取得失敗（callReadAction が捕捉）、`null` = 業務上の不在
+    // （並行削除等）。この 2 つは失敗時の振る舞いが違うため、集約前にここで区別しておく。
     const prepared = await Promise.all(
-      rows.map(async (row): Promise<PreparedSelection | null> => {
+      rows.map(async (row): Promise<PreparedSelection | null | undefined> => {
         if (row.category === "SET") {
           const expanded = await callReadAction(
             () => expandSetComponents(row.id),
             "expandSetComponents"
           );
+          if (expanded === undefined) return undefined;
           return expanded ? { kind: "set", row, expanded } : null;
         }
         const snapshot = await callReadAction(
           () => getProductLineSnapshot(row.id),
           "getProductLineSnapshot"
         );
+        if (snapshot === undefined) return undefined;
         return snapshot ? { kind: "product", row, snapshot } : null;
       })
     );
-    // 取得できない商品が混ざったら（並行削除等・および非業務例外による取得失敗 = `undefined`）
-    // 何も追加しない（単一選択時の従来の no-op と同義）。失敗の通知は callReadAction の toast が担う。
+    // 非業務例外での取得失敗は選択操作を中断する。モーダルは閉じず選択状態も保つため、ユーザーは
+    // そのまま再確定でリトライできる（操作中断・state 凍結・#633）。通知は callReadAction の toast。
+    if (prepared.some((item) => item === undefined)) return SELECTION_ABORTED;
+    // 取得できない商品が混ざったら（並行削除等）何も追加しない（単一選択時の従来の no-op と同義）。
     if (prepared.some((item) => item === null)) return;
     const items = prepared as PreparedSelection[];
 
@@ -177,7 +187,7 @@ export function useVariationLineEditor({
     const prices = await resolvePricesFor([...new Set(productIds)]);
     // 価格解決が非業務例外で失敗したら選択操作全体を中断し、1ノードも挿入しない（#633）。
     // 解決不能（業務: 有効な販売単価が無い）とは区別し、拒否メッセージも出さない（toast と二重になるため）。
-    if (prices === undefined) return;
+    if (prices === undefined) return SELECTION_ABORTED;
 
     // 相3: 検証。`== null` で undefined（見積年月日未入力時の空マップ）も解決不能として拾う。
     // 1件でも不能なら1ノードも挿入せず、原因の選択行 ID と理由を返す。

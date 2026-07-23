@@ -1,7 +1,12 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { SelectionModal, type SelectionRejection } from "./SelectionModal";
+import {
+  SELECTION_ABORTED,
+  SelectionModal,
+  type SelectionAborted,
+  type SelectionRejection,
+} from "./SelectionModal";
 import type { ColumnDef } from "./DataTable";
 import type { SearchFieldDef } from "./SearchForm";
 
@@ -10,6 +15,9 @@ import type { SearchFieldDef } from "./SearchForm";
  *
  * `onConfirm` が `undefined` を返せば従来どおり閉じ、`SelectionRejection` を返せば閉じずに
  * 文言と原因行のハイライトを出す。検証の継ぎ目は `data-invalid` 属性（配色クラスは assert しない）。
+ *
+ * 加えて確定中断の経路（`SELECTION_ABORTED` / ADR-20260723-h7r）。非業務例外で確定に必要な
+ * データを取れなかった場合は、閉じず・理由も出さず・state を凍結する。
  */
 
 type Row = { id: string; name: string };
@@ -24,7 +32,7 @@ const SEARCH_FIELDS: SearchFieldDef[] = [{ type: "text", key: "name", label: "�
 const COLUMNS: ColumnDef<Row, unknown>[] = [{ accessorKey: "name", header: "商品名" }];
 
 function renderModal(overrides: {
-  onConfirm: (items: Row[]) => void | Promise<void | SelectionRejection>;
+  onConfirm: (items: Row[]) => void | Promise<void | SelectionRejection | SelectionAborted>;
   onClose?: () => void;
   searchAction?: (criteria: Record<string, string>) => Promise<Row[]>;
 }) {
@@ -149,5 +157,48 @@ describe("SelectionModal の確定拒否", () => {
     expect(onConfirm).toHaveBeenCalledWith([{ id: "p1", name: "商品A" }]);
     expect(onClose).toHaveBeenCalled();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+});
+
+describe("SelectionModal の確定中断", () => {
+  it("onConfirm が SELECTION_ABORTED を返したら閉じず、理由も出さず、検索結果と選択状態を保つ", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const onConfirm = vi.fn().mockResolvedValue(SELECTION_ABORTED);
+
+    renderModal({ onConfirm, onClose });
+    await searchAndSelect(user, "商品A", "商品B");
+    await user.click(screen.getByRole("button", { name: "2件を追加" }));
+
+    expect(onClose).not.toHaveBeenCalled();
+    // 通知は callReadAction の toast が担うため、モーダル内には理由を出さない（二重表示の防止）。
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    // 検索結果・選択状態が凍結されている（件数表示が 2件のまま = rowSelection も data も無傷）。
+    expect(screen.getByRole("button", { name: "2件を追加" })).toBeEnabled();
+    expect(rowOf("商品A")).not.toHaveAttribute("data-invalid");
+  });
+
+  it("中断後は同じ選択のまま再確定でリトライできる", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const onConfirm = vi
+      .fn()
+      .mockResolvedValueOnce(SELECTION_ABORTED)
+      .mockResolvedValueOnce(undefined);
+
+    renderModal({ onConfirm, onClose });
+    await searchAndSelect(user, "商品A", "商品B");
+    await user.click(screen.getByRole("button", { name: "2件を追加" }));
+    expect(onClose).not.toHaveBeenCalled();
+
+    // 選択し直さずにもう一度確定するだけで、同じ2件がそのまま親へ渡る。
+    await user.click(screen.getByRole("button", { name: "2件を追加" }));
+
+    expect(onConfirm).toHaveBeenCalledTimes(2);
+    expect(onConfirm).toHaveBeenLastCalledWith([
+      { id: "p1", name: "商品A" },
+      { id: "p2", name: "商品B" },
+    ]);
+    expect(onClose).toHaveBeenCalled();
   });
 });
