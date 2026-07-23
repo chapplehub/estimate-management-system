@@ -356,6 +356,7 @@ export function EstimateHeaderForm({ estimate, departments, onCancel }: Props) {
         title="得意先を選択"
         searchFields={companySearchFields}
         searchAction={searchCustomersForSelection}
+        searchActionName="searchCustomersForSelection"
         columns={companySelectionColumns}
         onConfirm={handleCustomerSelect}
         getRowId={(row) => row.id}
@@ -367,6 +368,7 @@ export function EstimateHeaderForm({ estimate, departments, onCancel }: Props) {
         title="納品先を選択"
         searchFields={companySearchFields}
         searchAction={searchDeliveryLocationsForSelection.bind(null, customer.id)}
+        searchActionName="searchDeliveryLocationsForSelection"
         columns={companySelectionColumns}
         onConfirm={handleDeliverySelect}
         getRowId={(row) => row.id}
@@ -378,6 +380,7 @@ export function EstimateHeaderForm({ estimate, departments, onCancel }: Props) {
         title="修理対象機器を選択"
         searchFields={productSearchFields}
         searchAction={searchProductsForSelection}
+        searchActionName="searchProductsForSelection"
         columns={productSelectionColumns}
         onConfirm={handleProductSelect}
         getRowId={(row) => row.id}

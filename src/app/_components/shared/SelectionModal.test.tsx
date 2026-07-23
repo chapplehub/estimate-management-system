@@ -35,6 +35,7 @@ function renderModal(overrides: {
       title="商品選択"
       searchFields={SEARCH_FIELDS}
       searchAction={overrides.searchAction ?? vi.fn().mockResolvedValue(ROWS)}
+      searchActionName="searchProductsForSelection"
       columns={COLUMNS}
       onConfirm={overrides.onConfirm}
       getRowId={(row) => row.id}

@@ -4,6 +4,7 @@ import { getFormProps, getInputProps, getSelectProps } from "@conform-to/react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { useServerForm } from "@/app/_hooks/useServerForm";
+import { callReadAction } from "@/app/_lib/callReadAction";
 import { SelectionModal } from "@/app/_components/shared/SelectionModal";
 import type { SearchFieldDef } from "@/app/_components/shared/SearchForm";
 import { AfterRepairDetailFields } from "../_shared/AfterRepairDetailFields";
@@ -108,7 +109,14 @@ export function CreateEstimateForm({
   const handleEstimateDateChange = (value: string) => {
     setEstimateDate(value);
     startTaxResolve(async () => {
-      setTaxRate(await resolveEffectiveTaxRate(value));
+      const resolved = await callReadAction(
+        () => resolveEffectiveTaxRate(value),
+        "resolveEffectiveTaxRate"
+      );
+      // 非業務例外での失敗時は表示中の税率を維持する。`null`（＝税率未設定という業務値）へ
+      // 落とすと嘘の業務状態を見せることになるため（#633・ADR-20260723-h7r）。
+      if (resolved === undefined) return;
+      setTaxRate(resolved);
     });
   };
 
@@ -409,6 +417,7 @@ export function CreateEstimateForm({
         title="得意先を選択"
         searchFields={companySearchFields}
         searchAction={searchCustomersForSelection}
+        searchActionName="searchCustomersForSelection"
         columns={companySelectionColumns}
         onConfirm={handleCustomerSelect}
         getRowId={(row) => row.id}
@@ -420,6 +429,7 @@ export function CreateEstimateForm({
         title="納品先を選択"
         searchFields={companySearchFields}
         searchAction={searchDeliveryLocationsForSelection.bind(null, customer.id)}
+        searchActionName="searchDeliveryLocationsForSelection"
         columns={companySelectionColumns}
         onConfirm={handleDeliverySelect}
         getRowId={(row) => row.id}
@@ -431,6 +441,7 @@ export function CreateEstimateForm({
         title="修理対象機器を選択"
         searchFields={productSearchFields}
         searchAction={searchProductsForSelection}
+        searchActionName="searchProductsForSelection"
         columns={productSelectionColumns}
         onConfirm={handleProductSelect}
         getRowId={(row) => row.id}

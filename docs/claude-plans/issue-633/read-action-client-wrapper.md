@@ -80,7 +80,7 @@ read/query 系 Server Action（生データを返す系）の裸 await 箇所で
 - コミットメッセージ: `fix: 明細編集の read系Server Action呼び出しを callReadAction で包み無言失敗を解消する (#633)`
 
 ### Step 4: 残り 3 コンポーネントに適用
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: `src/app/(features)/estimates/new/CreateEstimateForm.tsx`, `src/app/(features)/estimates/[estimateNumber]/DuplicateEstimateModal.tsx`（実パスは適用時に確認）, `src/app/_components/shared/SelectionModal.tsx`, `SelectionModal.test.tsx`, および `searchAction` を渡している親 10 箇所（`CreateEstimateForm` / `EstimateHeaderForm` / `VariationLineEditor` / `CustomerSelector` / `DeliveryLocationSelector` / `ProductRelationsForm`）
 - テスト戦略: テスト不要（Step 3 と同じ理由。`SelectionModal.test.tsx` は必須 prop 追加に伴う既存テストの修正のみ）
 - 作業内容:

@@ -188,6 +188,7 @@ export function ProductRelationsForm({ productCode, productId, initialRelations,
         title="商品を選択"
         searchFields={productSearchFields}
         searchAction={searchProductsForSelection}
+        searchActionName="searchProductsForSelection"
         columns={selectionColumns}
         onConfirm={handleConfirmSelection}
         getRowId={(row) => row.id}

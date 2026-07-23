@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import type { RowSelectionState } from "@tanstack/react-table";
+import { callReadAction } from "@/app/_lib/callReadAction";
 import type { SearchFieldDef } from "@/app/_components/shared/SearchForm";
 import { ModalSearchForm } from "@/app/_components/shared/ModalSearchForm";
 import { DataTable, type ColumnDef } from "@/app/_components/shared/DataTable";
@@ -18,6 +19,13 @@ type SelectionModalProps<TData> = {
   title: string;
   searchFields: SearchFieldDef[];
   searchAction: (criteria: Record<string, string>) => Promise<TData[]>;
+  /**
+   * `searchAction` に渡した Server Action の**関数名リテラル**（例: `"searchCustomersForSelection"`）。
+   * 失敗ログの context に使う（ADR-20260723-h7r）。関数名を知るのは注入側の親だけのため、
+   * 包む処理はモーダル内 1 箇所に集約したまま、メタ情報だけを親から供給する。
+   * 必須 prop にすることで、新しい親の渡し忘れを TypeScript が検出する。
+   */
+  searchActionName: string;
   columns: ColumnDef<TData, unknown>[];
   /**
    * 確定時に選択行を受け取る。`undefined` を返せば成功としてモーダルを閉じ、
@@ -35,6 +43,7 @@ export function SelectionModal<TData>({
   title,
   searchFields,
   searchAction,
+  searchActionName,
   columns,
   onConfirm,
   getRowId,
@@ -55,7 +64,11 @@ export function SelectionModal<TData>({
       setRowSelection({});
       setRejection(null);
       try {
-        const results = await searchAction(criteria);
+        const results = await callReadAction(() => searchAction(criteria), searchActionName);
+        // 非業務例外での検索失敗時は `data` / `hasSearched` を触らず、直前の検索結果を維持する
+        // （操作中断・state 凍結・#633）。通知は callReadAction の toast が担い、`isLoading` は
+        // 下の finally が戻すので、ユーザーはそのまま再検索でリトライできる。
+        if (results === undefined) return;
         const excludeSet = new Set(excludeIds);
         const filtered = results.filter((row) => !excludeSet.has(getRowId(row)));
         setData(filtered);
@@ -64,7 +77,7 @@ export function SelectionModal<TData>({
         setIsLoading(false);
       }
     },
-    [searchAction, excludeIds, getRowId]
+    [searchAction, searchActionName, excludeIds, getRowId]
   );
 
   const selectedCount = Object.values(rowSelection).filter(Boolean).length;
