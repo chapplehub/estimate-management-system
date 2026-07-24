@@ -213,7 +213,7 @@ onConfirm: (selectedItems: TData[]) => SelectionOutcome | Promise<SelectionOutco
 
 ### Step 5: 逸脱記録を残す
 
-- [ ] **完了**
+- [x] **完了**（逸脱 1 件を記録）
 - 対象ファイル: `docs/claude-plans/issue-635/deviations.md`
 - テスト戦略: テスト不要（ドキュメント）
 - 作業内容:
