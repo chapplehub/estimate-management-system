@@ -130,7 +130,7 @@ onConfirm: (selectedItems: TData[]) => SelectionOutcome | Promise<SelectionOutco
 
 ### Step 2: 並行削除を `rejected` へ合流させる
 
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/app/(features)/estimates/[estimateNumber]/useVariationLineEditor.ts`
   - `src/app/(features)/estimates/[estimateNumber]/useVariationLineEditor.test.ts`

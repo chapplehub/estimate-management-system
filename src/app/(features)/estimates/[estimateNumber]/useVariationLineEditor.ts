@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { callReadAction } from "@/app/_lib/callReadAction";
-import type { SelectionOutcome } from "@/app/_components/shared/SelectionModal";
+import type { SelectionOutcome, SelectionRejection } from "@/app/_components/shared/SelectionModal";
 import {
   expandSetComponents,
   getProductLineSnapshot,
@@ -40,6 +40,40 @@ type SuggestState = {
 type PreparedSelection =
   | { kind: "set"; row: ProductSelectionRow; expanded: ExpandedSetGroup }
   | { kind: "product"; row: ProductSelectionRow; snapshot: ProductLineSnapshot };
+
+/**
+ * 商品選択の拒否結果を組み立てる（#635）。**原因でグループ化**した1文にまとめる。
+ *
+ * 原因は共有されるのが常態（単価未設定の商品をまとめて選ぶ）ため、項目ごとに原因を後置すると
+ * 同じ理由が項目数だけ繰り返される。グループ化なら単一原因のときは実質1文に畳まれ、両方が
+ * 混ざった稀なときだけ2文になる。`invalidIds` はモーダルの表示順（＝渡された行順）に揃える
+ * ——ハイライトは一覧の行に立つため、原因の分類順ではなく画面の並びが読み手の基準になる。
+ */
+function rejectSelection({
+  unresolvedReasons,
+  unresolvedIds,
+  deletedRows,
+  rows,
+}: {
+  unresolvedReasons: string[];
+  unresolvedIds: string[];
+  deletedRows: ProductSelectionRow[];
+  rows: ProductSelectionRow[];
+}): SelectionRejection {
+  const groups: string[] = [];
+  if (unresolvedReasons.length > 0) {
+    groups.push(`有効な販売単価が無い: ${unresolvedReasons.join("、")}`);
+  }
+  if (deletedRows.length > 0) {
+    groups.push(`すでに削除されている: ${deletedRows.map((r) => `「${r.name}」`).join("、")}`);
+  }
+  const invalidIdSet = new Set([...unresolvedIds, ...deletedRows.map((r) => r.id)]);
+  return {
+    kind: "rejected",
+    message: `次の商品は追加できません（チェックを外して再度お試しください）。${groups.join("。")}`,
+    invalidIds: rows.filter((row) => invalidIdSet.has(row.id)).map((row) => row.id),
+  };
+}
 
 /**
  * 明細追加時に見積単価を価格決定（#428・ADR-0064）へ問い合わせるための宛先コンテキスト。
@@ -169,9 +203,23 @@ export function useVariationLineEditor({
     // 非業務例外での取得失敗は選択操作を中断する。モーダルは閉じず選択状態も保つため、ユーザーは
     // そのまま再確定でリトライできる（操作中断・state 凍結・#633）。通知は callReadAction の toast。
     if (prepared.some((item) => item === undefined)) return { kind: "aborted" };
-    // 取得できない商品が混ざったら（並行削除等）何も追加しない（単一選択時の従来の no-op と同義）。
-    if (prepared.some((item) => item === null)) return { kind: "confirmed" };
-    const items = prepared as PreparedSelection[];
+
+    // 業務値 `null`（検索と確定の間にマスタから消えた＝並行削除）は拒否の材料として積む。ここで
+    // 早期 return せず相2へ進めるのは、単価解決不能と1回の拒否に合流させるため（#635）。原因を
+    // 小出しにすると拒否が2往復になり、ADR-20260716-r4d の目的（原因を見せて、その行のチェックだけ
+    // 外させて1回で再確定させる）と衝突する。`prepared` は `rows` とインデックス整合しているため
+    // 消えた行の名前は `rows` 側から引ける。
+    const items: PreparedSelection[] = [];
+    const deletedRows: ProductSelectionRow[] = [];
+    prepared.forEach((item, index) => {
+      if (item === null) deletedRows.push(rows[index]!);
+      else if (item !== undefined) items.push(item);
+    });
+
+    // 全件が消えていれば価格解決に問い合わせる相手がいない。空配列で往復させても答えは変わらない。
+    if (items.length === 0) {
+      return rejectSelection({ unresolvedReasons: [], unresolvedIds: [], deletedRows, rows });
+    }
 
     // 相2: 通常商品＋全セット構成の商品 ID を集約し、価格解決は1往復に集約する。
     const productIds = items.flatMap((item) =>
@@ -183,31 +231,29 @@ export function useVariationLineEditor({
     if (prices === undefined) return { kind: "aborted" };
 
     // 相3: 検証。`== null` で undefined（見積年月日未入力時の空マップ）も解決不能として拾う。
-    // 1件でも不能なら1ノードも挿入せず、原因の選択行 ID と理由を返す。
-    const invalidIds: string[] = [];
-    const reasons: string[] = [];
+    // 1件でも不能なら1ノードも挿入せず、原因の選択行 ID と理由を相1の削除材料と合流させて返す。
+    const unresolvedIds: string[] = [];
+    const unresolvedReasons: string[] = [];
     for (const item of items) {
       if (item.kind === "set") {
         const unresolved = item.expanded.components.filter((c) => prices[c.productId] == null);
         if (unresolved.length > 0) {
           const names = [...new Set(unresolved.map((c) => c.name))];
-          invalidIds.push(item.row.id);
+          unresolvedIds.push(item.row.id);
           // セット構成はモーダルの一覧に現れないため、行の色だけでは原因が分からない。構成名を出す。
-          reasons.push(`セット「${item.expanded.name}」の構成商品: ${names.join("、")}`);
+          unresolvedReasons.push(
+            `セット「${item.expanded.name}」の構成商品（${names.join("、")}）`
+          );
         }
         continue;
       }
       if (prices[item.snapshot.id] == null) {
-        invalidIds.push(item.row.id);
-        reasons.push(`「${item.snapshot.name}」`);
+        unresolvedIds.push(item.row.id);
+        unresolvedReasons.push(`「${item.snapshot.name}」`);
       }
     }
-    if (invalidIds.length > 0) {
-      return {
-        kind: "rejected",
-        message: `次の商品に有効な販売単価が無いため追加できません（チェックを外して再度お試しください）: ${reasons.join(" / ")}`,
-        invalidIds,
-      };
+    if (unresolvedIds.length > 0 || deletedRows.length > 0) {
+      return rejectSelection({ unresolvedReasons, unresolvedIds, deletedRows, rows });
     }
 
     // 相4: 全件解決できたのでノードを構築し、1回の setNodes で表示順のまま1ブロックとして挿入する。
