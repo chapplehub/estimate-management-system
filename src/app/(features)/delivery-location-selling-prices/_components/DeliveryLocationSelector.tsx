@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { SearchFieldDef } from "@/app/_components/shared/SearchForm";
-import { SelectionModal } from "@/app/_components/shared/SelectionModal";
+import { SelectionModal, type SelectionOutcome } from "@/app/_components/shared/SelectionModal";
 import { searchDeliveryLocationsGlobal } from "./selection-actions";
 import {
   deliveryLocationSelectionColumns,
@@ -25,11 +25,10 @@ export function DeliveryLocationSelector({ label }: { label: string }) {
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const handleConfirm = (selected: DeliveryLocationSelectionRow[]) => {
-    const deliveryLocation = selected[0];
-    if (deliveryLocation) {
-      router.push(`/delivery-location-selling-prices/${deliveryLocation.code}`);
-    }
+  // `selected` は必ず 1 件以上（モーダルの確定ボタンが 0 件で disabled）。
+  const handleConfirm = (selected: DeliveryLocationSelectionRow[]): SelectionOutcome => {
+    router.push(`/delivery-location-selling-prices/${selected[0].code}`);
+    return { kind: "confirmed" };
   };
 
   return (

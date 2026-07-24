@@ -59,8 +59,11 @@ test.describe("見積明細の販売単価 解決不能（C1・#430）", () => {
     await page.getByRole("button", { name: /件を追加/ }).click();
 
     // 0 円明細を作らず拒否し、モーダルは閉じずに理由を中に出す（価格決定が解決不能）。
-    // 拒否の alert は固定の文言で引く（Next.js のルートアナウンサーも role="alert" のため）。
-    const rejectionAlert = page.getByRole("alert").filter({ hasText: "有効な販売単価が無いため" });
+    // 拒否の alert は**不変の接頭辞**で引く（Next.js のルートアナウンサーも role="alert" のため
+    // 絞り込みは要る）。原因は #635 で「有効な販売単価が無い」「すでに削除されている」のグループに
+    // 分かれ、以後も増減しうる。可変の原因ラベルで引くと書式変更のたびに locator が割れる。
+    const rejectionAlert = page.getByRole("alert").filter({ hasText: "次の商品は追加できません" });
+    await expect(rejectionAlert).toContainText("有効な販売単価が無い");
     await expect(rejectionAlert).toContainText("販売単価なし_解決不能テスト商品");
     await expect(page.locator("#modal-search-code")).toBeVisible();
     // 原因行だけがハイライトされ、どれを外せばよいかが分かる。

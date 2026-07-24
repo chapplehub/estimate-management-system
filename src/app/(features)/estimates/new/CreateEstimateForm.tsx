@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { useServerForm } from "@/app/_hooks/useServerForm";
 import { callReadAction } from "@/app/_lib/callReadAction";
-import { SelectionModal } from "@/app/_components/shared/SelectionModal";
+import { SelectionModal, type SelectionOutcome } from "@/app/_components/shared/SelectionModal";
 import type { SearchFieldDef } from "@/app/_components/shared/SearchForm";
 import { AfterRepairDetailFields } from "../_shared/AfterRepairDetailFields";
 import { FkSelectionField } from "../_shared/FkSelectionField";
@@ -120,24 +120,25 @@ export function CreateEstimateForm({
     });
   };
 
-  const handleCustomerSelect = (rows: CompanyRow[]) => {
+  // FK の単一選択ハンドラ。`rows` は必ず 1 件以上（モーダルの確定ボタンが 0 件で disabled）。
+  const handleCustomerSelect = (rows: CompanyRow[]): SelectionOutcome => {
     const picked = rows[0];
-    if (!picked) return;
     setCustomer({ id: picked.id, code: picked.code, name: picked.name });
     // 得意先を変えたら納品先は不整合になるためクリアして再選択させる（集約をまたぐ整合）。
     setDeliveryLocation({ id: "", code: "", name: "" });
+    return { kind: "confirmed" };
   };
 
-  const handleDeliverySelect = (rows: CompanyRow[]) => {
+  const handleDeliverySelect = (rows: CompanyRow[]): SelectionOutcome => {
     const picked = rows[0];
-    if (!picked) return;
     setDeliveryLocation({ id: picked.id, code: picked.code, name: picked.name });
+    return { kind: "confirmed" };
   };
 
-  const handleProductSelect = (rows: ProductSelectionRow[]) => {
+  const handleProductSelect = (rows: ProductSelectionRow[]): SelectionOutcome => {
     const picked = rows[0];
-    if (!picked) return;
     setTargetProduct({ id: picked.id, code: picked.code, name: picked.name });
+    return { kind: "confirmed" };
   };
 
   // 明細編集器（新規作成は白紙＝空ノード・全体値引0で開始）。プレビュー税率はライブ解決値。

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { SearchFieldDef } from "@/app/_components/shared/SearchForm";
-import { SelectionModal } from "@/app/_components/shared/SelectionModal";
+import { SelectionModal, type SelectionOutcome } from "@/app/_components/shared/SelectionModal";
 import { searchCustomersForSelection } from "../../estimates/_shared/selection-actions";
 import { companySelectionColumns, type CompanyRow } from "../../estimates/_shared/selectionColumns";
 
@@ -22,11 +22,10 @@ export function CustomerSelector({ label }: { label: string }) {
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const handleConfirm = (selected: CompanyRow[]) => {
-    const customer = selected[0];
-    if (customer) {
-      router.push(`/customer-selling-prices/${customer.code}`);
-    }
+  // `selected` は必ず 1 件以上（モーダルの確定ボタンが 0 件で disabled）。
+  const handleConfirm = (selected: CompanyRow[]): SelectionOutcome => {
+    router.push(`/customer-selling-prices/${selected[0].code}`);
+    return { kind: "confirmed" };
   };
 
   return (

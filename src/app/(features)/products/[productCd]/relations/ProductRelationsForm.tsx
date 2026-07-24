@@ -3,7 +3,7 @@
 import { startTransition, useActionState, useState } from "react";
 import { CATEGORY_LABELS } from "../../_shared/labels";
 import { type SetRelationsState, setProductRelations } from "./actions";
-import { SelectionModal } from "@/app/_components/shared/SelectionModal";
+import { SelectionModal, type SelectionOutcome } from "@/app/_components/shared/SelectionModal";
 import { searchProductsForSelection } from "../../_shared/actions";
 import { selectionColumns, type ProductRow } from "../../_shared/selectionColumns";
 import type { SearchFieldDef } from "@/app/_components/shared/SearchForm";
@@ -64,7 +64,7 @@ export function ProductRelationsForm({ productCode, productId, initialRelations,
 
   const excludeIds = [productId, ...relations.map((r) => r.id)];
 
-  const handleConfirmSelection = (selectedProducts: ProductRow[]) => {
+  const handleConfirmSelection = (selectedProducts: ProductRow[]): SelectionOutcome => {
     const newRelations: Relation[] = selectedProducts.map((p) => ({
       id: p.id,
       code: p.code,
@@ -73,6 +73,7 @@ export function ProductRelationsForm({ productCode, productId, initialRelations,
       quantity: 1,
     }));
     setRelations((prev) => [...prev, ...newRelations]);
+    return { kind: "confirmed" };
   };
 
   const handleRemove = (code: string) => {

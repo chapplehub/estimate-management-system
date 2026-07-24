@@ -11,21 +11,37 @@ import { DataTable, type ColumnDef } from "@/app/_components/shared/DataTable";
  * 親が確定を拒否するときに `onConfirm` から返す結果（ADR-20260716-r4d）。
  * `message` を出しつつモーダルに留まり、`invalidIds` の行をハイライトする。
  */
-export type SelectionRejection = { message: string; invalidIds: string[] };
+export type SelectionRejection = { kind: "rejected"; message: string; invalidIds: string[] };
 
 /**
- * 親が確定処理を**中断**したときに `onConfirm` から返す sentinel（ADR-20260723-h7r）。
+ * `onConfirm` が返す確定結果。モーダルが取りうる**振る舞い**で枝を切る（原因では切らない）。
  *
- * 非業務例外（DB 障害・ネットワーク断）で確定に必要なデータを取得できなかった場合に使う。
- * モーダルは閉じず、`SelectionRejection` と違い理由も表示しない（通知は `callReadAction` の
- * toast が担うため、モーダル内にも出すと二重表示になる）。検索結果・選択状態をそのまま残し、
- * ユーザーが同じ選択のまま再確定してリトライできるようにする（操作中断・state 凍結）。
+ * - `confirmed`: 確定成立。モーダルを閉じて state を破棄する。
+ * - `rejected`: 業務上追加できない。閉じずに `message` を出し `invalidIds` の行をハイライトする
+ *   （ADR-20260716-r4d）。ユーザーは原因行のチェックだけ外して 1 往復で再確定できる。
+ * - `aborted`: 非業務例外（DB 障害・ネットワーク断）で確定に必要なデータを取得できなかった。
+ *   閉じず、`rejected` と違い理由も表示しない（通知は `callReadAction` の toast が担うため、
+ *   モーダル内にも出すと二重表示になる・ADR-20260723-h7r）。検索結果・選択状態をそのまま残し、
+ *   同じ選択のまま再確定でリトライできるようにする（操作中断・state 凍結）。
  *
- * 拒否（`SelectionRejection`）は「業務上追加できない」という予測可能な正常結果であり、
- * 中断は「取得そのものに失敗した」で意味が異なるため、同じ union の別の枝として区別する。
+ * 3 値は判別可能ユニオンであり、リテラルを返して構造で判別する。名前付きシングルトンを export して
+ * 同一性比較（`===`）させると、別の場所でインラインに組み立てた値が「型は通るのに一致しない」
+ * 罠を残すため設けない。値の不在（`undefined`）にも意味を割り当てない（#634・ADR-20260723-h7r
+ * 決定 4）。素の `return;` はコンパイルエラーになり、無言で「確定成立」に化ける経路が消える。
  */
-export const SELECTION_ABORTED = Symbol("SELECTION_ABORTED");
-export type SelectionAborted = typeof SELECTION_ABORTED;
+export type SelectionOutcome = { kind: "confirmed" } | SelectionRejection | { kind: "aborted" };
+
+/**
+ * `onConfirm` prop の型。props 型ごと export する代わりにこの 1 本だけを名前付きで切り出し、
+ * 引数の不変条件の記述場所を 1 箇所に定める（テストの手写し型もここを参照する）。
+ *
+ * `selectedItems` は**必ず 1 件以上**である（確定ボタンが `selectedCount === 0` で disabled の
+ * ため 0 件では呼ばれない）。この不変条件はモーダルが作って `handleConfirm` 冒頭で自己確認する
+ * ため、呼び出し元で `rows[0]` の存在を再確認する必要はない。
+ */
+export type SelectionConfirmHandler<TData> = (
+  selectedItems: TData[]
+) => SelectionOutcome | Promise<SelectionOutcome>;
 
 type SelectionModalProps<TData> = {
   isOpen: boolean;
@@ -42,13 +58,11 @@ type SelectionModalProps<TData> = {
   searchActionName: string;
   columns: ColumnDef<TData, unknown>[];
   /**
-   * 確定時に選択行を受け取る。`undefined` を返せば成功としてモーダルを閉じ、
-   * `SelectionRejection` を返せば閉じずに理由と原因行を表示する（ADR-20260716-r4d）。
-   * `SELECTION_ABORTED` を返せば閉じず、理由も出さずに state を凍結する（ADR-20260723-h7r）。
+   * 確定時に選択行を受け取り、確定結果（`SelectionOutcome`）を返す。各メンバーに対する
+   * モーダルの振る舞いは `SelectionOutcome` の、引数の不変条件は `SelectionConfirmHandler` の
+   * JSDoc を参照。
    */
-  onConfirm: (
-    selectedItems: TData[]
-  ) => void | Promise<void | SelectionRejection | SelectionAborted>;
+  onConfirm: SelectionConfirmHandler<TData>;
   getRowId: (row: TData) => string;
   emptyMessage: string;
   excludeIds?: string[];
@@ -104,19 +118,26 @@ export function SelectionModal<TData>({
   // （ユーザーが原因商品のチェックだけ外して再確定できることが拒否経路の目的・ADR-20260716-r4d）。
   const handleConfirm = async () => {
     const selectedItems = data.filter((row) => rowSelection[getRowId(row)]);
+    // 「0 件では onConfirm を呼ばない」は確定ボタンの disabled が作る不変条件。ここはその作り手に
+    // よる自己確認であり、呼び出し元が各自で再確認する過剰防御とは性質が異なる。
+    if (selectedItems.length === 0) return;
     setRejection(null);
     setIsConfirming(true);
     try {
-      const result = await onConfirm(selectedItems);
-      // 中断（非業務例外で確定に必要なデータを取れなかった）は閉じも拒否表示もせず、画面 state を
-      // 一切触らずに抜ける。`rejection` を出さないのは toast と二重表示になるため（#633）。
-      // `isConfirming` は下の finally が戻すので、同じ選択のまま再確定でリトライできる。
-      if (result === SELECTION_ABORTED) return;
-      if (result) {
-        setRejection(result);
-        return;
+      const outcome = await onConfirm(selectedItems);
+      switch (outcome.kind) {
+        case "confirmed":
+          handleClose();
+          return;
+        case "rejected":
+          setRejection(outcome);
+          return;
+        // 中断は閉じも拒否表示もせず、画面 state を一切触らずに抜ける。`rejection` を出さないのは
+        // toast と二重表示になるため（#633）。`isConfirming` は下の finally が戻すので、同じ選択の
+        // まま再確定でリトライできる。
+        case "aborted":
+          return;
       }
-      handleClose();
     } finally {
       setIsConfirming(false);
     }

@@ -1,10 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  SELECTION_ABORTED,
-  type SelectionAborted,
-  type SelectionRejection,
-} from "@/app/_components/shared/SelectionModal";
+import type { SelectionOutcome, SelectionRejection } from "@/app/_components/shared/SelectionModal";
 import type { ProductSelectionRow } from "../_shared/selectionColumns";
 import { useVariationLineEditor, type LineEditorPriceContext } from "./useVariationLineEditor";
 import type { WorkingSetGroup } from "./variationLines";
@@ -59,13 +55,12 @@ function productRow(overrides: Partial<ProductSelectionRow> = {}): ProductSelect
 }
 
 /**
- * `handleProductSelect` の戻り値から業務拒否（SelectionRejection）を取り出す。
- * 非業務例外の中断 sentinel（`SELECTION_ABORTED`・#633）と同じ union に載るため、
- * 拒否を期待するテストでは「中断ではないこと」までここで固定する。
+ * `handleProductSelect` の戻り値から業務拒否（`kind: "rejected"`）を取り出す。
+ * 確定成立・非業務例外の中断（#633）と同じ union に載るため、拒否を期待するテストでは
+ * 「他の枝ではないこと」を判別子の一致で固定する。
  */
-function expectRejection(actual: void | SelectionRejection | SelectionAborted): SelectionRejection {
-  expect(actual).not.toBe(SELECTION_ABORTED);
-  expect(actual).toBeTruthy();
+function expectRejection(actual: SelectionOutcome): SelectionRejection {
+  expect(actual.kind).toBe("rejected");
   return actual as SelectionRejection;
 }
 
@@ -370,10 +365,10 @@ describe("セット商品の選択時の見積単価解決", () => {
 /**
  * 非業務例外（DB 障害・ネットワーク断）で確定に必要なデータを取れなかったときの中断（#633）。
  *
- * 中断は `SELECTION_ABORTED` を返してモーダル側に「閉じるな・理由も出すな」を伝える
- * （ADR-20260723-h7r の操作中断・state 凍結）。素の `undefined` で抜けるとモーダルは
- * 「確定成功」と解釈して閉じ、検索結果と選択状態を捨ててしまう（ADR-20260716-r4d の契約）。
- * 業務値 `null`（商品の並行削除）は中断ではなく従来どおりの no-op で、両者は区別する。
+ * 中断は `{ kind: "aborted" }` を返してモーダル側に「閉じるな・理由も出すな」を伝える
+ * （ADR-20260723-h7r の操作中断・state 凍結）。`{ kind: "confirmed" }` で抜けるとモーダルは
+ * 確定成立と解釈して閉じ、検索結果と選択状態を捨ててしまう（ADR-20260716-r4d の契約）。
+ * 業務値 `null`（商品の並行削除）は中断ではなく拒否で、両者は区別する（#635）。
  */
 describe("非業務例外での選択中断（#633）", () => {
   const SNAPSHOT = {
@@ -390,7 +385,7 @@ describe("非業務例外での選択中断（#633）", () => {
     const { result } = setup();
     const outcome = await act(() => result.current.handleProductSelect([productRow()]));
 
-    expect(outcome).toBe(SELECTION_ABORTED);
+    expect(outcome).toEqual({ kind: "aborted" });
     expect(result.current.nodes).toHaveLength(0);
   });
 
@@ -402,7 +397,7 @@ describe("非業務例外での選択中断（#633）", () => {
       result.current.handleProductSelect([productRow({ id: "set1", category: "SET" })])
     );
 
-    expect(outcome).toBe(SELECTION_ABORTED);
+    expect(outcome).toEqual({ kind: "aborted" });
     expect(result.current.nodes).toHaveLength(0);
   });
 
@@ -414,18 +409,160 @@ describe("非業務例外での選択中断（#633）", () => {
     const outcome = await act(() => result.current.handleProductSelect([productRow()]));
 
     // 拒否（SelectionRejection）ではないこと＝モーダルに理由バナーを出さないことまで固定する。
-    expect(outcome).toBe(SELECTION_ABORTED);
+    expect(outcome).toEqual({ kind: "aborted" });
     expect(result.current.nodes).toHaveLength(0);
   });
 
-  it("商品が並行削除されていた場合（業務値 null）は中断ではなく従来どおりの no-op", async () => {
+  it("相1で削除済みを検出していても、取得失敗が混ざれば中断が優先する", async () => {
+    // 削除済み（業務値 null）と取得失敗（非業務例外）が同時に起きた場合。取得できていない行こそが
+    // 唯一の問題だったかもしれず、欠けた材料で原因を断定すると誤情報になるため拒否材料は捨てる。
+    getProductLineSnapshot.mockImplementation(async (id: string) => {
+      if (id === "p1") return null;
+      throw new Error("boom");
+    });
+
+    const { result } = setup();
+    const outcome = await act(() =>
+      result.current.handleProductSelect([
+        productRow({ id: "p1", name: "商品A" }),
+        productRow({ id: "p2", name: "商品B" }),
+      ])
+    );
+
+    expect(outcome).toEqual({ kind: "aborted" });
+    expect(result.current.nodes).toHaveLength(0);
+  });
+
+  it("相1で削除済みを検出していても、価格解決が失敗すれば中断が優先する", async () => {
+    // 合流（#635）により相1で削除を検出しても相2へ進むため、この組み合わせが新たに発生しうる。
+    getProductLineSnapshot.mockImplementation(async (id: string) =>
+      id === "p1" ? null : { ...SNAPSHOT, id, name: "商品B" }
+    );
+    resolveSellingPricesForDisplay.mockRejectedValue(new Error("boom"));
+
+    const { result } = setup();
+    const outcome = await act(() =>
+      result.current.handleProductSelect([
+        productRow({ id: "p1", name: "商品A" }),
+        productRow({ id: "p2", name: "商品B" }),
+      ])
+    );
+
+    expect(outcome).toEqual({ kind: "aborted" });
+    expect(result.current.nodes).toHaveLength(0);
+  });
+});
+
+/**
+ * 商品の並行削除（検索と確定の間にマスタから消えた＝業務値 `null`）の扱い（#635）。
+ *
+ * 従来は「黙って 0 件追加して閉じる」無言 no-op だった。ユーザーは「追加できた」と「何も
+ * 起きなかった」を区別できず、#634 と同じクラスの無言失敗になっていた（#618 の逸脱記録 §2 で
+ * 明示的に先送りされた設計判断の回収）。`prepared` は `rows` とインデックス整合しているため
+ * どの行が消えていたかを特定でき、`invalidIds` の材料は揃っている。
+ *
+ * 単価解決不能と 1 回の拒否に合流させるのは、原因を小出しにすると拒否が 2 往復になり
+ * 「原因を見せて、その行のチェックだけ外させて 1 回で再確定させる」という ADR-20260716-r4d の
+ * 目的と衝突するため。メッセージは原因でグループ化する（原因は共有されるのが常態）。
+ */
+describe("商品の並行削除（#635）", () => {
+  function snapshotOf(id: string, name: string) {
+    return { id, code: id.toUpperCase(), name, category: "INDIVIDUAL", unit: "個" };
+  }
+
+  it("削除済みが混ざったら1行も追加せず、原因と該当行を載せて拒否する", async () => {
+    getProductLineSnapshot.mockImplementation(async (id: string) =>
+      id === "p1" ? null : snapshotOf(id, "商品B")
+    );
+    resolveSellingPricesForDisplay.mockResolvedValue({ p2: 200 });
+
+    const { result } = setup();
+    const rejection = expectRejection(
+      await act(() =>
+        result.current.handleProductSelect([
+          productRow({ id: "p1", name: "商品A" }),
+          productRow({ id: "p2", name: "商品B" }),
+        ])
+      )
+    );
+
+    // 解決できた商品B も追加しない（原子的な拒否）。
+    expect(result.current.nodes).toHaveLength(0);
+    expect(rejection.invalidIds).toEqual(["p1"]);
+    expect(rejection.message).toContain("すでに削除されている");
+    expect(rejection.message).toContain("商品A");
+    expect(rejection.message).not.toContain("商品B");
+  });
+
+  it("削除済みと単価解決不能が同時なら、1回の拒否に両方の原因と該当行を載せる", async () => {
+    getProductLineSnapshot.mockImplementation(async (id: string) =>
+      id === "p1" ? null : snapshotOf(id, { p2: "商品B", p3: "商品C" }[id]!)
+    );
+    // 商品B は単価が無く、商品C だけが解決できる。
+    resolveSellingPricesForDisplay.mockResolvedValue({ p2: null, p3: 300 });
+
+    const { result } = setup();
+    const rejection = expectRejection(
+      await act(() =>
+        result.current.handleProductSelect([
+          productRow({ id: "p1", name: "商品A" }),
+          productRow({ id: "p2", name: "商品B" }),
+          productRow({ id: "p3", name: "商品C" }),
+        ])
+      )
+    );
+
+    expect(result.current.nodes).toHaveLength(0);
+    // ハイライトはモーダルの表示順（＝渡された行順）で載せる。
+    expect(rejection.invalidIds).toEqual(["p1", "p2"]);
+    expect(rejection.message).toContain("有効な販売単価が無い");
+    expect(rejection.message).toContain("商品B");
+    expect(rejection.message).toContain("すでに削除されている");
+    expect(rejection.message).toContain("商品A");
+    // 解決できた商品C は原因に現れない。
+    expect(rejection.message).not.toContain("商品C");
+  });
+
+  it("原因が1つだけなら、もう一方の原因の見出しは出さない", async () => {
+    getProductLineSnapshot.mockResolvedValue(snapshotOf("p1", "商品A"));
+    resolveSellingPricesForDisplay.mockResolvedValue({ p1: null });
+
+    const { result } = setup();
+    const rejection = expectRejection(
+      await act(() => result.current.handleProductSelect([productRow()]))
+    );
+
+    expect(rejection.message).toContain("有効な販売単価が無い");
+    expect(rejection.message).not.toContain("すでに削除されている");
+  });
+
+  it("全件が削除済みなら価格解決を呼ばずに拒否する（無駄な往復を作らない）", async () => {
     getProductLineSnapshot.mockResolvedValue(null);
 
     const { result } = setup();
-    const outcome = await act(() => result.current.handleProductSelect([productRow()]));
+    const rejection = expectRejection(
+      await act(() => result.current.handleProductSelect([productRow({ id: "p1", name: "商品A" })]))
+    );
 
-    // ここが `SELECTION_ABORTED` に変わるとモーダルが閉じなくなり、通知も出ないまま固まる。
-    expect(outcome).toBeUndefined();
-    expect(result.current.nodes).toHaveLength(0);
+    expect(resolveSellingPricesForDisplay).not.toHaveBeenCalled();
+    expect(rejection.invalidIds).toEqual(["p1"]);
+    expect(rejection.message).toContain("すでに削除されている");
+  });
+
+  it("セット商品が並行削除されていた場合も拒否する", async () => {
+    expandSetComponents.mockResolvedValue(null);
+
+    const { result } = setup();
+    const rejection = expectRejection(
+      await act(() =>
+        result.current.handleProductSelect([
+          productRow({ id: "set1", name: "セットA", category: "SET" }),
+        ])
+      )
+    );
+
+    expect(rejection.invalidIds).toEqual(["set1"]);
+    expect(rejection.message).toContain("セットA");
+    expect(rejection.message).toContain("すでに削除されている");
   });
 });
