@@ -4,17 +4,6 @@
 
 常に日本語で対話すること
 
-## Tech Stack
-
-Next.js 16 (App Router), React 19, Prisma ORM, PostgreSQL, Vitest, TailwindCSS 4, DDD architecture
-
-## Commands
-
-```bash
-pnpm dev / build / test / lint
-pnpm db:migrate / db:generate / db:studio
-```
-
 ## Git Branch Strategy
 
 - defalut branch: `develop`
