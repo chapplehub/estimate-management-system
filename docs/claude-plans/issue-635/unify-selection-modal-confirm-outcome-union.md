@@ -150,7 +150,29 @@ onConfirm: (selectedItems: TData[]) => SelectionOutcome | Promise<SelectionOutco
 - コミットメッセージ: `fix: 商品の並行削除を無言 no-op から確定拒否に変える`
   - ボディに記載する設計判断: 判断 5・6・7・8。`docs/claude-plans/issue-618/deviations.md` §2 で先送りされた設計判断の回収である旨を明記する
 
-### Step 3: ADR 2 件を改訂する
+### Step 3: 実機確認（`/verify-frontend`）
+
+- [ ] **完了**
+- 対象ファイル: なし（検証のみ）
+- テスト戦略: テスト不要（実機検証。`.claude/skills/verify-frontend/SKILL.md` の手順に従う）
+- 検証の狙い: **tsc と vitest が構造的に守れない箇所だけ**を見る。網羅は目的にしない。
+  - tsc が保証するのは「`SelectionOutcome` を返すこと」までで、「**正しいメンバー**を返すこと」は保証しない
+  - `SelectionModal.test.tsx` はモックの `onConfirm` を使うためモーダル側しか検証しておらず、`useVariationLineEditor` 以外の **8 ハンドラには単体テストが 1 本も無い**
+  - とくに `if (picked) { ... }` ブロック形式の 2 箇所は、tsc が移行漏れを検出できない唯一の形（ブロックを抜けた後に `return { kind: "confirmed" }` が 1 つあれば通るため）
+- 作業内容:
+  1. **`confirmed` の基本経路（単一選択ハンドラ）** — 見積新規作成（`/estimates/new`）で得意先・納品先・対象商品の 3 モーダルを開いて確定し、いずれもモーダルが閉じて値が入ること。得意先を変更したとき納品先がクリアされる副作用が生きていること（ガード削除の巻き添えが無いことの確認）
+  2. **tsc の死角（ブロック形式ガードを消した 2 画面）** — 得意先別販売単価（`/customer-selling-prices`）と納品先別販売単価（`/delivery-location-selling-prices`）の選択モーダルで確定し、モーダルが閉じて詳細画面へ遷移すること
+  3. **`confirmed` の複数選択経路** — 見積詳細の明細編集で商品を複数選択して確定し、モーダルが閉じて行がまとめて挿入されること
+  4. **`aborted` の退行ガード（#634 の再現経路）** — `learning/server-action-wire-protocol-and-fetch-stubbing.md` の fetch 差し替えを使い、明細追加の確定時に Server Action を落として **モーダルが閉じないこと**・toast が 1 枚であること・検索結果と選択チェックが維持されること・fetch 復旧後にそのまま再確定で成功することを確認する
+  - 余力があれば: 有効な販売単価を持たない商品が dev DB に実在すれば、`rejected` のバナー文言（原因グループ化・判断 8）と行ハイライト（`data-invalid`）を目視する。実在データが作れなければ Step 2 の単体テストに委ねてスキップしてよい
+- 検証しないと決めたもの:
+  - 並行削除（`null`）→ `rejected`：検索と確定の間に商品を実削除する必要があり実機再現コストが高い。Step 2 の TDD で担保する
+  - `EstimateHeaderForm`（見積編集画面）の 3 ハンドラ：`CreateEstimateForm` と構造が同一のため代表 1 画面で足りると判断
+  - `ProductRelationsForm`：元々ガードを持たず `return { kind: "confirmed" }` の追加のみで、変更が加算的
+- 後片付け: `browser_close` と、自分が起動した dev server のポートのみ停止する
+- コミットメッセージ: なし（検証のみ。退行が見つかった場合は該当 Step の修正としてコミットする）
+
+### Step 4: ADR 2 件を改訂する
 
 - [ ] **完了**
 - 対象ファイル:
@@ -163,7 +185,7 @@ onConfirm: (selectedItems: TData[]) => SelectionOutcome | Promise<SelectionOutco
   - `docs/adr/INDEX.md` は既存エントリの改訂のため追記不要（タイトル変更が無いことを確認する）
 - コミットメッセージ: `docs: SelectionModal の確定結果契約の改訂を ADR に反映する`
 
-### Step 4: 逸脱記録を残す
+### Step 5: 逸脱記録を残す
 
 - [ ] **完了**
 - 対象ファイル: `docs/claude-plans/issue-635/deviations.md`
