@@ -152,7 +152,7 @@ onConfirm: (selectedItems: TData[]) => SelectionOutcome | Promise<SelectionOutco
 
 ### Step 3: 実機確認（`/verify-frontend`）
 
-- [ ] **完了**
+- [x] **完了**（退行なし。結果は下記「実機確認の結果」を参照）
 - 対象ファイル: なし（検証のみ）
 - テスト戦略: テスト不要（実機検証。`.claude/skills/verify-frontend/SKILL.md` の手順に従う）
 - 検証の狙い: **tsc と vitest が構造的に守れない箇所だけ**を見る。網羅は目的にしない。
@@ -171,6 +171,32 @@ onConfirm: (selectedItems: TData[]) => SelectionOutcome | Promise<SelectionOutco
   - `ProductRelationsForm`：元々ガードを持たず `return { kind: "confirmed" }` の追加のみで、変更が加算的
 - 後片付け: `browser_close` と、自分が起動した dev server のポートのみ停止する
 - コミットメッセージ: なし（検証のみ。退行が見つかった場合は該当 Step の修正としてコミットする）
+
+#### 実機確認の結果（2026-07-24・dev server localhost:3000）
+
+いずれも期待どおりで**退行なし**。
+
+1. `confirmed` の基本経路: 得意先（C001）・納品先（D001）とも確定でモーダルが閉じて値が入った。
+   得意先を C002 へ変更すると納品先が「未選択」に戻り、ガード削除の巻き添えが無いことを確認。
+2. tsc の死角: `/customer-selling-prices` → `/customer-selling-prices/C001`、
+   `/delivery-location-selling-prices` → `/delivery-location-selling-prices/D003` へ遷移。
+   ブロック形式ガードを消した 2 箇所とも `confirmed` が正しく返っている。
+3. 複数選択の `confirmed`: PRD001・PRD002 を同時選択して確定 → 2 行がまとめて挿入され単価も充填。
+4. `aborted` の退行ガード: fetch 差し替えで Server Action を落として確定 → モーダルは閉じず・
+   バナーなし・選択と検索結果を維持。toast は MutationObserver で観測して**同時 1 枚**を確認
+   （`callReadAction` の固定 ID による畳み込みが効いている）。fetch 復旧後、選択し直さずに
+   再確定してモーダルが閉じ行が追加されることまで確認。
+5. 追加で確認できたもの（当初は「余力があれば」扱い）: `PRD830 販売単価なし_解決不能テスト商品` が
+   dev DB に実在したため `rejected` を実機で確認。判断 8 の新書式
+   「次の商品は追加できません（チェックを外して再度お試しください）。有効な販売単価が無い: 「…」」が
+   単一原因のとき 1 文に畳まれること、原因行に `data-invalid` が立つことを目視。
+
+コンソールは React の key 警告・hydration エラーとも 0 件（記録された error 4 件はすべて
+検証 4 で自分が注入した fetch 遮断によるもの）。
+
+検証中に一度「fetch 復旧後のリトライが無反応」に見えた場面があったが、退行ではなく
+(a) Server Action 完了前に DOM を観測していた、(b) 得意先を C002 へ変えた結果 PRD003/PRD004 に
+有効な販売単価が無く正しく `rejected` されていた、の 2 点が原因だった。
 
 ### Step 4: ADR 2 件を改訂する
 
