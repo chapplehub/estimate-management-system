@@ -1,10 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  SELECTION_ABORTED,
-  type SelectionAborted,
-  type SelectionRejection,
-} from "@/app/_components/shared/SelectionModal";
+import type { SelectionOutcome, SelectionRejection } from "@/app/_components/shared/SelectionModal";
 import type { ProductSelectionRow } from "../_shared/selectionColumns";
 import { useVariationLineEditor, type LineEditorPriceContext } from "./useVariationLineEditor";
 import type { WorkingSetGroup } from "./variationLines";
@@ -59,13 +55,12 @@ function productRow(overrides: Partial<ProductSelectionRow> = {}): ProductSelect
 }
 
 /**
- * `handleProductSelect` の戻り値から業務拒否（SelectionRejection）を取り出す。
- * 非業務例外の中断 sentinel（`SELECTION_ABORTED`・#633）と同じ union に載るため、
- * 拒否を期待するテストでは「中断ではないこと」までここで固定する。
+ * `handleProductSelect` の戻り値から業務拒否（`kind: "rejected"`）を取り出す。
+ * 確定成立・非業務例外の中断（#633）と同じ union に載るため、拒否を期待するテストでは
+ * 「他の枝ではないこと」を判別子の一致で固定する。
  */
-function expectRejection(actual: void | SelectionRejection | SelectionAborted): SelectionRejection {
-  expect(actual).not.toBe(SELECTION_ABORTED);
-  expect(actual).toBeTruthy();
+function expectRejection(actual: SelectionOutcome): SelectionRejection {
+  expect(actual.kind).toBe("rejected");
   return actual as SelectionRejection;
 }
 
@@ -370,9 +365,9 @@ describe("セット商品の選択時の見積単価解決", () => {
 /**
  * 非業務例外（DB 障害・ネットワーク断）で確定に必要なデータを取れなかったときの中断（#633）。
  *
- * 中断は `SELECTION_ABORTED` を返してモーダル側に「閉じるな・理由も出すな」を伝える
- * （ADR-20260723-h7r の操作中断・state 凍結）。素の `undefined` で抜けるとモーダルは
- * 「確定成功」と解釈して閉じ、検索結果と選択状態を捨ててしまう（ADR-20260716-r4d の契約）。
+ * 中断は `{ kind: "aborted" }` を返してモーダル側に「閉じるな・理由も出すな」を伝える
+ * （ADR-20260723-h7r の操作中断・state 凍結）。`{ kind: "confirmed" }` で抜けるとモーダルは
+ * 確定成立と解釈して閉じ、検索結果と選択状態を捨ててしまう（ADR-20260716-r4d の契約）。
  * 業務値 `null`（商品の並行削除）は中断ではなく従来どおりの no-op で、両者は区別する。
  */
 describe("非業務例外での選択中断（#633）", () => {
@@ -390,7 +385,7 @@ describe("非業務例外での選択中断（#633）", () => {
     const { result } = setup();
     const outcome = await act(() => result.current.handleProductSelect([productRow()]));
 
-    expect(outcome).toBe(SELECTION_ABORTED);
+    expect(outcome).toEqual({ kind: "aborted" });
     expect(result.current.nodes).toHaveLength(0);
   });
 
@@ -402,7 +397,7 @@ describe("非業務例外での選択中断（#633）", () => {
       result.current.handleProductSelect([productRow({ id: "set1", category: "SET" })])
     );
 
-    expect(outcome).toBe(SELECTION_ABORTED);
+    expect(outcome).toEqual({ kind: "aborted" });
     expect(result.current.nodes).toHaveLength(0);
   });
 
@@ -414,7 +409,7 @@ describe("非業務例外での選択中断（#633）", () => {
     const outcome = await act(() => result.current.handleProductSelect([productRow()]));
 
     // 拒否（SelectionRejection）ではないこと＝モーダルに理由バナーを出さないことまで固定する。
-    expect(outcome).toBe(SELECTION_ABORTED);
+    expect(outcome).toEqual({ kind: "aborted" });
     expect(result.current.nodes).toHaveLength(0);
   });
 
@@ -424,8 +419,8 @@ describe("非業務例外での選択中断（#633）", () => {
     const { result } = setup();
     const outcome = await act(() => result.current.handleProductSelect([productRow()]));
 
-    // ここが `SELECTION_ABORTED` に変わるとモーダルが閉じなくなり、通知も出ないまま固まる。
-    expect(outcome).toBeUndefined();
+    // ここが `aborted` に変わるとモーダルが閉じなくなり、通知も出ないまま固まる。
+    expect(outcome).toEqual({ kind: "confirmed" });
     expect(result.current.nodes).toHaveLength(0);
   });
 });

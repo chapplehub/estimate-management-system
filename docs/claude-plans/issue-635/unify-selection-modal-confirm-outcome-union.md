@@ -104,7 +104,7 @@ onConfirm: (selectedItems: TData[]) => SelectionOutcome | Promise<SelectionOutco
 
 ### Step 1: `onConfirm` の戻り値契約を `SelectionOutcome` に差し替える
 
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/app/_components/shared/SelectionModal.tsx`
   - `src/app/(features)/estimates/new/CreateEstimateForm.tsx`

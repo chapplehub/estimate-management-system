@@ -1,22 +1,17 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import {
-  SELECTION_ABORTED,
-  SelectionModal,
-  type SelectionAborted,
-  type SelectionRejection,
-} from "./SelectionModal";
+import { SelectionModal, type SelectionConfirmHandler } from "./SelectionModal";
 import type { ColumnDef } from "./DataTable";
 import type { SearchFieldDef } from "./SearchForm";
 
 /**
  * 確定拒否の経路（ADR-20260716-r4d）。
  *
- * `onConfirm` が `undefined` を返せば従来どおり閉じ、`SelectionRejection` を返せば閉じずに
+ * `onConfirm` が `{ kind: "confirmed" }` を返せば閉じ、`{ kind: "rejected" }` を返せば閉じずに
  * 文言と原因行のハイライトを出す。検証の継ぎ目は `data-invalid` 属性（配色クラスは assert しない）。
  *
- * 加えて確定中断の経路（`SELECTION_ABORTED` / ADR-20260723-h7r）。非業務例外で確定に必要な
+ * 加えて確定中断の経路（`{ kind: "aborted" }` / ADR-20260723-h7r）。非業務例外で確定に必要な
  * データを取れなかった場合は、閉じず・理由も出さず・state を凍結する。
  */
 
@@ -32,7 +27,7 @@ const SEARCH_FIELDS: SearchFieldDef[] = [{ type: "text", key: "name", label: "�
 const COLUMNS: ColumnDef<Row, unknown>[] = [{ accessorKey: "name", header: "商品名" }];
 
 function renderModal(overrides: {
-  onConfirm: (items: Row[]) => void | Promise<void | SelectionRejection | SelectionAborted>;
+  onConfirm: SelectionConfirmHandler<Row>;
   onClose?: () => void;
   searchAction?: (criteria: Record<string, string>) => Promise<Row[]>;
 }) {
@@ -68,12 +63,14 @@ function rowOf(name: string): HTMLElement {
 }
 
 describe("SelectionModal の確定拒否", () => {
-  it("onConfirm が SelectionRejection を返したら閉じず、文言と原因行のハイライトを出す", async () => {
+  it("onConfirm が rejected を返したら閉じず、文言と原因行のハイライトを出す", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
-    const onConfirm = vi
-      .fn()
-      .mockResolvedValue({ message: "商品Aには販売単価がありません", invalidIds: ["p1"] });
+    const onConfirm = vi.fn().mockResolvedValue({
+      kind: "rejected",
+      message: "商品Aには販売単価がありません",
+      invalidIds: ["p1"],
+    });
 
     renderModal({ onConfirm, onClose });
     await searchAndSelect(user, "商品A", "商品B");
@@ -87,9 +84,11 @@ describe("SelectionModal の確定拒否", () => {
 
   it("原因行には既定の hover 配色が出力されない（hover でハイライトが消えないこと）", async () => {
     const user = userEvent.setup();
-    const onConfirm = vi
-      .fn()
-      .mockResolvedValue({ message: "商品Aには販売単価がありません", invalidIds: ["p1"] });
+    const onConfirm = vi.fn().mockResolvedValue({
+      kind: "rejected",
+      message: "商品Aには販売単価がありません",
+      invalidIds: ["p1"],
+    });
 
     renderModal({ onConfirm });
     await searchAndSelect(user, "商品A", "商品B");
@@ -108,8 +107,12 @@ describe("SelectionModal の確定拒否", () => {
     const onClose = vi.fn();
     const onConfirm = vi
       .fn()
-      .mockResolvedValueOnce({ message: "商品Aには販売単価がありません", invalidIds: ["p1"] })
-      .mockResolvedValueOnce(undefined);
+      .mockResolvedValueOnce({
+        kind: "rejected",
+        message: "商品Aには販売単価がありません",
+        invalidIds: ["p1"],
+      })
+      .mockResolvedValueOnce({ kind: "confirmed" });
 
     renderModal({ onConfirm, onClose });
     await searchAndSelect(user, "商品A", "商品B");
@@ -129,9 +132,11 @@ describe("SelectionModal の確定拒否", () => {
 
   it("新しい検索を実行すると拒否状態（文言・ハイライト）がクリアされる", async () => {
     const user = userEvent.setup();
-    const onConfirm = vi
-      .fn()
-      .mockResolvedValue({ message: "商品Aには販売単価がありません", invalidIds: ["p1"] });
+    const onConfirm = vi.fn().mockResolvedValue({
+      kind: "rejected",
+      message: "商品Aには販売単価がありません",
+      invalidIds: ["p1"],
+    });
 
     renderModal({ onConfirm });
     await searchAndSelect(user, "商品A");
@@ -145,10 +150,12 @@ describe("SelectionModal の確定拒否", () => {
     expect(rowOf("商品A")).not.toHaveAttribute("data-invalid");
   });
 
-  it("onConfirm が何も返さなければ従来どおり閉じる（既存呼び出し元の無改修を守る）", async () => {
+  it("onConfirm が confirmed を返したら閉じる", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
-    const onConfirm = vi.fn();
+    // 確定成立は明示的に返させる。旧契約は「何も返さない＝成立」だったが、書き忘れと区別できず
+    // 無言で閉じるバグを生んだため廃止した（#634・#635）。
+    const onConfirm = vi.fn().mockResolvedValue({ kind: "confirmed" });
 
     renderModal({ onConfirm, onClose });
     await searchAndSelect(user, "商品A");
@@ -161,10 +168,10 @@ describe("SelectionModal の確定拒否", () => {
 });
 
 describe("SelectionModal の確定中断", () => {
-  it("onConfirm が SELECTION_ABORTED を返したら閉じず、理由も出さず、検索結果と選択状態を保つ", async () => {
+  it("onConfirm が aborted を返したら閉じず、理由も出さず、検索結果と選択状態を保つ", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
-    const onConfirm = vi.fn().mockResolvedValue(SELECTION_ABORTED);
+    const onConfirm = vi.fn().mockResolvedValue({ kind: "aborted" });
 
     renderModal({ onConfirm, onClose });
     await searchAndSelect(user, "商品A", "商品B");
@@ -183,8 +190,8 @@ describe("SelectionModal の確定中断", () => {
     const onClose = vi.fn();
     const onConfirm = vi
       .fn()
-      .mockResolvedValueOnce(SELECTION_ABORTED)
-      .mockResolvedValueOnce(undefined);
+      .mockResolvedValueOnce({ kind: "aborted" })
+      .mockResolvedValueOnce({ kind: "confirmed" });
 
     renderModal({ onConfirm, onClose });
     await searchAndSelect(user, "商品A", "商品B");

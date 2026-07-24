@@ -2,11 +2,7 @@
 
 import { useState } from "react";
 import { callReadAction } from "@/app/_lib/callReadAction";
-import {
-  SELECTION_ABORTED,
-  type SelectionAborted,
-  type SelectionRejection,
-} from "@/app/_components/shared/SelectionModal";
+import type { SelectionOutcome } from "@/app/_components/shared/SelectionModal";
 import {
   expandSetComponents,
   getProductLineSnapshot,
@@ -143,14 +139,11 @@ export function useVariationLineEditor({
 
   // 商品選択（複数可・#618）: セット商品なら構成を自動展開して群ノードを、通常商品ならスナップショット
   // 解決して通常行を作る。見積単価は価格決定でライブ解決し、**1件でも解決不能なら1件も追加せず拒否**
-  // する（ADR-0064: 0円明細を作らない、の一括版）。拒否は SelectionRejection を返してモーダル側に
+  // する（ADR-0064: 0円明細を作らない、の一括版）。拒否は `{ kind: "rejected" }` を返してモーダル側に
   // 委ね、ユーザーが原因商品のチェックだけ外して再確定できるようにする（ADR-20260716-r4d）。
   // 挿入位置はアクティブノード直下（構成/群がアクティブなら群の直後＝トップレベル）。
-  const handleProductSelect = async (
-    rows: ProductSelectionRow[]
-  ): Promise<void | SelectionRejection | SelectionAborted> => {
-    if (rows.length === 0) return;
-
+  // `rows` は必ず1件以上（モーダルの確定ボタンが0件で disabled・#635）。
+  const handleProductSelect = async (rows: ProductSelectionRow[]): Promise<SelectionOutcome> => {
     // 相1: 選択行ごとに展開/スナップショットを並列取得する（一括選択は数件〜十数件のため
     // 一括版 Server Action は設けず既存の単体 Action を並列で叩く）。
     // `undefined` = 非業務例外による取得失敗（callReadAction が捕捉）、`null` = 業務上の不在
@@ -175,9 +168,9 @@ export function useVariationLineEditor({
     );
     // 非業務例外での取得失敗は選択操作を中断する。モーダルは閉じず選択状態も保つため、ユーザーは
     // そのまま再確定でリトライできる（操作中断・state 凍結・#633）。通知は callReadAction の toast。
-    if (prepared.some((item) => item === undefined)) return SELECTION_ABORTED;
+    if (prepared.some((item) => item === undefined)) return { kind: "aborted" };
     // 取得できない商品が混ざったら（並行削除等）何も追加しない（単一選択時の従来の no-op と同義）。
-    if (prepared.some((item) => item === null)) return;
+    if (prepared.some((item) => item === null)) return { kind: "confirmed" };
     const items = prepared as PreparedSelection[];
 
     // 相2: 通常商品＋全セット構成の商品 ID を集約し、価格解決は1往復に集約する。
@@ -187,7 +180,7 @@ export function useVariationLineEditor({
     const prices = await resolvePricesFor([...new Set(productIds)]);
     // 価格解決が非業務例外で失敗したら選択操作全体を中断し、1ノードも挿入しない（#633）。
     // 解決不能（業務: 有効な販売単価が無い）とは区別し、拒否メッセージも出さない（toast と二重になるため）。
-    if (prices === undefined) return SELECTION_ABORTED;
+    if (prices === undefined) return { kind: "aborted" };
 
     // 相3: 検証。`== null` で undefined（見積年月日未入力時の空マップ）も解決不能として拾う。
     // 1件でも不能なら1ノードも挿入せず、原因の選択行 ID と理由を返す。
@@ -211,6 +204,7 @@ export function useVariationLineEditor({
     }
     if (invalidIds.length > 0) {
       return {
+        kind: "rejected",
         message: `次の商品に有効な販売単価が無いため追加できません（チェックを外して再度お試しください）: ${reasons.join(" / ")}`,
         invalidIds,
       };
@@ -234,6 +228,7 @@ export function useVariationLineEditor({
     setNodes((prev) => insertNodesBelow(prev, activeRowId, newNodes));
     // 最後の1件をアクティブにすると、続けて追加したぶんが下へ積まれる（「さっき足した続きに足す」）。
     setActiveRowId(lastNode.rowId);
+    return { kind: "confirmed" };
   };
 
   // 明細行の「周辺追加」ボタン契機で周辺商品サジェストを開く（#619・自動割り込みを廃止）。

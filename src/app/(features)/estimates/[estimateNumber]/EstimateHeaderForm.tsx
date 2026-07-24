@@ -3,7 +3,7 @@
 import { getFormProps, getInputProps, getSelectProps } from "@conform-to/react";
 import { useState } from "react";
 import { useServerForm } from "@/app/_hooks/useServerForm";
-import { SelectionModal } from "@/app/_components/shared/SelectionModal";
+import { SelectionModal, type SelectionOutcome } from "@/app/_components/shared/SelectionModal";
 import type { SearchFieldDef } from "@/app/_components/shared/SearchForm";
 import { toDateInputValue } from "@/app/_lib/date";
 import { inputClassDisabled } from "../_shared/formStyles";
@@ -125,24 +125,25 @@ export function EstimateHeaderForm({ estimate, departments, onCancel }: Props) {
   const [deliveryModalOpen, setDeliveryModalOpen] = useState(false);
   const [productModalOpen, setProductModalOpen] = useState(false);
 
-  const handleCustomerSelect = (rows: CompanyRow[]) => {
+  // FK の単一選択ハンドラ。`rows` は必ず 1 件以上（モーダルの確定ボタンが 0 件で disabled）。
+  const handleCustomerSelect = (rows: CompanyRow[]): SelectionOutcome => {
     const picked = rows[0];
-    if (!picked) return;
     setCustomer({ id: picked.id, code: picked.code, name: picked.name });
     // 得意先を変えたら納品先は不整合になるためクリアして再選択させる（集約をまたぐ整合）。
     setDeliveryLocation({ id: "", code: "", name: "" });
+    return { kind: "confirmed" };
   };
 
-  const handleDeliverySelect = (rows: CompanyRow[]) => {
+  const handleDeliverySelect = (rows: CompanyRow[]): SelectionOutcome => {
     const picked = rows[0];
-    if (!picked) return;
     setDeliveryLocation({ id: picked.id, code: picked.code, name: picked.name });
+    return { kind: "confirmed" };
   };
 
-  const handleProductSelect = (rows: ProductSelectionRow[]) => {
+  const handleProductSelect = (rows: ProductSelectionRow[]): SelectionOutcome => {
     const picked = rows[0];
-    if (!picked) return;
     setTargetProduct({ id: picked.id, code: picked.code, name: picked.name });
+    return { kind: "confirmed" };
   };
 
   const isRepair = estimate.estimateType === "REPAIR";
