@@ -200,7 +200,7 @@ onConfirm: (selectedItems: TData[]) => SelectionOutcome | Promise<SelectionOutco
 
 ### Step 4: ADR 2 件を改訂する
 
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `docs/adr/20260716-r4d-selection-modal-confirm-veto-by-return-value.md`
   - `docs/adr/20260723-h7r-read-action-raw-return-client-wrapper-over-result-envelope.md`
