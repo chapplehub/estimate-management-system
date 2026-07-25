@@ -1,8 +1,7 @@
 onlyBuiltDependencies:
   - "@prisma/engines"
-  - argon2
-  - bcrypt
   - esbuild
   - prisma
   - sharp
   - unrs-resolver
+minimumReleaseAge: 4320 # 3 days (分単位)
