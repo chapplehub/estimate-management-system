@@ -57,3 +57,6 @@ node_modules/
 /playwright/.cache/
 /playwright/.auth/
 .playwright-mcp/
+
+# .eslintcache
+.eslintcache
