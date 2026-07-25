@@ -58,6 +58,8 @@ const eslintConfig = defineConfig([
   prettier,
   // Override default ignores of eslint-config-next.
   globalIgnores([
+    // 他 worktree はそれぞれの eslint.config.mjs で lint する
+    "worktrees/**",
     // Default ignores of eslint-config-next:
     ".next/**",
     "out/**",
