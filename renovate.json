@@ -1,0 +1,70 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "security:minimumReleaseAgeNpm",
+    ":semanticCommitTypeAll(chore)",
+    ":maintainLockFilesMonthly",
+    "helpers:disableTypesNodeMajor"
+  ],
+  "timezone": "Asia/Tokyo",
+  "dependencyDashboardApproval": true,
+  "prConcurrentLimit": 3,
+  "rangeStrategy": "bump",
+  "labels": ["dependencies"],
+  "packageRules": [
+    {
+      "description": "ベース: 0.x 系を除く minor/patch をまとめる。以降のルールが上書きする前提の土台",
+      "matchUpdateTypes": ["minor", "patch"],
+      "matchCurrentVersion": "!/^0/",
+      "groupName": "non-major"
+    },
+    {
+      "description": "型定義は実装と分離してまとめる（DefinitelyTyped は高頻度・型のみで実行時リスクなし）",
+      "matchPackageNames": ["@types/**"],
+      "groupName": "types"
+    },
+    {
+      "description": "major は原則グループ解除して個別に承認する。ファミリー系ルールより前に置くこと",
+      "matchUpdateTypes": ["major"],
+      "groupName": null,
+      "dependencyDashboardApproval": true,
+      "addLabels": ["major"]
+    },
+    {
+      "description": "Prisma 7 は CLI / client / adapter がバージョン一致必須",
+      "matchPackageNames": ["prisma", "@prisma/**"],
+      "groupName": "prisma"
+    },
+    {
+      "description": "eslint-config-next は Next 本体に追随する",
+      "matchPackageNames": ["next", "eslint-config-next"],
+      "groupName": "next"
+    },
+    {
+      "description": "React 本体と型定義は同時に上げる",
+      "matchPackageNames": ["react", "react-dom", "@types/react", "@types/react-dom"],
+      "groupName": "react"
+    },
+    {
+      "description": "Tailwind v4 は postcss プラグインと連動",
+      "matchPackageNames": ["tailwindcss", "@tailwindcss/**", "tw-animate-css"],
+      "groupName": "tailwind"
+    },
+    {
+      "description": "coverage プロバイダは vitest 本体とメジャー一致必須",
+      "matchPackageNames": ["vitest", "@vitest/**"],
+      "groupName": "vitest"
+    },
+    {
+      "description": "Playwright はブラウザバイナリの再取得が必要（CI の playwright install を確認）",
+      "matchPackageNames": ["@playwright/test", "playwright"],
+      "groupName": "playwright"
+    },
+    {
+      "description": "commitlint 一式",
+      "matchPackageNames": ["@commitlint/**", "commitizen", "cz-conventional-changelog"],
+      "groupName": "commitlint"
+    }
+  ]
+}
