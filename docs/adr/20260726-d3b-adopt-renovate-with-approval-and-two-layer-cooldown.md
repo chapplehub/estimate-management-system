@@ -186,7 +186,7 @@ npm 依存に加え、以下も Renovate の管理下に入る。
 
 有効化すると、脆弱性由来の更新は承認・並列上限・スケジュールを無視して即座に PR 化される（automerge はされない）。対象となる直接依存は `next` / `better-auth` / `vitest` / `uuid` の 4 件。
 
-### 2. `engines.node` と CI の Node バージョンが不一致
+### 2. `engines.node` と CI の Node バージョンが不一致（#641 で追跡）
 
 `package.json` は `engines.node: "^22"` / `@types/node: "^22"`、`.github/workflows/playwright.yml` は 24.15.0 を使用している。どちらに寄せるか未決。
 
@@ -198,6 +198,8 @@ npm 依存に加え、以下も Renovate の管理下に入る。
 - **24 に寄せる** — `engines.node` と `@types/node` を 24 へ上げる。`helpers:disableTypesNodeMajor` が major 更新を抑止するため、**プリセットの一時解除または手動での引き上げが必要**になる
 
 固定そのものは害ではない（`engines.node` と型のメジャーが一致している状態は正しい）。問題は、CI がその宣言と異なるメジャーで動いている点にある。
+
+なお CI の 24.15.0 は移行漏れではなく、Node 24.16.0 で Playwright 1.58 のブラウザ展開がハングする問題を回避するための意図的なピン留めである（`.github/workflows/playwright.yml:57-59`）。`renovate.json` はこのピンの更新を抑止していないため、Dashboard 経由で承認すると再発しうる点も #641 で扱う。
 
 ### 3. automerge への移行条件
 
