@@ -56,6 +56,7 @@
 | [20260716-r4d](20260716-r4d-selection-modal-confirm-veto-by-return-value.md) | SelectionModal の確定拒否は onConfirm の戻り値で表現する（閉じずにエラー＋該当行ハイライト） | 採用 | 2026-07-16 |
 | [20260721-ef0](20260721-ef0-error-boundary-minimal-set-coverage-tradeoff.md) | App Router のエラー境界は global-error＋(features) 直下の error/not-found の最小セットに絞り、auth・レイアウト・任意 URL は Next デフォルトに落とす | 採用 | 2026-07-21 |
 | [20260723-h7r](20260723-h7r-read-action-raw-return-client-wrapper-over-result-envelope.md) | read/query 系 Server Action は生の戻り値を保ち、非業務例外は呼び出し層の共通ラッパー（callReadAction）で toast + reportError に集約する | 採用 | 2026-07-23 |
+| [20260727-2fb](20260727-2fb-explicit-dynamic-rendering-for-authenticated-routes.md) | 認証配下ルートの動的レンダリングを (features) レイアウトで既定宣言し、DB 非到達ビルドで担保する | 採用 | 2026-07-27 |
 
 ## ドメイン（設計パターン）
 
@@ -143,3 +144,4 @@
 | # | タイトル | ステータス | 起票日 |
 |---|---------|-----------|--------|
 | [20260726-d3b](20260726-d3b-adopt-renovate-with-approval-and-two-layer-cooldown.md) | 依存関係更新の自動化に Renovate を採用し、承認制・二層 cooldown・順序依存の packageRules で運用する | 採用（一部保留） | 2026-07-26 |
+| [20260727-2fb](20260727-2fb-explicit-dynamic-rendering-for-authenticated-routes.md) | 認証配下ルートの動的レンダリングを (features) レイアウトで既定宣言し、DB 非到達ビルドで担保する（CI の build に DB を与えないことが担保の本体） | 採用 | 2026-07-27 |
