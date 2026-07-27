@@ -89,7 +89,7 @@ E2E（Playwright）ワークフローを GitHub Actions の matrix で 4 shard �
 ## ステップ
 
 ### Step 1: 並列化方式の ADR を追加する
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `docs/adr/20260727-55f-e2e-ci-parallelization-by-shard.md`（新規・作成済み）
   - `docs/adr/INDEX.md`（テスト基盤 / 開発基盤の両カテゴリに 1 行追記・編集済み）
