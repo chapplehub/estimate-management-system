@@ -85,7 +85,7 @@ ADR-0006 が認可を proxy に寄せた結果、(1) ページ側に認可が 1 
   - ボディに記載する設計判断: 既定値を据え置く理由（本イシューを振る舞い不変の移設として着地させるため。403 導線の見直しは #649）
 
 ### Step 2: 管理者専用 5 ページと `customers/new` に実行境界の認証・認可を置く
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/app/(features)/departments/new/page.tsx`
   - `src/app/(features)/roles/new/page.tsx`

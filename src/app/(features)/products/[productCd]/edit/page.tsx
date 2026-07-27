@@ -1,7 +1,6 @@
-import { verifySession } from "@/app/_lib/verifyAuthentication";
-import { isAdmin } from "@server/shared/auth";
+import { verifyAdmin } from "@/app/_lib/verifyAuthentication";
 import { getProductByCodeQueryFactory } from "@subdomains/product/application/factories/productQueryFactory";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ProductEditForm } from "./ProductEditForm";
 
@@ -11,11 +10,8 @@ export default async function ProductEditPage({
   params: Promise<{ productCd: string }>;
 }) {
   const { productCd } = await params;
-  const session = await verifySession();
-
-  if (!isAdmin(session)) {
-    redirect(`/products/${productCd}`);
-  }
+  // 一般ユーザーは商品詳細へ戻す（サインインへは送らない）。既定の遷移先を上書きしている
+  await verifyAdmin(`/products/${productCd}`);
 
   const query = getProductByCodeQueryFactory();
   const product = await query.execute({ code: productCd });

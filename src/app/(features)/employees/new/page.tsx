@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { DepartmentSelectField } from "@/app/_components/form";
+import { verifyAdmin } from "@/app/_lib/verifyAuthentication";
 import { PrismaPositionQueryService } from "@subdomains/position/infrastructure/queries/PrismaPositionQueryService";
 import { PrismaRoleQueryService } from "@subdomains/role/infrastructure/queries/PrismaRoleQueryService";
 import { EmployeeCreateForm } from "./EmployeeCreateForm";
 import { filterKachouTierRoleOptions } from "../_shared/superiorRoleOptions";
 
 export default async function EmployeeNewPage() {
+  await verifyAdmin();
+
   // 担当役割の選択肢を供給（承認者不在ワーニングの反応性のためフォームに値を所有させる方針・A2）。
   // ラベルは name のみ、roleCd 昇順（DepartmentSelectField と同方針）。
   // 上位役割候補は課長級（役職階層の葉）のみに絞る（ADR-20260707-k4e）。役割と役職を並列取得する。

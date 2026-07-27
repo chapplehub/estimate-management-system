@@ -1,7 +1,10 @@
 import Link from "next/link";
+import { verifyAdmin } from "@/app/_lib/verifyAuthentication";
 import { ProductCreateForm } from "./ProductCreateForm";
 
-export default function ProductNewPage() {
+export default async function ProductNewPage() {
+  await verifyAdmin();
+
   return (
     <div className="container mx-auto p-8">
       <div className="mb-8">

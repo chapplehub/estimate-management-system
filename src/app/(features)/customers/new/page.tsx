@@ -1,7 +1,11 @@
 import Link from "next/link";
+import { verifySession } from "@/app/_lib/verifyAuthentication";
 import { CustomerCreateForm } from "./CustomerCreateForm";
 
-export default function CustomerNewPage() {
+export default async function CustomerNewPage() {
+  // 得意先の作成は管理者に限らないため認証のみ（Server Action も verifyAdmin を要求しない）
+  await verifySession();
+
   return (
     <div className="container mx-auto p-8">
       <div className="mb-8">

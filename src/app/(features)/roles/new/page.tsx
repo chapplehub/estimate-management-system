@@ -1,9 +1,12 @@
 import Link from "next/link";
+import { verifyAdmin } from "@/app/_lib/verifyAuthentication";
 import { getAllPositionsQueryFactory } from "@subdomains/position/application/factories";
 import { getAllRolesQueryFactory } from "@subdomains/role/application/factories";
 import { RoleCreateForm } from "./RoleCreateForm";
 
 export default async function RoleNewPage() {
+  await verifyAdmin();
+
   // 全役職・全役割を取得（動的フィルタリング用）
   const [positions, allRoles] = await Promise.all([
     getAllPositionsQueryFactory().execute(),
