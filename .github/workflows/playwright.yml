@@ -147,10 +147,16 @@ jobs:
       - name: Merge into single HTML report
         run: pnpm exec playwright merge-reports --reporter=html ./all-blob-reports
 
+      # blob と同じ理由で run_attempt を含める。このジョブは shard が赤いと
+      # 後続の Fail ステップで自分も失敗するため「Re-run all jobs」の対象になり、
+      # 固定名だと再実行で前 attempt の同名 artifact と衝突して upload が落ちる
+      # （artifact 名の一意性は attempt ではなく run 単位。overwrite の既定は false）。
+      # overwrite: true を採らないのは、前 attempt の統合レポートを消してしまい
+      # 失敗した run の証跡を追えなくなるため
       - name: Upload merged report
         uses: actions/upload-artifact@v5
         with:
-          name: playwright-report
+          name: playwright-report-${{ github.run_attempt }}
           path: playwright-report/
           retention-days: 30
 
