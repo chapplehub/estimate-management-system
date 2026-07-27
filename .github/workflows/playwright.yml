@@ -18,6 +18,17 @@ on:
       - "public/**"
       - ".github/workflows/playwright.yml"
 
+# 同一 PR への連続 push で古い run をキャンセルし、ランナーの空費を防ぐ。
+# run 単位（トップレベル）に置くのは、shard と統合ジョブをまとめて畳むため。
+# github.ref は pull_request では refs/pull/{N}/merge に解決されるため PR ごとに一意で、
+# workflow_dispatch は別グループになり巻き添えキャンセルが起きない。
+# github.workflow を前置するのは、他ワークフローと同じレーンに入って殺し合うのを防ぐため
+# （#643 で追加するワークフローでも同じ 2 行を直書きして方針を揃える）。
+# 本ワークフローに push トリガーは無いため、develop / main への push は対象にならない。
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     name: e2e (shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})

@@ -123,7 +123,7 @@ E2E（Playwright）ワークフローを GitHub Actions の matrix で 4 shard �
   - ボディに記載する判断: shard 分割を選び `workers` 引き上げを退けた理由（DB 分離により既存テスト無改修で安全 / 引き上げは `toHaveCount` 100 箇所の前提監査を伴う）、config と yml を 1 コミットにまとめた理由（blob reporter と merge ジョブは相互依存で、分けると読めるレポートが出ない中間状態になる）、artifact 名に `run_attempt` を含める理由
 
 ### Step 3: concurrency を設定し、古い run をキャンセルする
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: `.github/workflows/playwright.yml`
 - テスト戦略: テスト不要（設定ファイル）
 - 作業内容:
