@@ -100,7 +100,7 @@ E2E（Playwright）ワークフローを GitHub Actions の matrix で 4 shard �
 - コミットメッセージ: `docs: E2E の CI 並列化方式を shard 分割とする ADR を追加`
 
 ### Step 2: E2E ワークフローを shard 4 分割し、レポートを統合する
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `playwright.config.ts`
   - `.github/workflows/playwright.yml`
