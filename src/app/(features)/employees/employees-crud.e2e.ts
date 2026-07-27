@@ -266,7 +266,7 @@ test.describe("従業員CRUD（管理者）", () => {
   });
 });
 
-// SKILL §11: /employees/new は admin 専用（src/proxy.ts の adminRoutes）のため
+// SKILL §11: /employees/new は admin 専用（ページ本体の verifyAdmin()）のため
 // 権限差異あり機能に該当し、一般ユーザー簡易 chain（作成→削除）は省略する。
 // 本ブロックは権限エラーテスト（必須）と owner 編集 / 他人閲覧の挙動検証に絞る。
 test.describe("従業員（一般ユーザー）", () => {

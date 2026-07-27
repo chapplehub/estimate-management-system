@@ -103,7 +103,7 @@ ADR-0006 が認可を proxy に寄せた結果、(1) ページ側に認可が 1 
   - ボディに記載する設計判断: 実行境界権威型の採用理由と、`products/[productCd]/edit` で遷移先を明示指定して挙動を保存していること
 
 ### Step 3: `proxy.ts` から `adminRoutes` を削除する
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/proxy.ts`
   - `src/app/(features)/products/products-crud.e2e.ts`

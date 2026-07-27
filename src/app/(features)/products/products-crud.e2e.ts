@@ -229,8 +229,10 @@ test.describe("商品CRUD（管理者）", () => {
 });
 
 // SKILL §11: 商品は権限差異あり機能（編集・無効化・削除・新規登録リンクが管理者限定）。
-// createProduct server action が verifyAdmin() を必須とし一般ユーザーは商品を作成できないため、
-// 一般ユーザー簡易 chain（作成→削除）は適用不可。employees-crud.e2e.ts の前例に準拠して省略する。
+// /products/new と /products/{cd}/edit がページ本体で verifyAdmin() を呼び、
+// createProduct server action も verifyAdmin() を必須とするため、一般ユーザーは
+// 商品を作成できない。一般ユーザー簡易 chain（作成→削除）は適用不可のため、
+// employees-crud.e2e.ts の前例に準拠して省略する。
 // 本ブロックは権限エラーテスト（必須）と閲覧専用挙動の検証に絞る。
 test.describe("商品（一般ユーザー）", () => {
   test.use({ storageState: "playwright/.auth/user.json" });
@@ -255,18 +257,12 @@ test.describe("商品（一般ユーザー）", () => {
     await expect(page).toHaveURL(/\/products\/PRD001$/, { timeout: 10000 });
   });
 
-  test("一般ユーザーは商品を作成できない（サーバ認可で拒否）", async ({ page }) => {
-    // /products/new は proxy 非保護のためフォーム自体は描画されるが、
-    // createProduct server action の verifyAdmin() が submit 時に拒否する。
+  test("一般ユーザーは新規登録画面にアクセスできない", async ({ page }) => {
+    // #153: 認可の正本をページ本体へ移したため、フォームが描画される前に弾かれる。
+    // 以前はページに認可が無く、フォームが見えたうえで submit 時に createProduct の
+    // verifyAdmin() が拒否していた。書き込みを止める保証は今も server action 側に
+    // 残っており（products/actions.ts の createProduct）、二重に守られている。
     await page.goto("/products/new");
-    await expect(page.getByRole("heading", { name: "新規商品登録" })).toBeVisible();
-
-    await page.getByLabel("商品コード").fill("PRD904");
-    await page.getByLabel("商品名").fill("E2E権限テスト商品");
-    await page.getByLabel("商品区分").selectOption("INDIVIDUAL");
-    await page.getByLabel("単位").selectOption("UNIT");
-
-    await page.getByRole("button", { name: "登録" }).click();
 
     // サーバ側認可で FORBIDDEN リダイレクト → サインインへ排除される
     // （?reason=forbidden は redirect-reason-toast が即座に URL から除去するため、
@@ -275,5 +271,6 @@ test.describe("商品（一般ユーザー）", () => {
     await expect(page.getByText("この操作を行う権限がありません。")).toBeVisible({
       timeout: 10000,
     });
+    await expect(page.getByRole("heading", { name: "新規商品登録" })).not.toBeVisible();
   });
 });
