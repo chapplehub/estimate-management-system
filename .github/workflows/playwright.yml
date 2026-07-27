@@ -18,10 +18,34 @@ on:
       - "public/**"
       - ".github/workflows/playwright.yml"
 
+# 同一 PR への連続 push で古い run をキャンセルし、ランナーの空費を防ぐ。
+# run 単位（トップレベル）に置くのは、shard と統合ジョブをまとめて畳むため。
+# github.ref は pull_request では refs/pull/{N}/merge に解決されるため PR ごとに一意で、
+# workflow_dispatch は別グループになり巻き添えキャンセルが起きない。
+# github.workflow を前置するのは、他ワークフローと同じレーンに入って殺し合うのを防ぐため
+# （#643 で追加するワークフローでも同じ 2 行を直書きして方針を揃える）。
+# 本ワークフローに push トリガーは無いため、develop / main への push は対象にならない。
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
-    timeout-minutes: 60
+    name: e2e (shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
+    # 1 shard の正当な最悪ケース（全テストが落ち retries: 2 で 3 回ずつ実行 = 約 7 分 20 秒）
+    # から逆算した値。実測 2〜3 分に対する安全網として機能させる
+    timeout-minutes: 20
     runs-on: ubuntu-latest
+
+    strategy:
+      # 1 shard が落ちても残りを最後まで走らせる。既定の true だと 1 run で見つかる失敗が
+      # 1 つに切り詰められ、かつキャンセルされた shard が blob を上げず統合レポートが歯抜けになる
+      fail-fast: false
+      matrix:
+        # 分母の管理箇所を 1 つに絞るため shardTotal も matrix 軸として持つ。
+        # shard 数は可変パラメータ。実測を見て見直す（→ ADR-20260727-55f）
+        shardIndex: [1, 2, 3, 4]
+        shardTotal: [4]
 
     # PostgreSQLサービスコンテナ
     services:
@@ -72,17 +96,78 @@ jobs:
       - name: Seed database for E2E tests
         run: pnpm e2e:seed
 
-      # CDN ストール等で固まった際、ジョブ全体(60分)を待たず早期失敗させる安全網
+      # CDN ストール等で固まった際、ジョブ全体(20分)を待たず早期失敗させる安全網
       - name: Install Playwright Browsers
         timeout-minutes: 10
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Run Playwright tests
-        run: pnpm exec playwright test
+        run: pnpm exec playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
 
-      - uses: actions/upload-artifact@v5
+      # run_attempt を含めるのは、upload-artifact v4 以降は同一 run 内で同名 artifact を
+      # 二度アップロードできず、artifact が再実行の attempt をまたいで保持されるため。
+      # 含めないと「Re-run failed jobs」がアップロードエラーで落ちる（再実行は「Re-run all jobs」前提）
+      - name: Upload blob report
+        uses: actions/upload-artifact@v5
         if: ${{ !cancelled() }}
         with:
-          name: playwright-report
+          name: blob-report-${{ matrix.shardIndex }}-${{ github.run_attempt }}
+          path: blob-report/
+          # merge ジョブが同一 run 内で消費するだけの中間生成物
+          retention-days: 1
+
+  merge-reports:
+    name: e2e report
+    # shard が落ちても統合レポートは必要なので、キャンセル以外は必ず走らせる
+    if: ${{ !cancelled() }}
+    needs: test
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24.15.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download blob reports
+        uses: actions/download-artifact@v6
+        with:
+          path: all-blob-reports
+          pattern: blob-report-*-${{ github.run_attempt }}
+          merge-multiple: true
+
+      - name: Merge into single HTML report
+        run: pnpm exec playwright merge-reports --reporter=html ./all-blob-reports
+
+      # blob と同じ理由で run_attempt を含める。このジョブは shard が赤いと
+      # 後続の Fail ステップで自分も失敗するため「Re-run all jobs」の対象になり、
+      # 固定名だと再実行で前 attempt の同名 artifact と衝突して upload が落ちる
+      # （artifact 名の一意性は attempt ではなく run 単位。overwrite の既定は false）。
+      # overwrite: true を採らないのは、前 attempt の統合レポートを消してしまい
+      # 失敗した run の証跡を追えなくなるため
+      - name: Upload merged report
+        uses: actions/upload-artifact@v5
+        with:
+          name: playwright-report-${{ github.run_attempt }}
           path: playwright-report/
           retention-days: 30
+
+      # merge-reports はテストが失敗していても exit 0 で終わるため、shard の結果を
+      # ここで集約して伝播させる。upload の「後」に置くのは、逆順だと赤いときに
+      # 統合レポートが上がらず、いちばん必要な場面で参照できなくなるため。
+      # 条件に !cancelled() を置くのは、これが無いと暗黙の success() が AND され、
+      # 全 shard が seed 等で落ちて blob が 1 つも無いとき merge が空ディレクトリで
+      # 落ちた巻き添えでこのステップ自身がスキップされ、原因メッセージが出ないため
+      - name: Fail if any shard failed
+        if: ${{ !cancelled() && needs.test.result != 'success' }}
+        run: |
+          echo "::error::E2E shard job result: ${{ needs.test.result }}"
+          exit 1

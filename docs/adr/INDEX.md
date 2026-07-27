@@ -139,6 +139,7 @@
 | [20260629-3x5](20260629-3x5-e2e-time-dependent-tests-use-today-relative-seed.md) | E2E の時点依存テストは today 相対シードで扱う（クロック固定しない） | 採用 | 2026-06-29 |
 | [20260709-f2q](20260709-f2q-dev-and-e2e-seed-fixtures-fully-separated.md) | dev と e2e の見積・申請 seed フィクスチャを完全分離する（共有をやめ重複を許す） | 採用 | 2026-07-09 |
 | [20260715-f71](20260715-f71-shared-db-test-code-registry-static-uniqueness.md) | 共有DB単体テストのコード割当をコードキー・レジストリで静的に一意化する | 採用 | 2026-07-15 |
+| [20260727-55f](20260727-55f-e2e-ci-parallelization-by-shard.md) | E2E の CI 並列化は shard 分割で行い、shard 内は直列実行を維持する | 採用 | 2026-07-27 |
 
 ## 開発基盤（依存管理・CI）
 
@@ -146,3 +147,4 @@
 |---|---------|-----------|--------|
 | [20260726-d3b](20260726-d3b-adopt-renovate-with-approval-and-two-layer-cooldown.md) | 依存関係更新の自動化に Renovate を採用し、承認制・二層 cooldown・順序依存の packageRules で運用する | 採用（一部保留） | 2026-07-26 |
 | [20260727-2fb](20260727-2fb-explicit-dynamic-rendering-for-authenticated-routes.md) | 認証配下ルートの動的レンダリングを (features) レイアウトで既定宣言し、DB 非到達ビルドで担保する（CI の build に DB を与えないことが担保の本体） | 採用 | 2026-07-27 |
+| [20260727-55f](20260727-55f-e2e-ci-parallelization-by-shard.md) | E2E の CI 並列化は shard 分割で行い、shard 内は直列実行を維持する | 採用 | 2026-07-27 |
