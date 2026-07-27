@@ -60,7 +60,7 @@
 ## ステップ
 
 ### Step 1: ADR の追加と ADR-0006 への追記をコミットする
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `docs/adr/20260727-2fb-explicit-dynamic-rendering-for-authenticated-routes.md`（新規・作成済み）
   - `docs/adr/INDEX.md`（2 カテゴリに追記・変更済み）
