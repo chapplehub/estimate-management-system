@@ -2,6 +2,9 @@ import { getCurrentSession } from "@server/shared/auth";
 import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
 import { NextRequest, NextResponse } from "next/server";
 
+/** 認証不要で開けるルート */
+const publicRoutes = ["/signin", "/"];
+
 /**
  * 未認証アクセスの前捌き
  *
@@ -12,8 +15,6 @@ import { NextRequest, NextResponse } from "next/server";
  *
  * 認可（管理者判定）はページ本体の verifyAdmin() が担う。
  */
-const publicRoutes = ["/signin", "/"];
-
 export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isPublicRoute = publicRoutes.includes(path);

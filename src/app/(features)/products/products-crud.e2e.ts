@@ -261,7 +261,7 @@ test.describe("商品（一般ユーザー）", () => {
     // #153: 認可の正本をページ本体へ移したため、フォームが描画される前に弾かれる。
     // 以前はページに認可が無く、フォームが見えたうえで submit 時に createProduct の
     // verifyAdmin() が拒否していた。書き込みを止める保証は今も server action 側に
-    // 残っており（products/actions.ts の createProduct）、二重に守られている。
+    // 残っており（products/new/actions.ts の createProduct）、二重に守られている。
     await page.goto("/products/new");
 
     // サーバ側認可で FORBIDDEN リダイレクト → サインインへ排除される
