@@ -68,7 +68,7 @@ ADR-0006 が認可を proxy に寄せた結果、(1) ページ側に認可が 1 
 ## ステップ
 
 ### Step 1: `verifyAdmin` / `verifyOwnerOrAdmin` に遷移先の任意引数を足す
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `src/app/_lib/verifyAuthentication.ts`
   - `src/app/_lib/__tests__/verifyAuthentication.test.ts`（新規）

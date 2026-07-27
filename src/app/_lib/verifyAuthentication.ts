@@ -21,18 +21,24 @@ export const verifySession = cache(async (): Promise<AuthSession> => {
   return session;
 });
 
+/** 認可失敗時の既定の遷移先 */
+const DEFAULT_FORBIDDEN_REDIRECT = `/signin?reason=${REDIRECT_REASON.FORBIDDEN}`;
+
 /**
  * 管理者権限を持つセッションを取得する
  *
  * 認証済みかつ管理者であることを確認する。
  * 管理者でない場合は FORBIDDEN でリダイレクト。
  *
+ * @param redirectTo - 管理者でない場合の遷移先（省略時はサインインページ）
  * @returns AuthSession（管理者のセッション）
  */
-export async function verifyAdmin(): Promise<AuthSession> {
+export async function verifyAdmin(
+  redirectTo: string = DEFAULT_FORBIDDEN_REDIRECT
+): Promise<AuthSession> {
   const session = await verifySession();
   if (!isAdmin(session)) {
-    redirect(`/signin?reason=${REDIRECT_REASON.FORBIDDEN}`);
+    redirect(redirectTo);
   }
   return session;
 }
@@ -44,12 +50,16 @@ export async function verifyAdmin(): Promise<AuthSession> {
  * どちらでもない場合は FORBIDDEN でリダイレクト。
  *
  * @param resourceOwnerId - リソース所有者のユーザーID
+ * @param redirectTo - 本人でも管理者でもない場合の遷移先（省略時はサインインページ）
  * @returns AuthSession（本人または管理者のセッション）
  */
-export async function verifyOwnerOrAdmin(resourceOwnerId: string): Promise<AuthSession> {
+export async function verifyOwnerOrAdmin(
+  resourceOwnerId: string,
+  redirectTo: string = DEFAULT_FORBIDDEN_REDIRECT
+): Promise<AuthSession> {
   const session = await verifySession();
   if (!isOwner(session, resourceOwnerId) && !isAdmin(session)) {
-    redirect(`/signin?reason=${REDIRECT_REASON.FORBIDDEN}`);
+    redirect(redirectTo);
   }
   return session;
 }
