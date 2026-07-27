@@ -162,9 +162,12 @@ jobs:
 
       # merge-reports はテストが失敗していても exit 0 で終わるため、shard の結果を
       # ここで集約して伝播させる。upload の「後」に置くのは、逆順だと赤いときに
-      # 統合レポートが上がらず、いちばん必要な場面で参照できなくなるため
+      # 統合レポートが上がらず、いちばん必要な場面で参照できなくなるため。
+      # 条件に !cancelled() を置くのは、これが無いと暗黙の success() が AND され、
+      # 全 shard が seed 等で落ちて blob が 1 つも無いとき merge が空ディレクトリで
+      # 落ちた巻き添えでこのステップ自身がスキップされ、原因メッセージが出ないため
       - name: Fail if any shard failed
-        if: ${{ needs.test.result != 'success' }}
+        if: ${{ !cancelled() && needs.test.result != 'success' }}
         run: |
           echo "::error::E2E shard job result: ${{ needs.test.result }}"
           exit 1
