@@ -74,3 +74,72 @@ jobs:
 
       - name: Build (DB unreachable)
         run: pnpm build
+
+  # static と同様、ジョブ名は required status check の照合キーとして扱う。
+  # ローカルでは pre-push のみが担保していたフルスイート（DB 統合テストを含む）を
+  # PR ごとに実行する。husky を通らない Renovate のコミットにはこれが唯一の網になる。
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          # .env.unit.example の DATABASE_URL と同じ DB 名にする（下の env も同じ）。
+          # サービスコンテナ / ジョブ env / .env.unit.example の三者を一致させると
+          # 接続先の候補が 1 つになり、「dotenv は既存の process.env を上書きしない」
+          # という既定（dotenv 自体も Renovate の更新対象）にテストの接続先が
+          # 依存しなくなる。ローカルの pnpm test:setup が作る DB 名とも一致する。
+          POSTGRES_DB: estimate_management_unit
+        ports:
+          - 5432:5432
+        # -U postgres を明示し、ロール未指定時の "role root does not exist" ログノイズを抑止
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # .env.unit.example の値と完全一致させる（理由は上の POSTGRES_DB のコメント参照）。
+      # ジョブ env にも置くのは、prisma migrate deploy が prisma.config.ts 経由で
+      # .env しか読まず、.env.unit のコピーだけでは migrate が接続先を失うため。
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/estimate_management_unit
+      BETTER_AUTH_SECRET: test-secret-for-ci-only
+      BETTER_AUTH_URL: http://localhost:3000
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          # static ジョブと同じ理由で 22.14.0（#641 で単一ソース化する）
+          node-version: 22.14.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # vitest.config.ts と prisma/seed-unit.ts はファイルの存在自体を前提にしている
+      - name: Prepare .env.unit
+        run: cp .env.unit.example .env.unit
+
+      - name: Generate Prisma Client
+        run: pnpm db:generate
+
+      - name: Run database migrations
+        run: pnpm exec prisma migrate deploy
+
+      # scripts/unit-setup.ts（pnpm test:setup）は DB 作成を含むが、サービスコンテナが
+      # 既に作成済みのため seed のみを直接実行する（playwright.yml の e2e:seed と同じ構造）
+      - name: Seed unit test database
+        run: pnpm exec tsx prisma/seed-unit.ts
+
+      - name: Run Vitest
+        run: pnpm exec vitest run
