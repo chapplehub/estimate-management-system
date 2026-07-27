@@ -1,0 +1,76 @@
+name: CI
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main, develop]
+    # paths フィルタは意図的に付けない。required status check は「起動しなかったジョブ」を
+    # 待ち続けてマージ不能にするため相性が悪く、Renovate の PR（差分が lock ファイルだけの
+    # ことがある）を確実に検査したい本ワークフローの目的とも衝突する。
+
+# 同一 PR への連続 push で古い run をキャンセルする。playwright.yml と同じ 2 行を
+# 直書きして方針を揃える（github.workflow の前置で他ワークフローと殺し合わない）。
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ジョブ名は required status check の照合キー（表示名の文字列一致）。
+  # リネームは保護が無言で外れることを意味するため、識別子として扱い説明は step 名に持たせる。
+  static:
+    name: static
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      # DB を「与え忘れている」のではなく「到達不能を宣言している」。
+      # next build は静的と判定したページの Server Component をビルド時に実行するため、
+      # (features) 配下の動的レンダリング宣言（ADR-20260727-2fb）が壊れて静的化が再発すると
+      # ビルド中に DB クエリが走り、このジョブが赤くなる。DB 非到達ビルドが通ること自体が
+      # 静的化再発の回帰テストである（#644 / #647 の申し送り）。
+      # → getaddrinfo ENOTFOUND db-unreachable.invalid が出たら、まず (features) 配下の
+      #   静的化再発を疑うこと。DB 側の障害ではない。
+      # .invalid は RFC 2606 で名前解決されないことが保証される TLD。localhost にしないのは、
+      # 将来このジョブに postgres service を足した瞬間に担保が無言で消えるため
+      #（「偶然の到達不能」ではなく「宣言された到達不能」にする）。
+      # 未定義にしないのは、src/server/prisma.ts がモジュール評価時（動的ページも通る
+      # Collecting page data フェーズ）に new PrismaPg() を実行し、未定義時の挙動が
+      # @prisma/adapter-pg / pg のバージョン依存になるため。Renovate の PR を検査する CI が
+      # Renovate の更新対象ライブラリの未文書化挙動に依存する循環を避ける。
+      DATABASE_URL: postgresql://build:build@db-unreachable.invalid:5432/build_check
+      # better-auth も betterAuth() をモジュールスコープで実行する。secret 不在時の挙動
+      #（警告か throw か）はバージョン依存であり、better-auth 自体が Renovate の更新対象。
+      # env なし運用は依存更新 PR 上で「更新がビルドを壊した」ように見える偽陽性を生むため、
+      # 最初からダミーを決め打ちする。
+      BETTER_AUTH_SECRET: build-time-placeholder
+      BETTER_AUTH_URL: http://localhost:3000
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          # playwright.yml の 24.15.0 は Playwright 固有バグ（24.16.0 で archive 展開が
+          # ハング）由来のピンであり、この workload には適用されない。tsc / build が
+          # 既知良好なのはローカル pre-push で毎日実証されている 22 系のほうで、
+          # package.json の engines.node ^22 とも一致する。
+          # Node の単一ソース化（.node-version 導入）は #641 で扱う。
+          node-version: 22.14.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # 生成された型定義は lint / tsc / build のいずれもが参照する
+      - name: Generate Prisma Client
+        run: pnpm db:generate
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm tsc --noEmit
+
+      - name: Build (DB unreachable)
+        run: pnpm build

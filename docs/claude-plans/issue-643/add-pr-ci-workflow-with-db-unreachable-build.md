@@ -63,7 +63,7 @@
 ## ステップ
 
 ### Step 1: `.github/workflows/ci.yml` を新設し static ジョブを追加する
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: `.github/workflows/ci.yml`（新規）
 - テスト戦略: テスト不要（設定ファイル。検証は CI の実 run で行う）
 - 作業内容:
