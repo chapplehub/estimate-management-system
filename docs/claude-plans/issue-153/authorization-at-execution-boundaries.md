@@ -117,7 +117,7 @@ ADR-0006 が認可を proxy に寄せた結果、(1) ページ側に認可が 1 
   - ボディに記載する設計判断: 代替の防壁が前コミットで全ページに入っていること（このコミットを単独で読んだ人が「防壁を消しただけの変更」と誤読しないため）。`adminRoutes` の 2 件のずれが、定義が 2 箇所にあったことで生じた事故であること
 
 ### Step 4: ADR の起票と関連文書の更新
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `docs/adr/20260728-{sss}-{slug}.md`（新規。`sss` は base36 3桁ランダム。`ls docs/adr/` で衝突がないことを確認する）
   - `docs/adr/0006-admin-route-protection-in-proxy.md`
@@ -143,12 +143,12 @@ ADR-0006 が認可を proxy に寄せた結果、(1) ページ側に認可が 1 
 
 ## 受け入れ条件
 
-- [ ] `src/app/(features)` 配下の全 `page.tsx` が `verifySession()` または `verifyAdmin()` を呼んでいる
-- [ ] 管理者専用 5 ページがページ本体で `verifyAdmin()` を呼んでいる
-- [ ] `src/proxy.ts` に `adminRoutes` が存在しない
-- [ ] 対象 6 ページの認可失敗時の遷移先が変更前と一致する（`products/[productCd]/edit` は `/products/{productCd}`、他は `/signin?reason=forbidden`）
-- [ ] ADR-0006 のステータスが「差替」になっている
-- [ ] `pnpm test` と型チェックが通る
+- [x] `src/app/(features)` 配下の全 `page.tsx` が `verifySession()` または `verifyAdmin()` を呼んでいる
+- [x] 管理者専用 5 ページがページ本体で `verifyAdmin()` を呼んでいる
+- [x] `src/proxy.ts` に `adminRoutes` が存在しない
+- [x] 対象 6 ページの認可失敗時の遷移先が変更前と一致する（`products/[productCd]/edit` は `/products/{productCd}`、他は `/signin?reason=forbidden`）
+- [x] ADR-0006 のステータスが「差替」になっている
+- [x] `pnpm test` と型チェックが通る
 
 ## スコープ外
 
