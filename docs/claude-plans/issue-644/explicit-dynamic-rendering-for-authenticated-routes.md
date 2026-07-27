@@ -72,7 +72,8 @@
 - コミットメッセージ: `docs: 認証配下ルートの動的レンダリング方針を ADR-20260727-2fb として記録する`
 
 ### Step 2: (features) レイアウトで動的レンダリングを既定宣言する
-- [ ] **完了**
+- [x] **完了**（`pnpm build` 実測: `prerender-manifest.json` の `routes` は
+  `["/_global-error","/_not-found","/signin","/favicon.ico","/"]` のみ。`new.html` は 0 件）
 - 対象ファイル: `src/app/(features)/layout.tsx`
 - テスト戦略: テスト不要（レンダリング設定。ユニットテストでも E2E でも検出できない — dev サーバは常に動的に動くため。検証はビルド成果物の観測に依存し、その常設化が #643 側の担保にあたる）
 - 作業内容:
