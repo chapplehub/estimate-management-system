@@ -1,8 +1,11 @@
 import Link from "next/link";
 import { DepartmentSelectField } from "@/app/_components/form";
+import { verifyAdmin } from "@/app/_lib/verifyAuthentication";
 import { DepartmentCreateForm } from "./DepartmentCreateForm";
 
-export default function DepartmentNewPage() {
+export default async function DepartmentNewPage() {
+  await verifyAdmin();
+
   return (
     <div className="container mx-auto p-8">
       <div className="mb-8">

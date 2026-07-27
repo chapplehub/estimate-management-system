@@ -1,6 +1,8 @@
 /**
  * リダイレクト理由コード
- * proxy.tsでリダイレクト時に設定し、flash-message-handler.tsxで読み取る
+ * リダイレクト時に設定し、redirect-reason-toast.tsx で読み取る。
+ * 設定元は proxy.ts（SESSION_EXPIRED のみ）と各実行境界
+ * （verifyAdmin / verifyOwnerOrAdmin の FORBIDDEN、Server Action の完了通知）。
  */
 export const REDIRECT_REASON = {
   SESSION_EXPIRED: "session_expired",

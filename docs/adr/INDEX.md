@@ -45,7 +45,7 @@
 
 | # | タイトル | ステータス | 起票日 |
 |---|---------|-----------|--------|
-| [0006](0006-admin-route-protection-in-proxy.md) | 管理者専用ルートの認可チェックをproxy.tsで行う | 採用 | 2026-03-26 |
+| [0006](0006-admin-route-protection-in-proxy.md) | 管理者専用ルートの認可チェックをproxy.tsで行う | 差替（→ 20260727-gk3） | 2026-03-26 |
 | [0007](0007-use-sync-external-store-for-hydration-mismatch.md) | useSyncExternalStoreによるハイドレーションミスマッチの防止 | 採用 | 2026-03-26 |
 | [0008](0008-position-filter-uses-id-not-cd.md) | 役割一覧の役職フィルタにpositionId（ID）を使用する | 採用 | 2026-04-03 |
 | [0014](0014-modal-search-form-as-separate-component.md) | モーダル用検索フォームを既存SearchFormとは別コンポーネントにする | 採用 | 2026-04-13 |
@@ -57,6 +57,7 @@
 | [20260721-ef0](20260721-ef0-error-boundary-minimal-set-coverage-tradeoff.md) | App Router のエラー境界は global-error＋(features) 直下の error/not-found の最小セットに絞り、auth・レイアウト・任意 URL は Next デフォルトに落とす | 採用 | 2026-07-21 |
 | [20260723-h7r](20260723-h7r-read-action-raw-return-client-wrapper-over-result-envelope.md) | read/query 系 Server Action は生の戻り値を保ち、非業務例外は呼び出し層の共通ラッパー（callReadAction）で toast + reportError に集約する | 採用 | 2026-07-23 |
 | [20260727-2fb](20260727-2fb-explicit-dynamic-rendering-for-authenticated-routes.md) | 認証配下ルートの動的レンダリングを (features) レイアウトで既定宣言し、DB 非到達ビルドで担保する | 採用 | 2026-07-27 |
+| [20260727-gk3](20260727-gk3-authorization-at-execution-boundaries.md) | 認証・認可の正本を実行境界（page / Server Action）に置き、proxy を前捌きへ降格する | 採用 | 2026-07-27 |
 
 ## ドメイン（設計パターン）
 
