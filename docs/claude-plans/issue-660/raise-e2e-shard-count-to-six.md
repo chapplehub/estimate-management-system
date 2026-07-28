@@ -199,7 +199,7 @@ shard 5 の `Install Playwright Browsers` が 415 秒（`timeout-minutes: 10` �
 - コミットメッセージ: 実測が想定どおりなら不要。追加調整をした場合は `ci: E2E の shard 数を N に調整する`（ボディに実測値を記載）
 
 ### Step 4: 準備一式の短縮を別 Issue として起票する
-- [ ] **完了**
+- [x] **完了** → **#663**（ci: E2E の準備一式を短縮し Playwright ブラウザ install の外れ値リスクを消す）
 - 対象ファイル: なし（GitHub Issue）
 - テスト戦略: テスト不要（Issue 起票）
 - 作業内容:
