@@ -105,7 +105,7 @@ composite action（`.github/actions/setup`）への括り出しは**本 issue �
 - コミットメッセージ: `ci: Node の版を .nvmrc に単一ソース化し 22 系へ統一する`
 
 ### Step 2: Renovate で Node 本体と型定義を同一グループにする
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: `renovate.json`
 - テスト戦略: テスト不要（設定ファイル。実挙動の確認はマージ後の Step 5）
 - 作業内容:
