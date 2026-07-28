@@ -66,6 +66,14 @@ jobs:
       - name: Generate Prisma Client
         run: pnpm db:generate
 
+      # next-env.d.ts（*.svg 等の module 宣言）と .next/types/routes.d.ts（typed routes）は
+      # どちらも生成物で .gitignore されている。ローカルで tsc が通るのは dev サーバや
+      # 過去のビルドが残した .next/ に暗黙依存しているためで、クリーンな CI には存在しない。
+      # build より前に型検査を置く（速い検査から落とす）ため、db:generate と同じ
+      # 「検査に必要な生成物を先に作る」ステップとして typegen を明示する。
+      - name: Generate Next.js types
+        run: pnpm exec next typegen
+
       - name: Lint
         run: pnpm lint
 
