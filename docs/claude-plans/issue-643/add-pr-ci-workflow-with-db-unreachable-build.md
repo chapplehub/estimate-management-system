@@ -89,7 +89,7 @@
   - ボディに記載する設計判断: DB 名を `.env.unit.example` と一致させ dotenv の優先順位依存を消したこと（イシューが予定した「テーブルを落として接続先を確認」の検証を不要化）
 
 ### Step 3: PR を作成し、この PR 自身で static / test の実 run を確認する
-- [ ] **完了**
+- [x] **完了**（PR #655 / run 30316520661 で `static` 2m1s・`test` 2m36s ともに pass）
 - 対象ファイル: なし（必要に応じて `.github/workflows/ci.yml` の修正）
 - テスト戦略: テスト不要（実測確認）
 - 作業内容:
@@ -118,11 +118,12 @@
 
 ## 受け入れ条件
 
-- [ ] PR に対して `pnpm lint` が実行される
-- [ ] PR に対して `tsc --noEmit` が実行される
-- [ ] PR に対して Vitest のフルスイート（DB 統合テスト含む）が実行される
-- [ ] PR に対して `pnpm build` が実行される
-- [ ] **build は DB 非到達環境（`.invalid` ダミー）で実行され、それで通ること**（ADR-20260727-2fb の担保・#647 申し送りの履行）
+- [x] PR に対して `pnpm lint` が実行される
+- [x] PR に対して `tsc --noEmit` が実行される
+- [x] PR に対して Vitest のフルスイート（DB 統合テスト含む）が実行される
+- [x] PR に対して `pnpm build` が実行される
+- [x] **build は DB 非到達環境（`.invalid` ダミー）で実行され、それで通ること**（ADR-20260727-2fb の担保・#647 申し送りの履行）
+  - run 30316520661 の build ログで `Generating static pages (5/5)` が完走し `ENOTFOUND` は 0 件。ルート一覧で `(features)` 配下は全て `ƒ`（Dynamic）
 - [ ] 上記が失敗したときに PR がマージできない（両 ruleset の required status checks）
 - [ ] Renovate の実物 PR で全ジョブが実行されることを確認した
 
