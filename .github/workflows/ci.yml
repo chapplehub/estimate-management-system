@@ -59,12 +59,8 @@ jobs:
 
       - uses: actions/setup-node@v5
         with:
-          # playwright.yml の 24.15.0 は Playwright 固有バグ（24.16.0 で archive 展開が
-          # ハング）由来のピンであり、この workload には適用されない。tsc / build が
-          # 既知良好なのはローカル pre-push で毎日実証されている 22 系のほうで、
-          # package.json の engines.node ^22 とも一致する。
-          # Node の単一ソース化（.node-version 導入）は #641 で扱う。
-          node-version: 22.14.0
+          # Node の版は .nvmrc が単一ソース（→ ADR-20260728-44b）
+          node-version-file: .nvmrc
           cache: pnpm
 
       - name: Install dependencies
@@ -138,8 +134,8 @@ jobs:
 
       - uses: actions/setup-node@v5
         with:
-          # static ジョブと同じ理由で 22.14.0（#641 で単一ソース化する）
-          node-version: 22.14.0
+          # Node の版は .nvmrc が単一ソース（→ ADR-20260728-44b）
+          node-version-file: .nvmrc
           cache: pnpm
 
       - name: Install dependencies
