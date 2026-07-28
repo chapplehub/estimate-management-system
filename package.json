@@ -12,6 +12,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint --cache",
+    "typecheck": "next typegen && tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:studio": "prisma studio",

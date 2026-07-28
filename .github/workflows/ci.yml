@@ -13,6 +13,14 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# GITHUB_TOKEN は checkout に必要な読み取りのみに絞る。宣言が無いとリポジトリ設定の
+# default_workflow_permissions（現在は read だが組織／リポジトリ側でいつでも write に
+# 変えられる値）に従うため、ワークフロー側で恒久的に閉じておく。
+# 本ワークフローは pnpm install で only-allow / onlyBuiltDependencies のビルドスクリプトを
+# 実行するため、書き込み権限付きトークンを同じ run に置かないことに意味がある。
+permissions:
+  contents: read
+
 jobs:
   # ジョブ名は required status check の照合キー（表示名の文字列一致）。
   # リネームは保護が無言で外れることを意味するため、識別子として扱い説明は step 名に持たせる。
@@ -66,19 +74,16 @@ jobs:
       - name: Generate Prisma Client
         run: pnpm db:generate
 
-      # next-env.d.ts（*.svg 等の module 宣言）と .next/types/routes.d.ts（typed routes）は
-      # どちらも生成物で .gitignore されている。ローカルで tsc が通るのは dev サーバや
-      # 過去のビルドが残した .next/ に暗黙依存しているためで、クリーンな CI には存在しない。
-      # build より前に型検査を置く（速い検査から落とす）ため、db:generate と同じ
-      # 「検査に必要な生成物を先に作る」ステップとして typegen を明示する。
-      - name: Generate Next.js types
-        run: pnpm exec next typegen
-
       - name: Lint
         run: pnpm lint
 
+      # pnpm typecheck = next typegen && tsc --noEmit。typegen を含めるのは、
+      # next-env.d.ts（*.svg 等の module 宣言）と .next/types/routes.d.ts（typed routes）が
+      # どちらも生成物で .gitignore されているため。ローカルで裸の tsc が通るのは dev サーバや
+      # 過去のビルドが残した .next/ への暗黙依存で、クリーンな CI や clean clone には存在しない。
+      # 生成の要否を package.json の 1 箇所に集約し、CI と pre-push が同じ前提で走るようにする。
       - name: Typecheck
-        run: pnpm tsc --noEmit
+        run: pnpm typecheck
 
       - name: Build (DB unreachable)
         run: pnpm build
@@ -134,7 +139,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # vitest.config.ts と prisma/seed-unit.ts はファイルの存在自体を前提にしている
+      # prisma/seed-unit.ts が existsSync ガードで .env.unit の存在を要求し、無いと
+      # process.exit(1) するためのダミー配置。接続先自体はジョブ env の DATABASE_URL が担う
+      # （値を一致させてあるので dotenv の優先順位は結果に影響しない）。
+      # vitest.config.ts は config({ path: ".env.unit" }) を呼ぶだけで、dotenv はファイル
+      # 不在でも警告を返して続行するため、vitest 側はこのファイルを要求していない。
       - name: Prepare .env.unit
         run: cp .env.unit.example .env.unit
 
