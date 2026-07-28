@@ -159,6 +159,9 @@ npm 依存に加え、以下も Renovate の管理下に入る。
 - 同ファイルの Docker タグ（CI の PostgreSQL サービスコンテナ）
 - `package.json` の `engines.node` と `packageManager`（pnpm バージョン）
 
+> **現在の管理対象（2026-07-28 追記 / #664, #667）**
+> `engines.node` は削除されたため管理対象外（→ ADR-20260728-44b）。Node 本体は `.nvmrc`（`nvm` manager）から検出する。ワークフローの `node-version` 直書きも #641 で消えているため、上記 1 点目の GitHub Actions に Node は含まれない。`packageManager` は現在も管理対象である。
+
 初回スキャンで npm 53 件 / github-actions 6 件が検出された。CI の構成要素も依存であり、同じ規律で更新されるべきという判断による。
 
 副作用として、`non-major` グループに GitHub Actions の更新が混ざる。分離するかは実 PR を見て判断する（§保留事項 4）。
@@ -191,6 +194,9 @@ npm 依存に加え、以下も Renovate の管理下に入る。
 **#641 で解決した。** Node は 22 系に統一し、値は `.nvmrc` だけに書く（CI の 4 ジョブは `node-version-file` で参照する）。あわせて `helpers:disableTypesNodeMajor` を除去し、`node` と `@types/node` を同一グループとして更新する。詳細と根拠は ADR-20260728-44b を参照。
 
 本 ADR に記した「`@types/node` は `^22` に固定されている」という状態は、上記の除去により解消している。型は本体（`.nvmrc` / `engines.node`）とグループで連動するようになった。
+
+> **2026-07-28 追記（#664, #667）**
+> その後 `engines.node` は削除され、Node 本体を宣言する箇所は `.nvmrc` だけになった。`node` グループは `.nvmrc` + `@types/node` の 2 者で構成される。撤回の根拠は ADR-20260728-44b §「なぜ `engines.node` を持たないか」を参照。
 
 ### 3. automerge への移行条件
 

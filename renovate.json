@@ -66,7 +66,7 @@
       "groupName": "commitlint"
     },
     {
-      "description": "Node 本体（.nvmrc / engines.node）と型定義は同時に上げる。helpers:disableTypesNodeMajor を外したのは、型が本体に先行するのを防ぐという同プリセットの目的は本グループが構造的に満たす一方、プリセットを残すとメジャー移行で @types/node だけが黙って据え置かれ「実行は 24・型は 22」という #641 の鏡像が生まれるため",
+      "description": "Node 本体（.nvmrc）と型定義は同時に上げる。node という depName は nvm manager が .nvmrc から検出するものであり、engines.node は #664 で削除済み（→ ADR-20260728-44b）。この matchPackageNames から node を外すと .nvmrc と @types/node が別 PR に割れる。helpers:disableTypesNodeMajor を外したのは、型が本体に先行するのを防ぐという同プリセットの目的は本グループが構造的に満たす一方、プリセットを残すとメジャー移行で @types/node だけが黙って据え置かれ「実行は 24・型は 22」という #641 の鏡像が生まれるため",
       "matchPackageNames": ["node", "@types/node"],
       "groupName": "node"
     }
