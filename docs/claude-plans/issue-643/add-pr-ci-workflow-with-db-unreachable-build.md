@@ -100,21 +100,28 @@
 - コミットメッセージ: 修正が発生した場合のみ（内容に応じて `ci:`）
 
 ### Step 4: マージ後、Renovate の実物 PR で全ジョブ実行を確認する
-- [ ] **完了**
+- [x] **完了**（PR #658 / `static` 1m51s・`test` 2m23s・E2E 4 shard すべて pass）
 - 対象ファイル: なし
 - テスト戦略: テスト不要（実測確認）
 - 作業内容:
-  - Dependency Dashboard の rebase チェックボックスで既存の Renovate PR に `synchronize` イベントを発生させる
+  - ~~Dependency Dashboard の rebase チェックボックスで既存の Renovate PR に `synchronize` イベントを発生させる~~
+    - **計画の前提が誤っていた**。`renovate.json` の `dependencyDashboardApproval: true` により Renovate は承認まで PR を作らないため、rebase 対象の「既存の Renovate PR」が 1 件も存在しなかった。代わりに Dependency Dashboard（#639）の `renovate/types` のチェックボックスを入れ、PR #658 を新規に作らせて確認した
   - Renovate PR 上で `static` / `test` が実行され結果が出ることを確認する（受け入れ条件「renovate/types など実物で全ジョブが実行されること」）
+    - 確認済み。Renovate は GitHub App として独自のインストールトークンで PR を作るため、「`GITHUB_TOKEN` で作られた PR はワークフローを起動しない」という GitHub の無限ループ防止ルールに該当しない。Renovate を GitHub Actions 上でセルフホストする構成に変えるとこの前提は崩れる
 
 ### Step 5: 両 ruleset に required status checks を追加する
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: なし（GitHub リポジトリ設定。`gh api` で実施）
 - テスト戦略: テスト不要（リポジトリ設定）
 - 作業内容:
   - `protect-develop`（id: 12978563）と `protect-main`（id: 12978605）の両 ruleset に `required_status_checks` rule を追加し、`static` / `test` を指定する
+    - `strict_required_status_checks_policy: false`（base の最新性は要求しない）。strict 化の要否は #656 で扱う
+    - 既存ルール（`protect-develop`: deletion / non_fast_forward、`protect-main`: deletion / pull_request / non_fast_forward）は保持した
   - **実行前にユーザーへ最終確認を取る**（即座に open な全 PR へ適用されるため）
+    - 確認済み。適用時点で open な PR は 0 件だった（#658 を先にマージしてから適用した）
   - 追加後、適当な PR で「checks 待ちでマージがブロックされる」ことを確認する
+    - 本 PR（`docs/issue-643-completion`）で確認する
+- **副作用として認識した点**: `protect-develop` には `pull_request` ルールが無く develop への直接 push が可能だったが、required status checks の追加により事実上不可能になった。CI に `push` トリガーが無い（#656）ため、直接 push されたコミットには checks が存在せず条件を満たせないため。PR 経由の運用に徹している限り実害はなく、むしろ運用が機械で固定される
 
 ## 受け入れ条件
 
@@ -125,8 +132,10 @@
 - [x] PR に対して `pnpm build` が実行される
 - [x] **build は DB 非到達環境（`.invalid` ダミー）で実行され、それで通ること**（ADR-20260727-2fb の担保・#647 申し送りの履行）
   - run 30316520661 の build ログで `Generating static pages (5/5)` が完走し `ENOTFOUND` は 0 件。ルート一覧で `(features)` 配下は全て `ƒ`（Dynamic）
-- [ ] 上記が失敗したときに PR がマージできない（両 ruleset の required status checks）
-- [ ] Renovate の実物 PR で全ジョブが実行されることを確認した
+- [x] 上記が失敗したときに PR がマージできない（両 ruleset の required status checks）
+  - `protect-develop` / `protect-main` の両方に `static` / `test` を追加済み
+- [x] Renovate の実物 PR で全ジョブが実行されることを確認した
+  - PR #658（`renovate/types` / `@types/node` を `^22` → `^22.20.1`）で `static` / `test` / E2E がすべて起動し pass
 
 ## スコープ外（イシュー本文どおり + 本計画で追加）
 
