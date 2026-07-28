@@ -29,6 +29,12 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# ci.yml と同じ理由で GITHUB_TOKEN を読み取りのみに絞る（#643）。宣言が無いと
+# リポジトリ設定の default_workflow_permissions に従うため、ワークフロー側で閉じる。
+# artifact の upload / download は ACTIONS_RUNTIME_TOKEN を使うため contents: read で足りる。
+permissions:
+  contents: read
+
 jobs:
   test:
     name: e2e (shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})

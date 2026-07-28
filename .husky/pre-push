@@ -15,5 +15,9 @@ if [ -z "$CODE_FILES" ]; then
 fi
 
 # 全体型チェック → フルスイート（どちらも全プログラム検査なのでここに集約）
-pnpm tsc --noEmit
+# 裸の tsc ではなく pnpm typecheck（= next typegen && tsc --noEmit）を呼ぶ。
+# next-env.d.ts と .next/types/ は .gitignore された生成物なので、clean clone や
+# rm -rf .next/（E2E のトラブルシュートで実行する）の直後は裸の tsc が TS2307 で落ちる。
+# CI の static ジョブと同じスクリプトを共有し、ローカル緑 / CI 赤の乖離を作らない（#643）
+pnpm typecheck
 tsx prisma/seed-unit.ts && vitest run

@@ -1,0 +1,168 @@
+name: CI
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main, develop]
+    # paths フィルタは意図的に付けない。required status check は「起動しなかったジョブ」を
+    # 待ち続けてマージ不能にするため相性が悪く、Renovate の PR（差分が lock ファイルだけの
+    # ことがある）を確実に検査したい本ワークフローの目的とも衝突する。
+
+# 同一 PR への連続 push で古い run をキャンセルする。playwright.yml と同じ 2 行を
+# 直書きして方針を揃える（github.workflow の前置で他ワークフローと殺し合わない）。
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# GITHUB_TOKEN は checkout に必要な読み取りのみに絞る。宣言が無いとリポジトリ設定の
+# default_workflow_permissions（現在は read だが組織／リポジトリ側でいつでも write に
+# 変えられる値）に従うため、ワークフロー側で恒久的に閉じておく。
+# 本ワークフローは pnpm install で only-allow / onlyBuiltDependencies のビルドスクリプトを
+# 実行するため、書き込み権限付きトークンを同じ run に置かないことに意味がある。
+permissions:
+  contents: read
+
+jobs:
+  # ジョブ名は required status check の照合キー（表示名の文字列一致）。
+  # リネームは保護が無言で外れることを意味するため、識別子として扱い説明は step 名に持たせる。
+  static:
+    name: static
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      # DB を「与え忘れている」のではなく「到達不能を宣言している」。
+      # next build は静的と判定したページの Server Component をビルド時に実行するため、
+      # (features) 配下の動的レンダリング宣言（ADR-20260727-2fb）が壊れて静的化が再発すると
+      # ビルド中に DB クエリが走り、このジョブが赤くなる。DB 非到達ビルドが通ること自体が
+      # 静的化再発の回帰テストである（#644 / #647 の申し送り）。
+      # → getaddrinfo ENOTFOUND db-unreachable.invalid が出たら、まず (features) 配下の
+      #   静的化再発を疑うこと。DB 側の障害ではない。
+      # .invalid は RFC 2606 で名前解決されないことが保証される TLD。localhost にしないのは、
+      # 将来このジョブに postgres service を足した瞬間に担保が無言で消えるため
+      #（「偶然の到達不能」ではなく「宣言された到達不能」にする）。
+      # 未定義にしないのは、src/server/prisma.ts がモジュール評価時（動的ページも通る
+      # Collecting page data フェーズ）に new PrismaPg() を実行し、未定義時の挙動が
+      # @prisma/adapter-pg / pg のバージョン依存になるため。Renovate の PR を検査する CI が
+      # Renovate の更新対象ライブラリの未文書化挙動に依存する循環を避ける。
+      DATABASE_URL: postgresql://build:build@db-unreachable.invalid:5432/build_check
+      # better-auth も betterAuth() をモジュールスコープで実行する。secret 不在時の挙動
+      #（警告か throw か）はバージョン依存であり、better-auth 自体が Renovate の更新対象。
+      # env なし運用は依存更新 PR 上で「更新がビルドを壊した」ように見える偽陽性を生むため、
+      # 最初からダミーを決め打ちする。
+      BETTER_AUTH_SECRET: build-time-placeholder
+      BETTER_AUTH_URL: http://localhost:3000
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          # playwright.yml の 24.15.0 は Playwright 固有バグ（24.16.0 で archive 展開が
+          # ハング）由来のピンであり、この workload には適用されない。tsc / build が
+          # 既知良好なのはローカル pre-push で毎日実証されている 22 系のほうで、
+          # package.json の engines.node ^22 とも一致する。
+          # Node の単一ソース化（.node-version 導入）は #641 で扱う。
+          node-version: 22.14.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # 生成された型定義は lint / build のいずれもが参照する
+      - name: Generate Prisma Client
+        run: pnpm db:generate
+
+      - name: Lint
+        run: pnpm lint
+
+      # 独立した tsc --noEmit ステップは置いていない。型検査はこの build が担う。
+      # next build は tsconfig の include（**/*.ts）で定義されたプログラム全体を検査し、
+      # アプリのモジュールグラフ外にある scripts/ や *.test.ts も対象に含む
+      #（scripts/ に型エラーを仕込んだ検証で、tsc と同じファイル・同じ行を指摘して落ちることを確認済み）。
+      # 独立ステップは 1 run あたり約 19 秒を要するのに対し、単独で捕まえられるものが無かった。
+      #
+      # 引き換えに受け入れたリスク: next build の型検査範囲は Next.js の実装詳細であり、
+      # Next 自体が Renovate の更新対象である。将来 Next が検査範囲をアプリのグラフに絞ると、
+      # test / scripts の型検査が黙って消える（next.config.ts に typescript.ignoreBuildErrors を
+      # 足した場合も同様）。人間の push は .husky/pre-push の pnpm typecheck が
+      # 全プログラムを検査し続けるが、husky を通らない Renovate の PR ではここが唯一の網になる。
+      # Next のメジャー更新時は、この前提が維持されているかを確認すること。
+      #
+      # DB を与えない理由はジョブ env のコメントを参照（静的化再発の回帰テスト）。
+      - name: Build (type check + DB unreachable)
+        run: pnpm build
+
+  # static と同様、ジョブ名は required status check の照合キーとして扱う。
+  # ローカルでは pre-push のみが担保していたフルスイート（DB 統合テストを含む）を
+  # PR ごとに実行する。husky を通らない Renovate のコミットにはこれが唯一の網になる。
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          # .env.unit.example の DATABASE_URL と同じ DB 名にする（下の env も同じ）。
+          # サービスコンテナ / ジョブ env / .env.unit.example の三者を一致させると
+          # 接続先の候補が 1 つになり、「dotenv は既存の process.env を上書きしない」
+          # という既定（dotenv 自体も Renovate の更新対象）にテストの接続先が
+          # 依存しなくなる。ローカルの pnpm test:setup が作る DB 名とも一致する。
+          POSTGRES_DB: estimate_management_unit
+        ports:
+          - 5432:5432
+        # -U postgres を明示し、ロール未指定時の "role root does not exist" ログノイズを抑止
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # .env.unit.example の値と完全一致させる（理由は上の POSTGRES_DB のコメント参照）。
+      # ジョブ env にも置くのは、prisma migrate deploy が prisma.config.ts 経由で
+      # .env しか読まず、.env.unit のコピーだけでは migrate が接続先を失うため。
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/estimate_management_unit
+      BETTER_AUTH_SECRET: test-secret-for-ci-only
+      BETTER_AUTH_URL: http://localhost:3000
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          # static ジョブと同じ理由で 22.14.0（#641 で単一ソース化する）
+          node-version: 22.14.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # prisma/seed-unit.ts が existsSync ガードで .env.unit の存在を要求し、無いと
+      # process.exit(1) するためのダミー配置。接続先自体はジョブ env の DATABASE_URL が担う
+      # （値を一致させてあるので dotenv の優先順位は結果に影響しない）。
+      # vitest.config.ts は config({ path: ".env.unit" }) を呼ぶだけで、dotenv はファイル
+      # 不在でも警告を返して続行するため、vitest 側はこのファイルを要求していない。
+      - name: Prepare .env.unit
+        run: cp .env.unit.example .env.unit
+
+      - name: Generate Prisma Client
+        run: pnpm db:generate
+
+      - name: Run database migrations
+        run: pnpm exec prisma migrate deploy
+
+      # scripts/unit-setup.ts（pnpm test:setup）は DB 作成を含むが、サービスコンテナが
+      # 既に作成済みのため seed のみを直接実行する（playwright.yml の e2e:seed と同じ構造）
+      - name: Seed unit test database
+        run: pnpm exec tsx prisma/seed-unit.ts
+
+      - name: Run Vitest
+        run: pnpm exec vitest run
