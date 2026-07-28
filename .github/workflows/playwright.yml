@@ -38,8 +38,10 @@ permissions:
 jobs:
   test:
     name: e2e (shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
-    # 1 shard の正当な最悪ケース（全テストが落ち retries: 2 で 3 回ずつ実行 = 約 7 分 20 秒）
-    # から逆算した値。実測 2〜3 分に対する安全網として機能させる
+    # 1 shard の正当な最悪ケース（全テストが落ち retries: 2 で 3 回ずつ実行され、
+    # 準備一式込みで約 6 分 30 秒）から逆算した値。6 分割後のジョブ実測 3 分前後に対する
+    # 安全網として機能させる。shard 数を増やしても準備一式（約 70 秒）は縮まず最悪ケースの
+    # 下がり方が緩いため、4 → 6 の変更に伴う引き下げは行わない（→ #660）
     timeout-minutes: 20
     runs-on: ubuntu-latest
 
@@ -49,9 +51,12 @@ jobs:
       fail-fast: false
       matrix:
         # 分母の管理箇所を 1 つに絞るため shardTotal も matrix 軸として持つ。
-        # shard 数は可変パラメータ。実測を見て見直す（→ ADR-20260727-55f）
-        shardIndex: [1, 2, 3, 4]
-        shardTotal: [4]
+        # shard 数は可変パラメータ。実測を見て見直す（→ ADR-20260727-55f）。
+        # 6 は 4 分割の実測（テスト実行 141/143/152/166 秒・準備一式 約 70 秒/shard）から
+        # 約 45 秒の短縮を見込んで選んだ値。ランナー時間は約 1.24 倍になるが、
+        # PUBLIC リポジトリのため GitHub-hosted runner は無料（→ #660）
+        shardIndex: [1, 2, 3, 4, 5, 6]
+        shardTotal: [6]
 
     # PostgreSQLサービスコンテナ
     services:

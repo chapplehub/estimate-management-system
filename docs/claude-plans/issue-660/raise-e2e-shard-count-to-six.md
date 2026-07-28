@@ -111,7 +111,7 @@ ADR 側の記述更新を伴う。
     （決定＝shard 分割方式・`workers: 1` 据え置きは不変で、変わったのは決定の下の可変パラメータの値のため）
 
 ### Step 2: playwright.yml の shard を 6 分割に変更する
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: `.github/workflows/playwright.yml`
 - テスト戦略: テスト不要（CI 設定ファイル。検証は Step 3 の実 run で行う）
 - 作業内容:
