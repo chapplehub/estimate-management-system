@@ -133,6 +133,9 @@ pnpm 10 系は `minimumReleaseAge` のデフォルトが 0（無効）のため�
 3. **major 分離** — `groupName: null` でグループを解除し、承認とラベルを付与
 4. **ファミリー復活** — バージョン連動が必須の群（prisma / next / react / tailwind / vitest / playwright / commitlint）でグループを再構成
 
+> **2026-07-28 追記（#666）**
+> 1 段目（ベース `non-major`）は ADR-20260728-9kq で廃止した。ベース層が `group:monorepos`（`config:recommended` に含まれる）の付与するグループ名を後勝ちで上書きし、無関係なパッケージが 1 PR に混載されていたため。minor/patch のグルーピングはモノレポ単位に移行し、2〜4 段目の構造は維持している。0.x 除外（`matchCurrentVersion: "!/^0/"`）もベース層とともに失効した（0.x は構造的に個別 PR になる）。4 段目には conform / radix を追加した（追加基準「major が連動リリースされるか」は同 ADR を参照）。
+
 3 が major のグルーピングを一旦解除し、4 が該当ファミリーのみ再グループ化する。3 が設定した `dependencyDashboardApproval` と `major` ラベルは、4 が `groupName` しか触らないため維持される。
 
 **3 と 4 の順序を入れ替えると設計が壊れる。** React 19 → 20 のような major で `react` / `react-dom` / `@types/react` が分解され、片方だけマージできてしまう。この順序依存は `renovate.json` の `description` にも記載している。
@@ -165,6 +168,9 @@ npm 依存に加え、以下も Renovate の管理下に入る。
 初回スキャンで npm 53 件 / github-actions 6 件が検出された。CI の構成要素も依存であり、同じ規律で更新されるべきという判断による。
 
 副作用として、`non-major` グループに GitHub Actions の更新が混ざる。分離するかは実 PR を見て判断する（§保留事項 4）。
+
+> **2026-07-28 追記（#666）**
+> ベース `non-major` の廃止（→ ADR-20260728-9kq）により、GitHub Actions と npm 依存が同一 PR に混載される経路は消滅した（§保留事項 4 参照）。
 
 ## 影響
 
@@ -210,9 +216,15 @@ npm 依存に加え、以下も Renovate の管理下に入る。
 
 `matchManagers: ["npm"]` の追加で分離できる。CI 設定の変更とアプリ依存の更新が 1 PR に同居する状態を許容するかを、実 PR の混在具合を見てから判断する。
 
+> **解決済み（2026-07-28 / #666 → ADR-20260728-9kq）**
+> `non-major` の廃止により構造的に解消した。吸い込む土台ルールが消え、npm 依存と Actions が同一グループに入る経路がなくなったため、`matchManagers` による明示分離は行わない。
+
 ### 5. `group:monorepos` との重複
 
 `config:recommended` が含む `group:monorepos` が、手書きしていないグループ（`lucide-monorepo` など）を生成する。重複するルールは削減できる可能性があるが、初回は残して観察する。
+
+> **解決済み（2026-07-28 / #666 → ADR-20260728-9kq）**
+> 削減しない。重複に見える手書きルールは全件が「位置の情報」（major 分離ルールの後置による major 連動の復活）または「境界の情報」（next↔eslint-config-next 等、モノレポ横断の連動）を担っており、プリセットには構造的に表現できない。
 
 ### 6. commitlint の `header-max-length: 100`
 
