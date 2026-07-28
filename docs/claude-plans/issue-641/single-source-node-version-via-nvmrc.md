@@ -115,7 +115,7 @@ composite action（`.github/actions/setup`）への括り出しは**本 issue �
 - コミットメッセージ: `chore: Node 本体と型定義を同一グループで更新する`
 
 ### Step 3: 決定を ADR として記録する
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: `docs/adr/YYYYMMDD-sss-{slug}.md`（新規）、`docs/adr/INDEX.md`、`docs/adr/20260726-d3b-adopt-renovate-with-approval-and-two-layer-cooldown.md`、`.github/workflows/*.yml`（ADR 参照コメントの ID 確定）
 - テスト戦略: テスト不要（ドキュメント）
 - 作業内容:

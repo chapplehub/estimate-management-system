@@ -4,7 +4,7 @@
 |------|-----|
 | ステータス | 採用（一部保留） |
 | 起票日 | 2026-07-26 |
-| 最終更新日 | 2026-07-26 |
+| 最終更新日 | 2026-07-28 |
 
 ## コンテキスト
 
@@ -186,20 +186,11 @@ npm 依存に加え、以下も Renovate の管理下に入る。
 
 有効化すると、脆弱性由来の更新は承認・並列上限・スケジュールを無視して即座に PR 化される（automerge はされない）。対象となる直接依存は `next` / `better-auth` / `vitest` / `uuid` の 4 件。
 
-### 2. `engines.node` と CI の Node バージョンが不一致（#641 で追跡）
+### 2. `engines.node` と CI の Node バージョンが不一致（解決済み → ADR-20260728-44b）
 
-`package.json` は `engines.node: "^22"` / `@types/node: "^22"`、`.github/workflows/playwright.yml` は 24.15.0 を使用している。どちらに寄せるか未決。
+**#641 で解決した。** Node は 22 系に統一し、値は `.nvmrc` だけに書く（CI の 4 ジョブは `node-version-file` で参照する）。あわせて `helpers:disableTypesNodeMajor` を除去し、`node` と `@types/node` を同一グループとして更新する。詳細と根拠は ADR-20260728-44b を参照。
 
-`renovate.json` は `helpers:disableTypesNodeMajor` を含むため、`@types/node` の major 更新は抑止され **`^22` に固定されている**。これは「型は 22 系に留める」を設定として先に確定させた状態であり、Renovate はこの不一致を解消しない。
-
-したがって残作業は以下のいずれかの決定である。
-
-- **22 に寄せる** — CI の `node-version` を 22 系へ下げる。`renovate.json` は変更不要
-- **24 に寄せる** — `engines.node` と `@types/node` を 24 へ上げる。`helpers:disableTypesNodeMajor` が major 更新を抑止するため、**プリセットの一時解除または手動での引き上げが必要**になる
-
-固定そのものは害ではない（`engines.node` と型のメジャーが一致している状態は正しい）。問題は、CI がその宣言と異なるメジャーで動いている点にある。
-
-なお CI の 24.15.0 は移行漏れではなく、Node 24.16.0 で Playwright 1.58 のブラウザ展開がハングする問題を回避するための意図的なピン留めである（`.github/workflows/playwright.yml:57-59`）。`renovate.json` はこのピンの更新を抑止していないため、Dashboard 経由で承認すると再発しうる点も #641 で扱う。
+本 ADR に記した「`@types/node` は `^22` に固定されている」という状態は、上記の除去により解消している。型は本体（`.nvmrc` / `engines.node`）とグループで連動するようになった。
 
 ### 3. automerge への移行条件
 
