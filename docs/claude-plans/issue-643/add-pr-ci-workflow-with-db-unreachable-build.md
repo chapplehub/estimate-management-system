@@ -120,6 +120,7 @@
 
 - [x] PR に対して `pnpm lint` が実行される
 - [x] PR に対して `tsc --noEmit` が実行される
+  - 独立ステップではなく `pnpm build` が担う。`next build` は tsconfig の `include`（`**/*.ts`）で定義されたプログラム全体を検査し、`scripts/` や `*.test.ts` も対象に含むことを実測で確認した（→ `deviations.md` 逸脱 3）
 - [x] PR に対して Vitest のフルスイート（DB 統合テスト含む）が実行される
 - [x] PR に対して `pnpm build` が実行される
 - [x] **build は DB 非到達環境（`.invalid` ダミー）で実行され、それで通ること**（ADR-20260727-2fb の担保・#647 申し送りの履行）

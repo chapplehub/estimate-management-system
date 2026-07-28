@@ -70,22 +70,28 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # 生成された型定義は lint / tsc / build のいずれもが参照する
+      # 生成された型定義は lint / build のいずれもが参照する
       - name: Generate Prisma Client
         run: pnpm db:generate
 
       - name: Lint
         run: pnpm lint
 
-      # pnpm typecheck = next typegen && tsc --noEmit。typegen を含めるのは、
-      # next-env.d.ts（*.svg 等の module 宣言）と .next/types/routes.d.ts（typed routes）が
-      # どちらも生成物で .gitignore されているため。ローカルで裸の tsc が通るのは dev サーバや
-      # 過去のビルドが残した .next/ への暗黙依存で、クリーンな CI や clean clone には存在しない。
-      # 生成の要否を package.json の 1 箇所に集約し、CI と pre-push が同じ前提で走るようにする。
-      - name: Typecheck
-        run: pnpm typecheck
-
-      - name: Build (DB unreachable)
+      # 独立した tsc --noEmit ステップは置いていない。型検査はこの build が担う。
+      # next build は tsconfig の include（**/*.ts）で定義されたプログラム全体を検査し、
+      # アプリのモジュールグラフ外にある scripts/ や *.test.ts も対象に含む
+      #（scripts/ に型エラーを仕込んだ検証で、tsc と同じファイル・同じ行を指摘して落ちることを確認済み）。
+      # 独立ステップは 1 run あたり約 19 秒を要するのに対し、単独で捕まえられるものが無かった。
+      #
+      # 引き換えに受け入れたリスク: next build の型検査範囲は Next.js の実装詳細であり、
+      # Next 自体が Renovate の更新対象である。将来 Next が検査範囲をアプリのグラフに絞ると、
+      # test / scripts の型検査が黙って消える（next.config.ts に typescript.ignoreBuildErrors を
+      # 足した場合も同様）。人間の push は .husky/pre-push の pnpm typecheck が
+      # 全プログラムを検査し続けるが、husky を通らない Renovate の PR ではここが唯一の網になる。
+      # Next のメジャー更新時は、この前提が維持されているかを確認すること。
+      #
+      # DB を与えない理由はジョブ env のコメントを参照（静的化再発の回帰テスト）。
+      - name: Build (type check + DB unreachable)
         run: pnpm build
 
   # static と同様、ジョブ名は required status check の照合キーとして扱う。
