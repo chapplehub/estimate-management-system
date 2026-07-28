@@ -149,3 +149,4 @@
 | [20260727-2fb](20260727-2fb-explicit-dynamic-rendering-for-authenticated-routes.md) | 認証配下ルートの動的レンダリングを (features) レイアウトで既定宣言し、DB 非到達ビルドで担保する（CI の build に DB を与えないことが担保の本体） | 採用 | 2026-07-27 |
 | [20260727-55f](20260727-55f-e2e-ci-parallelization-by-shard.md) | E2E の CI 並列化は shard 分割で行い、shard 内は直列実行を維持する | 採用 | 2026-07-27 |
 | [20260728-44b](20260728-44b-node-version-unified-on-22-with-nvmrc-single-source.md) | Node のバージョンは 22 系に統一し、`.nvmrc` を唯一の宣言箇所とする | 採用 | 2026-07-28 |
+| [20260728-9kq](20260728-9kq-monorepo-unit-grouping-replaces-non-major-base.md) | packageRules の non-major ベース層を廃止し、モノレポ単位 + 連動必須ファミリーのグルーピングに再設計する | 採用 | 2026-07-28 |

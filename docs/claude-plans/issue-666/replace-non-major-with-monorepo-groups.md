@@ -55,7 +55,7 @@
 - コミットメッセージ: `ci: renovate の non-major グループを廃止しモノレポ単位グループ化に移行する`（ボディに設計判断の要点を記載）
 
 ### Step 2: ADR の作成と d3b への追記
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: `docs/adr/20260728-{id}-*.md`（新規）、`docs/adr/20260726-d3b-adopt-renovate-with-approval-and-two-layer-cooldown.md`、`docs/adr/INDEX.md`
 - テスト戦略: テスト不要（ドキュメント）
 - 作業内容:
