@@ -127,7 +127,7 @@ composite action（`.github/actions/setup`）への括り出しは**本 issue �
 - コミットメッセージ: `docs: Node バージョン方針を ADR として記録する`
 
 ### Step 4: CI 緑を確認し、ローカル Node を追随させる
-- [ ] **完了**
+- [x] **完了**（PR #661 / run 30336744147・30336744279）
 - 対象ファイル: なし（コミットを伴わない）
 - テスト戦略: テスト不要（検証作業）
 - 作業内容:
@@ -136,6 +136,11 @@ composite action（`.github/actions/setup`）への括り出しは**本 issue �
   - 緑を確認した**後**に、ローカルを `nvm install`／`nvm alias default` で `.nvmrc` の版へ追随させる
   - 赤い場合は `.nvmrc` の 1 行を戻せば Step 1 だけをリバートできる（Step 2 / 3 は独立）
 - コミットメッセージ: なし
+- **結果**:
+  - 6 ジョブすべて緑（`static` 1m43s / `test` 2m40s / e2e shard 1〜4 が 3m36s〜4m4s / `e2e report` 22s）
+  - `setup-node` のログで `node-version-file: .nvmrc` → `Found in cache @ /opt/hostedtoolcache/node/22.23.1/x64` → `node: v22.23.1` を確認
+  - `playwright install --with-deps chromium` は 22 系で約 30 秒で完了（Chrome for Testing 145 / ffmpeg / headless-shell の 3 点とも展開済み）。24.16.0 で観測されたハングは再現しない
+  - ローカルは `nvm install`（v22.23.1）＋ `nvm alias default 22.23.1` で追随済み。`.bashrc` は `nvm.sh` を `--no-use` なしで読むため新規シェルは自動で 22.23.1 になる（既存シェルのみ `nvm use` が要る）
 
 ### Step 5: マージ後に Renovate のグループ挙動を確認する
 - [ ] **完了**
