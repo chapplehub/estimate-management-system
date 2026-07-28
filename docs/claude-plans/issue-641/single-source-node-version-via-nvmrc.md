@@ -93,7 +93,7 @@ composite action（`.github/actions/setup`）への括り出しは**本 issue �
 ## ステップ
 
 ### Step 1: `.nvmrc` を新設し CI 4 ジョブを単一ソース化する
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: `.nvmrc`（新規）、`.github/workflows/ci.yml`、`.github/workflows/playwright.yml`
 - テスト戦略: テスト不要（設定ファイル。検証は本 PR の CI 実行が担う）
 - 作業内容:

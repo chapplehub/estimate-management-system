@@ -17,6 +17,10 @@ on:
       - "components.json"
       - "public/**"
       - ".github/workflows/playwright.yml"
+      # Node の版が変わる PR（Renovate の node グループ）は差分が .nvmrc だけになる。
+      # 挙げないと、E2E でこそ検証すべき変更（Playwright のブラウザ展開）で
+      # 本ワークフローが起動しない
+      - ".nvmrc"
 
 # 同一 PR への連続 push で古い run をキャンセルし、ランナーの空費を防ぐ。
 # run 単位（トップレベル）に置くのは、shard と統合ジョブをまとめて畳むため。
@@ -84,10 +88,8 @@ jobs:
 
       - uses: actions/setup-node@v5
         with:
-          # Node 24.16.0 で Playwright(1.58) の "extracting archive" がハングするため、
-          # 先週まで lts/* が解決していた既知良好版に固定する（浮動による非決定性を排除）。
-          # 参照: docs/claude-plans/issue-284/deviations.md / CI 調査ログ
-          node-version: 24.15.0
+          # Node の版は .nvmrc が単一ソース
+          node-version-file: .nvmrc
           cache: pnpm
 
       - name: Install dependencies
@@ -137,7 +139,8 @@ jobs:
 
       - uses: actions/setup-node@v5
         with:
-          node-version: 24.15.0
+          # Node の版は .nvmrc が単一ソース
+          node-version-file: .nvmrc
           cache: pnpm
 
       - name: Install dependencies
