@@ -6,6 +6,11 @@
 | 起票日 | 2026-07-28 |
 | 最終更新日 | 2026-07-28 |
 
+## 改訂履歴
+
+- 2026-07-28 初版（`.nvmrc` へ単一ソース化。`engines.node: ^22` は「互換性の宣言」として残した）
+- 2026-07-28 `engines.node` を削除（#664）。§根拠「なぜ `engines.node: ^22` を残すか」を撤回し、選択肢 H と「なぜ `engines.node` を持たないか」で差し替え。**Node の版を宣言する箇所は `.nvmrc` のみ**となり、本 ADR のタイトルが字義どおり成立する状態になった
+
 ## コンテキスト
 
 Node のメジャーバージョンが、宣言と実行で割れていた。
@@ -50,9 +55,29 @@ LTS の最新メジャーに合わせる案。24 系は本 ADR 起票時点で 2
 
 ### G. `helpers:disableTypesNodeMajor` を外し、`node` と `@types/node` を 1 グループにする（採用）
 
+### H〜K: `engines.node` の扱い（2026-07-28 改訂 / #664）
+
+初版が `engines.node: ^22` を残した結果、Renovate が `rangeStrategy: "bump"`（ADR-20260726-d3b D2）により `^22` → `^22.23.1` の更新を提案し、**差分が `engines.node` 1 行だけの PR** が立った。`.nvmrc` と `@types/node` は 22 系最新のため含まれない。以下は #664 で検討した 4 案である。
+
+### H. bump を受け入れる（不採用 / #664 A）
+
+追加設定は不要。ただし `engines.node` は実質「最後に確認した版以上」を意味することになり、初版が置いた「メジャー範囲の宣言」という位置づけは放棄される。
+
+### I. `matchDepTypes: ["engines"]` で rangeStrategy の対象外にする（不採用 / #664 B）
+
+`^22` を維持する例外ルールを `packageRules` に足す案。24 移行時に `engines.node` を手で書き換える必要が残り、既存の `node` グループとの合成順序も検証対象になる。
+
+### J. 「動作を確認済みの最小版」と定義し直す（不採用 / #664 C）
+
+設定は変えず、記録の側を実態に合わせる案。結果は H と同じ。
+
+### K. `engines.node` を削除する（採用 / #664 D）
+
+Node の版を宣言する箇所を `.nvmrc` だけにする。
+
 ## 決定
 
-**Node は 22 系（22.23.1）に統一し、その値は `.nvmrc` だけに書く。** CI の 4 ジョブは `node-version-file: .nvmrc` で参照し、Renovate は `node` と `@types/node` を同一グループとして更新する。
+**Node は 22 系（22.23.1）に統一し、その値は `.nvmrc` だけに書く。** CI の 4 ジョブは `node-version-file: .nvmrc` で参照し、Renovate は `node` と `@types/node` を同一グループとして更新する。`package.json` に `engines.node` は置かない（2026-07-28 改訂 / #664）。
 
 ## 根拠
 
@@ -74,11 +99,35 @@ C は今回の症状を消すが、原因である「1 つの事実を 5 箇所�
 
 `.nvmrc` に `22` と書くと、CI は実行のたびに 22 系の最新を引き当てる。これは `playwright.yml` が `lts/*` を捨てて 24.15.0 に固定した判断（浮動による非決定性の排除）と正面から衝突する。加えて Renovate の `node` versioning は range 非対応のため、`^22` のような表記自体が書けず、メジャー表記ではパッチ更新の PR も出なくなる。
 
-### なぜ `engines.node: ^22` を残すか
+### なぜ `engines.node` を持たないか（H〜K）
 
-`.nvmrc`（実際に走らせる 1 つの版）と `engines.node`（動作を保証するメジャー範囲）は粒度が違い、重複ではない。前者は再現性、後者は互換性の宣言を担う。
+> **撤回された初版の根拠（2026-07-28 / #664）**
+> 初版はこう書いていた ——「`.nvmrc`（実際に走らせる 1 つの版）と `engines.node`（動作を保証するメジャー範囲）は粒度が違い、重複ではない。前者は再現性、後者は互換性の宣言を担う。」
+> この粒度論は**ライブラリのメンタルモデル**であり、`engines` の受け手が外部に存在することを暗黙の前提にしていた。本プロジェクトにその受け手はいない。
 
-`.npmrc` に `engine-strict=true` を足してローカルでも強制する案は採らなかった。効くのは `pnpm install` の瞬間だけで、`test` / `build` / `e2e` は誤った Node でも走る。取り違えの防止はシェル側の nvm 自動切り替えで解くほうが全コマンドに効く。
+`engines.node` に想定される読み手を全て当たると、実効的なものが残らない。
+
+| 想定される読み手 | 実態 |
+|---|---|
+| レジストリ経由の利用者 | `package.json` は `private: true`。publish されないため、宣言を受け取る他者が存在しない |
+| `pnpm install`（自分たち） | `.npmrc` がなく `engine-strict` 未設定。不一致でも **WARN 1 行を出して exit 0** で完了する（後述の実測） |
+| CI | 4 ジョブとも `node-version-file: .nvmrc`。実行版の決定に `engines` は関与しない |
+| デプロイ先 | `vercel.json` / `Dockerfile` / compose のいずれも存在しない |
+
+pnpm 10.28.2（Node v22.23.1）で `engines: {"node": "^18"}` の最小 `package.json` に対し `pnpm install` を実行した実測:
+
+```
+ WARN  Unsupported engine: wanted: {"node":"^18"} (current: {"node":"v22.23.1","pnpm":"10.28.2"})
+Done in 356ms          ← exit code 0
+```
+
+初版は「効くのは `pnpm install` の瞬間だけ」と書いたが、正確にはその瞬間ですら**強制ではなく警告**である。したがって残る読み手は Renovate だけで、H / I / J はいずれも「受け手のいない宣言の表記をどう保つか」を論じることになる。K はその宣言自体を消す。
+
+`.npmrc` に `engine-strict=true` を足してローカルでも強制する案を採らない判断は、初版から変えていない。効くのは `pnpm install` の瞬間だけで、`test` / `build` / `e2e` は誤った Node でも走る。取り違えの防止はシェル側の nvm 自動切り替えで解くほうが全コマンドに効く。**強制しないと決めた以上、残る `engines` は「効かないと分かったうえで置いてある宣言」になる** —— この帰結を最後まで辿ったのが K である。
+
+I（Renovate 側で例外を作る）ではなく K を採るのは、I が「2 つの ADR の衝突を設定で調停する」のに対し、K は**衝突する対象そのものを消す**ためである。`rangeStrategy: "bump"` は依存パッケージにだけ効く状態に戻り、ADR-20260726-d3b D2 の「宣言が実態の下限を正しく記述する」という意図は無傷で残る。
+
+将来 Vercel / Docker 等へデプロイする際に Node の版をプラットフォームへ伝える必要が生じたら、その時点で**そのプラットフォームが解釈できる形式**で書く（例えば Vercel が読むのはメジャー指定であり、`^22` のような range 表記ではない）。現在の `^22` を保存しておくことに前払いの価値はない。
 
 ### なぜ `helpers:disableTypesNodeMajor` を外すか（F vs G）
 
@@ -90,12 +139,15 @@ F を採った場合、24 へ移行する際に `.nvmrc` / `engines.node` の ma
 
 ### 副次効果: Node の更新経路が 1 本になる
 
-ワークフローから値が消えることで、Renovate の `github-actions` manager が `with: node-version` から Node を検出する経路が消滅する。Node の更新は `nvm` manager（`.nvmrc`）と `npm` manager（`engines.node` / `@types/node`）だけになり、3 者が 1 グループにまとまる。
+ワークフローから値が消えることで、Renovate の `github-actions` manager が `with: node-version` から Node を検出する経路が消滅する。さらに `engines.node` の削除（#664）により `npm` manager が Node 本体を検出する経路も消え、**Node 本体の更新は `nvm` manager（`.nvmrc`）ただ 1 本**になる。`node` グループは `.nvmrc` と `@types/node` の 2 者で構成される。
+
+この状態では、Node の更新 PR は必ず `.nvmrc` の差分を伴う。`playwright.yml` の `paths` に `.nvmrc` が挙がっている限り、Node が動く PR で E2E が起動しないことは原理的に起こらない（初版では `engines` だけが動く PR がこの穴に該当し、実際に #664 の契機となった PR がそれだった）。
 
 ## 影響
 
-- **Node 22 は 2027-04-30 に EOL を迎える。** 24（以降）への移行はいずれ必須であり、本 ADR は移行を不要にするものではなく、移行を `.nvmrc` の 1 行 + `engines.node` + `@types/node` の 1 グループに縮約するものである。
+- **Node 22 は 2027-04-30 に EOL を迎える。** 24（以降）への移行はいずれ必須であり、本 ADR は移行を不要にするものではなく、移行を `.nvmrc` の 1 行 + `@types/node` の 1 グループに縮約するものである。
 - **24.16.0 の Playwright ハングは、既に解消している可能性が高い。** 本 ADR 起票時点で 24 系は 24.18.0 まで進んでいる。移行時にこの ADR を読んだ人が「24 は地雷」と誤解しないこと。当時の観測は 24.16.0 + Playwright 1.58 の組み合わせに対するものであり、移行時は再検証すること。
 - **`playwright.yml` の `paths` に `.nvmrc` を含める必要がある。** 単一ソース化により Node 更新 PR の差分は `.nvmrc` だけになる。挙げ忘れると、E2E でこそ検証すべき変更（Playwright のブラウザ展開）で E2E が起動しない。同型の穴は、`setup-node` を composite action（`.github/actions/**`）へ括り出す際にも空く。
 - **ローカル環境は `.nvmrc` への追随が必要になる。** `nvm use` は `.nvmrc` を読むが、インストールされていない版は自動では入らない（`nvm install` が要る）。
-- **Node のメジャー更新 PR は 3 ファイル（`.nvmrc` / `package.json` の `engines` と `@types/node`）を同時に変更する。** レビュー時は 3 者が揃っていることを確認する。片方だけの PR が出た場合はグループ設定が壊れている。
+- **Node のメジャー更新 PR は 2 ファイル（`.nvmrc` / `package.json` の `@types/node`）を同時に変更する。** レビュー時は両者が揃っていることを確認する。片方だけの PR が出た場合はグループ設定が壊れている。24 へ移行する際に `engines.node` を手で書き換える作業は発生しない（選択肢 I を採っていた場合は残っていた）。
+- **Node の実行版に対する機械的なガードは、リポジトリ内に存在しない。** `engines.node` は元々 WARN しか出しておらず実質ガードではなかったが、削除により「ガードがあるように見える記述」もなくなった。取り違えの防止は各自のシェルの nvm 自動切り替えに依存する。CI は `.nvmrc` を読むため影響を受けない。
