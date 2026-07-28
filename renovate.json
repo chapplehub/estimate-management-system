@@ -2,6 +2,7 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended",
+    "group:monorepos",
     "security:minimumReleaseAgeNpm",
     ":semanticCommitTypeAll(chore)",
     ":maintainLockFilesMonthly"
@@ -12,12 +13,6 @@
   "rangeStrategy": "bump",
   "labels": ["dependencies"],
   "packageRules": [
-    {
-      "description": "ベース: 0.x 系を除く minor/patch をまとめる。以降のルールが上書きする前提の土台",
-      "matchUpdateTypes": ["minor", "patch"],
-      "matchCurrentVersion": "!/^0/",
-      "groupName": "non-major"
-    },
     {
       "description": "型定義は実装と分離してまとめる（DefinitelyTyped は高頻度・型のみで実行時リスクなし）",
       "matchPackageNames": ["@types/**"],
@@ -69,6 +64,16 @@
       "description": "Node 本体（.nvmrc）と型定義は同時に上げる。node という depName は nvm manager が .nvmrc から検出するものであり、engines.node は #664 で削除済み（→ ADR-20260728-44b）。この matchPackageNames から node を外すと .nvmrc と @types/node が別 PR に割れる。helpers:disableTypesNodeMajor を外したのは、型が本体に先行するのを防ぐという同プリセットの目的は本グループが構造的に満たす一方、プリセットを残すとメジャー移行で @types/node だけが黙って据え置かれ「実行は 24・型は 22」という #641 の鏡像が生まれるため",
       "matchPackageNames": ["node", "@types/node"],
       "groupName": "node"
+    },
+    {
+      "description": "conform は react / zod アダプタが同一バージョンで出るロックステップ型。minor/patch は group:monorepos でも束なるが、major ルールの後ろに置くことで major でも連動させる（この位置でないと後勝ちで分解され、アダプタ片方だけマージできてしまう）",
+      "matchPackageNames": ["@conform-to/**"],
+      "groupName": "conform"
+    },
+    {
+      "description": "radix-ui は統合パッケージが各プリミティブを内包再エクスポートするため、片方だけ上げると同一プリミティブの新旧 2 実体が共存しうる。conform と同じく major ルールの後ろに置いて major でも連動させる",
+      "matchPackageNames": ["radix-ui", "@radix-ui/**"],
+      "groupName": "radix-ui"
     }
   ]
 }
