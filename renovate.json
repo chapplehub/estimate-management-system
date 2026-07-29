@@ -7,9 +7,16 @@
     ":semanticCommitTypeAll(chore)",
     ":maintainLockFilesMonthly"
   ],
+  "description": [
+    "rebaseWhen は両 ruleset（protect-develop / protect-main）の strict_required_status_checks_policy: true と対で、片方だけ変えてはならない（→ ADR-20260729-d8c）。strict 化は base が古い PR のマージを禁じるため、誰かが rebase しない限り Renovate の PR は永久にマージできなくなる。その rebase を Renovate 自身にやらせるのがこの設定。",
+    "既定の auto でも「ブランチが最新であることを要求するリポジトリ」を検出して behind-base-branch へ切り替わる建て付けだが、この検出は classic branch protection 前提で作られており Rulesets では既知の不具合報告がある（renovatebot/renovate discussion #38302）。本リポジトリは ruleset 運用のため明示する。",
+    "検出に失敗したときの帰結が悪いことが明示の主因である。PR が stale のまま放置され、GitHub の Update branch を人間が押すとユーザー名義のコミットが PR ブランチに積まれ、Renovate はそのブランチの更新を一切やめる。PR は残りマージもできるが以降更新されず、close するまで同じ依存の新しい PR も作られない。気づく手段が実質ない。",
+    "ruleset は GitHub 側にありリポジトリからは見えない。実際の値は gh api repos/:owner/:repo/rulesets/12978563 で確認すること。"
+  ],
   "timezone": "Asia/Tokyo",
   "dependencyDashboardApproval": true,
   "prConcurrentLimit": 3,
+  "rebaseWhen": "behind-base-branch",
   "rangeStrategy": "bump",
   "labels": ["dependencies"],
   "packageRules": [
