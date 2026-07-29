@@ -161,13 +161,17 @@ no-op でなくなるのは、main に hotfix が直接入って develop → mai
 
 本 ADR は決定の全体を記述しているが、**起票時点で適用済みなのは A のみ**である。3 箇所のうち 2 箇所は未適用の状態でこの ADR がマージされる。
 
-| 箇所 | 起票時点 |
-|---|---|
-| `ci.yml` の `push` トリガー ＋ SHA 単位 concurrency | 適用済み（本 ADR と同じ PR） |
-| `renovate.json` の `rebaseWhen` | **未適用** |
-| 両 ruleset の `strict_required_status_checks_policy` | **未適用**（`false` のまま） |
+| 箇所 | 起票時点 | 2026-07-29 現在 |
+|---|---|---|
+| `ci.yml` の `push` トリガー ＋ SHA 単位 concurrency | 適用済み（本 ADR と同じ PR） | 適用済み |
+| `renovate.json` の `rebaseWhen` | **未適用** | 適用済み（#679） |
+| 両 ruleset の `strict_required_status_checks_policy` | **未適用**（`false` のまま） | 適用済み（`true`） |
 
 順序は「A →実物で検証→ `rebaseWhen` → strict 化」であり、間に検証を挟むため同一 PR にはならない。進捗は `docs/claude-plans/issue-656/` を参照。**ruleset の実際の値は `gh api repos/:owner/:repo/rulesets/12978563` で確認できる** — この ADR の記述ではなく、そちらが正本である。
+
+strict 化の適用直後、base が develop の open PR 4 件（Renovate）はいずれも `mergeable=MERGEABLE`（git 的な競合なし）のまま `mergeStateStatus=BEHIND`（マージ不可）へ変化した。この組み合わせが本 ADR の対象そのものであり、strict 化前は同じ 4 件が `CLEAN` としてマージ可能だった。
+
+**A と B は同じ材料で前後を比較して検証してある**（#656 の Step 4 / Step 8）。同一の意味的衝突（export のリネームと旧名を import する新規テスト、同じ base から分岐した 2 PR）を strict 化の前後で流したところ、前は Y がマージできて develop が赤くなり（A が検知した）、後は Y のマージが `the head branch is not up to date with the base branch` で止まり、"Update branch" 後に PR 段階で `test` が赤くなった（B が防いだ）。**両方とも「Y の checks は緑のまま再実行されない」という同じ入力に対する結果である。**
 
 ## 影響
 

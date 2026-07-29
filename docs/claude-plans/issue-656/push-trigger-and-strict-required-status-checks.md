@@ -212,7 +212,7 @@ concurrency:
 
 ### Step 7: 両 ruleset の required status checks を strict 化する
 
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: なし（GitHub API 操作、リポジトリ外）
 - テスト戦略: テスト不要（リポジトリ外の設定変更）
 - 作業内容:
@@ -220,19 +220,38 @@ concurrency:
   - `required_status_checks` の中身（`static` / `test`）と他のルール（`deletion` / `non_fast_forward` / `pull_request`）は変更しない
   - 適用後、両 ruleset を読み直して差分が意図どおりであることを確認する
 - コミットメッセージ: なし（リポジトリに変更が生じないため）
+- 実施結果（2026-07-29）:
+  - 適用前に現在の ruleset を `gh api` で取得し、`jq` で `strict_required_status_checks_policy` のみを書き換えて PUT した（手打ちの転記ミスを避けるため）。`name` / `target` / `enforcement` / `conditions` / `bypass_actors` も現在値を明示して送っている（PUT が省略フィールドをどう扱うかを保証に頼らないため）
+  - 適用後に再取得して差分を取り、**両 ruleset とも変更は当該 1 行のみ**であることを確認した
+  - 適用直後、base が develop の open PR 4 件（#670 / #671 / #672 / #673、いずれも Renovate）が `mergeable=MERGEABLE` のまま `mergeStateStatus=BEHIND` へ変化した。strict が実際に効いていることの直接の証拠であり、Step 8 の題材を作る前に確認できた
 
 ### Step 8: 検証 B — 同じ操作が事前に阻止されることを確認する
 
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: `src/server/__tests__/helpers/` 配下（使い捨て）
 - テスト戦略: テスト不要（CI 実地検証）
 - 作業内容:
   - Step 4 と同じ材料で PR X' / Y' を作り直す
   - 確認項目:
-    - [ ] X' をマージした後、Y' のマージが "This branch is out-of-date with the base branch" で**止まる**
-    - [ ] Y' で "Update branch" を実行すると CI が再実行され、今度は **PR 段階で赤くなる**（事後検知が事前防止に変わったことの確認）。赤くなるのは `test` ジョブである（`static` ではない。理由は `deviations.md` 逸脱 1）
+    - [x] X' をマージした後、Y' のマージが "This branch is out-of-date with the base branch" で**止まる**
+    - [x] Y' で "Update branch" を実行すると CI が再実行され、今度は **PR 段階で赤くなる**（事後検知が事前防止に変わったことの確認）。赤くなるのは `test` ジョブである（`static` ではない。理由は `deviations.md` 逸脱 1）
   - X' / Y' は close し、develop に何も残さない（X' をマージしていた場合は revert する）
 - コミットメッセージ: 使い捨て PR 側のため計画対象外
+- 実施結果（2026-07-29）:
+
+  | 項目 | 検証 A（strict 化前 / Step 4） | 検証 B（strict 化後 / Step 8） |
+  |---|---|---|
+  | 使い捨て PR | X=#675 / Y=#676 | X'=#680 / Y'=#681 |
+  | 両者の base | `297617fa`（共通） | `54ace5f4`（共通） |
+  | X マージ後の Y の checks | 再実行されず緑のまま | **同左**（run 30415795519 のまま） |
+  | X マージ後の Y の状態 | `MERGEABLE` / `CLEAN` | `MERGEABLE` / **`BEHIND`** |
+  | Y のマージ | **通った** → develop が赤化 | **拒否**（`the head branch is not up to date with the base branch`） |
+  | develop の verdict | `f500a1a2` = failure | **一度も赤くならず**（`742cc824` = success） |
+
+  - **確認項目 1**: Y'(#681) は checks が緑のまま `BEHIND` になり、`gh pr merge 681 --squash` が `the head branch is not up to date with the base branch` で拒否された（Web UI の "This branch is out-of-date with the base branch" と同じ判定）。**検証 A とまったく同じ入力に対して、結果だけが反転した**
+  - **確認項目 2**: "Update branch"（`PUT /repos/:owner/:repo/pulls/681/update-branch`）後に CI が新しい run（30415980679）で再実行され、`static` = pass / `test` = fail。失敗内容は `AssertionError: expected undefined to be 1000`（`ensureEstimateFixtures.test.ts:7`）。予測どおり `test` 側で捕まった
+  - 失敗が `undefined` として現れる点は題材の性質による。存在しない named export は TypeScript なら TS2724 だが、Vite/esbuild は型を捨てて実行するため実行時に `undefined` になる。**本番コードだけが壊れる意味的衝突は現状どのジョブも捕まえられない**ため、#678（独立した型検査の復活）の優先度を裏づける材料になる
+  - 後始末: Y'(#681) は close、X'(#680) は #682 で revert 済み。develop（`e8f4f737`）は検証前と同じ内容に戻っている
 
 ### Step 9: イシューをクローズし、派生 issue を起票する
 
