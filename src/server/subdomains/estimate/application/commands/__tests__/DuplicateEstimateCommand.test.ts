@@ -1,6 +1,6 @@
 import {
   ensureEstimateFixtures,
-  FIXTURE_PRODUCT_UNIT_PRICE_YEN,
+  FIXTURE_PRODUCT_UNIT_PRICE,
   type EstimateFixtureIds,
 } from "@server/__tests__/helpers/ensureEstimateFixtures";
 import prisma from "@server/prisma";
@@ -104,7 +104,7 @@ describe("DuplicateEstimateCommand", () => {
       taxRoundingType: TaxRoundingType.ROUND_DOWN,
       createdBy: new EmployeeId(ids.employeeId),
       departmentId: new DepartmentId(ids.departmentId),
-      // 単価はマスタ（FIXTURE_PRODUCT_UNIT_PRICE_YEN=1000）と異なる値にし、複製先で再解決されることを観測可能にする
+      // 単価はマスタ（FIXTURE_PRODUCT_UNIT_PRICE=1000）と異なる値にし、複製先で再解決されることを観測可能にする
       variations: [variation(1, "商品A", 777), variation(2, "商品B", 555)],
     });
   }
@@ -140,11 +140,11 @@ describe("DuplicateEstimateCommand", () => {
     expect(result.estimateType.value).toBe("NEW");
 
     // 選択順を保持し連番に振り直し、単価は複製先条件で価格決定により再解決される（複製元の 555 を
-    // 引き継がず、マスタの FIXTURE_PRODUCT_UNIT_PRICE_YEN に解決される・#431）
+    // 引き継がず、マスタの FIXTURE_PRODUCT_UNIT_PRICE に解決される・#431）
     expect(result.variations).toHaveLength(2);
     expect(result.variations[0].variationNumber).toBe(1);
     expect(result.variations[0].items[0].itemName.value).toBe("商品B");
-    expect(result.variations[0].items[0].unitPrice.majorUnits).toBe(FIXTURE_PRODUCT_UNIT_PRICE_YEN);
+    expect(result.variations[0].items[0].unitPrice.majorUnits).toBe(FIXTURE_PRODUCT_UNIT_PRICE);
 
     // 系譜が選択順で保存される
     const copyRows = await prisma.estimateVariationCopy.findMany({
