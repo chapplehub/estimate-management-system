@@ -132,7 +132,7 @@ concurrency:
 
 ### Step 1: ci.yml に push トリガーと commit 単位の concurrency を追加する
 
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: `.github/workflows/ci.yml`
 - テスト戦略: テスト不要（設定ファイル）
 - 作業内容:
