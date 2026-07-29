@@ -147,7 +147,7 @@ concurrency:
 
 ### Step 2: ADR を起票し INDEX に追記する
 
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: `docs/adr/20260729-d8c-detect-and-prevent-stale-base-merges.md`（新規）、`docs/adr/INDEX.md`
 - テスト戦略: テスト不要（ドキュメント）
 - 作業内容:
