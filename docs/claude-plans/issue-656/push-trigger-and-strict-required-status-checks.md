@@ -212,7 +212,7 @@ concurrency:
 
 ### Step 7: 両 ruleset の required status checks を strict 化する
 
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: なし（GitHub API 操作、リポジトリ外）
 - テスト戦略: テスト不要（リポジトリ外の設定変更）
 - 作業内容:
@@ -220,6 +220,10 @@ concurrency:
   - `required_status_checks` の中身（`static` / `test`）と他のルール（`deletion` / `non_fast_forward` / `pull_request`）は変更しない
   - 適用後、両 ruleset を読み直して差分が意図どおりであることを確認する
 - コミットメッセージ: なし（リポジトリに変更が生じないため）
+- 実施結果（2026-07-29）:
+  - 適用前に現在の ruleset を `gh api` で取得し、`jq` で `strict_required_status_checks_policy` のみを書き換えて PUT した（手打ちの転記ミスを避けるため）。`name` / `target` / `enforcement` / `conditions` / `bypass_actors` も現在値を明示して送っている（PUT が省略フィールドをどう扱うかを保証に頼らないため）
+  - 適用後に再取得して差分を取り、**両 ruleset とも変更は当該 1 行のみ**であることを確認した
+  - 適用直後、base が develop の open PR 4 件（#670 / #671 / #672 / #673、いずれも Renovate）が `mergeable=MERGEABLE` のまま `mergeStateStatus=BEHIND` へ変化した。strict が実際に効いていることの直接の証拠であり、Step 8 の題材を作る前に確認できた
 
 ### Step 8: 検証 B — 同じ操作が事前に阻止されることを確認する
 
