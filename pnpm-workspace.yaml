@@ -8,3 +8,5 @@ minimumReleaseAge: 4320 # 3 days (分単位)
 minimumReleaseAgeExclude:
   # Renovate security update: uuid@13.0.1
   - uuid@13.0.1
+  # Renovate security update: better-auth@1.6.13
+  - better-auth@1.6.13
