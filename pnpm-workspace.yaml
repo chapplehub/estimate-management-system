@@ -12,3 +12,5 @@ minimumReleaseAgeExclude:
   - better-auth@1.6.13
   # Renovate security update: vitest@4.1.0
   - vitest@4.1.0
+  # Renovate security update: next@16.2.11
+  - next@16.2.11
