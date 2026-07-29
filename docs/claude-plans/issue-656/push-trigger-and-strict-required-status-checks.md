@@ -185,7 +185,7 @@ concurrency:
     - [x] develop の push run が赤くなる（`f500a1a2` = `failure`）
     - [x] commit 一覧に「緑 → 赤」の境界が現れ、Y が犯人として一意に読める（`297617fa` 緑 → `4c7a9d16` 緑 → `f500a1a2` 赤。3 コミットすべてに verdict が残った ＝ SHA 単位 concurrency が効いている）
     - [ ] ~~`static` ジョブで落ちる~~ → **前提が誤りだった。落ちたのは `test`**（`next build` は `*.test.ts` / `__tests__/` の診断を捨てる。→ 逸脱 1・#678）
-    - [ ] **失敗通知が実際にメールで届く**（ユーザー確認待ち。届かない場合は本 issue のスコープを広げず別 issue に切り出す）
+    - [x] **失敗通知が実際にメールで届く**（確認済み。件名 `[chapplehub/estimate-management-system] CI workflow run` / 本文 `CI: Some jobs were not successful`。ジョブ単位の内訳（`CI / test` 失敗・`CI / static` 成功）とアノテーション件数まで載るため、メールを開いた時点でどちらの検査が落ちたかが読める。能動通知を足す必要は無いという Step の判断は妥当だった）
 - コミットメッセージ: 使い捨て PR 側のため計画対象外（`test:` 型で任意）
 
 ### Step 5: 検証で壊した状態を revert する
