@@ -171,6 +171,8 @@ no-op でなくなるのは、main に hotfix が直接入って develop → mai
 
 strict 化の適用直後、base が develop の open PR 4 件（Renovate）はいずれも `mergeable=MERGEABLE`（git 的な競合なし）のまま `mergeStateStatus=BEHIND`（マージ不可）へ変化した。この組み合わせが本 ADR の対象そのものであり、strict 化前は同じ 4 件が `CLEAN` としてマージ可能だった。
 
+**A と B は同じ材料で前後を比較して検証してある**（#656 の Step 4 / Step 8）。同一の意味的衝突（export のリネームと旧名を import する新規テスト、同じ base から分岐した 2 PR）を strict 化の前後で流したところ、前は Y がマージできて develop が赤くなり（A が検知した）、後は Y のマージが `the head branch is not up to date with the base branch` で止まり、"Update branch" 後に PR 段階で `test` が赤くなった（B が防いだ）。**両方とも「Y の checks は緑のまま再実行されない」という同じ入力に対する結果である。**
+
 ## 影響
 
 - **develop が赤いことがあり得る状態になる。** これまで develop の CI 状態は「存在しない」だったが、以後は緑か赤のどちらかになる。デプロイ連携は無い（`deployments` / `environments` ともに 0 件）ため、赤が直ちに何かを止めることはない。
