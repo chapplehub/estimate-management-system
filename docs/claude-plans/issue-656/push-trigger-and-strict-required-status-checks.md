@@ -161,7 +161,7 @@ concurrency:
 
 ### Step 3: #643 の「直 push 不可」の理由を訂正する
 
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: `docs/claude-plans/issue-643/deviations.md`
 - テスト戦略: テスト不要（ドキュメント）
 - 作業内容:
