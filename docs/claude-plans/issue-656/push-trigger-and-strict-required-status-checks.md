@@ -255,7 +255,7 @@ concurrency:
 
 ### Step 9: イシューをクローズし、派生 issue を起票する
 
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: なし
 - テスト戦略: テスト不要（ドキュメント作業）
 - 作業内容:
@@ -264,3 +264,10 @@ concurrency:
     - rebase churn（1 日約 72 job）の実測と、痛い場合の `prConcurrentLimit` / schedule 調整
     - develop の E2E 健全性を nightly `schedule` で観測するかの検討
 - コミットメッセージ: なし
+- 実施結果（2026-07-29）:
+  - #656 に検証 A / B の前後比較表を含む結果を追記し、作業項目 3 件をチェックしてクローズした
+  - 派生 issue:
+    - **#678** — `next build` が `*.test.ts` / `__tests__/` 配下の型エラーを捨てている（Step 4 の逸脱から派生。計画時点では想定していなかった）
+    - **#684** — strict 化に伴う rebase churn の実測と、必要な場合の `prConcurrentLimit` / `schedule` 調整
+    - **#685** — develop の E2E 健全性を nightly `schedule` で観測するかの検討
+  - 計画に無かった観測として、Renovate PR #671 が「ブランチ先頭に renovate[bot] 以外のコミットが載っているため rebase されない」状態にあることが分かった。ADR が「気づく手段が実質ない」と書いた失敗モードの実例だが、**本 issue のスコープ外**のため issue 化していない（対応方針の判断が必要）
