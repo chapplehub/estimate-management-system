@@ -173,7 +173,9 @@ no-op でなくなるのは、main に hotfix が直接入って develop → mai
 
 - **develop が赤いことがあり得る状態になる。** これまで develop の CI 状態は「存在しない」だったが、以後は緑か赤のどちらかになる。デプロイ連携は無い（`deployments` / `environments` ともに 0 件）ため、赤が直ちに何かを止めることはない。
 - **通知は GitHub Actions の既定のメール通知に頼る。** 失敗時に issue を自動起票する等の能動通知は、`issues: write` を要求し、`ci.yml` の `permissions: contents: read` を開くことになる。これは #643 が明示的な理由で閉じた設計（`pnpm install` が `only-allow` / `onlyBuiltDependencies` のビルドスクリプトを実行するため、書き込み権限付きトークンを同じ run に置かない）であり、Renovate PR を検査する CI で書き込みトークンと未検証の依存のビルドスクリプトを同居させることになる。**通知の便宜のために攻撃面を広げるのは割に合わない。** 既定通知は「自分が actor になった run の失敗」を通知し、PR をマージすると develop への push の actor はマージ実行者になるため、単独開発の本リポジトリでは通知先と当事者が常に一致する。
-- **strict 化により、base が進むたびに全 open PR の rebase が要る。** Renovate が自分で行うため人手はかからないが、develop へ 1 マージするごとに open PR 全部が rebase され、`4 PR × (ci 2 job + playwright 7 job) = 36 job` が一斉起動する。1 日 2 マージで約 72 job/日。public リポジトリのため課金は無く、効くのは同時実行枠（20）のみ。実測して痛ければ `prConcurrentLimit` や `schedule` で調整する（別 issue）。
+- **strict 化により、base が進むたびに全 open PR の rebase が要る。** Renovate が自分で行うため人手はかからないが、develop へ 1 マージするごとに open PR 全部が rebase され、その全てで CI が再起動する。起票時点の観測（open 4 PR）を基にすると `4 PR × (ci 2 job + playwright 7 job) = 36 job`、1 日 2 マージで約 72 job/日。public リポジトリのため課金は無く、効くのは同時実行枠（20）のみ。
+
+  ただし**この概算の前提は既に動いている**。ADR-20260728-9kq（#669）が `packageRules` の non-major ベース層を廃してモノレポ単位のグルーピングに移したため、同時に open になる PR 数は起票時点の観測と一致しない。数字ではなく「open PR 数に比例して job が増える」という構造だけを受け取ること。実測して痛ければ `prConcurrentLimit` や `schedule` で調整する（別 issue）。
 - **人間が "Update branch" を押してはならない。** 押すとその Renovate PR が Renovate の管理から静かに外れる。Renovate PR が stale なときは、Renovate の次回 run を待つか、Dependency Dashboard のチェックボックスで rebase を要求する。
 - **`playwright` は push で検査されない。** develop の E2E 健全性は誰も観測していない。この穴は意図的なもので、埋めるなら nightly `schedule` が適した器である。
 - **push トリガーが増えても develop への直 push は依然できない。** #643 の計画は直 push が不可能な理由を「CI に `push` トリガーが無いため checks が存在しない」と記録したが、本 ADR の A を入れてもこの結論は変わらない。本質はトリガーの有無ではなく**評価順序**であり、ruleset の required status checks は push を受け付ける**前**に評価される。よって push が拒否される → workflow が起動しない → checks が永久に付かない、というニワトリ卵になる。
