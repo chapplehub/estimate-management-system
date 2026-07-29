@@ -173,7 +173,7 @@ concurrency:
 
 ### Step 4: 検証 A — 使い捨て 2 PR で意味的衝突を起こし、検知を確認する
 
-- [ ] **完了**
+- [x] **完了**（PR X = #675 / PR Y = #676。詳細は `deviations.md` 逸脱 1）
 - 対象ファイル: `src/server/__tests__/helpers/` 配下（使い捨て）
 - テスト戦略: テスト不要（CI 実地検証）
 - 作業内容:
@@ -182,15 +182,15 @@ concurrency:
   - PR Y: **X 以前の develop を base に**、旧名を import する `*.test.ts` を新規追加する（Y 単体の CI が緑になることを確認）
   - PR Y をマージする（PR の check は古い base のまま緑なのでマージできる ＝ イシューが問題視した経路そのもの）
   - 確認項目:
-    - [ ] develop の push run が赤くなる
-    - [ ] commit 一覧に「緑 → 赤」の境界が現れ、Y が犯人として一意に読める
-    - [ ] `static` ジョブで落ちる（＝ `next build` が `*.test.ts` も型検査しているという `ci.yml` の前提の実地確認）
-    - [ ] **失敗通知が実際にメールで届く**（届かない場合は本 issue のスコープを広げず別 issue に切り出す）
+    - [x] develop の push run が赤くなる（`f500a1a2` = `failure`）
+    - [x] commit 一覧に「緑 → 赤」の境界が現れ、Y が犯人として一意に読める（`297617fa` 緑 → `4c7a9d16` 緑 → `f500a1a2` 赤。3 コミットすべてに verdict が残った ＝ SHA 単位 concurrency が効いている）
+    - [ ] ~~`static` ジョブで落ちる~~ → **前提が誤りだった。落ちたのは `test`**（`next build` は `*.test.ts` / `__tests__/` の診断を捨てる。→ 逸脱 1・#678）
+    - [ ] **失敗通知が実際にメールで届く**（ユーザー確認待ち。届かない場合は本 issue のスコープを広げず別 issue に切り出す）
 - コミットメッセージ: 使い捨て PR 側のため計画対象外（`test:` 型で任意）
 
 ### Step 5: 検証で壊した状態を revert する
 
-- [ ] **完了**
+- [x] **完了**（PR #677 = `ffbe5cf8`）
 - 対象ファイル: Step 4 で変更したファイル
 - テスト戦略: テスト不要（CI 実地検証）
 - 作業内容:
@@ -200,7 +200,7 @@ concurrency:
 
 ### Step 6: renovate.json に rebaseWhen を明示する
 
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: `renovate.json`
 - テスト戦略: テスト不要（設定ファイル）
 - 作業内容:
@@ -230,7 +230,7 @@ concurrency:
   - Step 4 と同じ材料で PR X' / Y' を作り直す
   - 確認項目:
     - [ ] X' をマージした後、Y' のマージが "This branch is out-of-date with the base branch" で**止まる**
-    - [ ] Y' で "Update branch" を実行すると CI が再実行され、今度は **PR 段階で赤くなる**（事後検知が事前防止に変わったことの確認）
+    - [ ] Y' で "Update branch" を実行すると CI が再実行され、今度は **PR 段階で赤くなる**（事後検知が事前防止に変わったことの確認）。赤くなるのは `test` ジョブである（`static` ではない。理由は `deviations.md` 逸脱 1）
   - X' / Y' は close し、develop に何も残さない（X' をマージしていた場合は revert する）
 - コミットメッセージ: 使い捨て PR 側のため計画対象外
 
