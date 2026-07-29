@@ -6,11 +6,31 @@ on:
     # paths フィルタは意図的に付けない。required status check は「起動しなかったジョブ」を
     # 待ち続けてマージ不能にするため相性が悪く、Renovate の PR（差分が lock ファイルだけの
     # ことがある）を確実に検査したい本ワークフローの目的とも衝突する。
+  # マージ後の develop / main を検査する（#656 / ADR-20260729-d8c）。
+  # pull_request の run が検査するのは refs/pull/N/merge（= その run の開始時点の base と
+  # head を合成した仮想コミット）であり、base が進んでも再実行されない。したがって PR の緑は
+  # 「古い base に対する緑」でしかなく、テキスト衝突しない意味的衝突（export のリネーム、
+  # VO のコンストラクタ引数追加など）はマージ後に初めて壊れる。それを観測する run がここ。
+  # paths フィルタは付けない。PR 側とは別の理由で、develop の HEAD が常に verdict を持つ
+  # 状態を作るのが目的のため（間引くと「最後に緑だったのは 3 コミット前」になり読めなくなる）。
+  # playwright.yml には push を付けない。E2E の既知の非決定要因（単一 shard の全面 404 ＝
+  # Next dev のスキャンレース）で develop が赤くなると、「develop が赤い ＝ 直近のマージが犯人」
+  # という本トリガーの中核価値が腐るため（→ ADR-20260729-d8c）。
+  push:
+    branches: [main, develop]
 
-# 同一 PR への連続 push で古い run をキャンセルする。playwright.yml と同じ 2 行を
-# 直書きして方針を揃える（github.workflow の前置で他ワークフローと殺し合わない）。
+# PR（refs/pull/N/merge）は従来どおり ref 単位。PR で問われるのは HEAD が緑かだけで、
+# 中間 commit の verdict に用は無いため、連続 push の古い run は畳むのが正しい。
+#
+# push だけはグループを commit（SHA）単位に分離する。ref 単位のままだと連続マージ
+#（Renovate の一斉マージなど）で最後の 1 commit 以外が cancelled になり、読み取れるのが
+# 「develop の HEAD が赤い」だけになって犯人を特定できない。cancel-in-progress: false でも
+# 解決しない（グループは実行中 1 本 + 待機中 1 本しか保持せず、3 本目の到着で待機中の
+# 2 本目が捨てられる）。そして取り逃した verdict は回復不能で、workflow_dispatch は
+# ref 指定でしか起動できないため任意の過去 SHA を後から検査する手段が無い。
+# 分離すれば全 commit に verdict が付き、commit 一覧の「緑 → 赤」の境界がそのまま犯人になる。
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && github.sha || github.ref }}
   cancel-in-progress: true
 
 # GITHUB_TOKEN は checkout に必要な読み取りのみに絞る。宣言が無いとリポジトリ設定の

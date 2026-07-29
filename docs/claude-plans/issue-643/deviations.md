@@ -50,3 +50,24 @@
 - **検討して採らなかった案**: `next.config.ts` に `typescript.ignoreBuildErrors: true` を置いて build 側の型検査を切り、`tsc` を型の唯一の権威にする案。フラグ名が「型検査を諦めた」と誤読される強さに加え、ローカルで `pnpm build` を直接叩いたときに型検査が効かなくなる。CI の 20 秒のためにローカルの安全性を削るのは向きが逆。
 
   レビューが提案した「build を独立ジョブにして lint / typecheck と並列化する」案も採らなかった。CI 実測でジョブ開始から検査開始までの setup が約 56 秒あり、約 20 秒の壁時計短縮のためにもう 1 ランナー分の setup を払うことになる。required check の名前が 3 つに増え、`static` / `test` の 2 つに絞った Step 5 の設計判断にも波及する。
+
+## 4. 【後日訂正 / #656】Step 5 が記録した「develop への直 push が不可能な理由」が誤っていた
+
+逸脱ではなく、**記録した理由づけの訂正**である（#656 の作業中に発見した）。
+
+- **計画に記録した内容**: Step 5 の「副作用として認識した点」に、`protect-develop` には `pull_request` ルールが無く develop への直接 push が可能だったが、required status checks の追加により事実上不可能になった、と書いた。その理由として「CI に `push` トリガーが無い（#656）ため、直接 push されたコミットには checks が存在せず条件を満たせないため」と記録した。
+- **実際**: **結論は正しいが、理由が誤っている。** 直 push は依然として不可能で、そこは変わらない。
+- **本質は評価順序である。** ruleset の required status checks は、push を**受け付ける前**に評価される。したがって因果は次のようになる。
+
+  ```
+  push を試みる
+    → ruleset が「この SHA に static / test の緑が報告されているか」を判定
+    → 報告が無いので push そのものが拒否される
+    → workflow が起動する機会がそもそも訪れない
+    → checks は永久に付かない
+  ```
+
+  「トリガーが無いから checks が存在しない」のではなく、「push が受理されないので workflow を起動できない」というニワトリ卵である。
+
+- **なぜ訂正が要るか**: #656 で `ci.yml` に `push: branches: [main, develop]` を追加したため、元の理由づけは「push トリガーが付いたのだから直 push は復活するのでは」という誤読を招く。復活しない。push トリガーが起動できるのは**マージによって develop が進んだとき**であって、直 push 経路は上記のとおり ruleset の段階で先に閉じている。
+- **参照**: ADR-20260729-d8c §影響、`docs/claude-plans/issue-656/push-trigger-and-strict-required-status-checks.md`
