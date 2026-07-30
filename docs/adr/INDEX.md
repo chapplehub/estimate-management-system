@@ -153,3 +153,4 @@
 | [20260729-d8c](20260729-d8c-detect-and-prevent-stale-base-merges.md) | マージ後の検査を push トリガーで観測し、strict required status checks で stale マージを防ぐ | 採用（ロールアウト途中） | 2026-07-29 |
 | [20260730-0b6](20260730-0b6-delegate-grouping-to-presets-and-drop-major-degrouping.md) | グルーピングを config:recommended 内蔵プリセットに全面委譲し、major グループ解除を廃止する | 採用 | 2026-07-30 |
 | [20260730-aan](20260730-aan-migrate-range-strategy-to-pin-with-js-app.md) | rangeStrategy を bump から pin へ移行し、config:js-app を採用する | 採用 | 2026-07-30 |
+| [20260730-t6e](20260730-t6e-introduce-platform-automerge-with-approval-retained.md) | Renovate automerge は platformAutomerge + squash-only リポジトリ設定で導入し、Dashboard 承認は維持する | 採用（適用は #704 マージ後） | 2026-07-30 |
