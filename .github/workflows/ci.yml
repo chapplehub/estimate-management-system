@@ -73,11 +73,11 @@ jobs:
       BETTER_AUTH_URL: http://localhost:3000
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v5.1.0
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v4.4.0
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v5.0.0
         with:
           # Node の版は .nvmrc が単一ソース（→ ADR-20260728-44b）
           node-version-file: .nvmrc
@@ -148,11 +148,11 @@ jobs:
       BETTER_AUTH_URL: http://localhost:3000
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v5.1.0
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v4.4.0
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v5.0.0
         with:
           # Node の版は .nvmrc が単一ソース（→ ADR-20260728-44b）
           node-version-file: .nvmrc
