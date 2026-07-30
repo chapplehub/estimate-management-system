@@ -65,7 +65,7 @@
 - コミットメッセージ: `ci: rangeStrategy を pin へ移行し config:js-app を採用する`
 
 ### Step 2: ADR を作成・改訂し INDEX を更新する
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: `docs/adr/20260730-{sss}-migrate-range-strategy-to-pin-with-js-app.md`（新規。sss は ADR-0000 の採番規約に従い base36 3 桁で採番）、`docs/adr/20260726-d3b-adopt-renovate-with-approval-and-two-layer-cooldown.md`、`docs/adr/INDEX.md`
 - テスト戦略: テスト不要（ドキュメント）
 - 作業内容:
