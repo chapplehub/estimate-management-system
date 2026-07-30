@@ -1,0 +1,78 @@
+# CI を回すか一切回さないかを判定する唯一の場所（#704）。
+# 「static/test は常時、e2e は 14 項目の paths 許可リスト」という別基準をやめ、
+# 「プロダクトに触れたか否か」の単一基準で ci.yml / playwright.yml の両方をゲートする。
+#
+# 判定は許可リストではなく除外リスト。差分の全ファイルが下の IGNORE に収まるときだけ
+# product=false（CI スキップ）を出力する。除外リストは更新を忘れたときの挙動が
+# 「不要な CI が走る」（安全側）になる。許可リストは新種のファイル追加時に
+# 「e2e が黙って走らなくなる」（緑のままマージされ検出不能）方向へ壊れるため採らない。
+#
+# 除外してよいのは「ビルド・テスト・実行時のどれからも読み込まれないと言い切れるもの」だけ。
+# 例: .env.unit.example は ci.yml の test ジョブが cp して使うため除外できない。
+# learning/ 配下は現状すべて *.md のため \.md$ でカバーされる。
+name: changes
+description: >-
+  PR の差分がプロダクトに触れているかを判定する。差分の全ファイルが除外リスト
+  （docs/**, **/*.md, .claude/**）に収まる場合のみ product=false。
+  pull_request 以外のイベントでは常に product=true。呼び出し元ジョブで
+  actions/checkout を済ませておくこと（ローカル action のため）。
+outputs:
+  product:
+    description: "'true' なら CI を実行する。'false' は除外リスト内のみの差分"
+    value: ${{ steps.diff.outputs.product }}
+runs:
+  using: composite
+  steps:
+    - id: diff
+      shell: bash
+      # 判定不能時は product=true に倒し、ジョブ自体は緑で終える（fail-safe）。
+      # ここで exit 1 にすると依存ジョブが連鎖 skip し、required check が
+      # 「skipped = 合格」扱いになって CI ゼロのままマージできる穴が開くため、
+      # 「エラー = 全部回す」に固定する。
+      run: |
+        set -u
+
+        # push / workflow_dispatch は無条件で実行する。ci.yml の push トリガーは
+        # 「develop の HEAD が常に verdict を持つ」ことが目的（ADR-20260729-d8c）で、
+        # ゲートするとその不変条件が壊れる。
+        if [ "${GITHUB_EVENT_NAME}" != "pull_request" ]; then
+          echo "product=true" >> "${GITHUB_OUTPUT}"
+          echo "event=${GITHUB_EVENT_NAME}: unconditional run"
+          exit 0
+        fi
+
+        # 除外リストの定義箇所はここだけ。対応 glob: docs/**, **/*.md, .claude/**
+        IGNORE='^(docs/|\.claude/)|\.md$'
+
+        # checkout の既定は fetch-depth: 1 で base を持たないため、ここで取得する。
+        # 比較先は origin/<base> ではなく FETCH_HEAD。actions/checkout が張る refspec は
+        # 対象 ref に限定されており、branch 名指定の fetch ではリモート追跡 ref が
+        # 作られない（FETCH_HEAD にしか入らない）ため。
+        if ! git fetch --no-tags --depth=1 origin "${GITHUB_BASE_REF}"; then
+          echo "::warning::base (${GITHUB_BASE_REF}) の fetch に失敗。fail-safe で product=true"
+          echo "product=true" >> "${GITHUB_OUTPUT}"
+          exit 0
+        fi
+
+        # 2 ドット比較（tree 同士）を使う。shallow clone では merge-base が取れず
+        # 3 ドット比較は失敗し得る。HEAD は refs/pull/N/merge（run 開始時点の base と
+        # head の合成コミット）なので、通常この diff は PR の実効差分と一致する。
+        # run 開始後に base が進むと base 側の変更が混入し得るが、その誤差は
+        # product=true 方向（安全側）にしか働かない。
+        if ! changed=$(git diff --name-only FETCH_HEAD HEAD); then
+          echo "::warning::diff の取得に失敗。fail-safe で product=true"
+          echo "product=true" >> "${GITHUB_OUTPUT}"
+          exit 0
+        fi
+
+        # grep -v は全行が除外されると exit 1 を返すため || true で受ける
+        non_ignored=$(printf '%s\n' "${changed}" | grep -vE "${IGNORE}" || true)
+
+        if [ -n "${non_ignored}" ]; then
+          echo "product=true" >> "${GITHUB_OUTPUT}"
+          echo "product files changed:"
+          printf '%s\n' "${non_ignored}"
+        else
+          echo "product=false" >> "${GITHUB_OUTPUT}"
+          echo "diff is within ignore list: CI will be skipped"
+        fi

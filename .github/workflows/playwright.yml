@@ -3,24 +3,13 @@ on:
   workflow_dispatch:
   pull_request:
     branches: [main, develop]
-    paths:
-      - "src/**"
-      - "prisma/**"
-      - "prisma.config.ts"
-      - "playwright.config.ts"
-      - "package.json"
-      - "pnpm-lock.yaml"
-      - "pnpm-workspace.yaml"
-      - "next.config.ts"
-      - "tsconfig.json"
-      - "postcss.config.mjs"
-      - "components.json"
-      - "public/**"
-      - ".github/workflows/playwright.yml"
-      # Node の版が変わる PR（Renovate の node グループ）は差分が .nvmrc だけになる。
-      # 挙げないと、E2E でこそ検証すべき変更（Playwright のブラウザ展開）で
-      # 本ワークフローが起動しない
-      - ".nvmrc"
+    # paths フィルタは付けない（#704）。ワークフローレベルで間引くと、起動しなかった run の
+    # チェックが「Expected — Waiting」のまま永遠に pending となり、required status check に
+    # できない。実行可否はジョブレベルの changes ゲート（.github/actions/changes）が判定し、
+    # `if:` で skip されたジョブは required check を「skipped = 合格」で満たすため、
+    # docs のみの PR をマージ可能に保ったまま e2e report を required にできる。
+    # かつての許可リスト（14 項目）はリスト更新忘れで「e2e が黙って走らなくなる」方向に
+    # 壊れるため、除外リスト方式（定義は composite action 内の 1 箇所）に反転した。
 
 # 同一 PR への連続 push で古い run をキャンセルし、ランナーの空費を防ぐ。
 # run 単位（トップレベル）に置くのは、shard と統合ジョブをまとめて畳むため。
@@ -40,8 +29,28 @@ permissions:
   contents: read
 
 jobs:
+  # CI を回すか一切回さないかの判定（#704）。判定基準（除外リスト）の定義は
+  # .github/actions/changes に一元化されており、ci.yml と共有する。
+  # ジョブ名は ci.yml 側の changes と区別できるよう (e2e) を付ける
+  # （PR のマージボックスにはチェック名しか出ないため、同名だと見分けられない）。
+  changes:
+    name: changes (e2e)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      product: ${{ steps.filter.outputs.product }}
+    steps:
+      # ローカル action の読み込みに checkout が必要
+      - uses: actions/checkout@v5.1.0
+
+      - uses: ./.github/actions/changes
+        id: filter
+
   test:
     name: e2e (shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
+    needs: changes
+    # workflow_dispatch は changes の出力に関係なく必ず実行する（手動起動は常に本気の実行）
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.product == 'true'
     # 1 shard の正当な最悪ケース（全テストが落ち retries: 2 で 3 回ずつ実行され、
     # 準備一式込みで約 6 分 30 秒）から逆算した値。6 分割後のジョブ実測 3 分前後に対する
     # 安全網として機能させる。shard 数を増やしても準備一式（約 70 秒）は縮まず最悪ケースの
@@ -131,11 +140,19 @@ jobs:
           # merge ジョブが同一 run 内で消費するだけの中間生成物
           retention-days: 1
 
+  # ジョブ名 e2e report は required status check の照合キー（ci.yml の static / test と同様）。
+  # リネームは保護が無言で外れることを意味するため、識別子として扱う。
+  # required にするのは shard ジョブ名（e2e (shard 1/6) 等）ではなくこの集約点 1 つ。
+  # shard 名は matrix 依存で、shard 数変更のたびに保護が無言で外れるため。
   merge-reports:
     name: e2e report
-    # shard が落ちても統合レポートは必要なので、キャンセル以外は必ず走らせる
-    if: ${{ !cancelled() }}
-    needs: test
+    # shard が落ちても統合レポートは必要なので、キャンセル以外は必ず走らせる。
+    # ただし changes ゲートで shard ごと skip されたときはこのジョブも skip する
+    # （skipped は required check の合格扱いなので docs のみの PR はマージ可能）。
+    # !cancelled() は needs の暗黙 success() 条件を上書き消去するため、この明示条件が
+    # 無いと test の skip 時にここだけ走り出し、blob 不在で赤くなる。
+    if: ${{ !cancelled() && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.product == 'true') }}
+    needs: [changes, test]
     timeout-minutes: 10
     runs-on: ubuntu-latest
 
