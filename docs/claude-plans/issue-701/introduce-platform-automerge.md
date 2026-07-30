@@ -44,7 +44,7 @@ required checks = `static` / `test` / `e2e report`（strict）。この前提が
 - コミットメッセージ: `docs: issue-701 Step 1 完了（リポジトリ設定を squash-only + auto-merge 有効化）`
 
 ### Step 2: renovate.json に automerge 設定を追加
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: `renovate.json`
 - テスト戦略: テスト不要（Renovate 設定。スキーマは `$schema` 準拠、挙動は Step 3 の実測で検証）
 - 作業内容:

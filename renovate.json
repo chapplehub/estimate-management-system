@@ -12,13 +12,15 @@
     "検出に失敗したときの帰結が悪いことが明示の主因である。PR が stale のまま放置され、GitHub の Update branch を人間が押すとユーザー名義のコミットが PR ブランチに積まれ、Renovate はそのブランチの更新を一切やめる。PR は残りマージもできるが以降更新されず、close するまで同じ依存の新しい PR も作られない。気づく手段が実質ない。",
     "ruleset は GitHub 側にありリポジトリからは見えない。実際の値は gh api repos/:owner/:repo/rulesets/12978563 で確認すること。",
     "グループ化は config:js-app 内蔵のプリセットに全面委譲する: group:monorepos（sourceUrl マッチ）に加え、group:recommended 経由の group:react が @types/react 系を名前ベースで react monorepo へ合流させる。手書きの packageRules グループは『プリセット定義に存在しない連動で、かつ片方だけ上げると壊れることが実測で確認されたもの』に限る（現状 node + @types/node のみ。→ ADR-20260730-0b6）。無所属の @types/** を束ねたくなったら、手書きせず extends へ group:definitelyTyped → group:react の順で追加する（内蔵 group:react を打ち消す definitelyTyped を、明示の group:react が後勝ちで打ち消し返す。この順序でなければ @types/react 系が definitelyTyped に奪われる）。",
-    "rangeStrategy は pin。config:js-app = config:recommended + :pinAllExceptPeerDependencies であり、pin は後者が packageRules（matchPackageNames: ['*'] → pin）として設定する。packageRules はトップレベル設定より優先されるため、トップレベルに rangeStrategy を書いても効かない dead config になる（D6 の semanticCommitType と同型）。ゆえにここには書かない。engines / peerDependencies は同プリセットの 2 本目のルールが rangeStrategy: auto へ逃がす（pin してはいけない depType の織り込み済み設計）。→ ADR-20260730-aan"
+    "rangeStrategy は pin。config:js-app = config:recommended + :pinAllExceptPeerDependencies であり、pin は後者が packageRules（matchPackageNames: ['*'] → pin）として設定する。packageRules はトップレベル設定より優先されるため、トップレベルに rangeStrategy を書いても効かない dead config になる（D6 の semanticCommitType と同型）。ゆえにここには書かない。engines / peerDependencies は同プリセットの 2 本目のルールが rangeStrategy: auto へ逃がす（pin してはいけない depType の織り込み済み設計）。→ ADR-20260730-aan",
+    "automerge は non-major（packageRules 最終ルール）と lockFileMaintenance に導入している。経路は platformAutomerge（既定 true のまま何も書かない）= GitHub ネイティブ auto-merge であり、これは required checks のみを待つ。ゆえに e2e report の required 化（#704）が安全性の前提で、required checks を減らす変更はこの前提を壊す。dependencyDashboardApproval は維持しており、自動化されるのはマージ以降のみ（承認 1 回・マージ 0 回）。automergeStrategy / automergeSchedule は platform 経路では効かない dead config のため書かない（前者は automergeType=pr の内蔵マージ専用、後者は作成時に enqueue されるため従えないと公式明記）。マージ方式の保証は Renovate 設定では取れないため、リポジトリ設定の squash-only 化（allow_merge_commit / allow_rebase_merge 無効）で取っている。→ ADR-20260730-t6e"
   ],
   "timezone": "Asia/Tokyo",
   "dependencyDashboardApproval": true,
   "prConcurrentLimit": 3,
   "rebaseWhen": "behind-base-branch",
   "labels": ["dependencies"],
+  "lockFileMaintenance": { "automerge": true },
   "packageRules": [
     {
       "description": "major には目印ラベルのみ付与する。承認はトップレベル dependencyDashboardApproval で全更新に要求済みのため、major の特別扱い（グループ解除・個別承認）は行わない。グループの major は separateMajorMinor（既定 true）により minor と別の 1 本のグループ PR になる",
@@ -29,6 +31,11 @@
       "description": "Node 本体（.nvmrc）と型定義は同時に上げる。node という depName は nvm manager が .nvmrc から検出するものであり、engines.node は #664 で削除済み（→ ADR-20260728-44b）。この matchPackageNames から node を外すと .nvmrc と @types/node が別 PR に割れる。helpers:disableTypesNodeMajor を外したのは、型が本体に先行するのを防ぐという同プリセットの目的は本グループが構造的に満たす一方、プリセットを残すとメジャー移行で @types/node だけが黙って据え置かれ「実行は 24・型は 22」という #641 の鏡像が生まれるため",
       "matchPackageNames": ["node", "@types/node"],
       "groupName": "node"
+    },
+    {
+      "description": "non-major は CI 緑で自動マージする（→ ADR-20260730-t6e）。承認（dependencyDashboardApproval）は維持しており、自動化されるのはマージ以降のみ。major は automerge 既定 false のまま手動マージ",
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "automerge": true
     }
   ]
 }
