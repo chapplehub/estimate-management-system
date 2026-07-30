@@ -57,7 +57,7 @@ CI の実行可否判定を「static/test（paths なし）と e2e（14 項目�
 - コミットメッセージ: `ci: CI 実行可否を判定する changes composite action を追加`
 
 ### Step 2: playwright.yml を paths フィルタから changes ゲートへ移行
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: `.github/workflows/playwright.yml`
 - テスト戦略: テスト不要（CI 設定ファイル。動作確認は Step 4 で行う）
 - 作業内容:
