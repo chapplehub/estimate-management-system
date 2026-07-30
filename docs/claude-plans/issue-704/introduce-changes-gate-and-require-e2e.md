@@ -90,7 +90,7 @@ CI の実行可否判定を「static/test（paths なし）と e2e（14 項目�
 - コミットメッセージ: `docs: issue-704 の動作確認結果を計画に反映`
 
 ### Step 5: ruleset protect-develop へ `e2e report` を required status check として追加
-- [ ] **完了**
+- [x] **完了**（required は static / test / e2e report の 3 つ。docs-only の skip 検証はこのチェック更新 PR 自体で実施 — 本 PR は docs のみの差分のため、changes 以外が skipped のままマージできれば検証成立）
 - 対象ファイル: なし（GitHub ruleset 設定。gh api または設定画面で変更）
 - テスト戦略: テスト不要（リポジトリ設定変更）
 - 作業内容:
