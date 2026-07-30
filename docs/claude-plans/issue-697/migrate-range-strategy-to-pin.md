@@ -54,7 +54,7 @@
 ## ステップ
 
 ### Step 1: renovate.json を pin 移行版に改訂する
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: `renovate.json`
 - テスト戦略: テスト不要（設定ファイル。検証はマージ後に Dependency Dashboard と初回 Pin PR で行う——概要の取り込み手順参照）
 - 作業内容:

@@ -1,7 +1,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended",
+    "config:js-app",
     "security:minimumReleaseAgeNpm",
     ":semanticCommitTypeAll(chore)",
     ":maintainLockFilesMonthly"
@@ -11,13 +11,13 @@
     "既定の auto でも「ブランチが最新であることを要求するリポジトリ」を検出して behind-base-branch へ切り替わる建て付けだが、この検出は classic branch protection 前提で作られており Rulesets では既知の不具合報告がある（renovatebot/renovate discussion #38302）。本リポジトリは ruleset 運用のため明示する。",
     "検出に失敗したときの帰結が悪いことが明示の主因である。PR が stale のまま放置され、GitHub の Update branch を人間が押すとユーザー名義のコミットが PR ブランチに積まれ、Renovate はそのブランチの更新を一切やめる。PR は残りマージもできるが以降更新されず、close するまで同じ依存の新しい PR も作られない。気づく手段が実質ない。",
     "ruleset は GitHub 側にありリポジトリからは見えない。実際の値は gh api repos/:owner/:repo/rulesets/12978563 で確認すること。",
-    "グループ化は config:recommended 内蔵のプリセットに全面委譲する: group:monorepos（sourceUrl マッチ）に加え、group:recommended 経由の group:react が @types/react 系を名前ベースで react monorepo へ合流させる。手書きの packageRules グループは『プリセット定義に存在しない連動で、かつ片方だけ上げると壊れることが実測で確認されたもの』に限る（現状 node + @types/node のみ。→ 新 ADR）。無所属の @types/** を束ねたくなったら、手書きせず extends へ group:definitelyTyped → group:react の順で追加する（内蔵 group:react を打ち消す definitelyTyped を、明示の group:react が後勝ちで打ち消し返す。この順序でなければ @types/react 系が definitelyTyped に奪われる）。"
+    "グループ化は config:js-app 内蔵のプリセットに全面委譲する: group:monorepos（sourceUrl マッチ）に加え、group:recommended 経由の group:react が @types/react 系を名前ベースで react monorepo へ合流させる。手書きの packageRules グループは『プリセット定義に存在しない連動で、かつ片方だけ上げると壊れることが実測で確認されたもの』に限る（現状 node + @types/node のみ。→ ADR-20260730-0b6）。無所属の @types/** を束ねたくなったら、手書きせず extends へ group:definitelyTyped → group:react の順で追加する（内蔵 group:react を打ち消す definitelyTyped を、明示の group:react が後勝ちで打ち消し返す。この順序でなければ @types/react 系が definitelyTyped に奪われる）。",
+    "rangeStrategy は pin。config:js-app = config:recommended + :pinAllExceptPeerDependencies であり、pin は後者が packageRules（matchPackageNames: ['*'] → pin）として設定する。packageRules はトップレベル設定より優先されるため、トップレベルに rangeStrategy を書いても効かない dead config になる（D6 の semanticCommitType と同型）。ゆえにここには書かない。engines / peerDependencies は同プリセットの 2 本目のルールが rangeStrategy: auto へ逃がす（pin してはいけない depType の織り込み済み設計）。→ ADR-20260730-aan"
   ],
   "timezone": "Asia/Tokyo",
   "dependencyDashboardApproval": true,
   "prConcurrentLimit": 3,
   "rebaseWhen": "behind-base-branch",
-  "rangeStrategy": "bump",
   "labels": ["dependencies"],
   "packageRules": [
     {
