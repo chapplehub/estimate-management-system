@@ -47,7 +47,7 @@ CI の実行可否判定を「static/test（paths なし）と e2e（14 項目�
 ## ステップ
 
 ### Step 1: changes composite action の新設
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: `.github/actions/changes/action.yml`
 - テスト戦略: テスト不要（CI 設定ファイル。動作確認は Step 4 の実 PR 3 経路で行う）
 - 作業内容:
