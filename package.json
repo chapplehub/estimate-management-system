@@ -69,7 +69,7 @@
     "@vitejs/plugin-react": "5.1.2",
     "@vitest/coverage-v8": "4.0.18",
     "babel-plugin-react-compiler": "1.0.0",
-    "commitizen": "4.3.1",
+    "commitizen": "4.3.2",
     "cz-conventional-changelog": "3.3.0",
     "dotenv": "17.2.3",
     "es-toolkit": "1.50.0",
