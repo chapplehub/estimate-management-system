@@ -4,8 +4,10 @@ on:
   pull_request:
     branches: [main, develop]
     # paths フィルタは意図的に付けない。required status check は「起動しなかったジョブ」を
-    # 待ち続けてマージ不能にするため相性が悪く、Renovate の PR（差分が lock ファイルだけの
-    # ことがある）を確実に検査したい本ワークフローの目的とも衝突する。
+    # 待ち続けてマージ不能にするため相性が悪い。実行可否はジョブレベルの changes ゲート
+    # （.github/actions/changes、playwright.yml と共有）が判定し、`if:` で skip された
+    # ジョブは required check を「skipped = 合格」で満たす（#704）。Renovate の PR
+    # （差分が lock ファイルだけのことがある）は除外リストに該当しないため必ず検査される。
   # マージ後の develop / main を検査する（#656 / ADR-20260729-d8c）。
   # pull_request の run が検査するのは refs/pull/N/merge（= その run の開始時点の base と
   # head を合成した仮想コミット）であり、base が進んでも再実行されない。したがって PR の緑は
@@ -42,10 +44,31 @@ permissions:
   contents: read
 
 jobs:
+  # CI を回すか一切回さないかの判定（#704）。判定基準（除外リスト）の定義は
+  # .github/actions/changes に一元化されており、playwright.yml と共有する。
+  # pull_request 以外のイベントでは action が無条件に product=true を返すため、
+  # push（develop / main の verdict 維持）はゲートの影響を受けない。
+  changes:
+    name: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      product: ${{ steps.filter.outputs.product }}
+    steps:
+      # ローカル action の読み込みに checkout が必要
+      - uses: actions/checkout@v5.1.0
+
+      - uses: ./.github/actions/changes
+        id: filter
+
   # ジョブ名は required status check の照合キー（表示名の文字列一致）。
   # リネームは保護が無言で外れることを意味するため、識別子として扱い説明は step 名に持たせる。
   static:
     name: static
+    needs: changes
+    # ゲートは pull_request のみ。push は ADR-20260729-d8c（develop の HEAD が常に
+    # verdict を持つ）のため無条件で実行する。workflow_dispatch も同様に素通しする
+    if: github.event_name != 'pull_request' || needs.changes.outputs.product == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -115,6 +138,9 @@ jobs:
   # PR ごとに実行する。husky を通らない Renovate のコミットにはこれが唯一の網になる。
   test:
     name: test
+    needs: changes
+    # static と同じ条件（ゲートは pull_request のみ。push / workflow_dispatch は素通し）
+    if: github.event_name != 'pull_request' || needs.changes.outputs.product == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
 

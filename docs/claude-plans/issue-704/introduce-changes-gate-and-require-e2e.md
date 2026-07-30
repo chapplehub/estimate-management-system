@@ -69,7 +69,7 @@ CI の実行可否判定を「static/test（paths なし）と e2e（14 項目�
 - コミットメッセージ: `ci: playwright.yml の paths フィルタを changes ゲートへ移行する`
 
 ### Step 3: ci.yml への changes ゲート組み込み
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: `.github/workflows/ci.yml`
 - テスト戦略: テスト不要（CI 設定ファイル。動作確認は Step 4 で行う）
 - 作業内容:
