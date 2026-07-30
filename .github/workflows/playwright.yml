@@ -89,11 +89,11 @@ jobs:
       BETTER_AUTH_URL: http://localhost:3001
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v5.1.0
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v4.4.0
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v5.0.0
         with:
           # Node の版は .nvmrc が単一ソース（→ ADR-20260728-44b）
           node-version-file: .nvmrc
@@ -123,7 +123,7 @@ jobs:
       # 二度アップロードできず、artifact が再実行の attempt をまたいで保持されるため。
       # 含めないと「Re-run failed jobs」がアップロードエラーで落ちる（再実行は「Re-run all jobs」前提）
       - name: Upload blob report
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v5.0.0
         if: ${{ !cancelled() }}
         with:
           name: blob-report-${{ matrix.shardIndex }}-${{ github.run_attempt }}
@@ -140,11 +140,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v5.1.0
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v4.4.0
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v5.0.0
         with:
           # Node の版は .nvmrc が単一ソース（→ ADR-20260728-44b）
           node-version-file: .nvmrc
@@ -154,7 +154,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Download blob reports
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v6.0.0
         with:
           path: all-blob-reports
           pattern: blob-report-*-${{ github.run_attempt }}
@@ -170,7 +170,7 @@ jobs:
       # overwrite: true を採らないのは、前 attempt の統合レポートを消してしまい
       # 失敗した run の証跡を追えなくなるため
       - name: Upload merged report
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v5.0.0
         with:
           name: playwright-report-${{ github.run_attempt }}
           path: playwright-report/
