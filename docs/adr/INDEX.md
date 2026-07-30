@@ -152,3 +152,4 @@
 | [20260728-9kq](20260728-9kq-monorepo-unit-grouping-replaces-non-major-base.md) | packageRules の non-major ベース層を廃止し、モノレポ単位 + 連動必須ファミリーのグルーピングに再設計する | 採用 | 2026-07-28 |
 | [20260729-d8c](20260729-d8c-detect-and-prevent-stale-base-merges.md) | マージ後の検査を push トリガーで観測し、strict required status checks で stale マージを防ぐ | 採用（ロールアウト途中） | 2026-07-29 |
 | [20260730-0b6](20260730-0b6-delegate-grouping-to-presets-and-drop-major-degrouping.md) | グルーピングを config:recommended 内蔵プリセットに全面委譲し、major グループ解除を廃止する | 採用 | 2026-07-30 |
+| [20260730-aan](20260730-aan-migrate-range-strategy-to-pin-with-js-app.md) | rangeStrategy を bump から pin へ移行し、config:js-app を採用する | 採用 | 2026-07-30 |

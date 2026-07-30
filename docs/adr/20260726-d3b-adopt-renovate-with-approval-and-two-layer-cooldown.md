@@ -96,6 +96,9 @@ Renovate の運用負荷が見合わないと判断した場合には再検討�
 
 代償として、minor/patch 更新のたびに `package.json` に差分が出る。複数 PR が同時に開いているとリベース衝突が増えるため、`prConcurrentLimit: 3` とグルーピングで抑制する。
 
+> **改訂（2026-07-30 / #697 → ADR-20260730-aan）**
+> `bump` を `pin` へ移行した。`extends` の `config:recommended` を `config:js-app`（= `config:recommended` + `:pinAllExceptPeerDependencies`）に置き換え、トップレベルの `rangeStrategy` は削除した（pin はプリセットの packageRules 由来で、トップレベルに書いても効かない dead config になるため。D6 と同型の性質）。上記の「ESM はアプリでありレンジを開けておく動機がない」という前提から一歩進め、下限を追随させるのではなくレンジ宣言自体を廃止する。あわせて、`auto`（`update-lockfile`）を退けた理由——D4 の `lockFileMaintenance` との PR 重複——は pin では in-range 更新の概念ごと消えるため構造的に発生しない。むしろ `lockFileMaintenance` が動かせる対象が推移的依存のみに狭まり、D4 のリスク管理は強化される。
+
 ### D3. cooldown を二層で設定する
 
 `security:minimumReleaseAgeNpm`（Renovate 側・3 日）と `pnpm-workspace.yaml` の `minimumReleaseAge: 4320`（pnpm 側・3 日）を併用する。
