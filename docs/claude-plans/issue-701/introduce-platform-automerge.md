@@ -34,7 +34,7 @@ required checks = `static` / `test` / `e2e report`（strict）。この前提が
 ## ステップ
 
 ### Step 1: リポジトリ設定変更（squash-only + auto-merge 有効化）
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: なし（GitHub リポジトリ設定。コミットは本計画のチェックボックス更新のみ）
 - テスト戦略: テスト不要（GitHub 設定変更。Step 3 の実測で検証）
 - 作業内容:
