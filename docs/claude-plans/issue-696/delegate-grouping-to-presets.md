@@ -60,7 +60,7 @@
 - コミットメッセージ: `ci: renovate.json の手書きグループルールをプリセット委譲に整理する`
 
 ### Step 2: ADR を作成・改訂し INDEX を更新する
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: `docs/adr/20260730-{slug}-delegate-grouping-to-presets-and-drop-major-degrouping.md`（新規。slug は既存規約に従い採番）、`docs/adr/20260728-9kq-monorepo-unit-grouping-replaces-non-major-base.md`、`docs/adr/20260726-d3b-adopt-renovate-with-approval-and-two-layer-cooldown.md`、`docs/adr/INDEX.md`
 - テスト戦略: テスト不要（ドキュメント）
 - 作業内容:
