@@ -56,7 +56,7 @@ jobs:
       product: ${{ steps.filter.outputs.product }}
     steps:
       # ローカル action の読み込みに checkout が必要
-      - uses: actions/checkout@v5.1.0
+      - uses: actions/checkout@v7.0.1
 
       - uses: ./.github/actions/changes
         id: filter
@@ -96,7 +96,7 @@ jobs:
       BETTER_AUTH_URL: http://localhost:3000
 
     steps:
-      - uses: actions/checkout@v5.1.0
+      - uses: actions/checkout@v7.0.1
 
       - uses: pnpm/action-setup@v4.4.0
 
@@ -174,7 +174,7 @@ jobs:
       BETTER_AUTH_URL: http://localhost:3000
 
     steps:
-      - uses: actions/checkout@v5.1.0
+      - uses: actions/checkout@v7.0.1
 
       - uses: pnpm/action-setup@v4.4.0
 
