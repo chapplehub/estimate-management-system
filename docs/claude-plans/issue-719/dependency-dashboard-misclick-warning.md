@@ -109,7 +109,7 @@ ADR-0000 の記録基準 3 条件（①覆すと複数コンポーネントに�
 
 ### Step 2: Renovate Dashboard の挙動を `learning/` に記録
 
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: `learning/renovate-dependency-dashboard-checkbox-semantics.md`（新規）
 - テスト戦略: テスト不要（ドキュメント）
 - 作業内容: 以下 7 項目を記録する
