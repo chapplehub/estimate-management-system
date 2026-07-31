@@ -100,7 +100,7 @@ jobs:
 
       - uses: pnpm/action-setup@v6.0.9
 
-      - uses: actions/setup-node@v5.0.0
+      - uses: actions/setup-node@v7.0.0
         with:
           # Node の版は .nvmrc が単一ソース（→ ADR-20260728-44b）
           node-version-file: .nvmrc
@@ -178,7 +178,7 @@ jobs:
 
       - uses: pnpm/action-setup@v6.0.9
 
-      - uses: actions/setup-node@v5.0.0
+      - uses: actions/setup-node@v7.0.0
         with:
           # Node の版は .nvmrc が単一ソース（→ ADR-20260728-44b）
           node-version-file: .nvmrc
