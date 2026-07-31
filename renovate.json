@@ -35,6 +35,11 @@
       "groupName": "node"
     },
     {
+      "description": "TypeScript 7 を一時ブロックする（→ #738）。TS 7.0 はコンパイラ API を含まず出荷され（新 API は 7.1 予定）、Next.js デフォルト型チェッカーと typescript-eslint（サポート <6.1.0）が動作しない。Next の experimental.useTypeScriptCli は production 非推奨かつ lint 側を救えない。7.1 の API 提供 + typescript-eslint / Next.js の追従を確認したらこのルールを削除して v7 を解禁する。v7 PR は手動クローズしないこと（major の手動クローズは Renovate がその major 全体を ignored 扱いにし、解禁後も PR が再作成されなくなる。設定変更による Renovate 自身のクローズは条件が戻れば再作成される）",
+      "matchPackageNames": ["typescript"],
+      "allowedVersions": "<7"
+    },
+    {
       "description": "non-major は CI 緑で自動マージする（→ ADR-20260730-t6e）。承認（dependencyDashboardApproval）は維持しており、自動化されるのはマージ以降のみ。major は automerge 既定 false のまま手動マージ",
       "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
       "automerge": true
