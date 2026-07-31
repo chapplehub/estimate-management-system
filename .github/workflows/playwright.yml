@@ -132,7 +132,7 @@ jobs:
       # 二度アップロードできず、artifact が再実行の attempt をまたいで保持されるため。
       # 含めないと「Re-run failed jobs」がアップロードエラーで落ちる（再実行は「Re-run all jobs」前提）
       - name: Upload blob report
-        uses: actions/upload-artifact@v5.0.0
+        uses: actions/upload-artifact@v7.0.1
         if: ${{ !cancelled() }}
         with:
           name: blob-report-${{ matrix.shardIndex }}-${{ github.run_attempt }}
@@ -171,7 +171,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Download blob reports
-        uses: actions/download-artifact@v6.0.0
+        uses: actions/download-artifact@v8.0.1
         with:
           path: all-blob-reports
           pattern: blob-report-*-${{ github.run_attempt }}
@@ -187,7 +187,7 @@ jobs:
       # overwrite: true を採らないのは、前 attempt の統合レポートを消してしまい
       # 失敗した run の証跡を追えなくなるため
       - name: Upload merged report
-        uses: actions/upload-artifact@v5.0.0
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: playwright-report-${{ github.run_attempt }}
           path: playwright-report/
