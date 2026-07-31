@@ -1,9 +1,9 @@
-onlyBuiltDependencies:
-  - "@prisma/engines"
-  - esbuild
-  - prisma
-  - sharp
-  - unrs-resolver
+allowBuilds:
+  "@prisma/engines": true
+  esbuild: true
+  prisma: true
+  sharp: true
+  unrs-resolver: true
 minimumReleaseAge: 4320 # 3 days (分単位)
 minimumReleaseAgeExclude:
   # Renovate security update: uuid@13.0.1

@@ -38,7 +38,7 @@ concurrency:
 # GITHUB_TOKEN は checkout に必要な読み取りのみに絞る。宣言が無いとリポジトリ設定の
 # default_workflow_permissions（現在は read だが組織／リポジトリ側でいつでも write に
 # 変えられる値）に従うため、ワークフロー側で恒久的に閉じておく。
-# 本ワークフローは pnpm install で only-allow / onlyBuiltDependencies のビルドスクリプトを
+# 本ワークフローは pnpm install で only-allow / allowBuilds のビルドスクリプトを
 # 実行するため、書き込み権限付きトークンを同じ run に置かないことに意味がある。
 permissions:
   contents: read
