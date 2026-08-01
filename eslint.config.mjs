@@ -1,7 +1,17 @@
+import { createRequire } from "node:module";
+
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 import prettier from "eslint-config-prettier/flat";
 import { defineConfig, globalIgnores } from "eslint/config";
+
+// eslint-plugin-react の React バージョン自動検出は ESLint 10 で削除された
+// context.getFilename() に依存しておりクラッシュする（vercel/next.js#89764、
+// 上流修正 jsx-eslint/eslint-plugin-react#3979 未マージ）。自動検出と同じ情報源
+// （インストール済み react の package.json）を config 読み込み時に自前で解決して
+// settings.react.version に明示し、自動検出パスごと迂回する。上流対応後は削除可。
+const require = createRequire(import.meta.url);
+const reactVersion = require("react/package.json").version;
 
 // 集約境界規約: 各集約の子エンティティへの集約外からの直接 import を禁止するパターン群。
 // グローバルルールと、atomic submit 参加リポジトリ向けオーバーライド（素 prisma も追加禁止）の
@@ -87,6 +97,9 @@ const eslintConfig = defineConfig([
   ]),
   // Enable type-aware linting
   {
+    settings: {
+      react: { version: reactVersion },
+    },
     languageOptions: {
       parserOptions: {
         projectService: true,
