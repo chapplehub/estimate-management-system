@@ -1,9 +1,15 @@
 # 開発環境用 Docker Compose（Phase 1: DB のみ）
 #
+# name: プロジェクト名を実行ディレクトリに依らず固定する。
+# これが無いと worktree 内で docker compose up した際にディレクトリ名由来の
+# 別プロジェクト扱いとなり、空ボリューム + 5432 ポート競合の事故になる。
+#
 # Next.js アプリはホストで `pnpm dev` を実行する（コンテナ化しない）。
 # 理由: husky フック・Playwright・単体テストがホストの Node 環境で動くため、
 # アプリをコンテナ化しても二重管理になるだけで利益がない。
 # 参考: https://nextjs.org/docs/app/guides/local-development#8-consider-local-development-over-docker
+name: estimate-management-system
+
 services:
   db:
     image: postgres:16.14 # 移行元のネイティブ PostgreSQL とバージョンを一致させる
