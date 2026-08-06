@@ -37,6 +37,20 @@
 3. Application layer uses repository **interfaces** from domain layer, NOT concrete implementations
 4. Infrastructure layer implements domain interfaces and handles Prisma <-> Domain mapping
 
+## Dev DB (Docker)
+
+開発・テスト用の PostgreSQL は Docker Compose で起動する（Issue #755）。Next.js アプリはホストで `pnpm dev` を実行する（コンテナ化しない）。
+
+```bash
+docker compose up -d --wait   # DB起動（dev / unit / e2e の3DBは初回起動時に自動作成）
+docker compose down           # DB停止（データは pgdata ボリュームに残る）
+docker compose down -v        # DB完全リセット（ボリューム削除。次回起動時にinitdb再実行）
+```
+
+- 接続先は従来どおり `localhost:5432`（`.env*` の `DATABASE_URL` は変更不要）
+- unit / e2e 用DBの作成は `docker/db/initdb/01-create-databases.sql`（データボリュームが空の初回のみ実行）
+- DB完全リセット後は `pnpm db:migrate && pnpm db:seed` / `pnpm test:setup` / `pnpm e2e:setup` で再構築する
+
 ## Unit Tests
 
 単体テスト（vitest）は開発DBと分離した専用DB（`.env.unit` の `DATABASE_URL`）を使う（Issue #584）。
