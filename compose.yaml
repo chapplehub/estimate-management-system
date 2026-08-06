@@ -12,7 +12,11 @@ name: estimate-management-system
 
 services:
   db:
-    image: postgres:16.14 # 移行元のネイティブ PostgreSQL とバージョンを一致させる
+    # バージョンは移行元のネイティブ PostgreSQL と一致させる。
+    # OS サフィックス（-trixie）まで明示するのは、無印タグはベース Debian の
+    # 切替で glibc が黙って変わり、pgdata の照合順序依存インデックスを
+    # 壊しうるため。更新は Renovate の PR で意図的に取り込む
+    image: postgres:16.14-trixie
     ports:
       # 127.0.0.1 バインドで LAN に晒さない（ネイティブ版の listen_addresses と等価）。
       # ホストの prisma / createdb / psql はこれまで通り localhost:5432 で接続できる
