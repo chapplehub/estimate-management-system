@@ -1,0 +1,29 @@
+# 開発環境用 Docker Compose（Phase 1: DB のみ）
+#
+# Next.js アプリはホストで `pnpm dev` を実行する（コンテナ化しない）。
+# 理由: husky フック・Playwright・単体テストがホストの Node 環境で動くため、
+# アプリをコンテナ化しても二重管理になるだけで利益がない。
+# 参考: https://nextjs.org/docs/app/guides/local-development#8-consider-local-development-over-docker
+services:
+  db:
+    image: postgres:16.14 # 移行元のネイティブ PostgreSQL とバージョンを一致させる
+    ports:
+      # 127.0.0.1 バインドで LAN に晒さない（ネイティブ版の listen_addresses と等価）。
+      # ホストの prisma / createdb / psql はこれまで通り localhost:5432 で接続できる
+      - "127.0.0.1:5432:5432"
+    environment:
+      POSTGRES_USER: dev_user
+      POSTGRES_PASSWORD: dev_password
+      POSTGRES_DB: estimate_management_dev
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # unit / e2e 用 DB の作成スクリプト。データボリュームが空の初回起動時のみ実行される
+      - ./docker/db/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dev_user -d estimate_management_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:
