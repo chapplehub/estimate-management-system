@@ -82,7 +82,7 @@ EC2 なしで、ローカル（WSL2）で「イメージビルド → migrate �
 - コミットメッセージ: `chore: プロダクション用 Dockerfile を追加（standalone + migrate ステージ）`
 
 ### Step 3: compose.prod.yaml と .env.production.example の作成
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: `compose.prod.yaml`, `.env.production.example`
 - テスト戦略: テスト不要（設定ファイル。Step 5 で実機検証）
 - 作業内容:
