@@ -62,7 +62,7 @@ EC2 なしで、ローカル（WSL2）で「イメージビルド → migrate �
 ## ステップ
 
 ### Step 1: standalone 出力とヘルスチェックエンドポイントの追加
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: `next.config.ts`, `src/app/api/health/route.ts`
 - テスト戦略: テスト不要（設定変更 + ロジックを持たない固定応答。Step 5 の compose healthcheck 実機検証でカバー）
 - 作業内容:
