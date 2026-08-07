@@ -78,5 +78,26 @@ services:
       retries: 3
       start_period: 15s
 
+  nginx:
+    # メジャー/マイナーをピン留めし、更新は Renovate で意図的に取り込む
+    image: nginx:1.28.0-alpine
+    restart: unless-stopped
+    # 外部公開はここ（80/443）のみ
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
+      # HTTPS（certbot）有効化時にコメントアウトを外す
+      # （docker/nginx/conf.d/app-ssl.conf.example の手順を参照）
+      # - letsencrypt:/etc/letsencrypt:ro
+      # - certbot-webroot:/var/www/certbot:ro
+    depends_on:
+      app:
+        condition: service_healthy
+
 volumes:
   pgdata:
+  # HTTPS（certbot）有効化時にコメントアウトを外す
+  # letsencrypt:
+  # certbot-webroot:

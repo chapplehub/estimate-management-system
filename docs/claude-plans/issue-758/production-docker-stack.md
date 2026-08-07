@@ -94,7 +94,7 @@ EC2 なしで、ローカル（WSL2）で「イメージビルド → migrate �
 - コミットメッセージ: `chore: プロダクション用 compose.prod.yaml と .env.production.example を追加`
 
 ### Step 4: Nginx 設定と nginx サービスの追加
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: `docker/nginx/`（設定ファイル一式）, `compose.prod.yaml`
 - テスト戦略: テスト不要（設定ファイル。Step 5 で実機検証）
 - 作業内容:
