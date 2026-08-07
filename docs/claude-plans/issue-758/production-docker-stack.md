@@ -71,7 +71,7 @@ EC2 なしで、ローカル（WSL2）で「イメージビルド → migrate �
 - コミットメッセージ: `chore: next build を standalone 出力に切り替え、/api/health を追加`
 
 ### Step 2: Dockerfile と .dockerignore の作成
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: `Dockerfile`, `.dockerignore`
 - テスト戦略: テスト不要（設定ファイル。`docker build` の成功とイメージサイズ確認で検証）
 - 作業内容:

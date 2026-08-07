@@ -1,0 +1,41 @@
+# ビルドコンテキストから除外するもの（Issue #758）
+# 依存・生成物はイメージ内で作り直す。秘密情報（.env*）は絶対に含めない
+
+# VCS / worktree
+.git
+worktrees
+.claude
+
+# 依存・生成物（イメージ内で再生成する）
+node_modules
+.next
+out
+build
+generated
+coverage
+*.tsbuildinfo
+.eslintcache
+
+# テスト成果物
+test-results
+playwright-report
+blob-report
+playwright/.cache
+playwright/.auth
+.playwright-mcp
+
+# 秘密情報（例外なく除外。キー名の文書化は .env.production.example が担う）
+.env*
+
+# Docker 自身・ドキュメント類
+Dockerfile
+.dockerignore
+compose.yaml
+compose.prod.yaml
+docker
+docs
+learning
+README.md
+CLAUDE.md
+CONTEXT.md
+HANDOFF.md
