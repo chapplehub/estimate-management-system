@@ -31,10 +31,21 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      # -h 127.0.0.1 で TCP 経由の到達性を見る。-h なしの pg_isready は Unix
+      # ソケット判定になるが、postgres の entrypoint は initdb / 初期化スクリプトを
+      # listen_addresses='' の一時サーバで走らせるため、TCP 5432 が閉じたまま
+      # ソケットだけ応答する時間帯がある（空ボリューム起動の実測で
+      # ソケット ready 1.33s に対し TCP ready 1.82s）。ここで healthy と誤判定すると
+      # migrate が db:5432 に ECONNREFUSED で異常終了し、restart:"no" のため
+      # 再試行されず app の service_completed_successfully が永久に満たされない
+      test:
+        ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 10
+      # EBS の遅い EC2 では初期化が数十秒に伸びうる。この間の失敗は
+      # retries を消費しない
+      start_period: 30s
 
   # マイグレーション one-shot サービス。db が healthy になってから実行され、
   # 正常終了すると app の起動条件（service_completed_successfully）が満たされる
