@@ -35,13 +35,22 @@ FROM base AS build
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# DATABASE_URL のダミー値: prisma.config.ts が config ロード時に env() を即時解決
-# するため未設定だと prisma generate が落ちる。generate / next build は DB へ
-# 接続しないため値はプレースホルダで良い（秘密情報は焼き込まない）。
-# RUN 内のみで渡し、イメージの ENV には残さない
-RUN DATABASE_URL="postgresql://build:build@build-placeholder:5432/build" \
+# ビルド時ダミー env（値・理由とも .github/workflows/ci.yml の build ジョブと揃える）:
+#   DATABASE_URL       — prisma.config.ts が config ロード時に env() を即時解決する
+#                        ため未設定だと prisma generate が落ちる。ホストは RFC 2606 の
+#                        .invalid にして「宣言された到達不能」にする（ベアラベルだと
+#                        search domain 次第で解決され、NXDOMAIN が接続ハングに変わる）
+#   BETTER_AUTH_*      — betterAuth() がモジュールスコープで実行され、secret 不在時の
+#                        挙動（警告か throw か）が better-auth のバージョン依存のため
+# generate / next build は DB にも認証基盤にも接続しないため値はプレースホルダで良い。
+# RUN 内のみで渡し、イメージの ENV には残さない（秘密情報を焼き込まない）
+RUN DATABASE_URL="postgresql://build:build@db-unreachable.invalid:5432/build_check" \
+    BETTER_AUTH_SECRET="build-time-placeholder" \
+    BETTER_AUTH_URL="http://localhost:3000" \
     pnpm db:generate && \
-    DATABASE_URL="postgresql://build:build@build-placeholder:5432/build" \
+    DATABASE_URL="postgresql://build:build@db-unreachable.invalid:5432/build_check" \
+    BETTER_AUTH_SECRET="build-time-placeholder" \
+    BETTER_AUTH_URL="http://localhost:3000" \
     pnpm build
 
 # --- migrate: one-shot マイグレーション用 ----------------------------------
