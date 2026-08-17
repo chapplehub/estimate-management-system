@@ -1,0 +1,114 @@
+# プロダクション用 Docker Compose（Issue #758）
+#
+# dev 用 compose.yaml とは独立したファイル（overlay にしない。
+# dev 版と差分が大きく継承関係は事故のもと）。
+#
+# 環境変数は EC2 上に手動配置した .env ファイルから注入する（chmod 600・git 管理外）:
+#   docker compose -f compose.prod.yaml --env-file .env.production up -d
+# キー名の一覧は .env.production.example を参照。
+#
+# イメージは GHCR からの pull を既定とし、ローカル検証では build で代替する:
+#   docker compose -f compose.prod.yaml --env-file .env.production build
+#
+# 公開ポートは nginx の 80/443 のみ。db / app はホストへ publish しない。
+
+# プロジェクト名は dev 用（estimate-management-system）と別にし、
+# ボリューム・ネットワークの衝突を防ぐ
+name: estimate-management-system-prod
+
+services:
+  db:
+    # dev 用 compose.yaml と同じ理由で OS サフィックスまでピン留めする
+    # （無印タグはベース Debian の切替で glibc が黙って変わり、
+    #   照合順序依存インデックスを壊しうる。更新は Renovate で意図的に取り込む）
+    image: postgres:16.14-trixie
+    restart: unless-stopped
+    # ポートは publish しない（内部ネットワークからのみ到達可能）
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # -h 127.0.0.1 で TCP 経由の到達性を見る。-h なしの pg_isready は Unix
+      # ソケット判定になるが、postgres の entrypoint は initdb / 初期化スクリプトを
+      # listen_addresses='' の一時サーバで走らせるため、TCP 5432 が閉じたまま
+      # ソケットだけ応答する時間帯がある（空ボリューム起動の実測で
+      # ソケット ready 1.33s に対し TCP ready 1.82s）。ここで healthy と誤判定すると
+      # migrate が db:5432 に ECONNREFUSED で異常終了し、restart:"no" のため
+      # 再試行されず app の service_completed_successfully が永久に満たされない
+      test:
+        ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      # EBS の遅い EC2 では初期化が数十秒に伸びうる。この間の失敗は
+      # retries を消費しない
+      start_period: 30s
+
+  # マイグレーション one-shot サービス。db が healthy になってから実行され、
+  # 正常終了すると app の起動条件（service_completed_successfully）が満たされる
+  migrate:
+    image: ${MIGRATE_IMAGE:-ghcr.io/chapplehub/estimate-management-system/migrate:latest}
+    build:
+      context: .
+      target: migrate
+    restart: "no"
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  app:
+    image: ${APP_IMAGE:-ghcr.io/chapplehub/estimate-management-system/app:latest}
+    build:
+      context: .
+      target: runner
+    restart: unless-stopped
+    # ポートは publish しない（公開は nginx の 80/443 のみ）
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      # runner イメージ（node:slim）には curl/wget が無いため node の fetch で代替する
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3000/api/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  nginx:
+    # メジャー/マイナーをピン留めし、更新は Renovate で意図的に取り込む
+    image: nginx:1.28.0-alpine
+    restart: unless-stopped
+    # 外部公開はここ（80/443）のみ
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
+      # HTTPS（certbot）有効化時にコメントアウトを外す
+      # （docker/nginx/conf.d/app-ssl.conf.example の手順を参照）
+      # - letsencrypt:/etc/letsencrypt:ro
+      # - certbot-webroot:/var/www/certbot:ro
+    depends_on:
+      app:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  # HTTPS（certbot）有効化時にコメントアウトを外す
+  # letsencrypt:
+  # certbot-webroot:

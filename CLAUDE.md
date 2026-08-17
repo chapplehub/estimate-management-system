@@ -51,6 +51,33 @@ docker compose down -v        # DB完全リセット（ボリューム削除。�
 - unit / e2e 用DBの作成は `docker/db/initdb/01-create-databases.sql`（データボリュームが空の初回のみ実行）
 - DB完全リセット後は `pnpm db:migrate && pnpm db:seed` / `pnpm test:setup` / `pnpm e2e:setup` で再構築する
 
+## Production Docker (ローカル検証)
+
+プロダクション用構成は `Dockerfile`（standalone + migrate ステージ）+ `compose.prod.yaml` + `docker/nginx/`（Issue #758）。EC2 デプロイ前提だが、ローカルで一式検証できる。
+
+```bash
+# 1. env 準備（値を埋める。git 管理外・キー名は example 参照）
+cp .env.production.example .env.production
+# ローカル検証時は APP_IMAGE / MIGRATE_IMAGE にローカルビルドのタグを指定する
+
+# 2. イメージビルド
+docker build --target runner -t ems-app:local .
+docker build --target migrate -t ems-migrate:local .
+
+# 3. 一式起動（db → migrate（one-shot）→ app → nginx の順に自動起動）
+docker compose -f compose.prod.yaml --env-file .env.production up -d --wait
+
+# 4. 動作確認（Nginx 経由。公開ポートは 80/443 のみ）
+#    http://localhost/api/health が 200、http://localhost/signin がログイン画面
+
+# 5. 片付け
+docker compose -f compose.prod.yaml --env-file .env.production down -v
+```
+
+- dev 用 compose とはプロジェクト名・ボリュームが分離されており同時起動可（ポート衝突なし）
+- `--env-file` を明示すること（省略すると `.env`（dev 用）が読まれる）
+- HTTPS/certbot はドメイン取得後に有効化（手順は `docker/nginx/conf.d/app-ssl.conf.example`）
+
 ## Unit Tests
 
 単体テスト（vitest）は開発DBと分離した専用DB（`.env.unit` の `DATABASE_URL`）を使う（Issue #584）。
