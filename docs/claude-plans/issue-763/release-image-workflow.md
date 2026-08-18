@@ -53,7 +53,7 @@
 ## ステップ
 
 ### Step 1: release-image.yml の新設
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: `.github/workflows/release-image.yml`
 - テスト戦略: テスト不要（CI 設定ファイル。検証は develop → main の初回リリース push での実 run で行う）
 - 作業内容:
