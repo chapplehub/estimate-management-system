@@ -154,3 +154,4 @@
 | [20260730-0b6](20260730-0b6-delegate-grouping-to-presets-and-drop-major-degrouping.md) | グルーピングを config:recommended 内蔵プリセットに全面委譲し、major グループ解除を廃止する | 採用 | 2026-07-30 |
 | [20260730-aan](20260730-aan-migrate-range-strategy-to-pin-with-js-app.md) | rangeStrategy を bump から pin へ移行し、config:js-app を採用する | 採用 | 2026-07-30 |
 | [20260730-t6e](20260730-t6e-introduce-platform-automerge-with-approval-retained.md) | Renovate automerge は platformAutomerge + squash-only リポジトリ設定で導入し、Dashboard 承認は維持する | 採用（適用は #704 マージ後） | 2026-07-30 |
+| [20260818-7pn](20260818-7pn-production-images-arm64-single-arch-bind-ec2-to-graviton.md) | 本番イメージは arm64 単一アーキテクチャでビルドし、EC2 を Graviton に拘束する | 採用 | 2026-08-18 |
