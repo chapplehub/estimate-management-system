@@ -1,4 +1,6 @@
+import { ensureTestDepartment } from "@server/__tests__/helpers/ensureTestDepartment";
 import prisma from "@server/prisma";
+import { employeeTestCodes } from "@server/__tests__/helpers/test-codes/employeeTestCodes";
 import { FakeUserManagementService } from "@server/shared/auth/fake/FakeUserManagementService";
 import { USER_ROLES } from "@server/shared/auth/types";
 import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
@@ -11,8 +13,9 @@ describe("DeleteEmployeeCommand", () => {
   let repository: PrismaEmployeeRepository;
   let fakeUserManagementService: FakeUserManagementService;
 
-  const TEST_EMPLOYEE_ID = "test-delete-cmd-id-001";
-  const TEST_EMPLOYEE_CD = "EMP999909";
+  const TEST_EMPLOYEE_ID = "00000000-0000-7000-8000-100000000003";
+  const TEST_EMPLOYEE_CD = employeeTestCodes["employee.deleteCommand"].codes[0];
+  let TEST_DEPT_ID: string;
 
   beforeEach(async () => {
     // テストデータのクリーンアップ
@@ -22,18 +25,8 @@ describe("DeleteEmployeeCommand", () => {
       },
     });
 
-    // テスト用部署を作成（存在しない場合）
-    await prisma.department.upsert({
-      where: { id: "dept-001" },
-      update: {},
-      create: {
-        id: "dept-001",
-        departmentCd: "DEPT001",
-        name: "テスト部署",
-        abbreviation: "テスト",
-        isActive: true,
-      },
-    });
+    // テスト用部署を確保
+    TEST_DEPT_ID = await ensureTestDepartment();
 
     repository = new PrismaEmployeeRepository();
     fakeUserManagementService = new FakeUserManagementService();
@@ -61,7 +54,7 @@ describe("DeleteEmployeeCommand", () => {
         employeeCd: TEST_EMPLOYEE_CD,
         email: "delete-cmd-test@example.com",
         name: "削除テスト太郎",
-        departmentId: "dept-001",
+        departmentId: TEST_DEPT_ID,
       },
     });
   }
@@ -113,9 +106,10 @@ describe("DeleteEmployeeCommand", () => {
   });
 
   it("存在しない従業員を削除しようとするとNotFoundEntityErrorがスローされる", async () => {
-    const nonExistentId = "non-existent-id-12345";
+    const nonExistentId = "00000000-0000-7000-8000-000000000004";
 
     await expect(command.execute({ id: nonExistentId })).rejects.toThrow(NotFoundEntityError);
+    await expect(command.execute({ id: nonExistentId })).rejects.toThrow("従業員が見つかりません");
   });
 
   it("認証ユーザー削除失敗時はエラーがスローされる", async () => {
@@ -128,6 +122,9 @@ describe("DeleteEmployeeCommand", () => {
 
     // 実行・検証：エラーがスローされること
     await expect(command.execute({ id: TEST_EMPLOYEE_ID })).rejects.toThrow(Error);
+    await expect(command.execute({ id: TEST_EMPLOYEE_ID })).rejects.toThrow(
+      "認証ユーザーの削除に失敗しました"
+    );
 
     // 検証：従業員が削除されていないこと（エラーで処理が中断されたため）
     const employee = await prisma.employee.findUnique({

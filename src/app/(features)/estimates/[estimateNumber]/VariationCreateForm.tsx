@@ -1,0 +1,145 @@
+"use client";
+
+import { getFormProps, getInputProps } from "@conform-to/react";
+import { useState } from "react";
+import { useServerForm } from "@/app/_hooks/useServerForm";
+import { SubmissionTypeField } from "../_shared/SubmissionTypeField";
+import { VariationLineEditor, VariationLineEditorOverlays } from "./components/VariationLineEditor";
+import { addVariation } from "./actions";
+import { useVariationLineEditor } from "./useVariationLineEditor";
+import { addVariationNodeSchema } from "./variationSchema";
+import type { VariationCreateInitialValues } from "./variationDuplication";
+
+type Props = {
+  estimateNumber: string;
+  /** 集約ルートの楽観ロックトークン（ADR-0039）。 */
+  version: number;
+  /** 見積年月日 "yyyy-mm-dd"（明細追加時の価格決定に供給・#430）。 */
+  estimateDate: string;
+  /** 得意先ID（提出区分=得意先向けの価格解決に使う）。 */
+  customerId: string;
+  /** 納品先ID（提出区分=納品先向けの価格解決に使う）。 */
+  deliveryLocationId: string;
+  taxRate: number;
+  taxRoundingType: string;
+  onCancel: () => void;
+} & (
+  | { kind: "new" }
+  | {
+      kind: "duplicate";
+      /** 複製元から引き継ぐ初期値（提出区分・明細スナップショット・全体値引・メモ）。 */
+      initialValues: VariationCreateInitialValues;
+    }
+);
+
+/**
+ * バリエーション作成フォーム（C3・新規追加／複製プリフィル）。明細編集の作業コピーパイプライン
+ * （nodes＝通常明細／セット群 union を client state で保持し submit 時に単一 hidden へ JSON 化・
+ * ADR-0047/0050）は {@link useVariationLineEditor}＋{@link VariationLineEditor} に集約し、C4 編集
+ * フォームと共有する。この薄いラッパが持つ差分は (1) variationId を持たず提出区分を入力する点、
+ * (2) 初期値が複製元 DTO 由来（新規追加は白紙）の 2 点。提出区分は複製＝引き継ぎ固定、新規追加＝
+ * 選択（SubmissionTypeField）。version はフォーム由来の楽観ロックトークン（ADR-0039・追加型でも必須）。
+ */
+export function VariationCreateForm(props: Props) {
+  const {
+    estimateNumber,
+    version,
+    estimateDate,
+    customerId,
+    deliveryLocationId,
+    taxRate,
+    taxRoundingType,
+    onCancel,
+  } = props;
+  // 複製は提出区分・明細等を複製元から引き継ぎ、新規追加は白紙で始める。複製/新規は initialValues の
+  // 有無ではなくタグ（props.kind）で区別する。
+  const initialValues = props.kind === "duplicate" ? props.initialValues : undefined;
+  // 提出区分は明細追加時の価格決定（宛先判別）に効くため controlled state に持ち上げる。複製は
+  // 複製元固定、新規は選択式（SubmissionTypeField と共有）。
+  const [submissionType, setSubmissionType] = useState(initialValues?.submissionType ?? "CUSTOMER");
+
+  const action = addVariation.bind(null, estimateNumber);
+  const { form, fields, isPending } = useServerForm({
+    action,
+    schema: addVariationNodeSchema,
+    defaultValue: {
+      version: String(version),
+      // 新規＝得意先向け既定／複製＝複製元の値。select(uncontrolled)・hidden いずれの初期値もここを源泉に。
+      submissionType: initialValues?.submissionType ?? "CUSTOMER",
+      customerMemo: initialValues?.customerMemo ?? "",
+      internalMemo: initialValues?.internalMemo ?? "",
+    },
+  });
+
+  // 作業コピー: 複製は複製元の作業ノード（改訂列ドロップ済み・セット群スナップショット保持）、
+  // 新規追加は空配列で開始する。overallDiscount も同様。
+  const editor = useVariationLineEditor({
+    initialNodes: initialValues?.nodes ?? [],
+    initialOverallDiscount: initialValues?.overallDiscount ?? 0,
+    priceContext: { estimateDate, customerId, deliveryLocationId, submissionType },
+    taxRate,
+    taxRoundingType,
+  });
+
+  return (
+    <>
+      {form.errors && (
+        <div
+          className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4"
+          role="alert"
+        >
+          <p className="font-bold">エラー</p>
+          {form.errors.map((e) => (
+            <p key={e}>{e}</p>
+          ))}
+        </div>
+      )}
+
+      <form {...getFormProps(form)} noValidate>
+        {/* 楽観ロックトークン（state を hidden で送る）。variationId は持たない。 */}
+        <input {...getInputProps(fields.version, { type: "hidden" })} />
+
+        <SubmissionTypeField
+          field={fields.submissionType}
+          {...(props.kind === "duplicate"
+            ? { mode: "fixed" as const, value: props.initialValues.submissionType }
+            : {
+                mode: "select" as const,
+                disabled: isPending,
+                value: submissionType,
+                onValueChange: setSubmissionType,
+              })}
+        />
+
+        <VariationLineEditor
+          editor={editor}
+          nodesField={fields.nodes}
+          overallDiscountField={fields.overallDiscount}
+          customerMemoField={fields.customerMemo}
+          internalMemoField={fields.internalMemo}
+          isPending={isPending}
+        />
+
+        <div className="flex gap-4 mt-6">
+          <button
+            type="submit"
+            disabled={isPending}
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            {isPending ? "保存中..." : "保存"}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={isPending}
+            className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded disabled:cursor-not-allowed"
+          >
+            キャンセル
+          </button>
+        </div>
+      </form>
+
+      <VariationLineEditorOverlays editor={editor} />
+    </>
+  );
+}

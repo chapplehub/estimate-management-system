@@ -43,10 +43,16 @@ describe("DepartmentCd", () => {
 
     it("0を指定するとエラー", () => {
       expect(() => DepartmentCd.fromNumber(0)).toThrow(ValidationError);
+      expect(() => DepartmentCd.fromNumber(0)).toThrow(
+        "部署コードは 1 〜 999 の範囲である必要があります"
+      );
     });
 
     it("1000以上を指定するとエラー", () => {
       expect(() => DepartmentCd.fromNumber(1000)).toThrow(ValidationError);
+      expect(() => DepartmentCd.fromNumber(1000)).toThrow(
+        "部署コードは 1 〜 999 の範囲である必要があります"
+      );
     });
   });
 
@@ -58,22 +64,35 @@ describe("DepartmentCd", () => {
 
     it("DEPT000 はエラー（0は無効）", () => {
       expect(() => new DepartmentCd("DEPT000")).toThrow(ValidationError);
+      expect(() => new DepartmentCd("DEPT000")).toThrow("部署コードは 1 以上である必要があります");
     });
 
     it("プレフィックスが違うとエラー", () => {
       expect(() => new DepartmentCd("EMP001")).toThrow(ValidationError);
+      expect(() => new DepartmentCd("EMP001")).toThrow(
+        "部署コードは DEPT + 3桁の数字である必要があります"
+      );
     });
 
     it("数字が足りないとエラー", () => {
       expect(() => new DepartmentCd("DEPT01")).toThrow(ValidationError);
+      expect(() => new DepartmentCd("DEPT01")).toThrow(
+        "部署コードは DEPT + 3桁の数字である必要があります"
+      );
     });
 
     it("数字が多すぎるとエラー", () => {
       expect(() => new DepartmentCd("DEPT0001")).toThrow(ValidationError);
+      expect(() => new DepartmentCd("DEPT0001")).toThrow(
+        "部署コードは DEPT + 3桁の数字である必要があります"
+      );
     });
 
     it("数字以外が含まれるとエラー", () => {
       expect(() => new DepartmentCd("DEPTABC")).toThrow(ValidationError);
+      expect(() => new DepartmentCd("DEPTABC")).toThrow(
+        "部署コードは DEPT + 3桁の数字である必要があります"
+      );
     });
   });
 

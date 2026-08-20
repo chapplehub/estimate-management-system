@@ -7,10 +7,12 @@ import { Prefecture } from "@server/shared/domain/values/Prefecture";
 import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { Customer } from "@subdomains/customer/domain/entities/Customer";
 import { CustomerRepository } from "@subdomains/customer/domain/repositories/CustomerRepository";
-import { MarginRate } from "@subdomains/customer/domain/values/MarginRate";
+import { CustomerId } from "@subdomains/customer/domain/values/CustomerId";
 
 export type UpdateCustomerInput = {
   id: string;
+  /** 編集画面表示時の version（楽観ロックトークン / ADR-0039）。リポジトリへ素通しする。 */
+  expectedVersion: number;
   name: string;
   postalCode?: string | null;
   prefecture?: string | null;
@@ -18,8 +20,6 @@ export type UpdateCustomerInput = {
   phoneNumber?: string | null;
   faxNumber?: string | null;
   contactPerson?: string | null;
-  marginRate?: number | null;
-  isActive?: boolean;
 };
 
 /**
@@ -31,7 +31,8 @@ export class UpdateCustomerCommand {
   constructor(private readonly customerRepository: CustomerRepository) {}
 
   async execute(input: UpdateCustomerInput): Promise<void> {
-    const customer = await this.customerRepository.findById(input.id);
+    const customerId = new CustomerId(input.id);
+    const customer = await this.customerRepository.findById(customerId);
     if (!customer) {
       throw new NotFoundEntityError(Customer, { id: input.id });
     }
@@ -50,20 +51,6 @@ export class UpdateCustomerCommand {
       input.contactPerson ?? null
     );
 
-    customer.changeMarginRate(
-      input.marginRate !== undefined && input.marginRate !== null
-        ? new MarginRate(input.marginRate)
-        : null
-    );
-
-    if (input.isActive !== undefined) {
-      if (input.isActive) {
-        customer.activate();
-      } else {
-        customer.deactivate();
-      }
-    }
-
-    await this.customerRepository.save(customer);
+    await this.customerRepository.update(customer, input.expectedVersion);
   }
 }

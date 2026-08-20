@@ -18,10 +18,12 @@ describe("FaxNumber", () => {
   describe("異常系", () => {
     it("9桁を拒否する", () => {
       expect(() => new FaxNumber("031234567")).toThrow(ValidationError);
+      expect(() => new FaxNumber("031234567")).toThrow("FAX番号は10文字以上で入力してください");
     });
 
     it("空文字を拒否する", () => {
       expect(() => new FaxNumber("")).toThrow(ValidationError);
+      expect(() => new FaxNumber("")).toThrow("FAX番号は10文字以上で入力してください");
     });
   });
 });

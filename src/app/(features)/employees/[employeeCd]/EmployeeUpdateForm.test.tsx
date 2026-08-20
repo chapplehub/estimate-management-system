@@ -27,6 +27,9 @@ const mockEmployee = {
   employeeCd: "EMP000001",
   departmentId: "dept-1",
   role: USER_ROLES.USER,
+  assignedRoleId: null,
+  explicitSuperiorRoleId: null,
+  version: 3,
 };
 
 // 部署選択スロットのモック
@@ -37,6 +40,18 @@ const mockDepartmentSelectSlot = (
     <option value="dept-2">開発部</option>
   </select>
 );
+
+// 担当役割オプションのモック（page.tsx が findAll で取得し {id,name}[] を供給）
+const mockRoleOptions = [
+  { id: "role-1", name: "営業課長" },
+  { id: "role-2", name: "開発部長" },
+];
+
+// 上位役割オプションのモック（課員の上位役割候補・課長級のみ・page.tsx が葉ティア絞り込みで供給）
+const mockSuperiorRoleOptions = [
+  { id: "sup-1", name: "営業一課長" },
+  { id: "sup-2", name: "開発課長" },
+];
 
 describe("EmployeeUpdateForm", () => {
   beforeEach(() => {
@@ -54,6 +69,9 @@ describe("EmployeeUpdateForm", () => {
           employee={mockEmployee}
           canUpdate={true}
           departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
@@ -74,6 +92,9 @@ describe("EmployeeUpdateForm", () => {
           employee={mockEmployee}
           canUpdate={true}
           departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
@@ -89,6 +110,9 @@ describe("EmployeeUpdateForm", () => {
           employee={mockEmployee}
           canUpdate={true}
           departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
@@ -103,6 +127,9 @@ describe("EmployeeUpdateForm", () => {
           employee={mockEmployee}
           canUpdate={true}
           departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
@@ -115,11 +142,278 @@ describe("EmployeeUpdateForm", () => {
           employee={mockEmployee}
           canUpdate={true}
           departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
       expect(screen.getByRole("option", { name: "一般ユーザー" })).toBeInTheDocument();
       expect(screen.getByRole("option", { name: "管理者" })).toBeInTheDocument();
+    });
+  });
+
+  describe("担当役割セレクト", () => {
+    test("担当役割セレクトが表示され、（担当役割なし）を含む役割オプションが並ぶ", () => {
+      render(
+        <EmployeeUpdateForm
+          employee={mockEmployee}
+          canUpdate={true}
+          departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
+          isSoleMemberOfCurrentRole={false}
+        />
+      );
+
+      expect(screen.getByLabelText("担当役割")).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "（担当役割なし）" })).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "営業課長" })).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "開発部長" })).toBeInTheDocument();
+    });
+
+    test("assignedRoleId が現在の担当役割として preselect される", () => {
+      render(
+        <EmployeeUpdateForm
+          employee={{ ...mockEmployee, assignedRoleId: "role-2" }}
+          canUpdate={true}
+          departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
+          isSoleMemberOfCurrentRole={false}
+        />
+      );
+
+      expect(screen.getByLabelText("担当役割")).toHaveValue("role-2");
+    });
+
+    test("担当役割が未設定なら空選択（担当役割なし）が初期値", () => {
+      render(
+        <EmployeeUpdateForm
+          employee={{ ...mockEmployee, assignedRoleId: null }}
+          canUpdate={true}
+          departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
+          isSoleMemberOfCurrentRole={false}
+        />
+      );
+
+      expect(screen.getByLabelText("担当役割")).toHaveValue("");
+    });
+
+    test("canUpdate=false のとき担当役割セレクトは無効になる", () => {
+      render(
+        <EmployeeUpdateForm
+          employee={{ ...mockEmployee, assignedRoleId: "role-2" }}
+          canUpdate={false}
+          departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
+          isSoleMemberOfCurrentRole={false}
+        />
+      );
+
+      expect(screen.getByLabelText("担当役割")).toBeDisabled();
+    });
+  });
+
+  describe("上位役割セレクト（課員の承認起点）", () => {
+    test("課員で explicitSuperiorRoleId が上位役割として preselect される", () => {
+      render(
+        <EmployeeUpdateForm
+          employee={{ ...mockEmployee, assignedRoleId: null, explicitSuperiorRoleId: "sup-2" }}
+          canUpdate={true}
+          departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
+          isSoleMemberOfCurrentRole={false}
+        />
+      );
+
+      expect(screen.getByLabelText("上位役割")).toHaveValue("sup-2");
+    });
+
+    test("担当役割ありのときは上位役割セレクトを表示せず自動導出の注記を出す（アンマウント制御）", () => {
+      render(
+        <EmployeeUpdateForm
+          employee={{ ...mockEmployee, assignedRoleId: "role-2", explicitSuperiorRoleId: null }}
+          canUpdate={true}
+          departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
+          isSoleMemberOfCurrentRole={false}
+        />
+      );
+
+      expect(screen.queryByLabelText("上位役割")).not.toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "担当役割が設定されているため、上位役割は担当役割から自動的に導出されます。"
+        )
+      ).toBeInTheDocument();
+    });
+
+    test("課員で上位役割が未設定のとき、申請不可の非ブロッキング警告が表示される", () => {
+      render(
+        <EmployeeUpdateForm
+          employee={{ ...mockEmployee, assignedRoleId: null, explicitSuperiorRoleId: null }}
+          canUpdate={true}
+          departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
+          isSoleMemberOfCurrentRole={false}
+        />
+      );
+
+      const warning = screen.getByRole("status");
+      expect(warning).toHaveTextContent("上位役割を設定するまでこの従業員は見積を申請できません");
+    });
+
+    test("担当役割を解除すると上位役割セレクトが現れる（役割→課員の反応切替）", async () => {
+      const user = userEvent.setup();
+      render(
+        <EmployeeUpdateForm
+          employee={{ ...mockEmployee, assignedRoleId: "role-2", explicitSuperiorRoleId: null }}
+          canUpdate={true}
+          departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
+          isSoleMemberOfCurrentRole={false}
+        />
+      );
+
+      // 役割持ちなので初期は上位役割セレクトなし
+      expect(screen.queryByLabelText("上位役割")).not.toBeInTheDocument();
+
+      // 担当役割を（なし）へ変更 → 課員になり上位役割セレクトが現れる
+      await user.selectOptions(screen.getByLabelText("担当役割"), "");
+
+      expect(screen.getByLabelText("上位役割")).toBeInTheDocument();
+    });
+  });
+
+  describe("承認者不在ワーニング（非ブロッキング）", () => {
+    // 唯一メンバー（isSoleMemberOfCurrentRole=true）が現在の担当役割「開発部長」(role-2) から
+    // 抜けるケース。旧役割名を明示した警告を反応的に表示する。
+    const soleMemberEmployee = { ...mockEmployee, assignedRoleId: "role-2" };
+
+    test("初期状態（現在の役割のまま）では警告は表示されない", () => {
+      render(
+        <EmployeeUpdateForm
+          employee={soleMemberEmployee}
+          canUpdate={true}
+          departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
+          isSoleMemberOfCurrentRole={true}
+        />
+      );
+
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+
+    test("唯一メンバーが別の担当役割へ変更すると旧役割名入りの警告が表示される", async () => {
+      const user = userEvent.setup();
+      render(
+        <EmployeeUpdateForm
+          employee={soleMemberEmployee}
+          canUpdate={true}
+          departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
+          isSoleMemberOfCurrentRole={true}
+        />
+      );
+
+      await user.selectOptions(screen.getByLabelText("担当役割"), "role-1");
+
+      const warning = await screen.findByRole("status");
+      expect(warning).toBeInTheDocument();
+      // 旧役割名を明示
+      expect(warning).toHaveTextContent("開発部長");
+    });
+
+    test("唯一メンバーが担当役割を解除しても警告が表示される", async () => {
+      const user = userEvent.setup();
+      render(
+        <EmployeeUpdateForm
+          employee={soleMemberEmployee}
+          canUpdate={true}
+          departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
+          isSoleMemberOfCurrentRole={true}
+        />
+      );
+
+      await user.selectOptions(screen.getByLabelText("担当役割"), "");
+
+      // 解除で課員になると承認者不在警告と上位役割未設定警告の2つの status が出るため、
+      // 承認者不在警告（唯一の担当者である旨）をテキストで特定する。
+      expect(await screen.findByText(/唯一の担当者/)).toBeInTheDocument();
+    });
+
+    test("変更後に元の担当役割へ戻すと警告は消える", async () => {
+      const user = userEvent.setup();
+      render(
+        <EmployeeUpdateForm
+          employee={soleMemberEmployee}
+          canUpdate={true}
+          departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
+          isSoleMemberOfCurrentRole={true}
+        />
+      );
+
+      await user.selectOptions(screen.getByLabelText("担当役割"), "role-1");
+      expect(await screen.findByRole("status")).toBeInTheDocument();
+
+      await user.selectOptions(screen.getByLabelText("担当役割"), "role-2");
+      await waitFor(() => {
+        expect(screen.queryByRole("status")).not.toBeInTheDocument();
+      });
+    });
+
+    test("唯一メンバーでなければ担当役割を変更しても警告は出ない", async () => {
+      const user = userEvent.setup();
+      render(
+        <EmployeeUpdateForm
+          employee={soleMemberEmployee}
+          canUpdate={true}
+          departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
+          isSoleMemberOfCurrentRole={false}
+        />
+      );
+
+      await user.selectOptions(screen.getByLabelText("担当役割"), "role-1");
+
+      await waitFor(() => {
+        expect(screen.queryByRole("status")).not.toBeInTheDocument();
+      });
+    });
+
+    test("担当役割が未設定の従業員では変更しても警告は出ない", async () => {
+      const user = userEvent.setup();
+      render(
+        <EmployeeUpdateForm
+          employee={{ ...mockEmployee, assignedRoleId: null }}
+          canUpdate={true}
+          departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
+          isSoleMemberOfCurrentRole={false}
+        />
+      );
+
+      await user.selectOptions(screen.getByLabelText("担当役割"), "role-1");
+
+      await waitFor(() => {
+        expect(screen.queryByRole("status")).not.toBeInTheDocument();
+      });
     });
   });
 
@@ -130,6 +424,9 @@ describe("EmployeeUpdateForm", () => {
           employee={mockEmployee}
           canUpdate={true}
           departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
@@ -142,6 +439,9 @@ describe("EmployeeUpdateForm", () => {
           employee={mockEmployee}
           canUpdate={true}
           departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
@@ -154,6 +454,9 @@ describe("EmployeeUpdateForm", () => {
           employee={mockEmployee}
           canUpdate={true}
           departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
@@ -170,6 +473,9 @@ describe("EmployeeUpdateForm", () => {
           employee={mockEmployee}
           canUpdate={false}
           departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
@@ -182,6 +488,9 @@ describe("EmployeeUpdateForm", () => {
           employee={mockEmployee}
           canUpdate={false}
           departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
@@ -194,6 +503,9 @@ describe("EmployeeUpdateForm", () => {
           employee={mockEmployee}
           canUpdate={false}
           departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
@@ -211,6 +523,9 @@ describe("EmployeeUpdateForm", () => {
           employee={mockEmployee}
           canUpdate={true}
           departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
@@ -234,6 +549,9 @@ describe("EmployeeUpdateForm", () => {
           employee={mockEmployee}
           canUpdate={true}
           departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
@@ -255,6 +573,9 @@ describe("EmployeeUpdateForm", () => {
           employee={mockEmployee}
           canUpdate={true}
           departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
@@ -277,6 +598,9 @@ describe("EmployeeUpdateForm", () => {
           employee={mockEmployee}
           canUpdate={true}
           departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
@@ -313,6 +637,37 @@ describe("EmployeeUpdateForm", () => {
     });
   });
 
+  describe("楽観ロック（ADR-0039）", () => {
+    test("編集画面表示時の version が hidden input としてフォームに含まれ、送信時に往復する", async () => {
+      const user = userEvent.setup();
+      const { container } = render(
+        <EmployeeUpdateForm
+          employee={mockEmployee}
+          canUpdate={true}
+          departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
+          isSoleMemberOfCurrentRole={false}
+        />
+      );
+
+      // hidden input が存在し、画面表示時の version を保持している
+      const versionInput = container.querySelector('input[type="hidden"][name="version"]');
+      expect(versionInput).not.toBeNull();
+      expect(versionInput).toHaveValue("3");
+
+      // 送信した FormData に version が含まれる（フォーム往復の契約）
+      await act(async () => {
+        await user.click(screen.getByRole("button", { name: "更新" }));
+      });
+      await waitFor(() => {
+        expect(mockUpdateEmployee).toHaveBeenCalled();
+      });
+      const formData = mockUpdateEmployee.mock.calls[0][2] as FormData;
+      expect(formData.get("version")).toBe("3");
+    });
+  });
+
   describe("エラー表示テスト", () => {
     test("全体エラーメッセージが表示される", async () => {
       const user = userEvent.setup();
@@ -331,6 +686,9 @@ describe("EmployeeUpdateForm", () => {
           employee={mockEmployee}
           canUpdate={true}
           departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 
@@ -365,6 +723,9 @@ describe("EmployeeUpdateForm", () => {
           employee={mockEmployee}
           canUpdate={true}
           departmentSelectSlot={mockDepartmentSelectSlot}
+          roleOptions={mockRoleOptions}
+          superiorRoleOptions={mockSuperiorRoleOptions}
+          isSoleMemberOfCurrentRole={false}
         />
       );
 

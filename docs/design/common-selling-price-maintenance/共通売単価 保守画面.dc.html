@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  body{margin:0}
+  @keyframes dcFade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  input,select,button{font-family:inherit}
+</style>
+</helmet>
+<div style="font-family:'Noto Sans JP',system-ui,-apple-system,sans-serif;background:#F6F7F9;min-height:100vh;color:#1F2733;-webkit-font-smoothing:antialiased">
+
+<sc-if value="{{ showList }}" hint-placeholder-val="{{ true }}">
+<div style="max-width:1180px;margin:0 auto;padding:30px 32px 72px;animation:dcFade .25s ease">
+
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-bottom:22px">
+    <div>
+      <h1 style="font-size:30px;font-weight:700;margin:0;letter-spacing:.01em">共通売単価</h1>
+      <div style="color:#6B7280;font-size:13px;margin-top:7px;line-height:1.5">商品ごとの共通売単価を登録・改定・整理します。価格決定機構が参照する共通層のマスタです。</div>
+    </div>
+    <div style="text-align:right;color:#6B7280;font-size:13px;white-space:nowrap">{{ listCountLabel }}</div>
+  </div>
+
+  <div style="background:#fff;border:1px solid #E3E6EA;border-radius:10px;padding:20px 22px;margin-bottom:20px">
+    <div style="font-size:15px;font-weight:700;color:#374151;margin-bottom:16px">検索条件</div>
+    <div style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:16px">
+      <div style="display:flex;flex-direction:column;gap:6px;min-width:170px;flex:1 1 170px">
+        <label style="font-size:12px;color:#6B7280;font-weight:500">商品コード</label>
+        <input value="{{ f_code }}" onInput="{{ onCode }}" placeholder="部分一致" style="height:40px;border:1px solid #D5D9DE;border-radius:8px;padding:0 12px;font-size:14px;outline:none;color:#1F2733" />
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;min-width:200px;flex:2 1 220px">
+        <label style="font-size:12px;color:#6B7280;font-weight:500">商品名</label>
+        <input value="{{ f_name }}" onInput="{{ onName }}" placeholder="部分一致" style="height:40px;border:1px solid #D5D9DE;border-radius:8px;padding:0 12px;font-size:14px;outline:none;color:#1F2733" />
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;min-width:150px;flex:1 1 150px">
+        <label style="font-size:12px;color:#6B7280;font-weight:500">カテゴリ</label>
+        <select value="{{ f_cat }}" onChange="{{ onCat }}" style="height:40px;border:1px solid #D5D9DE;border-radius:8px;padding:0 10px;font-size:14px;outline:none;background:#fff;color:#1F2733">
+          <option value="all">すべて</option>
+          <option value="什器">什器</option>
+          <option value="IT機器">IT機器</option>
+          <option value="OA機器">OA機器</option>
+          <option value="消耗品">消耗品</option>
+        </select>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;min-width:160px;flex:1 1 160px">
+        <label style="font-size:12px;color:#6B7280;font-weight:500">状態</label>
+        <select value="{{ f_status }}" onChange="{{ onStatus }}" style="height:40px;border:1px solid #D5D9DE;border-radius:8px;padding:0 10px;font-size:14px;outline:none;background:#fff;color:#1F2733">
+          <option value="all">すべて</option>
+          <option value="active">現在有効</option>
+          <option value="lapsed">失効中</option>
+          <option value="unset">未設定</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:10px;padding-bottom:1px">
+        <button onClick="{{ onClear }}" style="height:40px;padding:0 18px;border:1px solid #D5D9DE;background:#fff;color:#374151;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#F3F4F6">クリア</button>
+        <button onClick="{{ onSearch }}" style="height:40px;padding:0 22px;border:none;background:#2563EB;color:#fff;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer" style-hover="background:#1D4FD7">検索</button>
+      </div>
+    </div>
+    <label style="display:inline-flex;align-items:center;gap:8px;margin-top:16px;font-size:13px;color:#374151;cursor:pointer;user-select:none">
+      <input type="checkbox" checked="{{ f_unsetOnly }}" onChange="{{ onUnsetOnly }}" style="width:16px;height:16px;accent-color:#B7791F;cursor:pointer" />
+      未設定の商品のみ表示（共通売単価が無い＝見積を作れない商品）
+    </label>
+  </div>
+
+  <div style="background:#fff;border:1px solid #E3E6EA;border-radius:10px;overflow:hidden">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 22px;border-bottom:1px solid #EDEFF2">
+      <div style="font-size:15px;font-weight:700;color:#374151">商品一覧</div>
+      <div style="font-size:12px;color:#9AA1A9">1行＝1商品（集約単位）。行を選ぶと適用期間明細へ。</div>
+    </div>
+    <div style="display:grid;grid-template-columns:150px 1fr 110px 170px 150px;gap:0;padding:0 22px;height:44px;align-items:center;background:#EEF1F4;font-size:12px;font-weight:700;color:#5B6470;border-bottom:1px solid #E3E6EA">
+      <div>商品コード</div><div>商品名</div><div>カテゴリ</div><div style="text-align:right">現在の共通売単価</div><div style="text-align:center">状態</div>
+    </div>
+    <sc-for list="{{ products }}" as="p" hint-placeholder-count="8">
+      <div onClick="{{ p.onOpen }}" style="display:grid;grid-template-columns:150px 1fr 110px 170px 150px;gap:0;padding:0 22px;min-height:56px;align-items:center;font-size:14px;border-bottom:1px solid #F0F2F4;cursor:pointer" style-hover="background:#F8FAFD">
+        <div style="color:#2563EB;font-weight:600;font-variant-numeric:tabular-nums">{{ p.code }}</div>
+        <div style="color:#1F2733">{{ p.name }}</div>
+        <div style="color:#6B7280;font-size:13px">{{ p.category }}</div>
+        <div style="text-align:right;font-variant-numeric:tabular-nums;font-weight:600;color:{{ p.priceColor }}">{{ p.priceDisp }}</div>
+        <div style="display:flex;justify-content:center;align-items:center;gap:6px">
+          <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;background:{{ p.statusBg }};color:{{ p.statusFg }}"><span style="width:6px;height:6px;border-radius:50%;background:{{ p.statusDot }}"></span>{{ p.statusLabel }}</span>
+        </div>
+      </div>
+    </sc-for>
+    <sc-if value="{{ listEmpty }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:48px;text-align:center;color:#9AA1A9;font-size:14px">条件に一致する商品がありません。</div>
+    </sc-if>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ showDetail }}" hint-placeholder-val="{{ false }}">
+<div style="max-width:1180px;margin:0 auto;padding:24px 32px 80px;animation:dcFade .25s ease">
+
+  <button onClick="{{ onBack }}" style="display:inline-flex;align-items:center;gap:7px;border:none;background:none;color:#2563EB;font-size:14px;font-weight:600;cursor:pointer;padding:6px 0;margin-bottom:16px" style-hover="opacity:.7">
+    <span style="font-size:16px">←</span> 商品一覧に戻る
+  </button>
+
+  <div style="background:#fff;border:1px solid #E3E6EA;border-radius:10px;padding:24px 26px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:flex-start;gap:24px">
+    <div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+        <span style="font-size:13px;font-weight:700;color:#2563EB;font-variant-numeric:tabular-nums">{{ d_code }}</span>
+        <span style="font-size:11px;color:#6B7280;background:#F0F2F4;border-radius:6px;padding:3px 9px;font-weight:500">{{ d_category }}</span>
+      </div>
+      <h1 style="font-size:25px;font-weight:700;margin:0;letter-spacing:.01em">{{ d_name }}</h1>
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:12px;color:#9AA1A9;margin-bottom:6px">現在有効な共通売単価</div>
+      <div style="display:flex;align-items:baseline;justify-content:flex-end;gap:10px">
+        <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;background:{{ d_statusBg }};color:{{ d_statusFg }}"><span style="width:6px;height:6px;border-radius:50%;background:{{ d_statusDot }}"></span>{{ d_statusLabel }}</span>
+        <span style="font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;color:{{ d_priceColor }}">{{ d_priceDisp }}</span>
+      </div>
+      <sc-if value="{{ d_hasFuture }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:12px;color:#2563EB;margin-top:6px">{{ d_futureNote }}</div>
+      </sc-if>
+    </div>
+  </div>
+
+  <sc-if value="{{ d_showGuidance }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;align-items:flex-start;gap:10px;background:#FBF3E2;border:1px solid #F0DFB8;border-radius:10px;padding:13px 16px;margin-bottom:18px;font-size:13px;color:#92660F;line-height:1.6">
+      <span style="font-weight:700">!</span>
+      <div>{{ d_guidanceText }}　<span style="color:#6B7280">「有効商品は共通売単価を最低1期間持つ」前提を満たすため、期間を登録してください。</span></div>
+    </div>
+  </sc-if>
+
+  <div style="background:#fff;border:1px solid #E3E6EA;border-radius:10px;overflow:hidden">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 22px;border-bottom:1px solid #EDEFF2;flex-wrap:wrap">
+      <div style="font-size:15px;font-weight:700;color:#374151">適用期間明細</div>
+      <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:7px">
+          <span style="font-size:11px;color:#9AA1A9">表示</span>
+          <div style="display:inline-flex;background:#EEF1F4;border-radius:8px;padding:3px">
+            <button onClick="{{ onRepTable }}" style="border:none;border-radius:6px;font-size:12px;font-weight:600;padding:6px 12px;cursor:pointer;background:{{ repTableBg }};color:{{ repTableFg }};box-shadow:{{ repTableSh }}">テーブル</button>
+            <button onClick="{{ onRepTimeline }}" style="border:none;border-radius:6px;font-size:12px;font-weight:600;padding:6px 12px;cursor:pointer;background:{{ repTlBg }};color:{{ repTlFg }};box-shadow:{{ repTlSh }}">タイムライン</button>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:7px">
+          <span style="font-size:11px;color:#9AA1A9">改定フロー</span>
+          <div style="display:inline-flex;background:#EEF1F4;border-radius:8px;padding:3px">
+            <button onClick="{{ onRevWizard }}" style="border:none;border-radius:6px;font-size:12px;font-weight:600;padding:6px 12px;cursor:pointer;background:{{ wizBg }};color:{{ wizFg }};box-shadow:{{ wizSh }}">ガイド付き</button>
+            <button onClick="{{ onRevManual }}" style="border:none;border-radius:6px;font-size:12px;font-weight:600;padding:6px 12px;cursor:pointer;background:{{ manBg }};color:{{ manFg }};box-shadow:{{ manSh }}">手動2ステップ</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 22px;background:#FAFBFC;border-bottom:1px solid #EDEFF2;flex-wrap:wrap">
+      <div style="font-size:12px;color:#6B7280;line-height:1.5;flex:1 1 360px">{{ flowHint }}</div>
+      <div style="display:flex;gap:10px">
+        <sc-if value="{{ showReviseBtn }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ onOpenRevise }}" style="height:38px;padding:0 16px;border:1px solid #2563EB;background:#fff;color:#2563EB;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer" style-hover="background:#F0F5FF">改定する</button>
+        </sc-if>
+        <button onClick="{{ onStartAdd }}" style="height:38px;padding:0 16px;border:none;background:#2563EB;color:#fff;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer" style-hover="background:#1D4FD7">＋ 適用期間を追加</button>
+      </div>
+    </div>
+
+    <sc-if value="{{ showRevise }}" hint-placeholder-val="{{ false }}">
+      <div style="margin:16px 22px;border:1px solid #BFD3F5;background:#F4F8FF;border-radius:10px;padding:18px 20px;animation:dcFade .2s ease">
+        <div style="font-size:14px;font-weight:700;color:#1D4FD7;margin-bottom:4px">改定（ガイド付き）</div>
+        <div style="font-size:12px;color:#6B7280;margin-bottom:16px;line-height:1.6">現行の無期限期間を発効日で締め、同じ発効日から新しい単価の期間を1操作で登録します。</div>
+        <div style="display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap">
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <label style="font-size:12px;color:#6B7280;font-weight:500">発効日（新単価の適用開始）</label>
+            <input type="date" value="{{ rev_date }}" onChange="{{ onRevDate }}" style="height:40px;border:1px solid #D5D9DE;border-radius:8px;padding:0 12px;font-size:14px;outline:none" />
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <label style="font-size:12px;color:#6B7280;font-weight:500">新しい共通売単価（円）</label>
+            <input type="number" min="0" value="{{ rev_price }}" onInput="{{ onRevPrice }}" placeholder="0" style="height:40px;width:170px;border:1px solid #D5D9DE;border-radius:8px;padding:0 12px;font-size:14px;outline:none;text-align:right" />
+          </div>
+          <div style="display:flex;gap:10px;padding-bottom:1px">
+            <button onClick="{{ onCancelRevise }}" style="height:40px;padding:0 16px;border:1px solid #D5D9DE;background:#fff;color:#374151;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer">キャンセル</button>
+            <button onClick="{{ onSaveRevise }}" style="height:40px;padding:0 18px;border:none;background:#2563EB;color:#fff;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">改定を実行</button>
+          </div>
+        </div>
+        <sc-if value="{{ rev_preview }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top:14px;font-size:12.5px;color:#374151;background:#fff;border:1px dashed #BFD3F5;border-radius:8px;padding:11px 14px;line-height:1.6">{{ rev_previewText }}</div>
+        </sc-if>
+        <sc-if value="{{ rev_error }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top:10px;font-size:12.5px;color:#DC2626">{{ rev_errorText }}</div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isTimeline }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:24px 26px 18px;border-bottom:1px solid #EDEFF2">
+        <div style="position:relative;height:74px;margin:6px 0 4px">
+          <div style="position:absolute;top:30px;left:0;right:0;height:2px;background:#EAEDF0"></div>
+          <sc-for list="{{ bars }}" as="b" hint-placeholder-count="2">
+            <div style="position:absolute;top:18px;height:26px;border-radius:6px;left:{{ b.leftPct }}%;width:{{ b.widthPct }}%;background:{{ b.bg }};border:1px solid {{ b.border }};display:flex;align-items:center;justify-content:center;overflow:hidden">
+              <span style="font-size:11px;font-weight:700;color:{{ b.fg }};font-variant-numeric:tabular-nums;white-space:nowrap;padding:0 6px">{{ b.priceShort }}</span>
+            </div>
+          </sc-for>
+          <div style="position:absolute;top:8px;bottom:8px;width:2px;background:#DC2626;left:{{ todayPct }}%"></div>
+          <div style="position:absolute;top:-6px;left:{{ todayPct }}%;transform:translateX(-50%);font-size:10px;font-weight:700;color:#DC2626;white-space:nowrap">今日</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:#9AA1A9;font-variant-numeric:tabular-nums">
+          <span>{{ axisStart }}</span><span>{{ axisEnd }}</span>
+        </div>
+        <div style="display:flex;gap:16px;margin-top:14px;font-size:11px;color:#6B7280">
+          <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:3px;background:#CDEAD6;border:1px solid #8FCFA4"></span>現在有効</span>
+          <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:3px;background:#E5E8EB;border:1px solid #C7CCD2"></span>失効</span>
+          <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:3px;background:#D6E2FB;border:1px solid #A9C2F1"></span>将来</span>
+        </div>
+      </div>
+    </sc-if>
+
+    <div style="display:grid;grid-template-columns:120px 160px 160px 150px 1fr;gap:0;padding:0 22px;height:42px;align-items:center;background:#EEF1F4;font-size:12px;font-weight:700;color:#5B6470;border-bottom:1px solid #E3E6EA">
+      <div>状態</div><div>適用開始日</div><div>適用終了日</div><div style="text-align:right">共通売単価</div><div style="text-align:right">操作</div>
+    </div>
+
+    <sc-for list="{{ rows }}" as="r" hint-placeholder-count="2">
+      <sc-if value="{{ r.isEditing }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:14px 22px;border-bottom:1px solid #F0F2F4;background:#FAFBFF">
+          <div style="display:grid;grid-template-columns:120px 160px 160px 150px 1fr;gap:12px;align-items:center">
+            <div><span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;background:{{ r.stateBg }};color:{{ r.stateFg }}">{{ r.stateLabel }}</span></div>
+            <input type="date" value="{{ form_start }}" onChange="{{ onFStart }}" style="height:38px;border:1px solid #B9C2CC;border-radius:8px;padding:0 10px;font-size:13px;outline:none" />
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <input type="date" value="{{ form_end }}" onChange="{{ onFEnd }}" disabled="{{ form_noEnd }}" style="height:38px;border:1px solid #B9C2CC;border-radius:8px;padding:0 10px;font-size:13px;outline:none;background:{{ form_endBg }}" />
+              <label style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#6B7280;cursor:pointer"><input type="checkbox" checked="{{ form_noEnd }}" onChange="{{ onFNoEnd }}" style="width:14px;height:14px;accent-color:#2563EB" />無期限</label>
+            </div>
+            <input type="number" min="0" value="{{ form_price }}" onInput="{{ onFPrice }}" placeholder="0" style="height:38px;border:1px solid #B9C2CC;border-radius:8px;padding:0 10px;font-size:13px;outline:none;text-align:right" />
+            <div style="display:flex;gap:8px;justify-content:flex-end">
+              <button onClick="{{ onCancelForm }}" style="height:36px;padding:0 14px;border:1px solid #D5D9DE;background:#fff;color:#374151;border-radius:8px;font-size:13px;cursor:pointer">キャンセル</button>
+              <button onClick="{{ onSaveForm }}" style="height:36px;padding:0 16px;border:none;background:#2563EB;color:#fff;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">保存</button>
+            </div>
+          </div>
+          <sc-if value="{{ form_error }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top:10px;font-size:12.5px;color:#DC2626">{{ form_errorText }}</div>
+          </sc-if>
+        </div>
+      </sc-if>
+      <sc-if value="{{ r.isView }}" hint-placeholder-val="{{ true }}">
+        <div style="display:grid;grid-template-columns:120px 160px 160px 150px 1fr;gap:0;padding:0 22px;min-height:54px;align-items:center;font-size:14px;border-bottom:1px solid #F0F2F4;background:{{ r.rowBg }}">
+          <div><span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;background:{{ r.stateBg }};color:{{ r.stateFg }}"><span style="width:6px;height:6px;border-radius:50%;background:{{ r.stateDot }}"></span>{{ r.stateLabel }}</span></div>
+          <div style="font-variant-numeric:tabular-nums;color:#1F2733">{{ r.startDisp }}</div>
+          <div style="font-variant-numeric:tabular-nums;color:{{ r.endColor }}">{{ r.endDisp }}</div>
+          <div style="text-align:right;font-variant-numeric:tabular-nums;font-weight:600">{{ r.priceDisp }}</div>
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button onClick="{{ r.onEdit }}" style="height:32px;padding:0 13px;border:1px solid #D5D9DE;background:#fff;color:#374151;border-radius:7px;font-size:12.5px;cursor:pointer" style-hover="background:#F3F4F6">編集</button>
+            <sc-if value="{{ r.canDelete }}" hint-placeholder-val="{{ false }}">
+              <button onClick="{{ r.onDelete }}" style="height:32px;padding:0 13px;border:1px solid #F2C5C5;background:#fff;color:#DC2626;border-radius:7px;font-size:12.5px;cursor:pointer" style-hover="background:#FDF1F1">削除</button>
+            </sc-if>
+            <sc-if value="{{ r.noDelete }}" hint-placeholder-val="{{ true }}">
+              <span title="{{ r.deleteHint }}" style="height:32px;display:inline-flex;align-items:center;padding:0 13px;border:1px solid #EDEFF2;background:#F7F8FA;color:#BCC2C9;border-radius:7px;font-size:12.5px;cursor:not-allowed">削除</span>
+            </sc-if>
+          </div>
+        </div>
+      </sc-if>
+    </sc-for>
+
+    <sc-if value="{{ isAdding }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:14px 22px;border-bottom:1px solid #F0F2F4;background:#F4F8FF;animation:dcFade .2s ease">
+        <div style="display:grid;grid-template-columns:120px 160px 160px 150px 1fr;gap:12px;align-items:center">
+          <div><span style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;background:#E8EEFB;color:#2563EB">新規</span></div>
+          <input type="date" value="{{ form_start }}" onChange="{{ onFStart }}" style="height:38px;border:1px solid #B9C2CC;border-radius:8px;padding:0 10px;font-size:13px;outline:none" />
+          <div style="display:flex;flex-direction:column;gap:5px">
+            <input type="date" value="{{ form_end }}" onChange="{{ onFEnd }}" disabled="{{ form_noEnd }}" style="height:38px;border:1px solid #B9C2CC;border-radius:8px;padding:0 10px;font-size:13px;outline:none;background:{{ form_endBg }}" />
+            <label style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#6B7280;cursor:pointer"><input type="checkbox" checked="{{ form_noEnd }}" onChange="{{ onFNoEnd }}" style="width:14px;height:14px;accent-color:#2563EB" />無期限</label>
+          </div>
+          <input type="number" min="0" value="{{ form_price }}" onInput="{{ onFPrice }}" placeholder="0" style="height:38px;border:1px solid #B9C2CC;border-radius:8px;padding:0 10px;font-size:13px;outline:none;text-align:right" />
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button onClick="{{ onCancelForm }}" style="height:36px;padding:0 14px;border:1px solid #D5D9DE;background:#fff;color:#374151;border-radius:8px;font-size:13px;cursor:pointer">キャンセル</button>
+            <button onClick="{{ onSaveForm }}" style="height:36px;padding:0 16px;border:none;background:#2563EB;color:#fff;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">追加</button>
+          </div>
+        </div>
+        <sc-if value="{{ form_error }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top:10px;font-size:12.5px;color:#DC2626">{{ form_errorText }}</div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ rowsEmpty }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:40px;text-align:center;color:#9AA1A9;font-size:14px">適用期間がまだ登録されていません。「＋ 適用期間を追加」から登録してください。</div>
+    </sc-if>
+
+    <div style="padding:14px 22px;font-size:11.5px;color:#9AA1A9;line-height:1.6;border-top:1px solid #F4F5F7">
+      適用期間は半開区間 <span style="font-variant-numeric:tabular-nums">[開始, 終了)</span>。終了日はその日を含みません（例: 終了日 2026/07/01 なら 2026/06/30 まで有効）。削除は未適用（未来開始）の期間のみ可能です。
+    </div>
+  </div>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1200,&quot;height&quot;:860},&quot;defaultRepresentation&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;table&quot;,&quot;timeline&quot;],&quot;default&quot;:&quot;timeline&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;既定表示&quot;},&quot;defaultRevisionMode&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;wizard&quot;,&quot;manual&quot;],&quot;default&quot;:&quot;wizard&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;既定表示&quot;}}">
+class Component extends DCLogic {
+  TODAY = '2026-06-27';
+
+  state = {
+    view: 'list',
+    selectedId: null,
+    f: { code: '', name: '', cat: 'all', status: 'all', unsetOnly: false },
+    rep: this.props.defaultRepresentation || 'timeline',
+    revMode: this.props.defaultRevisionMode || 'wizard',
+    form: { mode: null, rowId: null, start: '', end: '', noEnd: true, price: '', error: '' },
+    rev: { open: false, date: '', price: '', error: '' },
+    products: this.seed(),
+  };
+
+  seed() {
+    let pid = 1;
+    const P = (start, end, price) => ({ id: 'pp' + (pid++), start, end, price });
+    return [
+      { code: 'PRD001', name: 'オフィスデスク 平机 W1200', category: '什器', periods: [P('2024-04-01','2025-04-01',28000), P('2025-04-01',null,29800)] },
+      { code: 'PRD002', name: '事務用チェア 肘付', category: '什器', periods: [P('2025-04-01',null,18500)] },
+      { code: 'PRD003', name: 'ノートPC 14型', category: 'IT機器', periods: [P('2025-01-01','2026-07-01',98000), P('2026-07-01',null,102000)] },
+      { code: 'PRD004', name: 'デスクトップPC', category: 'IT機器', periods: [P('2024-10-01',null,84000)] },
+      { code: 'PRD005', name: 'モノクロコピー機', category: 'OA機器', periods: [P('2023-04-01','2025-10-01',240000)] },
+      { code: 'PRD006', name: 'カラー複合機 A3対応', category: 'OA機器', periods: [P('2025-06-01',null,320000)] },
+      { code: 'PRD007', name: 'A4コピー用紙 500枚', category: '消耗品', periods: [] },
+      { code: 'PRD008', name: 'ホワイトボード 1800×900', category: '什器', periods: [P('2025-04-01',null,22000)] },
+      { code: 'PRD009', name: 'スチール書庫 両開き', category: '什器', periods: [] },
+      { code: 'PRD010', name: 'LEDデスクライト', category: '消耗品', periods: [P('2025-04-01',null,4800)] },
+      { code: 'PRD011', name: 'シュレッダー 業務用', category: 'OA機器', periods: [P('2022-04-01','2024-04-01',35000)] },
+      { code: 'PRD012', name: 'プロジェクター フルHD', category: 'IT機器', periods: [P('2025-03-01','2026-09-01',72000), P('2026-09-01',null,76000)] },
+      { code: 'PRD013', name: '会議用テーブル W1800', category: '什器', periods: [P('2025-04-01',null,45000)] },
+      { code: 'PRD014', name: 'トナーカートリッジ 純正', category: '消耗品', periods: [P('2024-04-01','2025-04-01',12000), P('2025-04-01',null,12800)] },
+      { code: 'PRD015', name: 'USBメモリ 64GB', category: '消耗品', periods: [P('2025-04-01',null,1280)] },
+    ];
+  }
+
+  classify(p) {
+    if (this.TODAY < p.start) return 'future';
+    if (p.end != null && this.TODAY >= p.end) return 'lapsed';
+    return 'current';
+  }
+  stateMeta(k) {
+    if (k === 'current') return { label: '現在有効', bg: '#E6F4EA', fg: '#1E7A3D', dot: '#2E9E54' };
+    if (k === 'future') return { label: '将来', bg: '#E8EEFB', fg: '#2563EB', dot: '#2563EB' };
+    return { label: '失効', bg: '#EEF0F2', fg: '#6B7280', dot: '#9AA1A9' };
+  }
+  yen(n) { return '¥' + Number(n).toLocaleString('ja-JP'); }
+  yenShort(n) {
+    if (n >= 10000) { const m = n / 10000; return '¥' + (Number.isInteger(m) ? m : m.toFixed(1)) + '万'; }
+    return '¥' + Number(n).toLocaleString('ja-JP');
+  }
+  dDisp(d) { return d ? d.replace(/-/g, '/') : ''; }
+  curPeriod(prod) { return prod.periods.find(p => this.classify(p) === 'current') || null; }
+  prodStatus(prod) {
+    if (prod.periods.length === 0) return { key: 'unset', label: '未設定', bg: '#FBF1DD', fg: '#B7791F', dot: '#D9A23B' };
+    const c = this.curPeriod(prod);
+    if (c) return { key: 'active', label: '現在有効', bg: '#E6F4EA', fg: '#1E7A3D', dot: '#2E9E54' };
+    return { key: 'lapsed', label: '失効中', bg: '#EEF0F2', fg: '#6B7280', dot: '#9AA1A9' };
+  }
+  findProd(id) { return this.state.products.find(p => p.code === id); }
+  num(d) { return Date.parse(d + 'T00:00:00'); }
+
+  // ---- filters ----
+  setF(k, v) { this.setState(s => ({ f: { ...s.f, [k]: v } })); }
+
+  open(id) { this.setState({ view: 'detail', selectedId: id, form: { mode: null }, rev: { open: false } }); }
+  back() { this.setState({ view: 'list', selectedId: null }); }
+
+  // ---- form (add/edit) ----
+  startAdd() {
+    this.setState({ form: { mode: 'add', rowId: null, start: this.TODAY, end: '', noEnd: true, price: '', error: '' }, rev: { open: false } });
+  }
+  startEdit(row) {
+    this.setState({ form: { mode: 'edit', rowId: row.id, start: row.start, end: row.end || '', noEnd: row.end == null, price: String(row.price), error: '' }, rev: { open: false } });
+  }
+  setForm(k, v) { this.setState(s => ({ form: { ...s.form, [k]: v, error: '' } })); }
+  cancelForm() { this.setState({ form: { mode: null } }); }
+
+  validate(start, end, price, excludeId, periods) {
+    if (!start) return '適用開始日を入力してください。';
+    if (isNaN(this.num(start))) return '適用開始日が不正です。';
+    if (end != null) {
+      if (isNaN(this.num(end))) return '適用終了日が不正です。';
+      if (this.num(end) <= this.num(start)) return '適用終了日は適用開始日より後にしてください。';
+    }
+    const pr = Number(price);
+    if (price === '' || isNaN(pr)) return '共通売単価を入力してください。';
+    if (pr < 0) return '共通売単価は0円以上で入力してください（0円は登録可能です）。';
+    const aS = this.num(start), aE = end == null ? Infinity : this.num(end);
+    for (const p of periods) {
+      if (p.id === excludeId) continue;
+      const bS = this.num(p.start), bE = p.end == null ? Infinity : this.num(p.end);
+      if (aS < bE && bS < aE) return '既存の適用期間と重複しています（同一商品内で期間は重複できません）。';
+    }
+    return null;
+  }
+  saveForm() {
+    const prod = this.findProd(this.state.selectedId);
+    const f = this.state.form;
+    const end = f.noEnd ? null : f.end;
+    const err = this.validate(f.start, end, f.price, f.mode === 'edit' ? f.rowId : null, prod.periods);
+    if (err) { this.setState(s => ({ form: { ...s.form, error: err } })); return; }
+    this.setState(s => {
+      const products = s.products.map(p => {
+        if (p.code !== s.selectedId) return p;
+        let periods;
+        if (f.mode === 'edit') {
+          periods = p.periods.map(pp => pp.id === f.rowId ? { ...pp, start: f.start, end, price: Number(f.price) } : pp);
+        } else {
+          periods = [...p.periods, { id: 'pp' + Date.now(), start: f.start, end, price: Number(f.price) }];
+        }
+        periods.sort((a, b) => this.num(a.start) - this.num(b.start));
+        return { ...p, periods };
+      });
+      return { products, form: { mode: null } };
+    });
+  }
+  deleteRow(row) {
+    this.setState(s => ({
+      products: s.products.map(p => p.code === s.selectedId ? { ...p, periods: p.periods.filter(pp => pp.id !== row.id) } : p),
+      form: { mode: null },
+    }));
+  }
+
+  // ---- revision wizard ----
+  openRevise() {
+    this.setState({ rev: { open: true, date: '', price: '', error: '' }, form: { mode: null } });
+  }
+  setRev(k, v) { this.setState(s => ({ rev: { ...s.rev, [k]: v, error: '' } })); }
+  cancelRevise() { this.setState({ rev: { open: false } }); }
+  saveRevise() {
+    const prod = this.findProd(this.state.selectedId);
+    const { date, price } = this.state.rev;
+    if (!date || isNaN(this.num(date))) { this.setState(s => ({ rev: { ...s.rev, error: '発効日を入力してください。' } })); return; }
+    const pr = Number(price);
+    if (price === '' || isNaN(pr) || pr < 0) { this.setState(s => ({ rev: { ...s.rev, error: '新しい共通売単価を0円以上で入力してください。' } })); return; }
+    const cur = this.curPeriod(prod);
+    if (!cur) { this.setState(s => ({ rev: { ...s.rev, error: '現在有効な期間がありません。「適用期間を追加」から登録してください。' } })); return; }
+    if (this.num(date) <= this.num(cur.start)) { this.setState(s => ({ rev: { ...s.rev, error: '発効日は現行期間の開始日（' + this.dDisp(cur.start) + '）より後にしてください。' } })); return; }
+    if (cur.end != null && this.num(date) >= this.num(cur.end)) { this.setState(s => ({ rev: { ...s.rev, error: '発効日は現行期間内にしてください。' } })); return; }
+    this.setState(s => {
+      const products = s.products.map(p => {
+        if (p.code !== s.selectedId) return p;
+        const periods = p.periods.map(pp => pp.id === cur.id ? { ...pp, end: date } : pp);
+        periods.push({ id: 'pp' + Date.now(), start: date, end: null, price: pr });
+        periods.sort((a, b) => this.num(a.start) - this.num(b.start));
+        return { ...p, periods };
+      });
+      return { products, rev: { open: false } };
+    });
+  }
+
+  renderVals() {
+    const s = this.state;
+    const f = s.f;
+
+    // ----- list -----
+    const allUnset = s.products.filter(p => p.periods.length === 0).length;
+    let products = s.products.filter(p => {
+      if (f.code && !p.code.toLowerCase().includes(f.code.toLowerCase())) return false;
+      if (f.name && !p.name.includes(f.name)) return false;
+      if (f.cat !== 'all' && p.category !== f.cat) return false;
+      const st = this.prodStatus(p);
+      if (f.unsetOnly && st.key !== 'unset') return false;
+      if (f.status !== 'all' && st.key !== f.status) return false;
+      return true;
+    }).map(p => {
+      const st = this.prodStatus(p);
+      const cur = this.curPeriod(p);
+      const hasFuture = p.periods.some(pp => this.classify(pp) === 'future');
+      return {
+        code: p.code, name: p.name, category: p.category,
+        priceDisp: cur ? this.yen(cur.price) : '—',
+        priceColor: cur ? '#1F2733' : '#C0C5CC',
+        statusLabel: st.label, statusBg: st.bg, statusFg: st.fg, statusDot: st.dot,
+        hasFuture,
+        onOpen: () => this.open(p.code),
+      };
+    });
+
+    const out = {
+      showList: s.view === 'list',
+      showDetail: s.view === 'detail',
+      listCountLabel: '全 ' + s.products.length + ' 商品 ／ 未設定 ' + allUnset + ' 件',
+      f_code: f.code, f_name: f.name, f_cat: f.cat, f_status: f.status, f_unsetOnly: f.unsetOnly,
+      onCode: e => this.setF('code', e.target.value),
+      onName: e => this.setF('name', e.target.value),
+      onCat: e => this.setF('cat', e.target.value),
+      onStatus: e => this.setF('status', e.target.value),
+      onUnsetOnly: e => this.setF('unsetOnly', e.target.checked),
+      onClear: () => this.setState({ f: { code: '', name: '', cat: 'all', status: 'all', unsetOnly: false } }),
+      onSearch: () => {},
+      products,
+      listEmpty: products.length === 0,
+    };
+
+    if (s.view !== 'detail') return out;
+
+    // ----- detail -----
+    const prod = this.findProd(s.selectedId);
+    const st = this.prodStatus(prod);
+    const cur = this.curPeriod(prod);
+    const future = prod.periods.filter(p => this.classify(p) === 'future');
+    out.d_code = prod.code; out.d_name = prod.name; out.d_category = prod.category;
+    out.d_statusLabel = st.label; out.d_statusBg = st.bg; out.d_statusFg = st.fg; out.d_statusDot = st.dot;
+    out.d_priceDisp = cur ? this.yen(cur.price) : (st.key === 'unset' ? '未設定' : '失効中');
+    out.d_priceColor = cur ? '#1F2733' : '#9AA1A9';
+    out.d_hasFuture = future.length > 0;
+    out.d_futureNote = future.length > 0 ? (this.dDisp(future[0].start) + ' から ' + this.yen(future[0].price) + ' に改定予定') : '';
+    out.d_showGuidance = st.key !== 'active';
+    out.d_guidanceText = st.key === 'unset' ? 'この商品には共通売単価が未設定です。価格決定が解決不能となり見積を作成できません。' : 'この商品には現在有効な共通売単価がありません（全期間が失効しています）。';
+
+    // representation toggle
+    const repT = s.rep === 'table';
+    out.isTimeline = !repT;
+    const on = { bg: '#fff', fg: '#1F2733', sh: '0 1px 2px rgba(0,0,0,.12)' };
+    const off = { bg: 'transparent', fg: '#6B7280', sh: 'none' };
+    out.repTableBg = (repT ? on : off).bg; out.repTableFg = (repT ? on : off).fg; out.repTableSh = (repT ? on : off).sh;
+    out.repTlBg = (!repT ? on : off).bg; out.repTlFg = (!repT ? on : off).fg; out.repTlSh = (!repT ? on : off).sh;
+    out.onRepTable = () => this.setState({ rep: 'table' });
+    out.onRepTimeline = () => this.setState({ rep: 'timeline' });
+
+    // revision mode toggle
+    const wiz = s.revMode === 'wizard';
+    out.wizBg = (wiz ? on : off).bg; out.wizFg = (wiz ? on : off).fg; out.wizSh = (wiz ? on : off).sh;
+    out.manBg = (!wiz ? on : off).bg; out.manFg = (!wiz ? on : off).fg; out.manSh = (!wiz ? on : off).sh;
+    out.onRevWizard = () => this.setState({ revMode: 'wizard', rev: { open: false } });
+    out.onRevManual = () => this.setState({ revMode: 'manual', rev: { open: false } });
+    out.showReviseBtn = wiz;
+    out.flowHint = wiz
+      ? '改定（値上げ・値下げ）は「改定する」から。発効日と新単価を入れると、現行期間の締めと新期間の登録を1操作で行います。'
+      : '改定する手順: ① 現行の無期限期間を「編集」して終了日（＝発効日）を入れて締める　② 続けて「＋ 適用期間を追加」で発効日から新期間を登録。';
+
+    // revision wizard panel
+    const rev = s.rev;
+    out.showRevise = wiz && rev.open;
+    out.rev_date = rev.date; out.rev_price = rev.price;
+    out.onOpenRevise = () => this.openRevise();
+    out.onCancelRevise = () => this.cancelRevise();
+    out.onRevDate = e => this.setRev('date', e.target.value);
+    out.onRevPrice = e => this.setRev('price', e.target.value);
+    out.onSaveRevise = () => this.saveRevise();
+    out.rev_error = !!rev.error; out.rev_errorText = rev.error;
+    const canPreview = rev.open && rev.date && rev.price !== '' && cur && this.num(rev.date) > this.num(cur.start);
+    out.rev_preview = !!canPreview;
+    out.rev_previewText = canPreview
+      ? '現行期間（' + this.dDisp(cur.start) + ' 〜）を ' + this.dDisp(rev.date) + ' で締め、' + this.dDisp(rev.date) + ' から ' + this.yen(Number(rev.price)) + ' の新期間を登録します。'
+      : '';
+
+    // rows (sorted asc)
+    const sorted = [...prod.periods].sort((a, b) => this.num(a.start) - this.num(b.start));
+    const editingId = s.form.mode === 'edit' ? s.form.rowId : null;
+    out.rows = sorted.map(p => {
+      const k = this.classify(p);
+      const m = this.stateMeta(k);
+      const isEditing = editingId === p.id;
+      return {
+        id: p.id,
+        isEditing,
+        isView: !isEditing,
+        stateLabel: m.label, stateBg: m.bg, stateFg: m.fg, stateDot: m.dot,
+        startDisp: this.dDisp(p.start),
+        endDisp: p.end == null ? '無期限' : this.dDisp(p.end),
+        endColor: p.end == null ? '#9AA1A9' : '#1F2733',
+        priceDisp: this.yen(p.price),
+        rowBg: k === 'current' ? '#FCFEFD' : '#fff',
+        canDelete: k === 'future',
+        noDelete: k !== 'future',
+        deleteHint: '適用済み・進行中・失効済みの期間は削除できません。止める場合は「編集」で終了日を設定してください。',
+        start: p.start, end: p.end, price: p.price,
+        onEdit: () => this.startEdit(p),
+        onDelete: () => this.deleteRow(p),
+      };
+    });
+    out.rowsEmpty = sorted.length === 0 && s.form.mode !== 'add';
+    out.isAdding = s.form.mode === 'add';
+
+    // shared form bindings
+    out.form_start = s.form.start || ''; out.form_end = s.form.end || '';
+    out.form_noEnd = !!s.form.noEnd; out.form_price = s.form.price || '';
+    out.form_endBg = s.form.noEnd ? '#F1F2F4' : '#fff';
+    out.onFStart = e => this.setForm('start', e.target.value);
+    out.onFEnd = e => this.setForm('end', e.target.value);
+    out.onFNoEnd = e => this.setForm('noEnd', e.target.checked);
+    out.onFPrice = e => this.setForm('price', e.target.value);
+    out.onCancelForm = () => this.cancelForm();
+    out.onSaveForm = () => this.saveForm();
+    out.onStartAdd = () => this.startAdd();
+    out.form_error = !!s.form.error; out.form_errorText = s.form.error;
+    out.onBack = () => this.back();
+
+    // timeline bars
+    if (!repT && sorted.length > 0) {
+      let lo = Math.min(...sorted.map(p => this.num(p.start)));
+      let hi = Math.max(...sorted.map(p => p.end == null ? this.num(p.start) : this.num(p.end)));
+      hi = Math.max(hi, this.num(this.TODAY));
+      const pad = Math.max((hi - lo) * 0.06, 86400000 * 30);
+      lo -= pad; hi += pad;
+      const span = hi - lo || 1;
+      const pct = t => ((t - lo) / span) * 100;
+      out.bars = sorted.map(p => {
+        const k = this.classify(p);
+        const startN = this.num(p.start);
+        const endN = p.end == null ? hi : this.num(p.end);
+        const palette = k === 'current' ? { bg: '#CDEAD6', border: '#8FCFA4', fg: '#1E7A3D' }
+          : k === 'future' ? { bg: '#D6E2FB', border: '#A9C2F1', fg: '#2563EB' }
+          : { bg: '#E5E8EB', border: '#C7CCD2', fg: '#6B7280' };
+        return {
+          leftPct: pct(startN).toFixed(2),
+          widthPct: Math.max(pct(endN) - pct(startN), 3).toFixed(2),
+          bg: palette.bg, border: palette.border, fg: palette.fg,
+          priceShort: this.yenShort(p.price),
+        };
+      });
+      out.todayPct = pct(this.num(this.TODAY)).toFixed(2);
+      out.axisStart = this.dDisp(new Date(lo).toISOString().slice(0, 10));
+      out.axisEnd = this.dDisp(new Date(hi).toISOString().slice(0, 10));
+    } else {
+      out.bars = []; out.todayPct = '50'; out.axisStart = ''; out.axisEnd = '';
+    }
+
+    return out;
+  }
+}
+</script>
+</body>
+</html>

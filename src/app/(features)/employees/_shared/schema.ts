@@ -20,6 +20,13 @@ export const employeeBaseSchema = z.object({
   role: z.enum([USER_ROLES.ADMIN, USER_ROLES.USER], {
     error: "権限を選択してください",
   }),
+  // 担当役割ID（任意）。空選択＝解除で BE の「未指定＝解除」意味論と一致する。
+  // conform が空文字を undefined 化するため .optional() が必須（[[conform-empty-string-to-undefined]]）。
+  // 存在検証はセレクトの選択肢が制約し、改竄は BE の new RoleId() が弾く（departmentId と同方針）。
+  roleId: z.string().optional(),
+  // 課員の上位役割ID（承認起点・任意）。roleId 同様に空文字→undefined、空選択＝未設定。
+  // 課長級かの検証と roleId 指定時の無視は BE（コマンド＋ドメインサービス）が担う。
+  superiorRoleId: z.string().optional(),
 });
 
 /**

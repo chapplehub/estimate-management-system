@@ -1,6 +1,8 @@
 /**
  * リダイレクト理由コード
- * proxy.tsでリダイレクト時に設定し、flash-message-handler.tsxで読み取る
+ * リダイレクト時に設定し、redirect-reason-toast.tsx で読み取る。
+ * 設定元は proxy.ts（SESSION_EXPIRED のみ）と各実行境界
+ * （verifyAdmin / verifyOwnerOrAdmin の FORBIDDEN、Server Action の完了通知）。
  */
 export const REDIRECT_REASON = {
   SESSION_EXPIRED: "session_expired",
@@ -11,6 +13,32 @@ export const REDIRECT_REASON = {
   DEPARTMENT_CREATED: "department_created",
   DEPARTMENT_UPDATED: "department_updated",
   DEPARTMENT_DELETED: "department_deleted",
+  ROLE_CREATED: "role_created",
+  ROLE_UPDATED: "role_updated",
+  ROLE_DELETED: "role_deleted",
+  PRODUCT_CREATED: "product_created",
+  PRODUCT_CREATED_PRICE_UNSET: "product_created_price_unset",
+  PRODUCT_UPDATED: "product_updated",
+  PRODUCT_DELETED: "product_deleted",
+  PRODUCT_ACTIVATED: "product_activated",
+  PRODUCT_DEACTIVATED: "product_deactivated",
+  CUSTOMER_CREATED: "customer_created",
+  CUSTOMER_UPDATED: "customer_updated",
+  CUSTOMER_DELETED: "customer_deleted",
+  CUSTOMER_ACTIVATED: "customer_activated",
+  CUSTOMER_DEACTIVATED: "customer_deactivated",
+  DELIVERY_LOCATION_CREATED: "delivery_location_created",
+  DELIVERY_LOCATION_UPDATED: "delivery_location_updated",
+  DELIVERY_LOCATION_DELETED: "delivery_location_deleted",
+  DELIVERY_LOCATION_ACTIVATED: "delivery_location_activated",
+  DELIVERY_LOCATION_DEACTIVATED: "delivery_location_deactivated",
+  ESTIMATE_CREATED: "estimate_created",
+  ESTIMATE_UPDATED: "estimate_updated",
+  ESTIMATE_DUPLICATED: "estimate_duplicated",
+  ESTIMATE_REVISED: "estimate_revised",
+  ESTIMATE_VARIATION_ADDED: "estimate_variation_added",
+  ESTIMATE_VARIATION_ACTIVATED: "estimate_variation_activated",
+  ESTIMATE_VARIATION_DEACTIVATED: "estimate_variation_deactivated",
 } as const;
 
 export type RedirectReason = (typeof REDIRECT_REASON)[keyof typeof REDIRECT_REASON];
@@ -35,4 +63,6 @@ export type FlashMessageType = (typeof FLASH_MESSAGE_TYPE)[keyof typeof FLASH_ME
 export type FlashMessage = {
   type: FlashMessageType;
   message: string;
+  /** トーストの表示時間（ミリ秒）。未指定なら sonner の既定（約4秒）。誘導系の長文で読了時間を確保する用途。 */
+  durationMs?: number;
 };

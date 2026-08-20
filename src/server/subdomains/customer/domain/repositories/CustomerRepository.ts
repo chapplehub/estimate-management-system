@@ -1,5 +1,6 @@
 import { Customer } from "@subdomains/customer/domain/entities/Customer";
 import { CompanyCode } from "@server/shared/domain/values/CompanyCode";
+import { CustomerId } from "@subdomains/customer/domain/values/CustomerId";
 
 /**
  * 得意先リポジトリインターフェース
@@ -8,19 +9,31 @@ import { CompanyCode } from "@server/shared/domain/values/CompanyCode";
  */
 export interface CustomerRepository {
   /**
-   * 得意先を保存（新規作成・更新）
+   * 得意先を新規作成
    */
-  save(customer: Customer): Promise<Customer>;
+  insert(customer: Customer): Promise<Customer>;
 
   /**
-   * 得意先を削除
+   * 既存得意先を更新（楽観ロック / ADR-0039）
+   *
+   * @param expectedVersion 編集画面表示時に取得した version（フォーム往復で持ち回るトークン）。
+   *   保存時点の version と一致しない場合は ConflictError を throw し、後勝ちの変更喪失を防ぐ。
    */
-  delete(id: string): Promise<void>;
+  update(customer: Customer, expectedVersion: number): Promise<Customer>;
+
+  /**
+   * 得意先を削除（楽観ロック / ADR-0039 細目3）
+   *
+   * @param expectedVersion 削除画面表示時に取得した version（フォーム往復で持ち回るトークン）。
+   *   `deleteMany({ where: { id, version } })` の count = 0（version 不一致 or 行の消失）は
+   *   ConflictError を throw し、stale な画面を見て下した削除判断による誤削除を防ぐ。
+   */
+  delete(id: CustomerId, expectedVersion: number): Promise<void>;
 
   /**
    * IDで得意先を取得
    */
-  findById(id: string): Promise<Customer | null>;
+  findById(id: CustomerId): Promise<Customer | null>;
 
   /**
    * 取引先コードで得意先を取得（重複チェック等で使用）

@@ -1,4 +1,4 @@
-import { createId } from "@paralleldrive/cuid2";
+import { generateId } from "@server/shared/generateId";
 import prisma from "@server/prisma";
 import { PrismaDepartmentQueryService } from "@subdomains/department/infrastructure/queries/PrismaDepartmentQueryService";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -17,7 +17,7 @@ describe("GetDepartmentTreeQuery", () => {
     isActive?: boolean;
     parentId?: string | null;
   }): Promise<string> {
-    const id = createId();
+    const id = generateId();
     await prisma.department.create({ data: { id, ...data } });
     testDepartmentIds.push(id);
     return id;

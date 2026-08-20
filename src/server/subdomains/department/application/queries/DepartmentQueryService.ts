@@ -72,11 +72,4 @@ export interface DepartmentQueryService {
    * @returns 階層構造を持つ部署DTOの配列
    */
   getTree(rootId?: string | null): Promise<DepartmentTreeDTO[]>;
-
-  /**
-   * 検索条件に一致する部署数をカウント
-   * @param criteria 検索条件
-   * @returns 部署数
-   */
-  count(criteria: DepartmentSearchCriteria): Promise<number>;
 }

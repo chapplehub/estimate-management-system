@@ -121,11 +121,6 @@ export class PrismaDepartmentQueryService implements DepartmentQueryService {
     return this.buildTree(departmentDTOs, rootId ?? null);
   }
 
-  async count(criteria: DepartmentSearchCriteria): Promise<number> {
-    const where = this.buildWhereClause(criteria);
-    return await prisma.department.count({ where });
-  }
-
   /**
    * 検索条件からPrismaのWHERE句を構築
    */
@@ -195,6 +190,7 @@ export class PrismaDepartmentQueryService implements DepartmentQueryService {
       abbreviation: true,
       isActive: true,
       parentId: true,
+      version: true,
       createdAt: true,
       updatedAt: true,
     } as const;
@@ -210,6 +206,7 @@ export class PrismaDepartmentQueryService implements DepartmentQueryService {
     abbreviation: string;
     isActive: boolean;
     parentId: string | null;
+    version: number;
     createdAt: Date;
     updatedAt: Date;
   }): DepartmentDTO {
@@ -220,6 +217,7 @@ export class PrismaDepartmentQueryService implements DepartmentQueryService {
       abbreviation: department.abbreviation,
       isActive: department.isActive,
       parentId: department.parentId,
+      version: department.version,
       createdAt: department.createdAt,
       updatedAt: department.updatedAt,
     };

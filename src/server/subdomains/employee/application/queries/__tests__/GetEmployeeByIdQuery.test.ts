@@ -1,5 +1,7 @@
-import { createId } from "@paralleldrive/cuid2";
+import { ensureTestDepartment } from "@server/__tests__/helpers/ensureTestDepartment";
+import { generateId } from "@server/shared/generateId";
 import prisma from "@server/prisma";
+import { employeeTestCodes } from "@server/__tests__/helpers/test-codes/employeeTestCodes";
 import type { UserRole } from "@server/shared/auth/types";
 import { USER_ROLES } from "@server/shared/auth/types";
 import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
@@ -11,7 +13,8 @@ describe("GetEmployeeByIdQuery", () => {
   const testEmployeeIds: string[] = [];
   const testUserIds: string[] = [];
 
-  const TEST_CODES = ["EMP999954"];
+  const TEST_CODES = employeeTestCodes["employee.getById"].codes;
+  let TEST_DEPT_ID: string;
 
   async function createTestEmployeeWithUser(data: {
     employeeCd: string;
@@ -20,8 +23,8 @@ describe("GetEmployeeByIdQuery", () => {
     role: UserRole;
     departmentId?: string;
   }) {
-    const employeeId = createId();
-    const userId = createId();
+    const employeeId = generateId();
+    const userId = generateId();
 
     await prisma.employee.create({
       data: {
@@ -29,7 +32,7 @@ describe("GetEmployeeByIdQuery", () => {
         employeeCd: data.employeeCd,
         email: data.email,
         name: data.name,
-        departmentId: data.departmentId ?? "dept-001",
+        departmentId: data.departmentId ?? TEST_DEPT_ID,
       },
     });
 
@@ -59,17 +62,7 @@ describe("GetEmployeeByIdQuery", () => {
       where: { employeeCd: { in: TEST_CODES } },
     });
 
-    await prisma.department.upsert({
-      where: { id: "dept-001" },
-      update: {},
-      create: {
-        id: "dept-001",
-        departmentCd: "DEPT001",
-        name: "テスト部署",
-        abbreviation: "テスト",
-        isActive: true,
-      },
-    });
+    TEST_DEPT_ID = await ensureTestDepartment();
 
     query = new GetEmployeeByIdQuery(new PrismaEmployeeQueryService());
   });
@@ -98,7 +91,7 @@ describe("GetEmployeeByIdQuery", () => {
   });
 
   it("存在しないIDの場合nullを返す", async () => {
-    const result = await query.execute({ id: "non-existent-id" });
+    const result = await query.execute({ id: "00000000-0000-7000-8000-000000000000" });
     expect(result).toBeNull();
   });
 });

@@ -5,9 +5,9 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
-  engineType      = "client"
+  provider   = "prisma-client"
+  output     = "../generated/prisma"
+  engineType = "client"
 }
 
 datasource db {
@@ -15,23 +15,127 @@ datasource db {
 }
 
 // ========================================
+// 役職・役割関連
+// ========================================
+
+model Position {
+  id         String @id @db.Uuid // ドメイン層でUUIDv7生成
+  positionCd String @unique @map("position_cd") @db.VarChar(6) // POS001 形式
+  name       String @unique @db.VarChar(50) // 役職名（課長・部長・本部長・社長）
+
+  // 上位役職（自己参照）：社長は NULL
+  superiorPositionId String?    @map("superior_position_id") @db.Uuid
+  superiorPosition   Position?  @relation("PositionHierarchy", fields: [superiorPositionId], references: [id])
+  subordinates       Position[] @relation("PositionHierarchy")
+
+  // 逆参照
+  roles Role[]
+
+  // 見積承認のゴール役職としての逆参照（ADR-0055）
+  finalApprovalApplications EstimateApplication[]
+
+  // タイムスタンプ
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("positions")
+}
+
+model Role {
+  id     String @id @db.Uuid // ドメイン層でUUIDv7生成
+  roleCd String @unique @map("role_cd") @db.VarChar(7) // ROLE001 形式
+  name   String @db.VarChar(100) // 役割名（大阪市南課長・大阪市部長など）
+
+  // 上位役割（自己参照）
+  superiorRoleId String? @map("superior_role_id") @db.Uuid
+  superiorRole   Role?   @relation("RoleHierarchy", fields: [superiorRoleId], references: [id])
+  subordinates   Role[]  @relation("RoleHierarchy")
+
+  // 所属役職
+  positionId String   @map("position_id") @db.Uuid
+  position   Position @relation(fields: [positionId], references: [id])
+
+  // 逆参照
+  employeeRoles       EmployeeRole[]
+  // 課員の明示上位役割としての逆参照（ADR-20260707-k4e）。役割はマスタなので Restrict
+  employeesAsSuperior EmployeeSuperiorRole[]
+
+  // 見積承認ステップの承認対象役割としての逆参照
+  approvalSteps EstimateApprovalStep[]
+
+  // 楽観ロックトークン（ADR-0039）。更新ごとに +1
+  version Int @default(1)
+
+  // タイムスタンプ
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([positionId])
+  @@map("roles")
+}
+
+model EmployeeRole {
+  // 複合PK（従業員ID + 役割ID）
+  employeeId String   @map("employee_id") @db.Uuid
+  // Employee は本子行の集約ルート。従業員本体の削除時に担当割当も心中させる（ON DELETE CASCADE）。
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  roleId     String   @map("role_id") @db.Uuid
+  // Role はマスタ。使用中の役割を削除させないため RESTRICT（Prisma 既定）を維持する。
+  role       Role     @relation(fields: [roleId], references: [id])
+
+  // タイムスタンプ
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@id([employeeId, roleId])
+  @@map("employee_roles")
+}
+
+// ========================================
 // 従業員関連
 // ========================================
 
 model Employee {
-  id         String @id // ドメイン層でCUID生成
-  employeeCd String @unique @map("employee_cd") // EMP000001 形式
-  email      String @unique
-  name       String
+  id         String @id @db.Uuid // ドメイン層でUUIDv7生成
+  employeeCd String @unique @map("employee_cd") @db.VarChar(9) // EMP000001 形式
+  email      String @unique @db.VarChar(254)
+  name       String @db.VarChar(100)
   // role は User.role に移動（better-auth Admin Plugin用）
 
   // 所属部署
-  departmentId String     @map("department_id")
+  departmentId String     @map("department_id") @db.Uuid
   department   Department @relation(fields: [departmentId], references: [id])
 
+  // 上位役割（承認フローの起点・ADR-20260707-k4e）
+  //   役割持ち: 保存せず findSuperiorRoleId が担当役割から読み取り時導出する
+  //   課員: 明示値のみ子表 EmployeeSuperiorRole（1:0..1）へ抽出する
+  // 従来の superior_role_id 列は廃止した
+  superiorRole EmployeeSuperiorRole?
+
+  // 従業員役割（逆参照）
+  employeeRoles EmployeeRole[]
+
+  // 見積作成者としての逆参照
+  createdEstimates Estimate[] @relation("EstimateCreator")
+
+  // 受注関連の逆参照（作成者/確定者/取消者を Employee 参照に統一したため必要）
+  createdOrders   Order[]             @relation("OrderCreator")
+  confirmedOrders OrderConfirmation[] @relation("OrderConfirmer")
+  cancelledOrders OrderCancellation[] @relation("OrderCanceller")
+
+  // 見積申請関連の逆参照（申請者・承認者・差戻者・取下者・免除者の5役）
+  estimateApplications   EstimateApplication[]           @relation("ApplicationApplicant")
+  estimateStepApprovals  EstimateStepApproval[]          @relation("StepApprover")
+  estimateStepRejections EstimateStepRejection[]         @relation("StepRejecter")
+  estimateWithdrawals    EstimateApplicationWithdrawal[] @relation("ApplicationWithdrawer")
+  estimateExemptions     EstimateApprovalExemption[]     @relation("ExemptionExemptor")
+
+  // 楽観ロックトークン（ADR-0039）。更新ごとに +1
+  version Int @default(1)
+
   // タイムスタンプ
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   // 認証ユーザーとの逆参照（Employee はこの関係を知らない設計だが、Prisma の制約上必要）
   user User?
@@ -40,46 +144,73 @@ model Employee {
   @@map("employees")
 }
 
+// 課員（担当役割を持たない従業員）の明示上位役割（ADR-20260707-k4e）。
+// 行の存在 ⟺ 課員に上位役割が明示設定されている。employee_id を PK とし
+// 「1従業員は高々1上位役割」を構造担保する（nullable FK を作らず NULL ゼロ）。
+// 役割持ちには行を作らず、上位役割は担当役割から読み取り時導出する。
+model EmployeeSuperiorRole {
+  // Employee は集約ルート。従業員本体の削除時に明示行も心中させる（ON DELETE CASCADE）
+  employeeId String   @id @map("employee_id") @db.Uuid
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  // 上位役割（マスタ）。使用中の役割を削除させないため RESTRICT（Prisma 既定）を維持
+  roleId String @map("role_id") @db.Uuid
+  role   Role   @relation(fields: [roleId], references: [id])
+
+  // タイムスタンプ
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([roleId])
+  @@map("employee_superior_roles")
+}
+
 // ========================================
 // 部署関連
 // ========================================
 
 model Department {
-  id           String  @id // ドメイン層でCUID生成
-  departmentCd String  @unique @map("department_cd") // DEPT001 形式
-  name         String
-  abbreviation String  // 略称
+  id           String  @id @db.Uuid // ドメイン層でUUIDv7生成
+  departmentCd String  @unique @map("department_cd") @db.VarChar(7) // DEPT001 形式
+  name         String  @db.VarChar(100)
+  abbreviation String  @db.VarChar(20) // 略称
   isActive     Boolean @default(true) @map("is_active")
 
   // 階層構造（自己参照）
-  parentId String?      @map("parent_id")
+  parentId String?      @map("parent_id") @db.Uuid
   parent   Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id])
   children Department[] @relation("DepartmentHierarchy")
 
   // 所属従業員（逆参照）
   employees Employee[]
 
+  // 部署紐付け見積（逆参照）
+  estimates Estimate[] @relation("EstimateDepartment")
+
+  // 楽観ロックトークン（ADR-0039）。更新ごとに +1
+  version Int @default(1)
+
   // タイムスタンプ
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   @@index([parentId])
   @@map("departments")
 }
 
 model User {
-  id            String    @id
+  id            String    @id @db.Uuid
   name          String
   email         String
   emailVerified Boolean   @default(false)
   image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime  @updatedAt @db.Timestamptz(3)
   sessions      Session[]
   accounts      Account[]
 
   // 従業員との関連（認証ユーザー → ドメインエンティティ）
-  employeeId String?   @unique @map("employee_id")
+  employeeId String?   @unique @map("employee_id") @db.Uuid
   employee   Employee? @relation(fields: [employeeId], references: [id])
 
   // better-auth Admin Plugin用フィールド
@@ -88,25 +219,25 @@ model User {
   role       String?   @default("user")
   banned     Boolean?  @default(false)
   banReason  String?
-  banExpires DateTime?
+  banExpires DateTime? @db.Timestamptz(3)
 
   @@unique([email])
   @@map("user")
 }
 
 model Session {
-  id        String   @id
-  expiresAt DateTime
+  id        String   @id @db.Uuid
+  expiresAt DateTime @db.Timestamptz(3)
   token     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
   ipAddress String?
   userAgent String?
-  userId    String
+  userId    String   @db.Uuid
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // better-auth Admin Plugin用（なりすまし管理者ID）
-  impersonatedBy String?
+  impersonatedBy String? @db.Uuid
 
   @@unique([token])
   @@index([userId])
@@ -114,32 +245,32 @@ model Session {
 }
 
 model Account {
-  id                    String    @id
+  id                    String    @id @db.Uuid
   accountId             String
   providerId            String
-  userId                String
+  userId                String    @db.Uuid
   user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   accessToken           String?
   refreshToken          String?
   idToken               String?
-  accessTokenExpiresAt  DateTime?
-  refreshTokenExpiresAt DateTime?
+  accessTokenExpiresAt  DateTime? @db.Timestamptz(3)
+  refreshTokenExpiresAt DateTime? @db.Timestamptz(3)
   scope                 String?
   password              String?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  createdAt             DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime  @updatedAt @db.Timestamptz(3)
 
   @@index([userId])
   @@map("account")
 }
 
 model Verification {
-  id         String   @id
+  id         String   @id @db.Uuid
   identifier String
   value      String
-  expiresAt  DateTime
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  expiresAt  DateTime @db.Timestamptz(3)
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @db.Timestamptz(3)
 
   @@index([identifier])
   @@map("verification")
@@ -149,78 +280,967 @@ model Verification {
 // 取引先関連
 // ========================================
 
-enum CompanyType {
-  CUSTOMER // 得意先
-  DELIVERY_LOCATION // 納品先
-}
+// 取引先（得意先・納品先）は CTI（companies 基底テーブル継承）を廃し、
+// 共通属性を各サブタイプへ取り込んだ「集約 = 1 テーブル」とする（ADR-0043）。
 
-model Company {
-  id   String      @id // ドメイン層でCUID生成
-  code String      @unique // 手入力（例: C001, D001）
-  name String
-  type CompanyType
+model Customer {
+  id   String @id @db.Uuid // ドメイン層でUUIDv7生成
+  code String @unique @db.VarChar(20) // 手入力（例: C001）。一意性は型内（得意先どうし）のみ
+  name String @db.VarChar(100)
 
   // 住所情報
-  postalCode String? @map("postal_code") // 郵便番号
-  prefecture String? // 都道府県
-  address    String? // 住所（市区町村以降）
+  postalCode String? @map("postal_code") @db.VarChar(7) // 郵便番号
+  prefecture String? @db.VarChar(4) // 都道府県
+  address    String? @db.VarChar(200) // 住所（市区町村以降）
 
   // 連絡先
-  phoneNumber   String? @map("phone_number")
-  faxNumber     String? @map("fax_number")
-  contactPerson String? @map("contact_person") // 担当者名
+  phoneNumber   String? @map("phone_number") @db.VarChar(11)
+  faxNumber     String? @map("fax_number") @db.VarChar(11)
+  contactPerson String? @map("contact_person") @db.VarChar(100) // 担当者名
 
   // 有効フラグ
   isActive Boolean @default(true) @map("is_active")
 
-  // 関連
-  customer         Customer?
-  deliveryLocation DeliveryLocation?
-
-  // タイムスタンプ
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@index([code])
-  @@index([type])
-  @@index([isActive])
-  @@map("companies")
-}
-
-model Customer {
-  id        String  @id // ドメイン層でCUID生成
-  companyId String  @unique @map("company_id")
-  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-
-  // 得意先固有の属性
-  marginRate Decimal? @map("margin_rate") @db.Decimal(5, 2) // 標準マージン率
-
   // 配下の納品先
   deliveryLocations DeliveryLocation[]
 
-  // タイムスタンプ
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  // 得意先別販売単価集約（ADR-20260624-8tg）。逆リレーション仮想フィールド（FK列なし）
+  customerSellingPrices CustomerSellingPrice[]
 
+  // 得意先紐付け見積（逆参照）
+  estimates Estimate[] @relation("CustomerEstimates")
+
+  // 楽観ロックトークン（ADR-0039）。更新ごとに +1
+  version Int @default(1)
+
+  // タイムスタンプ
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([isActive])
   @@map("customers")
 }
 
 model DeliveryLocation {
-  id        String  @id // ドメイン層でCUID生成
-  companyId String  @unique @map("company_id")
-  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id   String @id @db.Uuid // ドメイン層でUUIDv7生成
+  code String @unique @db.VarChar(20) // 手入力（例: D001）。一意性は型内（納品先どうし）のみ
+  name String @db.VarChar(100)
+
+  // 住所情報
+  postalCode String? @map("postal_code") @db.VarChar(7) // 郵便番号
+  prefecture String? @db.VarChar(4) // 都道府県
+  address    String? @db.VarChar(200) // 住所（市区町村以降）
+
+  // 連絡先
+  phoneNumber   String? @map("phone_number") @db.VarChar(11)
+  faxNumber     String? @map("fax_number") @db.VarChar(11)
+  contactPerson String? @map("contact_person") @db.VarChar(100) // 担当者名
+
+  // 有効フラグ
+  isActive Boolean @default(true) @map("is_active")
 
   // 親得意先への参照
-  customerId String   @map("customer_id")
+  customerId String   @map("customer_id") @db.Uuid
   customer   Customer @relation(fields: [customerId], references: [id])
 
   // 納品先固有の属性
-  deliveryNotes String? @map("delivery_notes") @db.Text // 配送時の注意事項
+  deliveryNotes String? @map("delivery_notes") @db.VarChar(500) // 配送時の注意事項
+
+  // 納品先別販売単価集約（ADR-20260624-8tg）。逆リレーション仮想フィールド（FK列なし）
+  deliveryLocationSellingPrices DeliveryLocationSellingPrice[]
+
+  // 納品先紐付け見積（逆参照）
+  estimates Estimate[] @relation("DeliveryLocationEstimates")
+
+  // 楽観ロックトークン（ADR-0039）。更新ごとに +1
+  version Int @default(1)
 
   // タイムスタンプ
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   @@index([customerId])
+  @@index([isActive])
   @@map("delivery_locations")
+}
+
+// ========================================
+// 商品関連
+// ========================================
+
+// 商品区分
+enum ProductCategory {
+  INDIVIDUAL // 個別商品
+  CONSUMABLE // 消耗品
+  SET // セット商品
+}
+
+// 単位
+enum ProductUnit {
+  UNIT // 台
+  PIECE // 個
+  ROLL // 本
+  BOX // 箱
+  SHEET // 枚
+  SET // セット
+}
+
+model Product {
+  id          String          @id @db.Uuid // ドメイン層でUUIDv7生成
+  code        String          @unique @db.VarChar(50) // 商品コード (英数字, 最大50桁)
+  name        String          @unique @db.VarChar(100) // 商品名
+  category    ProductCategory // 商品区分
+  description String?         @db.VarChar(1000) // 商品説明
+  note        String?         @db.VarChar(1000) // 備考
+  unit        ProductUnit // 単位
+  isActive    Boolean         @default(true) @map("is_active") // 有効フラグ
+
+  // 周辺商品 (この商品が設定元)
+  relatedProducts   ProductRelation[] @relation("ProductRelationSource")
+  // 周辺商品 (この商品が設定先)
+  relatedByProducts ProductRelation[] @relation("ProductRelationTarget")
+
+  // セット商品構成 (この商品がセット商品)
+  setComponents   SetProductComponent[] @relation("SetProduct")
+  // セット商品構成 (この商品が構成商品)
+  componentOfSets SetProductComponent[] @relation("ComponentProduct")
+
+  // 修理対象機器としての逆参照
+  repairTargetDetails      RepairEstimateDetail[]      @relation("RepairTargetProduct")
+  afterRepairTargetDetails AfterRepairEstimateDetail[] @relation("AfterRepairTargetProduct")
+
+  // 見積明細の品目スナップショット参照
+  estimateItems EstimateItem[] @relation("EstimateItemProduct")
+
+  // セット群の品目スナップショット参照（ADR-0047）。逆リレーション仮想フィールド（FK列なし）
+  estimateSetGroups EstimateSetGroup[] @relation("EstimateSetGroupProduct")
+
+  // 共通販売単価集約（ADR-0066）。商品と1:1の従属集約（逆リレーション仮想フィールド）
+  commonSellingPrice CommonSellingPrice?
+
+  // 原価集約（ADR-0066 / 20260627-a5c）。商品と1:1の従属集約（逆リレーション仮想フィールド）
+  // Issue B（カットオーバー）で products.cost_price 列を削除し、原価は本集約が単一の正本
+  costPriceAggregate CostPrice?
+
+  // 得意先別販売単価集約（ADR-20260624-8tg）。逆リレーション仮想フィールド（FK列なし）
+  customerSellingPrices CustomerSellingPrice[]
+
+  // 納品先別販売単価集約（ADR-20260624-8tg）。逆リレーション仮想フィールド（FK列なし）
+  deliveryLocationSellingPrices DeliveryLocationSellingPrice[]
+
+  // 楽観ロックトークン（ADR-0039）。更新ごとに +1
+  version Int @default(1)
+
+  // タイムスタンプ
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([code])
+  @@index([category])
+  @@index([isActive])
+  @@map("products")
+}
+
+model ProductRelation {
+  // 設定元 (個別商品のみ)
+  productId String  @map("product_id") @db.Uuid
+  product   Product @relation("ProductRelationSource", fields: [productId], references: [id], onDelete: Cascade)
+
+  // 設定先 (個別商品 or 消耗品)
+  relatedProductId String  @map("related_product_id") @db.Uuid
+  relatedProduct   Product @relation("ProductRelationTarget", fields: [relatedProductId], references: [id], onDelete: Cascade)
+
+  // 数量
+  quantity Int // 正の整数
+
+  // タイムスタンプ
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@id([productId, relatedProductId])
+  @@map("product_relations")
+}
+
+model SetProductComponent {
+  // セット商品
+  setProductId String  @map("set_product_id") @db.Uuid
+  setProduct   Product @relation("SetProduct", fields: [setProductId], references: [id], onDelete: Cascade)
+
+  // 構成商品 (個別商品 or 消耗品)
+  componentProductId String  @map("component_product_id") @db.Uuid
+  componentProduct   Product @relation("ComponentProduct", fields: [componentProductId], references: [id], onDelete: Cascade)
+
+  // 数量
+  quantity Int // 正の整数
+
+  // タイムスタンプ
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@id([setProductId, componentProductId])
+  @@map("set_product_components")
+}
+
+// ========================================
+// 共通販売単価（pricing サブドメイン・ADR-0066 / 0067）
+// ========================================
+
+/// 共通販売単価集約のルート。商品と1:1（従属集約）で、楽観ロック version を持つ。
+model CommonSellingPrice {
+  productId String  @id @map("product_id") @db.Uuid // PK 兼 products への FK（ProductId 流用）
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  // 適用期間行（子エンティティ）
+  periods CommonSellingPricePeriod[]
+
+  // 楽観ロックトークン（ADR-0039）。更新ごとに +1
+  version Int @default(1)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("common_selling_prices")
+}
+
+/// 適用期間行。同一商品内で適用期間が重複してはならない（EXCLUDE で物理保証・ADR-0067）。
+/// applicable_period は daterange のため Prisma typed では扱えず Unsupported とし、
+/// 読み書きは Repository/Mapper の $queryRaw で行う。
+model CommonSellingPricePeriod {
+  id        String             @id @db.Uuid // サロゲート UUIDv7（差分 upsert の identity・ADR-0032）
+  productId String             @map("product_id") @db.Uuid
+  parent    CommonSellingPrice @relation(fields: [productId], references: [productId], onDelete: Cascade)
+
+  sellingPrice     Decimal                  @map("selling_price") @db.Decimal(12, 2) // 売単価（NUMERIC・銭精度）
+  applicablePeriod Unsupported("daterange") @map("applicable_period") // 適用期間 [開始, 終了) 上端 unbounded で無期限
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([productId])
+  @@map("common_selling_price_periods")
+}
+
+// ========================================
+// 原価（pricing サブドメイン・ADR-0066 / 0067 / 20260627-a5c）
+// ========================================
+
+/// 原価集約のルート。商品と1:1（従属集約）で、楽観ロック version を持つ。
+/// CommonSellingPrice と完全同型。Issue B で products.cost_price 列を削除し、原価の単一の正本。
+model CostPrice {
+  productId String  @id @map("product_id") @db.Uuid // PK 兼 products への FK（ProductId 流用）
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  // 適用期間行（子エンティティ）
+  periods CostPricePeriod[]
+
+  // 楽観ロックトークン（ADR-0039）。更新ごとに +1
+  version Int @default(1)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("cost_prices")
+}
+
+/// 原価の適用期間行。同一商品内で適用期間が重複してはならない（EXCLUDE で物理保証・ADR-0067）。
+/// applicable_period は daterange のため Prisma typed では扱えず Unsupported とし、
+/// 読み書きは Repository/Mapper の $queryRaw で行う。
+model CostPricePeriod {
+  id        String    @id @db.Uuid // サロゲート UUIDv7（差分 upsert の identity・ADR-0032）
+  productId String    @map("product_id") @db.Uuid
+  parent    CostPrice @relation(fields: [productId], references: [productId], onDelete: Cascade)
+
+  costPrice        Decimal                  @map("cost_price") @db.Decimal(12, 2) // 原価（NUMERIC・銭精度）
+  applicablePeriod Unsupported("daterange") @map("applicable_period") // 適用期間 [開始, 終了) 上端 unbounded で無期限
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([productId])
+  @@map("cost_price_periods")
+}
+
+// ========================================
+// 得意先別販売単価（pricing サブドメイン・ADR-0066 / 0067 / 20260624-8tg）
+// ========================================
+
+/// 得意先別販売単価集約のルート。得意先 × 商品（複合PK・複合自然キー identity）で楽観ロック
+/// version を持つ。共通販売単価と同型だが宛先が得意先である独立集約（ADR-20260624-8tg）。
+model CustomerSellingPrice {
+  customerId String   @map("customer_id") @db.Uuid // 複合PKの一部 兼 customers への FK
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  productId  String   @map("product_id") @db.Uuid // 複合PKの一部 兼 products への FK
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  // 適用期間行（子エンティティ）
+  periods CustomerSellingPricePeriod[]
+
+  // 楽観ロックトークン（ADR-0039）。更新ごとに +1
+  version Int @default(1)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@id([customerId, productId])
+  @@map("customer_selling_prices")
+}
+
+/// 適用期間行。同一の得意先・商品内で適用期間が重複してはならない（EXCLUDE で物理保証・ADR-0067）。
+/// applicable_period は daterange のため Prisma typed では扱えず Unsupported とし、
+/// 読み書きは Repository/Mapper の $queryRaw で行う。共通販売単価への FK・存在依存は張らない。
+model CustomerSellingPricePeriod {
+  id         String               @id @db.Uuid // サロゲート UUIDv7（差分 upsert の identity・ADR-0032）
+  customerId String               @map("customer_id") @db.Uuid
+  productId  String               @map("product_id") @db.Uuid
+  parent     CustomerSellingPrice @relation(fields: [customerId, productId], references: [customerId, productId], onDelete: Cascade)
+
+  sellingPrice     Decimal                  @map("selling_price") @db.Decimal(12, 2) // 売単価（NUMERIC・銭精度）
+  applicablePeriod Unsupported("daterange") @map("applicable_period") // 適用期間 [開始, 終了) 上端 unbounded で無期限
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([customerId, productId])
+  @@map("customer_selling_price_periods")
+}
+
+// ========================================
+// 納品先別販売単価（pricing サブドメイン・ADR-0066 / 0067 / 20260624-8tg）
+// ========================================
+
+/// 納品先別販売単価集約のルート。納品先 × 商品（複合PK・複合自然キー identity）で楽観ロック
+/// version を持つ。共通・得意先別と同型だが宛先が納品先である独立集約（ADR-20260624-8tg）。
+model DeliveryLocationSellingPrice {
+  deliveryLocationId String           @map("delivery_location_id") @db.Uuid // 複合PKの一部 兼 delivery_locations への FK
+  deliveryLocation   DeliveryLocation @relation(fields: [deliveryLocationId], references: [id], onDelete: Cascade)
+  productId          String           @map("product_id") @db.Uuid // 複合PKの一部 兼 products への FK
+  product            Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  // 適用期間行（子エンティティ）
+  periods DeliveryLocationSellingPricePeriod[]
+
+  // 楽観ロックトークン（ADR-0039）。更新ごとに +1
+  version Int @default(1)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@id([deliveryLocationId, productId])
+  @@map("delivery_location_selling_prices")
+}
+
+/// 適用期間行。同一の納品先・商品内で適用期間が重複してはならない（EXCLUDE で物理保証・ADR-0067）。
+/// applicable_period は daterange のため Prisma typed では扱えず Unsupported とし、
+/// 読み書きは Repository/Mapper の $queryRaw で行う。共通販売単価への FK・存在依存は張らない。
+model DeliveryLocationSellingPricePeriod {
+  id                 String                       @id @db.Uuid // サロゲート UUIDv7（差分 upsert の identity・ADR-0032）
+  deliveryLocationId String                       @map("delivery_location_id") @db.Uuid
+  productId          String                       @map("product_id") @db.Uuid
+  parent             DeliveryLocationSellingPrice @relation(fields: [deliveryLocationId, productId], references: [deliveryLocationId, productId], onDelete: Cascade, map: "delivery_location_selling_price_periods_dl_id_product_id_fkey")
+
+  sellingPrice     Decimal                  @map("selling_price") @db.Decimal(12, 2) // 売単価（NUMERIC・銭精度）
+  applicablePeriod Unsupported("daterange") @map("applicable_period") // 適用期間 [開始, 終了) 上端 unbounded で無期限
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([deliveryLocationId, productId], map: "delivery_location_selling_price_periods_dl_id_product_id_idx")
+  @@map("delivery_location_selling_price_periods")
+}
+
+// ========================================
+// 見積関連
+// ========================================
+
+// 見積区分
+enum EstimateType {
+  NEW // 新規
+  REPAIR // 修理（事前）
+  AFTER_REPAIR // 事後修理
+}
+
+// 提出区分
+enum SubmissionType {
+  CUSTOMER // 得意先向け
+  DELIVERY_LOCATION // 納品先向け
+}
+
+// 消費税の端数処理
+enum TaxRoundingType {
+  ROUND_DOWN // 切捨
+  ROUND_UP // 切上
+  ROUND // 四捨五入
+}
+
+model Estimate {
+  id             String @id @db.Uuid // ドメイン層でUUIDv7生成
+  estimateNumber String @unique @map("estimate_number") @db.VarChar(8) // 例: N2500001（接頭辞1文字＋年度2桁＋連番5桁）
+
+  // 見積区分（NEW / REPAIR / AFTER_REPAIR）
+  estimateType EstimateType @map("estimate_type")
+
+  fiscalYear Int @map("fiscal_year") // 西暦4桁（採番用）
+  sequence   Int // 区分内連番（最大99999）
+
+  estimateDate DateTime @map("estimate_date") @db.Timestamptz(3) // 見積年月日
+  deadline     DateTime @db.Timestamptz(3) // 締切年月日
+
+  // 提出区分はバリエーション単位の属性（ADR-0045）。本モデルには持たない
+
+  // 得意先・納品先（常に両方設定）
+  customerId         String           @map("customer_id") @db.Uuid
+  customer           Customer         @relation("CustomerEstimates", fields: [customerId], references: [id])
+  deliveryLocationId String           @map("delivery_location_id") @db.Uuid
+  deliveryLocation   DeliveryLocation @relation("DeliveryLocationEstimates", fields: [deliveryLocationId], references: [id])
+
+  // 修理関連は本モデルに持たない（NULL を排除するためサブタイプテーブルに分割）
+  //   estimateType = NEW          : どちらの詳細も持たない
+  //   estimateType = REPAIR       : RepairEstimateDetail (1:1) を持つ
+  //   estimateType = AFTER_REPAIR : AfterRepairEstimateDetail (1:1) を持つ
+  // estimateType と詳細テーブルの整合（排他的サブタイプ）はドメイン層で担保
+  repairDetail      RepairEstimateDetail?
+  afterRepairDetail AfterRepairEstimateDetail?
+
+  // 消費税（見積時点でスナップショット）
+  taxRate         Decimal         @map("tax_rate") @db.Decimal(4, 3)
+  taxRoundingType TaxRoundingType @map("tax_rounding_type")
+
+  // 作成者（Employee を参照。User は better-auth 用なので業務エンティティから直接参照しない）
+  createdBy    String     @map("created_by") @db.Uuid
+  creator      Employee   @relation("EstimateCreator", fields: [createdBy], references: [id])
+  departmentId String     @map("department_id") @db.Uuid
+  department   Department @relation("EstimateDepartment", fields: [departmentId], references: [id])
+
+  // 複製元・改訂元・申請関連は本モデルに持たない（複製/改訂は別 issue の系譜テーブルへ）
+  // Order との逆リレーション（orders Order[]）も別 issue で追加する
+
+  // バリエーション
+  variations EstimateVariation[]
+
+  // 楽観ロックトークン（ADR-0039）。更新ごとに +1
+  version Int @default(1)
+
+  // タイムスタンプ
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([estimateNumber])
+  @@index([fiscalYear, estimateType, sequence])
+  @@index([createdBy])
+  @@index([departmentId])
+  @@index([customerId])
+  @@index([deliveryLocationId])
+  @@map("estimates")
+}
+
+// REPAIR（事前修理）専用。estimateType = REPAIR のときのみ 1:1 で存在
+model RepairEstimateDetail {
+  id         String   @id @db.Uuid // ドメイン層でUUIDv7生成
+  estimateId String   @unique @map("estimate_id") @db.Uuid
+  estimate   Estimate @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+
+  // 修理対象機器（必須）
+  targetProductId String  @map("target_product_id") @db.Uuid
+  targetProduct   Product @relation("RepairTargetProduct", fields: [targetProductId], references: [id])
+
+  // 故障内容（必須）
+  faultDescription String @map("fault_description") @db.VarChar(2000)
+
+  // 修理予定日（必須）
+  scheduledRepairDate DateTime @map("scheduled_repair_date") @db.Timestamptz(3)
+
+  // タイムスタンプ
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([targetProductId])
+  @@map("repair_estimate_details")
+}
+
+// AFTER_REPAIR（事後修理）専用。estimateType = AFTER_REPAIR のときのみ 1:1 で存在
+model AfterRepairEstimateDetail {
+  id         String   @id @db.Uuid // ドメイン層でUUIDv7生成
+  estimateId String   @unique @map("estimate_id") @db.Uuid
+  estimate   Estimate @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+
+  // 修理対象機器（必須）
+  targetProductId String  @map("target_product_id") @db.Uuid
+  targetProduct   Product @relation("AfterRepairTargetProduct", fields: [targetProductId], references: [id])
+
+  // 故障内容（必須）
+  faultDescription String @map("fault_description") @db.VarChar(2000)
+
+  // 修理実施日（過去日付・必須）
+  actualRepairDate DateTime @map("actual_repair_date") @db.Timestamptz(3)
+
+  // 緊急対応理由（必須）
+  emergencyReason String @map("emergency_reason") @db.VarChar(2000)
+
+  // 10万円超警告の確認済フラグ
+  afterServiceWarningAcknowledged Boolean @default(false) @map("after_service_warning_acknowledged")
+
+  // タイムスタンプ
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([targetProductId])
+  @@map("after_repair_estimate_details")
+}
+
+// バリエーション状態
+enum VariationStatus {
+  ACTIVE // 有効
+  INACTIVE // 無効
+}
+
+model EstimateVariation {
+  id         String   @id @db.Uuid // ドメイン層でUUIDv7生成
+  estimateId String   @map("estimate_id") @db.Uuid
+  estimate   Estimate @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+
+  variationNumber Int             @map("variation_number") // 1〜99
+  status          VariationStatus @default(ACTIVE)
+
+  // 提出区分（ADR-0045: バリエーション単位の不変保存属性。デフォルトなし＝作成時に明示必須）
+  submissionType SubmissionType @map("submission_type")
+
+  // メモ
+  customerMemo String @default("") @map("customer_memo") @db.VarChar(2000)
+  internalMemo String @default("") @map("internal_memo") @db.VarChar(2000)
+
+  // 全体値引
+  overallDiscount Decimal @default(0) @map("overall_discount") @db.Decimal(12, 2)
+
+  // 集計金額（計算結果を保存）
+  subtotal         Decimal @db.Decimal(12, 2) // 明細金額小計
+  discountSubtotal Decimal @map("discount_subtotal") @db.Decimal(12, 2) // 明細値引金額小計
+  finalSubtotal    Decimal @map("final_subtotal") @db.Decimal(12, 2) // 最終明細金額小計
+  taxAmount        Decimal @map("tax_amount") @db.Decimal(12, 2) // 消費税額
+  finalTotal       Decimal @map("final_total") @db.Decimal(12, 2) // 最終合計金額
+
+  // 見積申請（ADR-0053/0058）。差戻→再申請で attempt 違いの行が増えるため複数
+  applications EstimateApplication[]
+  // 承認免除（ADR-0054）。1バリエーション高々1件
+  exemption    EstimateApprovalExemption?
+
+  // 受注（1:1。Order.variationId が @unique のため Optional 単数）
+  order Order? @relation("VariationOrder")
+
+  // 複製系譜: copyTarget=この V が複製で生まれた出自（高々1）/ copySource=この V を元に複製された先（複数可）
+  copyTarget EstimateVariationCopy?  @relation("VariationCopyTarget")
+  copySource EstimateVariationCopy[] @relation("VariationCopySource")
+
+  // 改訂系譜: revisionTarget=この V が改訂で生まれた出自（高々1）/ revisionSource=この V を元に改訂された先（複数可）
+  revisionTarget EstimateVariationRevision?  @relation("VariationRevisionTarget")
+  revisionSource EstimateVariationRevision[] @relation("VariationRevisionSource")
+
+  items EstimateItem[]
+
+  // セット群（ADR-0047）。逆リレーション仮想フィールド（FK列なし。FK は estimate_set_groups 側）
+  setGroups EstimateSetGroup[]
+
+  // タイムスタンプ
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@unique([estimateId, variationNumber])
+  @@index([estimateId, status])
+  @@index([status])
+  @@map("estimate_variations")
+}
+
+model EstimateItem {
+  id          String            @id @db.Uuid // ドメイン層でUUIDv7生成
+  variationId String            @map("variation_id") @db.Uuid
+  variation   EstimateVariation @relation(fields: [variationId], references: [id], onDelete: Cascade)
+
+  sortOrder Int @map("sort_order")
+
+  // 商品マスタへの参照（必須）。フリーテキスト明細は許可しない
+  productId String  @map("product_id") @db.Uuid
+  product   Product @relation("EstimateItemProduct", fields: [productId], references: [id])
+
+  // 明細情報（商品マスタからのスナップショット）
+  // マスタ改訂後も見積時点の名称・単価を保持する（§8 金額の保存形式と整合）
+  itemName  String  @map("item_name") @db.VarChar(100)
+  quantity  Int
+  unit      String  @db.VarChar(20) // 単位（個・枚・台等。Product.unit enum のスナップショット文字列）
+  unitPrice Decimal @map("unit_price") @db.Decimal(12, 2)
+
+  // メモ
+  customerMemo String @default("") @map("customer_memo") @db.VarChar(2000)
+  internalMemo String @default("") @map("internal_memo") @db.VarChar(2000)
+
+  // 値引き
+  discountRate Decimal @default(1.0) @map("discount_rate") @db.Decimal(5, 4) // 掛率（1.0 = 値引なし）
+  itemDiscount Decimal @default(0) @map("item_discount") @db.Decimal(12, 2) // 明細値引金額
+
+  // 計算結果（保存）
+  baseAmount       Decimal @map("base_amount") @db.Decimal(12, 2) // 基本金額（数量×単価）
+  discountedAmount Decimal @map("discounted_amount") @db.Decimal(12, 2) // 掛率適用後金額
+  finalAmount      Decimal @map("final_amount") @db.Decimal(12, 2) // 最終明細金額
+
+  // 得意先改訂で生まれた明細だけが持つ固有属性は別サブタイプ表に分離（§11.3.1）
+  revisedDetail RevisedEstimateItemDetail?
+
+  // セット群への所属（ADR-0047）。逆リレーション仮想フィールド（FK列なし。FK は
+  // estimate_set_components 側）。交差表は item_id を PK とするため高々1件（排他所属）
+  setComponent EstimateSetComponent?
+
+  // タイムスタンプ
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([variationId, sortOrder])
+  @@index([productId])
+  @@map("estimate_items")
+}
+
+// 得意先改訂で生まれた明細だけが持つ固有属性。行の存在 ⟺ 改訂明細（1:1）
+model RevisedEstimateItemDetail {
+  id             String       @id @db.Uuid // ドメイン層でUUIDv7生成
+  estimateItemId String       @unique @map("estimate_item_id") @db.Uuid
+  estimateItem   EstimateItem @relation(fields: [estimateItemId], references: [id], onDelete: Cascade)
+
+  // 改訂元の納品先明細価格のスナップショット（粗利の真実の源・§8.4）
+  deliveryPrice Decimal @map("delivery_price") @db.Decimal(12, 2)
+
+  // タイムスタンプ
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("revised_estimate_item_details")
+}
+
+// セット群（ADR-0047 / Shape ③-a）。価格・並び順・金額を持たない薄い衛星。
+// 金額＝構成明細 finalAmount 合計、表示位置＝構成明細の最小 sortOrder から導出（永続化する派生列ゼロ）。
+model EstimateSetGroup {
+  id          String            @id @db.Uuid // ドメイン層でUUIDv7生成
+  variationId String            @map("variation_id") @db.Uuid
+  variation   EstimateVariation @relation(fields: [variationId], references: [id], onDelete: Cascade)
+
+  // セット商品マスタへの参照（必須）
+  productId String  @map("product_id") @db.Uuid
+  product   Product @relation("EstimateSetGroupProduct", fields: [productId], references: [id])
+
+  // 商品名・単位スナップショット（SET 商品マスタからの複写、§8 金額保存形式と整合）
+  itemName String @map("item_name") @db.VarChar(100)
+  unit     String @db.VarChar(20)
+
+  // メモ
+  customerMemo String @default("") @map("customer_memo") @db.VarChar(2000)
+  internalMemo String @default("") @map("internal_memo") @db.VarChar(2000)
+
+  // 構成明細の所属（交差表）。行の存在で所属を表す
+  components EstimateSetComponent[]
+
+  // タイムスタンプ
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([variationId])
+  @@index([productId])
+  @@map("estimate_set_groups")
+}
+
+// 構成明細のセット群への所属（交差表・ADR-0047）。行の存在 ⟺ 所属。
+// item_id を PK とし、「1構成明細は高々1群」の排他所属を DB レベルで構造担保する
+// （nullable FK を作らず NULL ゼロ）。surrogate id・タイムスタンプは持たない（被参照なし）。
+model EstimateSetComponent {
+  itemId String       @id @map("item_id") @db.Uuid
+  item   EstimateItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  setGroupId String           @map("set_group_id") @db.Uuid
+  setGroup   EstimateSetGroup @relation(fields: [setGroupId], references: [id], onDelete: Cascade)
+
+  @@index([setGroupId])
+  @@map("estimate_set_components")
+}
+
+// ========================================
+// 消費税率関連
+// ========================================
+
+// 消費税率マスタ
+// タイムラインの単調性（制度上ギャップなし）を利用し、effectiveFrom 1 カラムのみで表現する。
+// 前期間の終わり = 次の行の effectiveFrom（暗黙）。「行の存在＝そこから新税率が有効」パターン。
+model TaxRate {
+  id   String  @id @db.Uuid // ドメイン層でUUIDv7生成
+  rate Decimal @db.Decimal(4, 3) // 例: 0.080 (8%), 0.100 (10%)
+
+  // この日時から有効な税率。@unique で同時刻重複を禁止し B-tree 索引も提供
+  effectiveFrom DateTime @unique @map("effective_from") @db.Timestamptz(3)
+
+  // タイムスタンプ
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("tax_rates")
+}
+
+// ========================================
+// 受注関連
+// ========================================
+//
+// 受注のライフサイクル状態は status カラムで持たず、確定/取消イベント行の存在から導出する（§1.3 / §11.4）:
+//   OrderConfirmation あり → 受注確定済 / OrderCancellation あり → 受注取消済 / どちらもなし → 受注作成済
+// 受注明細は持たない。明細は variation → items（EstimateItem）を辿る（受注明細 = 見積明細が常に一致するため。§4.2）
+
+model Order {
+  id String @id @db.Uuid // ドメイン層でUUIDv7生成
+
+  // 見積バリエーションを受注番号として使用（1 バリエーション : 1 受注）
+  variationId String            @unique @map("variation_id") @db.Uuid
+  variation   EstimateVariation @relation("VariationOrder", fields: [variationId], references: [id])
+
+  // 任意メモ（真に任意の値属性 → NULL 許容。ADR-0019: メモ系は VarChar(2000)）
+  orderNote String? @map("order_note") @db.VarChar(2000)
+
+  // 作成者（Employee を参照。#272 の Estimate.createdBy と整合。§9 部署権限で departmentId を辿る）
+  createdBy String   @map("created_by") @db.Uuid
+  creator   Employee @relation("OrderCreator", fields: [createdBy], references: [id])
+
+  // 確定/取消イベント（それぞれ高々 1 件。行の存在＝その状態）
+  confirmation OrderConfirmation?
+  cancellation OrderCancellation?
+
+  // 受注日時は createdAt に集約（業務日時 orderDate は冗長なため持たない）
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([variationId])
+  @@index([createdBy])
+  @@map("orders")
+}
+
+// 受注確定イベント。確定したときのみ 1:1 で存在する（行の存在＝確定済み）
+model OrderConfirmation {
+  id      String @id @db.Uuid // ドメイン層でUUIDv7生成
+  orderId String @unique @map("order_id") @db.Uuid
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  // 納期（確定時必須 → NOT NULL）。挿入時刻とは無関係な未来日のため独立カラムで保持
+  deliveryDate DateTime @map("delivery_date") @db.Timestamptz(3)
+
+  // 確定者（Employee 参照）。確定時刻は createdAt に集約（confirmedAt は持たない）
+  confirmedBy String   @map("confirmed_by") @db.Uuid
+  confirmer   Employee @relation("OrderConfirmer", fields: [confirmedBy], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([confirmedBy])
+  @@map("order_confirmations")
+}
+
+// 受注取消イベント。取消したときのみ 1:1 で存在する（行の存在＝取消済み）
+model OrderCancellation {
+  id      String @id @db.Uuid // ドメイン層でUUIDv7生成
+  orderId String @unique @map("order_id") @db.Uuid
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  // 取消者（Employee 参照）。取消時刻は createdAt に集約（cancelledAt は持たない）
+  cancelledBy String   @map("cancelled_by") @db.Uuid
+  canceller   Employee @relation("OrderCanceller", fields: [cancelledBy], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([cancelledBy])
+  @@map("order_cancellations")
+}
+
+// ========================================
+// バリエーション系譜（複製・得意先改訂）
+// ========================================
+//
+// 複製（§5）と得意先改訂（§7）は形は似るが業務操作・ルール・将来増える属性が異なる別概念。
+// kind 判別子で 1 表統合すると改訂固有属性が増えた時に複製側が NULL になるため、別々の交差テーブルに分離する（§11.2.1）。
+// いずれも「1 派生先は高々 1 出自を持つ」。どちらの表にも行が無い＝オリジナル。
+// 複製表は target(copiedVariationId) を自然主キー化（ADR-0041）。改訂表はサロゲート id + @unique 据え置き（自然キー化は C7 で判断）。
+// 「同じバリエーションが複製かつ改訂」になる二重派生の禁止はドメイン層で担保する（ADR-0019）。
+
+// 見積複製による派生（§5）
+// 純粋な関連テーブル。copiedVariationId → sourceVariationId の関数従属が成立し、
+// 複製先が完全な自然キーを成すためサロゲート id を持たず copiedVariationId を主キーとする（ADR-0041）。
+model EstimateVariationCopy {
+  // 複製で生まれたバリエーション（1 件のみ → 自然主キー）
+  copiedVariationId String            @id @map("copied_variation_id") @db.Uuid
+  copiedVariation   EstimateVariation @relation("VariationCopyTarget", fields: [copiedVariationId], references: [id], onDelete: Cascade)
+
+  // 複製元バリエーション
+  sourceVariationId String            @map("source_variation_id") @db.Uuid
+  sourceVariation   EstimateVariation @relation("VariationCopySource", fields: [sourceVariationId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([sourceVariationId])
+  @@map("estimate_variation_copies")
+}
+
+// 得意先改訂による派生（§7）
+model EstimateVariationRevision {
+  id String @id @db.Uuid // ドメイン層でUUIDv7生成
+
+  // 改訂で生まれた得意先バリエーション（1 件のみ → @unique）
+  revisedVariationId String            @unique @map("revised_variation_id") @db.Uuid
+  revisedVariation   EstimateVariation @relation("VariationRevisionTarget", fields: [revisedVariationId], references: [id], onDelete: Cascade)
+
+  // 改訂元の納品先バリエーション
+  sourceVariationId String            @map("source_variation_id") @db.Uuid
+  sourceVariation   EstimateVariation @relation("VariationRevisionSource", fields: [sourceVariationId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([sourceVariationId])
+  @@map("estimate_variation_revisions")
+}
+
+// ========================================
+// 見積申請・承認関連（ADR-0053/0054/0055/0058）
+// ========================================
+//
+// 申請・承認ステップの状態（PENDING/APPROVED/REJECTED/WITHDRAWN 等）は保存せず、
+// 終端イベント行（承認/差戻/取下）の存在＋ステップ順序から導出する（ADR-0058・設計書 §3.6）。
+// 「1見積1前進バリエーション」のDBバックストップは持たず、見積アグリゲートの楽観ロックで
+// アプリ層に一元化する（ADR-0058）。冗長 estimate_id は持たず見積へは variation 経由で辿る。
+
+// 承認免除の理由
+enum EstimateExemptionReason {
+  CONSUMABLE_ONLY // 消耗品のみ（金額無関係・ADR-0004）
+  BELOW_THRESHOLD // 10万円未満
+  AFTER_REPAIR // 事後見積（作業済みのため・§6.3）
+}
+
+// 見積申請。状態は保存せず §3.6 で導出する。申請行自体は生成後ほぼ不変だが、
+// version は子イベント挿入を含むアグリゲート全体の変更を直列化する楽観ロック（ADR-0039/0058）
+model EstimateApplication {
+  id String @id @db.Uuid // ドメイン層で UUIDv7 生成
+
+  // 対象バリエーション（見積専用なので FK を張れる。ADR-0053）
+  variationId String            @map("variation_id") @db.Uuid
+  variation   EstimateVariation @relation(fields: [variationId], references: [id])
+
+  // 申請回数（同一バリエーションへの通番。差戻→再申請で +1。ADR-0005）
+  // 自然キー・業務可視値として保存（導出可能だが残す。ADR-0028/0033 流儀）
+  attempt Int @default(1) // CHECK (attempt >= 1) を手書きSQLで付与
+
+  // 申請者
+  applicantEmployeeId String   @map("applicant_employee_id") @db.Uuid
+  applicant           Employee @relation("ApplicationApplicant", fields: [applicantEmployeeId], references: [id])
+
+  // 承認フローのゴール役職（金額から算出。NOT NULL ＝ 承認を通る申請は必ずゴールを持つ。ADR-0055）
+  finalApprovalPositionId String   @map("final_approval_position_id") @db.Uuid
+  finalApprovalPosition   Position @relation(fields: [finalApprovalPositionId], references: [id])
+
+  steps      EstimateApprovalStep[]
+  withdrawal EstimateApplicationWithdrawal? // 取下イベント（行の存在＝取下）
+
+  // 楽観ロック（ADR-0039・ADR-0058: アグリゲート変更の直列化）
+  version Int @default(1)
+
+  // 申請日時 = createdAt（業務日時 submittedAt は冗長なため持たない）
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@unique([variationId, attempt]) // ADR-0005 を見積専用で簡約。自然キー
+  @@index([variationId])
+  @@map("estimate_applications")
+}
+
+// 承認ステップ。申請時に全ステップ事前生成（ADR-0002）。骨格のみ・完全不変・nullable ゼロ。
+// 承認/差戻の結果はイベント表に分離し、ステップ状態は §3.6 で導出する
+model EstimateApprovalStep {
+  id String @id @db.Uuid
+
+  applicationId String              @map("application_id") @db.Uuid
+  application   EstimateApplication @relation(fields: [applicationId], references: [id]) // onDelete 既定(Restrict)
+
+  stepOrder Int @map("step_order") // 1, 2, 3...  CHECK (step_order >= 1)
+
+  // 承認対象役割（この役割に属する従業員が承認する）
+  roleId String @map("role_id") @db.Uuid
+  role   Role   @relation(fields: [roleId], references: [id])
+
+  // 結果イベント（行の存在＝決定）
+  approval  EstimateStepApproval?
+  rejection EstimateStepRejection?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@unique([applicationId, stepOrder])
+  @@index([roleId]) // 承認Inboxは反結合で引く（§3.6: AWAITING部分インデックスは張れない）
+  @@map("estimate_approval_steps")
+}
+
+// 承認イベント（行の存在＝このステップは承認済）。stepId を自然キー(@id)とする（ADR-0041 と同型）
+model EstimateStepApproval {
+  stepId String               @id @map("step_id") @db.Uuid
+  step   EstimateApprovalStep @relation(fields: [stepId], references: [id]) // 既定(Restrict)
+
+  approverEmployeeId String   @map("approver_employee_id") @db.Uuid
+  approver           Employee @relation("StepApprover", fields: [approverEmployeeId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([approverEmployeeId])
+  @@map("estimate_step_approvals")
+}
+
+// 差戻イベント（行の存在＝このステップは差戻）。stepId を自然キー(@id)とする
+model EstimateStepRejection {
+  stepId String               @id @map("step_id") @db.Uuid
+  step   EstimateApprovalStep @relation(fields: [stepId], references: [id]) // 既定(Restrict)
+
+  rejectedByEmployeeId String   @map("rejected_by_employee_id") @db.Uuid
+  rejectedBy           Employee @relation("StepRejecter", fields: [rejectedByEmployeeId], references: [id])
+
+  // 差戻理由は必須（NOT NULL・default なし）。意味を持つ表にだけ comment を置く
+  comment String @db.VarChar(2000)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([rejectedByEmployeeId])
+  @@map("estimate_step_rejections")
+}
+
+// 取下イベント（行の存在＝この申請は取下）。applicationId を自然キー(@id)とする
+model EstimateApplicationWithdrawal {
+  applicationId String              @id @map("application_id") @db.Uuid
+  application   EstimateApplication @relation(fields: [applicationId], references: [id]) // 既定(Restrict)
+
+  withdrawnByEmployeeId String   @map("withdrawn_by_employee_id") @db.Uuid
+  withdrawnBy           Employee @relation("ApplicationWithdrawer", fields: [withdrawnByEmployeeId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([withdrawnByEmployeeId])
+  @@map("estimate_application_withdrawals")
+}
+
+// 承認免除（ADR-0054）。1バリエーション1免除（単純ユニーク）。冗長 estimate_id は持たない
+model EstimateApprovalExemption {
+  id String @id @db.Uuid
+
+  // 1バリエーション 1免除（ADR-0054・単純ユニーク）
+  variationId String            @unique @map("variation_id") @db.Uuid
+  variation   EstimateVariation @relation(fields: [variationId], references: [id]) // 既定(Restrict)
+
+  reason EstimateExemptionReason
+
+  exemptedByEmployeeId String   @map("exempted_by_employee_id") @db.Uuid
+  exemptedBy           Employee @relation("ExemptionExemptor", fields: [exemptedByEmployeeId], references: [id])
+
+  // 免除日時 = createdAt（業務日時 exemptedAt は冗長なため持たない）
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([exemptedByEmployeeId])
+  @@map("estimate_approval_exemptions")
 }

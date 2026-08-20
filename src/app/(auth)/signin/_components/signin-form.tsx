@@ -16,6 +16,13 @@ export function SigninForm() {
 
   const [form, fields] = useForm({
     lastResult,
+    defaultValue:
+      process.env.NODE_ENV === "development"
+        ? {
+            email: process.env.NEXT_PUBLIC_DEV_LOGIN_EMAIL,
+            password: process.env.NEXT_PUBLIC_DEV_LOGIN_PASSWORD,
+          }
+        : undefined,
     onValidate({ formData }) {
       return parseWithZod(formData, { schema: SigninFormSchema });
     },

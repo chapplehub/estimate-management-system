@@ -26,7 +26,8 @@ export async function createEmployee(prevState: unknown, formData: FormData) {
     return submission.reply();
   }
 
-  const { name, email, employeeCd, role, password, departmentId } = submission.value;
+  const { name, email, employeeCd, role, password, departmentId, roleId, superiorRoleId } =
+    submission.value;
 
   try {
     // DIはファクトリで解決（インフラ層への依存をserver/側に閉じ込める）
@@ -40,6 +41,8 @@ export async function createEmployee(prevState: unknown, formData: FormData) {
       departmentId,
       role,
       password,
+      roleId,
+      superiorRoleId,
     });
 
     revalidatePath("/employees");

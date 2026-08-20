@@ -4,6 +4,7 @@ import { ValidationError } from "@server/shared/errors/DomainError";
 import { CompanyCode } from "@server/shared/domain/values/CompanyCode";
 import { CompanyName } from "@server/shared/domain/values/CompanyName";
 import { Customer } from "@subdomains/customer/domain/entities/Customer";
+import { CustomerId } from "@subdomains/customer/domain/values/CustomerId";
 import { PrismaCustomerRepository } from "@subdomains/customer/infrastructure/prisma/PrismaCustomerRepository";
 import { DeliveryLocationCodeDuplicationCheckDomainService } from "@subdomains/delivery-location/domain/services/DeliveryLocationCodeDuplicationCheckDomainService";
 import { PrismaDeliveryLocationRepository } from "@subdomains/delivery-location/infrastructure/prisma/PrismaDeliveryLocationRepository";
@@ -21,11 +22,11 @@ describe("CreateDeliveryLocationCommand", () => {
   const CUSTOMER_TEST_CODE = "CUST999931";
 
   beforeEach(async () => {
-    // DL の Company → Customer の Company の順で削除
-    await prisma.company.deleteMany({
+    // 納品先 → 得意先の順で削除（FK 制約）
+    await prisma.deliveryLocation.deleteMany({
       where: { code: { in: DL_TEST_CODES } },
     });
-    await prisma.company.deleteMany({
+    await prisma.customer.deleteMany({
       where: { code: CUSTOMER_TEST_CODE },
     });
 
@@ -46,15 +47,15 @@ describe("CreateDeliveryLocationCommand", () => {
       new CompanyCode(CUSTOMER_TEST_CODE),
       new CompanyName("納品先テスト用得意先")
     );
-    const saved = await customerRepository.save(customer);
-    testCustomerId = saved.id;
+    const saved = await customerRepository.insert(customer);
+    testCustomerId = saved.id.value;
   });
 
   afterEach(async () => {
-    await prisma.company.deleteMany({
+    await prisma.deliveryLocation.deleteMany({
       where: { code: { in: DL_TEST_CODES } },
     });
-    await prisma.company.deleteMany({
+    await prisma.customer.deleteMany({
       where: { code: CUSTOMER_TEST_CODE },
     });
   });
@@ -70,7 +71,7 @@ describe("CreateDeliveryLocationCommand", () => {
     expect(saved).not.toBeNull();
     expect(saved?.name.value).toBe("テスト納品先A");
     expect(saved?.code.value).toBe(DL_TEST_CODES[0]);
-    expect(saved?.customerId).toBe(testCustomerId);
+    expect(saved?.customerId.value).toBe(testCustomerId);
     expect(saved?.isActive).toBe(true);
     expect(saved?.deliveryNotes).toBeNull();
   });
@@ -115,6 +116,13 @@ describe("CreateDeliveryLocationCommand", () => {
         customerId: testCustomerId,
       })
     ).rejects.toThrow(ValidationError);
+    await expect(
+      command.execute({
+        code: DL_TEST_CODES[0],
+        name: "重複先納品先",
+        customerId: testCustomerId,
+      })
+    ).rejects.toThrow("既に存在する取引先コードです");
   });
 
   it("親得意先が存在しない場合は NotFoundEntityError", async () => {
@@ -122,16 +130,23 @@ describe("CreateDeliveryLocationCommand", () => {
       command.execute({
         code: DL_TEST_CODES[0],
         name: "親なし納品先",
-        customerId: "non-existent-customer-id",
+        customerId: "00000000-0000-7000-8000-000000000002",
       })
     ).rejects.toThrow(NotFoundEntityError);
+    await expect(
+      command.execute({
+        code: DL_TEST_CODES[0],
+        name: "親なし納品先",
+        customerId: "00000000-0000-7000-8000-000000000002",
+      })
+    ).rejects.toThrow("得意先が見つかりません");
   });
 
   it("親得意先が無効化されている場合は ValidationError", async () => {
-    // 得意先を無効化
-    const customer = await customerRepository.findById(testCustomerId);
+    // 得意先を無効化（beforeEach で insert 済み = version 1 を更新）
+    const customer = await customerRepository.findById(new CustomerId(testCustomerId));
     customer!.deactivate();
-    await customerRepository.save(customer!);
+    await customerRepository.update(customer!, 1);
 
     await expect(
       command.execute({
@@ -140,5 +155,12 @@ describe("CreateDeliveryLocationCommand", () => {
         customerId: testCustomerId,
       })
     ).rejects.toThrow(ValidationError);
+    await expect(
+      command.execute({
+        code: DL_TEST_CODES[0],
+        name: "無効得意先の納品先",
+        customerId: testCustomerId,
+      })
+    ).rejects.toThrow("無効化された得意先には納品先を追加できません");
   });
 });

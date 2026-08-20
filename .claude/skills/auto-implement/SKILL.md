@@ -1,127 +1,64 @@
 ---
 name: auto-implement
-description: Issue→実装→PR全自動化。Issue URL/番号/説明文を渡すだけで全工程を自動実行する。
+description: worktree 内から実装→PR作成を自動実行する。引数省略時は現在のブランチ名から Issue 番号を自動検出する。
 user-invocable: true
 ---
 
 # プロンプト内容
 
 あなたは全自動実装エージェントです。
-`$ARGUMENTS` を入力として、Issue 作成（必要時）→ Worktree 作成 → 実装計画 → 実装 → テスト → PR 作成まで全工程を自動実行してください。
+Issue 番号を入力として、実装計画 → 実装 → テスト → PR 作成まで全工程を自動実行してください。
 
 **重要な前提条件:**
-- このスキルは **メインリポジトリから実行する必要がある**（EnterWorktree は worktree 内では使用不可）
+- このスキルは **ユーザーが作成済みの worktree 内から実行する**（worktree・ブランチは事前に準備済み）
 - ユーザーへの確認は行わない（全工程を自動実行する）
 
 ---
 
-## Phase 1: Input & Setup
+## Phase 1: Issue 番号の特定 & Issue 情報取得
 
-### 1.1 入力解析
+### 1.1 Issue 番号の特定
 
-`$ARGUMENTS` を解析し、以下の3モードを判定する:
+以下の優先順位で Issue 番号を決定する:
 
-| モード | 判定条件 | 処理 |
-|--------|----------|------|
-| URL | `https://github.com/.../issues/123` 形式 | URL から番号を抽出 |
-| 番号 | `#123` or `123`（数字のみ） | そのまま使用 |
-| 説明文 | 上記以外 | 1.2 で Issue を作成 |
+**① ブランチ名から自動検出（優先）**
 
-### 1.2 Issue 作成（説明文モードのみ）
+```bash
+git branch --show-current
+```
 
-`Skill(create-issue, args: "{$ARGUMENTS の内容}")` で Issue 作成を委譲する。
+ブランチ名から Issue 番号を抽出する。以下のパターンに対応する:
 
-- create-issue は `context: fork` により自動的にサブエージェントとして実行される
-- 返却値から Issue 番号を抽出して処理を継続する
+| ブランチ名パターン | 抽出方法 |
+|---------------------|----------|
+| `feat/issue-123` | `issue-` の後の数字を抽出 → `123` |
+| `fix/issue-456` | 同上 → `456` |
+| `docs/issue-789` | 同上 → `789` |
+| `refactor/issue-100` | 同上 → `100` |
+| その他 `*issue-{N}*` パターン | `issue-` の後の数字を抽出 |
 
-### 1.3 Issue 情報取得 & ブランチタイプ判定
+**② フォールバック: `$ARGUMENTS` から取得**
+
+ブランチ名から Issue 番号を抽出できない場合（例: `develop`, `main` など）:
+
+- `$ARGUMENTS` が `#123` or `123`（数字のみ）の形式なら、そこから Issue 番号を取得する
+- それ以外の形式、または `$ARGUMENTS` が空の場合は、以下のメッセージを表示して終了する:
+
+```
+❌ Issue番号を検出できませんでした。
+
+ブランチ名に `issue-{番号}` が含まれていないか、引数が指定されていません。
+使い方: `/auto-implement` （issue-* ブランチ内で実行）または `/auto-implement 123`
+```
+
+### 1.2 Issue 情報の取得
 
 ```bash
 gh issue view {number} --json title,body,labels
 ```
 
-ラベルからブランチタイプを決定する:
-
-| ラベル | ブランチタイプ |
-|--------|---------------|
-| `Type: enhancement` | `feat` |
-| `Type: bug` | `fix` |
-| `Type: refactor` | `refactor` |
-| `Type: documentation` | `docs` |
-| その他 / ラベルなし | `feat`（デフォルト） |
-
-### 1.4 複雑度チェック
-
-Issue 内容を分析し、以下に **いずれか** 該当する場合は **中断を推奨** する:
-
-- DB スキーマ変更・マイグレーションが必要（Prisma schema の変更）
-- 3つ以上のサブドメインにまたがる変更
-- 明示的に「大規模」「段階的」「フェーズ」等のキーワードがある
-
-**中断時の出力:**
-```
-⚠️ このIssueは自動実装に適さない可能性があります。
-理由: {該当する理由}
-
-手動実装の手順:
-  1. wta {type}/issue-{number}
-  2. 実装
-  3. /create-pr #{number}
-```
-中断時はここで処理を終了する。
-
-### 1.5 Worktree 作成 & 環境セットアップ
-
-以下の順序で実行する:
-
-**① EnterWorktree でワークツリーを作成**
-
-EnterWorktree を実行する。Claude Code が `.claude/worktrees/` に worktree を作成する。
-
-**② EnterWorktree のベースブランチ修正 & ファイルコピー**
-
-EnterWorktree のバグ回避（origin/main → origin/develop）と `.worktreeinclude` のファイルコピーを実行する:
-
-```bash
-SOURCE_ROOT=$(git worktree list | head -1 | awk '{print $1}')
-bash "$SOURCE_ROOT/scripts/worktree-fix-base-branch.sh" "$(pwd)"
-bash "$SOURCE_ROOT/scripts/worktree-copy-includes.sh" "$(pwd)" "$SOURCE_ROOT"
-```
-
-**③ 作業ブランチ作成**
-
-```bash
-git checkout -B {type}/issue-{number}
-```
-
-例: `feat/issue-126`
-
-**④ 依存関係インストール & Prisma クライアント生成**
-
-```bash
-pnpm install && pnpm db:generate
-```
-
-**⑤ settings.local.json の plansDirectory を更新**
-
-②でコピー済みの `.claude/settings.local.json` の `plansDirectory` のみを更新する:
-
-```bash
-if [ -f .claude/settings.local.json ]; then
-    jq --arg dir "docs/claude-plans/issue-{number}" '.plansDirectory = $dir' \
-      .claude/settings.local.json > .claude/settings.local.json.tmp \
-      && mv .claude/settings.local.json.tmp .claude/settings.local.json
-else
-    mkdir -p .claude
-    echo '{"plansDirectory": "docs/claude-plans/issue-{number}"}' > .claude/settings.local.json
-fi
-```
-
-**⑥ 計画ディレクトリの作成**
-
-```bash
-mkdir -p docs/claude-plans/issue-{number}
-```
+- 取得した `title` と `body` は Phase 2（計画作成）で使用する
+- Issue が存在しない場合はエラーメッセージを表示して終了する
 
 ---
 
@@ -135,34 +72,9 @@ mkdir -p docs/claude-plans/issue-{number}
 
 ### 2.2 実装計画の作成 & 保存
 
-- 計画ファイルを `docs/claude-plans/issue-{number}/plan.md` に保存する
-- 各ステップは **「1コミット単位」** で設計する（CLAUDE.md 規約: "Commit at each plan step"）
-- 計画をユーザーに表示する（確認は求めない — 自動承認）
-
-計画ファイルを作成したら、実装開始前にコミットする:
-
-```bash
-git add docs/claude-plans/issue-{number}/plan.md
-git commit -m "docs: Issue #{number} の実装計画を作成"
-```
-
-計画ファイルのフォーマット:
-
-```markdown
-# Issue #{number}: {title} — 実装計画
-
-## 概要
-{Issue の要約}
-
-## ステップ
-
-### Step 1: {ステップタイトル}
-- 対象ファイル: {ファイルパス}
-- 作業内容: {具体的な作業}
-- コミットメッセージ: {prefix}: {内容}
-
-### Step 2: ...
-```
+EnterPlanMode を実行して plan mode に入り、計画ファイルを作成する。
+Plan mode のルールは hooks で自動リマインドされる。
+計画をユーザーに表示する（確認は求めない — 自動承認）。
 
 ---
 
@@ -180,18 +92,7 @@ git commit -m "{コミットメッセージ}"
 **遵守事項:**
 - DDD レイヤリングルール（Domain 層に外部依存を入れない等）
 - CLAUDE.md に記載されたすべての規約
-- 計画からの逸脱があれば `docs/claude-plans/issue-{number}/deviations.md` に記録する
-
-逸脱記録のフォーマット:
-
-```markdown
-# 計画からの逸脱記録
-
-## 逸脱 1: {タイトル}
-- **計画**: {元の計画内容}
-- **実際**: {実際の実装内容}
-- **理由**: {逸脱の理由}
-```
+- 計画の `テスト戦略: TDD` のステップは red-green-refactor で進める（テストを先に書き、RED を確認してから実装する）。`実装後テスト` のステップは実装後にテストを書く
 
 ### 3.2 検証
 
@@ -234,11 +135,9 @@ pnpm test
 📋 Issue: #{number} {title}
 🔗 PR: {PR URL}
 📝 変更: {変更ファイル数} files changed
-🌿 Branch: {type}/issue-{number}
+🌿 Branch: {現在のブランチ名}
 
-💡 このセッションは worktree 内に留まっています。
-   修正が必要な場合はそのまま指示してください（修正 → commit → push で PR に反映されます）。
-   worktree の後片付け: wtr {type}/issue-{number}
+💡 修正が必要な場合はそのまま指示してください（修正 → commit → push で PR に反映されます）。
 ```
 
 ---
@@ -250,4 +149,4 @@ pnpm test
 | 軽微 | lint 失敗 | 自動修正 → 再コミット |
 | 中程度 | test 失敗 | 最大3回修正試行 → 失敗ならドラフト PR |
 | 重大 | 実装不能（設計判断が必要等） | 進捗をコミット → ドラフト PR → 問題点を PR コメントに記載 |
-| 致命的 | Worktree 作成失敗等 | エラーメッセージを表示して終了 |
+| 致命的 | Issue 取得失敗等 | エラーメッセージを表示して終了 |

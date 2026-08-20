@@ -1,67 +1,96 @@
 import { CompanyCode } from "@server/shared/domain/values/CompanyCode";
-import { CompanyType } from "@generated/prisma/client";
 import prisma from "@server/prisma";
+import { ConflictError } from "@server/shared/errors/ApplicationError";
 import { DeliveryLocation } from "@subdomains/delivery-location/domain/entities/DeliveryLocation";
 import { DeliveryLocationRepository } from "@subdomains/delivery-location/domain/repositories/DeliveryLocationRepository";
+import { DeliveryLocationId } from "@subdomains/delivery-location/domain/values/DeliveryLocationId";
 import { DeliveryLocationMapper } from "@subdomains/delivery-location/infrastructure/mappers/DeliveryLocationMapper";
 
-const INCLUDE_COMPANY = { company: true } as const;
-
 export class PrismaDeliveryLocationRepository implements DeliveryLocationRepository {
-  async save(deliveryLocation: DeliveryLocation): Promise<DeliveryLocation> {
-    const existing = await prisma.deliveryLocation.findUnique({
-      where: { id: deliveryLocation.id },
+  /**
+   * 納品先を新規作成（version は @default(1)）
+   */
+  async insert(deliveryLocation: DeliveryLocation): Promise<DeliveryLocation> {
+    const prismaDeliveryLocation = await prisma.deliveryLocation.create({
+      data: DeliveryLocationMapper.toPrismaCreate(deliveryLocation),
     });
-
-    let prismaDeliveryLocation;
-
-    if (existing) {
-      prismaDeliveryLocation = await prisma.deliveryLocation.update({
-        where: { id: deliveryLocation.id },
-        data: DeliveryLocationMapper.toPrismaUpdate(deliveryLocation),
-        include: INCLUDE_COMPANY,
-      });
-    } else {
-      prismaDeliveryLocation = await prisma.deliveryLocation.create({
-        data: DeliveryLocationMapper.toPrismaCreate(deliveryLocation),
-        include: INCLUDE_COMPANY,
-      });
-    }
 
     return DeliveryLocationMapper.toDomain(prismaDeliveryLocation);
   }
 
-  async delete(id: string): Promise<void> {
-    const deliveryLocation = await prisma.deliveryLocation.findUnique({
-      where: { id },
-      select: { companyId: true },
+  /**
+   * 既存納品先を更新（楽観ロック / ADR-0039）
+   *
+   * WHERE id AND version の条件付き UPDATE で「比較→更新」を DB 上で原子化し、
+   * 成功時に version を +1 する。count = 0 は「version 不一致（先行更新あり）」と
+   * 「行の消失（削除済み）」の両方を含むが、UPDATE 文からは区別できないため
+   * 両方を覆うメッセージで競合として扱う（ADR-0039 細目5/6）。
+   *
+   * @param expectedVersion 編集画面表示時のトークン（フォーム往復で持ち回った値）
+   */
+  async update(
+    deliveryLocation: DeliveryLocation,
+    expectedVersion: number
+  ): Promise<DeliveryLocation> {
+    const result = await prisma.deliveryLocation.updateMany({
+      where: { id: deliveryLocation.id.value, version: expectedVersion },
+      data: {
+        ...DeliveryLocationMapper.toPrismaUpdate(deliveryLocation),
+        version: { increment: 1 },
+      },
     });
 
-    if (deliveryLocation) {
-      await prisma.company.delete({
-        where: { id: deliveryLocation.companyId },
-      });
+    if (result.count === 0) {
+      throw new ConflictError(
+        "他のユーザーによって更新または削除されています。画面を再読み込みして最新の内容を確認してください。"
+      );
+    }
+
+    // version を進めた最新行を読み直して返す
+    const row = await prisma.deliveryLocation.findUnique({
+      where: { id: deliveryLocation.id.value },
+    });
+    if (!row) {
+      throw new Error(`保存した納品先の再取得に失敗しました: ${deliveryLocation.id.value}`);
+    }
+
+    return DeliveryLocationMapper.toDomain(row);
+  }
+
+  /**
+   * 納品先を削除（楽観ロック / ADR-0039 細目3）
+   *
+   * WHERE id AND version の条件付き deleteMany で「比較→削除」を DB 上で原子化する。
+   * count = 0 は「version 不一致（先行更新あり）」と「行の消失（削除済み）」の両方を含むが
+   * 区別できないため、両方を覆うメッセージで競合として扱う（ADR-0039 細目5/6）。
+   *
+   * @param expectedVersion 削除画面表示時のトークン（フォーム往復で持ち回った値）
+   */
+  async delete(id: DeliveryLocationId, expectedVersion: number): Promise<void> {
+    const result = await prisma.deliveryLocation.deleteMany({
+      where: { id: id.value, version: expectedVersion },
+    });
+
+    if (result.count === 0) {
+      throw new ConflictError(
+        "他のユーザーによって更新または削除されています。画面を再読み込みして最新の内容を確認してください。"
+      );
     }
   }
 
-  async findById(id: string): Promise<DeliveryLocation | null> {
+  async findById(id: DeliveryLocationId): Promise<DeliveryLocation | null> {
     const prismaDeliveryLocation = await prisma.deliveryLocation.findUnique({
-      where: { id },
-      include: INCLUDE_COMPANY,
+      where: { id: id.value },
     });
 
     return prismaDeliveryLocation ? DeliveryLocationMapper.toDomain(prismaDeliveryLocation) : null;
   }
 
   async findByCode(code: CompanyCode): Promise<DeliveryLocation | null> {
-    const prismaDeliveryLocation = await prisma.deliveryLocation.findFirst({
-      where: {
-        company: {
-          code: code.value,
-          type: CompanyType.DELIVERY_LOCATION,
-        },
-      },
-      include: INCLUDE_COMPANY,
+    // 平坦化後（ADR-0043）は code が delivery_locations の一意列。型内一意なので
+    // 旧 CTI のような company join / type 絞り込みは不要。
+    const prismaDeliveryLocation = await prisma.deliveryLocation.findUnique({
+      where: { code: code.value },
     });
 
     return prismaDeliveryLocation ? DeliveryLocationMapper.toDomain(prismaDeliveryLocation) : null;

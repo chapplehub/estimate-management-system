@@ -9,6 +9,60 @@ import { Prisma } from "@generated/prisma/client";
 import type { UserRole } from "@server/shared/auth/types";
 
 /**
+ * 従業員 DTO の読み取り select 定義（単一真実源）。
+ * この定数から toDTO の行型（EmployeeRow）を GetPayload で機械導出するため、
+ * select を変えれば行型も1箇所で追従する（手書き行型との二重管理を排除・PR #594）。
+ * User.role、担当役割名（role.name）、上位役割名（role.superiorRole.name /
+ * superiorRole.role.name）も含めて取得する。
+ */
+const EMPLOYEE_SELECT = {
+  id: true,
+  employeeCd: true,
+  email: true,
+  name: true,
+  departmentId: true,
+  version: true,
+  createdAt: true,
+  updatedAt: true,
+  // Department.nameを取得
+  department: {
+    select: {
+      name: true,
+    },
+  },
+  // User.roleを取得
+  user: {
+    select: {
+      role: true,
+    },
+  },
+  // 担当役割（高々1件・ADR-20260706-c89）を取得。
+  // role.name＝担当役割名、role.superiorRole.name＝役割持ちの上位役割名（承認起点）。
+  employeeRoles: {
+    select: {
+      roleId: true,
+      role: {
+        select: {
+          name: true,
+          superiorRole: { select: { name: true } },
+        },
+      },
+    },
+  },
+  // 課員の明示上位役割（0/1 件・ADR-20260707-k4e）を取得。
+  // role.name＝課員の上位役割名（承認起点）。
+  superiorRole: {
+    select: {
+      roleId: true,
+      role: { select: { name: true } },
+    },
+  },
+} satisfies Prisma.EmployeeSelect;
+
+/** EMPLOYEE_SELECT が返す Employee 行の型（toDTO の入力・select と単一真実源）。 */
+type EmployeeRow = Prisma.EmployeeGetPayload<{ select: typeof EMPLOYEE_SELECT }>;
+
+/**
  * Prismaを使用した従業員クエリサービス実装
  *
  * データベースから直接DTOを取得し、軽量で高速な読み取りを実現
@@ -18,16 +72,7 @@ export class PrismaEmployeeQueryService implements EmployeeQueryService {
   async findById(id: string): Promise<EmployeeDTO | null> {
     const employee = await prisma.employee.findUnique({
       where: { id },
-      select: this.getSelectFields(),
-    });
-
-    return employee ? this.toDTO(employee) : null;
-  }
-
-  async findByEmail(email: string): Promise<EmployeeDTO | null> {
-    const employee = await prisma.employee.findUnique({
-      where: { email },
-      select: this.getSelectFields(),
+      select: EMPLOYEE_SELECT,
     });
 
     return employee ? this.toDTO(employee) : null;
@@ -36,7 +81,7 @@ export class PrismaEmployeeQueryService implements EmployeeQueryService {
   async findByEmployeeCd(employeeCd: string): Promise<EmployeeDTO | null> {
     const employee = await prisma.employee.findFirst({
       where: { employeeCd },
-      select: this.getSelectFields(),
+      select: EMPLOYEE_SELECT,
     });
 
     return employee ? this.toDTO(employee) : null;
@@ -48,7 +93,7 @@ export class PrismaEmployeeQueryService implements EmployeeQueryService {
 
     const employees = await prisma.employee.findMany({
       where,
-      select: this.getSelectFields(),
+      select: EMPLOYEE_SELECT,
       orderBy,
       take: options?.limit,
       skip: options?.offset,
@@ -57,22 +102,37 @@ export class PrismaEmployeeQueryService implements EmployeeQueryService {
     return employees.map((e) => this.toDTO(e));
   }
 
-  async findAll(options?: ListOptions): Promise<EmployeeDTO[]> {
-    const orderBy = this.buildOrderBy(options);
-
-    const employees = await prisma.employee.findMany({
-      select: this.getSelectFields(),
-      orderBy,
-      take: options?.limit,
-      skip: options?.offset,
+  async findSuperiorRoleId(employeeId: string): Promise<string | null> {
+    // 上位役割は列に持たず読み取り時導出する（ADR-20260707-k4e。承認起点の唯一の消費点）。
+    //   担当役割あり → その担当役割の上位役割（役割階層の1段上）
+    //   担当役割なし（課員）→ EmployeeSuperiorRole の明示値
+    //   どちらも無     → null
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      select: {
+        // 担当役割（高々1件）とその役割の上位役割ID
+        employeeRoles: {
+          select: { role: { select: { superiorRoleId: true } } },
+        },
+        // 課員の明示上位役割（0/1 件）
+        superiorRole: {
+          select: { roleId: true },
+        },
+      },
     });
 
-    return employees.map((e) => this.toDTO(e));
-  }
+    if (!employee) {
+      return null;
+    }
 
-  async count(criteria: EmployeeSearchCriteria): Promise<number> {
-    const where = this.buildWhereClause(criteria);
-    return await prisma.employee.count({ where });
+    // 担当役割を持つなら、その役割の上位役割を承認起点とする（役割持ちは明示行を持たない・I1）
+    const assignedRole = employee.employeeRoles[0]?.role;
+    if (assignedRole) {
+      return assignedRole.superiorRoleId ?? null;
+    }
+
+    // 課員は明示行の値を承認起点とする
+    return employee.superiorRole?.roleId ?? null;
   }
 
   /**
@@ -91,6 +151,10 @@ export class PrismaEmployeeQueryService implements EmployeeQueryService {
 
     if (criteria.employeeCd) {
       where.employeeCd = criteria.employeeCd;
+    }
+
+    if (criteria.departmentId) {
+      where.departmentId = criteria.departmentId;
     }
 
     // roleでのフィルタはUser.roleを使用
@@ -128,48 +192,31 @@ export class PrismaEmployeeQueryService implements EmployeeQueryService {
   }
 
   /**
-   * DTOに必要なフィールドのみを取得するためのselect定義
-   * User.roleも含めて取得する
+   * PrismaモデルからDTOへ変換。入力型は EMPLOYEE_SELECT から導出（EmployeeRow）。
    */
-  private getSelectFields() {
-    return {
-      id: true,
-      employeeCd: true,
-      email: true,
-      name: true,
-      departmentId: true,
-      createdAt: true,
-      updatedAt: true,
-      // User.roleを取得
-      user: {
-        select: {
-          role: true,
-        },
-      },
-    } as const;
-  }
-
-  /**
-   * PrismaモデルからDTOへ変換
-   */
-  private toDTO(employee: {
-    id: string;
-    employeeCd: string;
-    email: string;
-    name: string;
-    departmentId: string;
-    createdAt: Date;
-    updatedAt: Date;
-    user: { role: string | null } | null;
-  }): EmployeeDTO {
+  private toDTO(employee: EmployeeRow): EmployeeDTO {
+    // 高々1件の担当役割（0件＝役割なし＝課員・ADR-20260706-c89）
+    const assignedRole = employee.employeeRoles[0];
     return {
       id: employee.id,
       employeeCd: employee.employeeCd,
       email: employee.email,
       name: employee.name,
       departmentId: employee.departmentId,
+      departmentName: employee.department.name,
       // User.roleを使用（"admin" | "user" | null）
       role: (employee.user?.role as UserRole) ?? null,
+      // 担当役割ID／名（0件＝役割なし＝課員 → null）
+      assignedRoleId: assignedRole?.roleId ?? null,
+      assignedRoleName: assignedRole?.role.name ?? null,
+      // 課員の明示上位役割（役割持ちは明示行を持たない・I1 → null）
+      explicitSuperiorRoleId: employee.superiorRole?.roleId ?? null,
+      // 従業員の上位役割名（承認起点の名前解決）。findSuperiorRoleId と同じ導出分岐：
+      //   担当役割あり → その役割の上位役割名／課員 → 明示上位役割名／どちらも無 → null
+      superiorRoleName: assignedRole
+        ? (assignedRole.role.superiorRole?.name ?? null)
+        : (employee.superiorRole?.role.name ?? null),
+      version: employee.version,
       createdAt: employee.createdAt,
       updatedAt: employee.updatedAt,
     };

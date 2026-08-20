@@ -1,0 +1,568 @@
+import { act, renderHook } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { SelectionOutcome, SelectionRejection } from "@/app/_components/shared/SelectionModal";
+import type { ProductSelectionRow } from "../_shared/selectionColumns";
+import { useVariationLineEditor, type LineEditorPriceContext } from "./useVariationLineEditor";
+import type { WorkingSetGroup } from "./variationLines";
+
+/**
+ * 明細追加時の見積単価ライブ解決の振る舞い（#430・Step 7）と、複数商品の一括追加（#618）。
+ *
+ * 「解決成功なら解決値を単価に充填して行追加」「解決不能なら 0 円行を作らず追加を拒否」（ADR-0064）と、
+ * セットは「1構成でも不能なら展開ごと拒否し不能な構成名を列挙」を固定する。拒否は SelectionRejection の
+ * 戻り値で表す（モーダル内に表示するため・ADR-20260716-r4d）ので、商品選択パスは selectionError を
+ * 設定しない。価格決定（Server Action）と商品スナップショット取得（selection-actions）はモックする。
+ */
+
+const resolveSellingPricesForDisplay = vi.fn();
+vi.mock("../_shared/selling-price-actions", () => ({
+  resolveSellingPricesForDisplay: (...args: unknown[]) => resolveSellingPricesForDisplay(...args),
+}));
+
+// 非業務例外の経路（callReadAction）は toast を出すため、通知先だけモックして黙らせる。
+vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
+
+const getProductLineSnapshot = vi.fn();
+const expandSetComponents = vi.fn();
+const getProductSuggestions = vi.fn();
+vi.mock("../_shared/selection-actions", () => ({
+  getProductLineSnapshot: (...args: unknown[]) => getProductLineSnapshot(...args),
+  expandSetComponents: (...args: unknown[]) => expandSetComponents(...args),
+  getProductSuggestions: (...args: unknown[]) => getProductSuggestions(...args),
+}));
+
+const PRICE_CONTEXT: LineEditorPriceContext = {
+  estimateDate: "2026-07-09",
+  customerId: "cust-1",
+  deliveryLocationId: "dloc-1",
+  submissionType: "CUSTOMER",
+};
+
+function setup() {
+  return renderHook(() =>
+    useVariationLineEditor({
+      initialNodes: [],
+      initialOverallDiscount: 0,
+      priceContext: PRICE_CONTEXT,
+      taxRate: 0.1,
+      taxRoundingType: "ROUND_DOWN",
+    })
+  );
+}
+
+function productRow(overrides: Partial<ProductSelectionRow> = {}): ProductSelectionRow {
+  return { id: "p1", code: "P1", name: "商品A", category: "INDIVIDUAL", ...overrides };
+}
+
+/**
+ * `handleProductSelect` の戻り値から業務拒否（`kind: "rejected"`）を取り出す。
+ * 確定成立・非業務例外の中断（#633）と同じ union に載るため、拒否を期待するテストでは
+ * 「他の枝ではないこと」を判別子の一致で固定する。
+ */
+function expectRejection(actual: SelectionOutcome): SelectionRejection {
+  expect(actual.kind).toBe("rejected");
+  return actual as SelectionRejection;
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  getProductSuggestions.mockResolvedValue([]);
+});
+
+describe("複数商品の一括追加（#618）", () => {
+  /** 通常商品のスナップショットを id から組み立てる（モーダルの表示順＝渡された行順の検証用）。 */
+  function snapshotOf(id: string, name: string) {
+    return { id, code: id.toUpperCase(), name, category: "INDIVIDUAL", unit: "個" };
+  }
+
+  it("3件選択したら3行すべてを表示順のまま追加し、最後の1件をアクティブにする", async () => {
+    getProductLineSnapshot.mockImplementation(async (id: string) =>
+      snapshotOf(id, { p1: "商品A", p2: "商品B", p3: "商品C" }[id]!)
+    );
+    resolveSellingPricesForDisplay.mockResolvedValue({ p1: 100, p2: 200, p3: 300 });
+
+    const { result } = setup();
+    await act(async () => {
+      await result.current.handleProductSelect([
+        productRow({ id: "p1", name: "商品A" }),
+        productRow({ id: "p2", name: "商品B" }),
+        productRow({ id: "p3", name: "商品C" }),
+      ]);
+    });
+
+    expect(result.current.nodes).toHaveLength(3);
+    // itemName は通常明細・セット群の双方が持つため判別不要。次行の unitPrice は群が持たないため判別が要る。
+    expect(result.current.nodes.map((n) => n.itemName)).toEqual(["商品A", "商品B", "商品C"]);
+    expect(result.current.nodes.map((n) => (n.kind === "line" ? n.unitPrice : null))).toEqual([
+      100, 200, 300,
+    ]);
+    expect(result.current.activeRowId).toBe(result.current.nodes[2]?.rowId);
+  });
+
+  it("1件でも解決不能なら1行も追加せず、原因商品だけを invalidIds に載せて拒否する", async () => {
+    getProductLineSnapshot.mockImplementation(async (id: string) =>
+      snapshotOf(id, { p1: "商品A", p2: "商品B", p3: "商品C" }[id]!)
+    );
+    // 商品B だけ単価が無い（他の2件は解決できる）。
+    resolveSellingPricesForDisplay.mockResolvedValue({ p1: 100, p2: null, p3: 300 });
+
+    const { result } = setup();
+    const rejection = expectRejection(
+      await act(() =>
+        result.current.handleProductSelect([
+          productRow({ id: "p1", name: "商品A" }),
+          productRow({ id: "p2", name: "商品B" }),
+          productRow({ id: "p3", name: "商品C" }),
+        ])
+      )
+    );
+
+    // 部分追加せず原子的に拒否する（解決できた商品A・商品Cも追加しない）。
+    expect(result.current.nodes).toHaveLength(0);
+    expect(rejection.invalidIds).toEqual(["p2"]);
+    expect(rejection.message).toContain("商品B");
+    expect(rejection.message).not.toContain("商品A");
+  });
+
+  it("複数選択では周辺商品サジェストを出さない（自動表示廃止・#619）", async () => {
+    getProductLineSnapshot.mockImplementation(async (id: string) =>
+      snapshotOf(id, { p1: "商品A", p2: "商品B" }[id]!)
+    );
+    resolveSellingPricesForDisplay.mockResolvedValue({ p1: 100, p2: 200 });
+
+    const { result } = setup();
+    await act(async () => {
+      await result.current.handleProductSelect([
+        productRow({ id: "p1", name: "商品A" }),
+        productRow({ id: "p2", name: "商品B" }),
+      ]);
+    });
+
+    expect(result.current.nodes).toHaveLength(2);
+    expect(result.current.suggestState).toBeNull();
+    expect(getProductSuggestions).not.toHaveBeenCalled();
+  });
+
+  it("単一選択でも自動サジェストは出さない（ボタン駆動へ変更・#619）", async () => {
+    getProductLineSnapshot.mockResolvedValue(snapshotOf("p1", "商品A"));
+    resolveSellingPricesForDisplay.mockResolvedValue({ p1: 100 });
+    // マスタに周辺があってもダイアログは自動で開かない。
+    getProductSuggestions.mockResolvedValue([
+      {
+        id: "s1",
+        code: "S1",
+        name: "周辺商品",
+        category: "INDIVIDUAL",
+        unit: "個",
+        hasPeripheral: false,
+        quantity: 1,
+      },
+    ]);
+
+    const { result } = setup();
+    await act(async () => {
+      await result.current.handleProductSelect([productRow({ id: "p1", name: "商品A" })]);
+    });
+
+    expect(result.current.nodes).toHaveLength(1);
+    // 追加しただけではサジェストは開かず、getProductSuggestions も呼ばない（ボタン押下が契機）。
+    expect(result.current.suggestState).toBeNull();
+    expect(getProductSuggestions).not.toHaveBeenCalled();
+  });
+});
+
+describe("周辺商品サジェスト（ボタン駆動・#619）", () => {
+  /** 通常商品を1行追加し、その rowId を返す（requestSuggestions の対象行を用意する）。 */
+  async function addLine(
+    result: { current: ReturnType<typeof useVariationLineEditor> },
+    { id = "p1", name = "商品A" }: { id?: string; name?: string } = {}
+  ): Promise<string> {
+    getProductLineSnapshot.mockResolvedValue({
+      id,
+      code: id.toUpperCase(),
+      name,
+      category: "INDIVIDUAL",
+      unit: "個",
+      hasPeripheral: true,
+    });
+    resolveSellingPricesForDisplay.mockResolvedValue({ [id]: 100 });
+    await act(async () => {
+      await result.current.handleProductSelect([productRow({ id, name })]);
+    });
+    return result.current.nodes[0]!.rowId;
+  }
+
+  it("周辺が1件以上ならダイアログを開く（本体名・本体行 id・提案を載せる）", async () => {
+    const { result } = setup();
+    const rowId = await addLine(result, { id: "p1", name: "商品A" });
+
+    getProductSuggestions.mockResolvedValue([
+      {
+        id: "s1",
+        code: "S1",
+        name: "周辺商品",
+        category: "INDIVIDUAL",
+        unit: "個",
+        hasPeripheral: false,
+        quantity: 2,
+      },
+    ]);
+    await act(async () => {
+      await result.current.requestSuggestions(rowId, "p1");
+    });
+
+    expect(getProductSuggestions).toHaveBeenCalledWith("p1");
+    expect(result.current.suggestState?.mainName).toBe("商品A");
+    expect(result.current.suggestState?.mainRowId).toBe(rowId);
+    expect(result.current.suggestState?.suggestions).toHaveLength(1);
+    expect(result.current.selectionError).toBeNull();
+  });
+
+  it("有効な周辺が0件ならダイアログを開かず selectionError に通知する", async () => {
+    const { result } = setup();
+    const rowId = await addLine(result, { id: "p1", name: "商品A" });
+
+    getProductSuggestions.mockResolvedValue([]);
+    await act(async () => {
+      await result.current.requestSuggestions(rowId, "p1");
+    });
+
+    expect(result.current.suggestState).toBeNull();
+    expect(result.current.selectionError).toBe("有効な周辺商品がありません");
+  });
+});
+
+describe("通常商品の選択時の見積単価解決", () => {
+  it("解決成功なら解決値を単価に充填して行を追加する", async () => {
+    getProductLineSnapshot.mockResolvedValue({
+      id: "p1",
+      code: "P1",
+      name: "商品A",
+      category: "INDIVIDUAL",
+      unit: "個",
+    });
+    resolveSellingPricesForDisplay.mockResolvedValue({ p1: 1500 });
+
+    const { result } = setup();
+    await act(async () => {
+      await result.current.handleProductSelect([productRow()]);
+    });
+
+    expect(result.current.nodes).toHaveLength(1);
+    const line = result.current.nodes[0];
+    expect(line.kind).toBe("line");
+    if (line.kind !== "line") return;
+    expect(line.unitPrice).toBe(1500);
+    expect(result.current.selectionError).toBeNull();
+  });
+
+  it("解決不能（null）なら行を追加せず、商品名を添えた拒否を返す（ADR-0064）", async () => {
+    getProductLineSnapshot.mockResolvedValue({
+      id: "p1",
+      code: "P1",
+      name: "商品A",
+      category: "INDIVIDUAL",
+      unit: "個",
+    });
+    resolveSellingPricesForDisplay.mockResolvedValue({ p1: null });
+
+    const { result } = setup();
+    const rejection = expectRejection(
+      await act(() => result.current.handleProductSelect([productRow()]))
+    );
+
+    expect(result.current.nodes).toHaveLength(0);
+    // エラーはモーダル内に出すため、バナー用の selectionError は使わない（#618・ADR-20260716-r4d）。
+    expect(rejection.message).toContain("商品A");
+    expect(rejection.invalidIds).toEqual(["p1"]);
+  });
+});
+
+describe("セット商品の選択時の見積単価解決", () => {
+  const expanded = {
+    productId: "set1",
+    code: "SET1",
+    name: "セットA",
+    unit: "式",
+    components: [
+      {
+        productId: "ca",
+        code: "CA",
+        name: "構成A",
+        category: "INDIVIDUAL",
+        unit: "個",
+        quantity: 2,
+        isActive: true,
+      },
+      {
+        productId: "cb",
+        code: "CB",
+        name: "構成B",
+        category: "CONSUMABLE",
+        unit: "本",
+        quantity: 1,
+        isActive: true,
+      },
+    ],
+  };
+
+  it("全構成が解決できれば群を追加し、各構成に解決単価を充填する", async () => {
+    expandSetComponents.mockResolvedValue(expanded);
+    resolveSellingPricesForDisplay.mockResolvedValue({ ca: 500, cb: 300 });
+
+    const { result } = setup();
+    await act(async () => {
+      await result.current.handleProductSelect([productRow({ id: "set1", category: "SET" })]);
+    });
+
+    expect(result.current.nodes).toHaveLength(1);
+    const group = result.current.nodes[0] as WorkingSetGroup;
+    expect(group.kind).toBe("setGroup");
+    expect(group.components.map((c) => c.unitPrice)).toEqual([500, 300]);
+    expect(result.current.selectionError).toBeNull();
+  });
+
+  it("1構成でも解決不能なら展開ごと拒否し、不能な構成名を列挙する", async () => {
+    expandSetComponents.mockResolvedValue(expanded);
+    resolveSellingPricesForDisplay.mockResolvedValue({ ca: 500, cb: null });
+
+    const { result } = setup();
+    const rejection = expectRejection(
+      await act(() =>
+        result.current.handleProductSelect([productRow({ id: "set1", category: "SET" })])
+      )
+    );
+
+    expect(result.current.nodes).toHaveLength(0);
+    expect(rejection.message).toContain("セットA");
+    expect(rejection.message).toContain("構成B");
+    expect(rejection.message).not.toContain("構成A");
+    // ハイライトはモーダルの一覧に存在する行＝セット商品の行に立てる（構成は一覧に現れない）。
+    expect(rejection.invalidIds).toEqual(["set1"]);
+  });
+
+  it("見積年月日未入力で解決が空マップを返す場合、NaN群を作らず展開ごと拒否する", async () => {
+    // 見積年月日が空だと resolveSellingPricesForDisplay は空マップ {} を返し、
+    // 各構成の単価が undefined になる。=== null では素通りして unitPrice: undefined の
+    // 群を作り金額が NaN になっていた（通常明細・サジェストと非対称）。== null で拒否する。
+    expandSetComponents.mockResolvedValue(expanded);
+    resolveSellingPricesForDisplay.mockResolvedValue({});
+
+    const { result } = setup();
+    const rejection = expectRejection(
+      await act(() =>
+        result.current.handleProductSelect([productRow({ id: "set1", category: "SET" })])
+      )
+    );
+
+    expect(result.current.nodes).toHaveLength(0);
+    expect(rejection.message).toContain("セットA");
+    expect(rejection.message).toContain("構成A");
+    expect(rejection.message).toContain("構成B");
+  });
+});
+
+/**
+ * 非業務例外（DB 障害・ネットワーク断）で確定に必要なデータを取れなかったときの中断（#633）。
+ *
+ * 中断は `{ kind: "aborted" }` を返してモーダル側に「閉じるな・理由も出すな」を伝える
+ * （ADR-20260723-h7r の操作中断・state 凍結）。`{ kind: "confirmed" }` で抜けるとモーダルは
+ * 確定成立と解釈して閉じ、検索結果と選択状態を捨ててしまう（ADR-20260716-r4d の契約）。
+ * 業務値 `null`（商品の並行削除）は中断ではなく拒否で、両者は区別する（#635）。
+ */
+describe("非業務例外での選択中断（#633）", () => {
+  const SNAPSHOT = {
+    id: "p1",
+    code: "P1",
+    name: "商品A",
+    category: "INDIVIDUAL",
+    unit: "個",
+  };
+
+  it("スナップショット取得が失敗したら中断を返し、1行も追加しない", async () => {
+    getProductLineSnapshot.mockRejectedValue(new Error("boom"));
+
+    const { result } = setup();
+    const outcome = await act(() => result.current.handleProductSelect([productRow()]));
+
+    expect(outcome).toEqual({ kind: "aborted" });
+    expect(result.current.nodes).toHaveLength(0);
+  });
+
+  it("セット構成の展開が失敗したら中断を返す", async () => {
+    expandSetComponents.mockRejectedValue(new Error("boom"));
+
+    const { result } = setup();
+    const outcome = await act(() =>
+      result.current.handleProductSelect([productRow({ id: "set1", category: "SET" })])
+    );
+
+    expect(outcome).toEqual({ kind: "aborted" });
+    expect(result.current.nodes).toHaveLength(0);
+  });
+
+  it("価格解決が失敗したら中断を返す（業務上の解決不能＝拒否とは区別する）", async () => {
+    getProductLineSnapshot.mockResolvedValue(SNAPSHOT);
+    resolveSellingPricesForDisplay.mockRejectedValue(new Error("boom"));
+
+    const { result } = setup();
+    const outcome = await act(() => result.current.handleProductSelect([productRow()]));
+
+    // 拒否（SelectionRejection）ではないこと＝モーダルに理由バナーを出さないことまで固定する。
+    expect(outcome).toEqual({ kind: "aborted" });
+    expect(result.current.nodes).toHaveLength(0);
+  });
+
+  it("相1で削除済みを検出していても、取得失敗が混ざれば中断が優先する", async () => {
+    // 削除済み（業務値 null）と取得失敗（非業務例外）が同時に起きた場合。取得できていない行こそが
+    // 唯一の問題だったかもしれず、欠けた材料で原因を断定すると誤情報になるため拒否材料は捨てる。
+    getProductLineSnapshot.mockImplementation(async (id: string) => {
+      if (id === "p1") return null;
+      throw new Error("boom");
+    });
+
+    const { result } = setup();
+    const outcome = await act(() =>
+      result.current.handleProductSelect([
+        productRow({ id: "p1", name: "商品A" }),
+        productRow({ id: "p2", name: "商品B" }),
+      ])
+    );
+
+    expect(outcome).toEqual({ kind: "aborted" });
+    expect(result.current.nodes).toHaveLength(0);
+  });
+
+  it("相1で削除済みを検出していても、価格解決が失敗すれば中断が優先する", async () => {
+    // 合流（#635）により相1で削除を検出しても相2へ進むため、この組み合わせが新たに発生しうる。
+    getProductLineSnapshot.mockImplementation(async (id: string) =>
+      id === "p1" ? null : { ...SNAPSHOT, id, name: "商品B" }
+    );
+    resolveSellingPricesForDisplay.mockRejectedValue(new Error("boom"));
+
+    const { result } = setup();
+    const outcome = await act(() =>
+      result.current.handleProductSelect([
+        productRow({ id: "p1", name: "商品A" }),
+        productRow({ id: "p2", name: "商品B" }),
+      ])
+    );
+
+    expect(outcome).toEqual({ kind: "aborted" });
+    expect(result.current.nodes).toHaveLength(0);
+  });
+});
+
+/**
+ * 商品の並行削除（検索と確定の間にマスタから消えた＝業務値 `null`）の扱い（#635）。
+ *
+ * 従来は「黙って 0 件追加して閉じる」無言 no-op だった。ユーザーは「追加できた」と「何も
+ * 起きなかった」を区別できず、#634 と同じクラスの無言失敗になっていた（#618 の逸脱記録 §2 で
+ * 明示的に先送りされた設計判断の回収）。`prepared` は `rows` とインデックス整合しているため
+ * どの行が消えていたかを特定でき、`invalidIds` の材料は揃っている。
+ *
+ * 単価解決不能と 1 回の拒否に合流させるのは、原因を小出しにすると拒否が 2 往復になり
+ * 「原因を見せて、その行のチェックだけ外させて 1 回で再確定させる」という ADR-20260716-r4d の
+ * 目的と衝突するため。メッセージは原因でグループ化する（原因は共有されるのが常態）。
+ */
+describe("商品の並行削除（#635）", () => {
+  function snapshotOf(id: string, name: string) {
+    return { id, code: id.toUpperCase(), name, category: "INDIVIDUAL", unit: "個" };
+  }
+
+  it("削除済みが混ざったら1行も追加せず、原因と該当行を載せて拒否する", async () => {
+    getProductLineSnapshot.mockImplementation(async (id: string) =>
+      id === "p1" ? null : snapshotOf(id, "商品B")
+    );
+    resolveSellingPricesForDisplay.mockResolvedValue({ p2: 200 });
+
+    const { result } = setup();
+    const rejection = expectRejection(
+      await act(() =>
+        result.current.handleProductSelect([
+          productRow({ id: "p1", name: "商品A" }),
+          productRow({ id: "p2", name: "商品B" }),
+        ])
+      )
+    );
+
+    // 解決できた商品B も追加しない（原子的な拒否）。
+    expect(result.current.nodes).toHaveLength(0);
+    expect(rejection.invalidIds).toEqual(["p1"]);
+    expect(rejection.message).toContain("すでに削除されている");
+    expect(rejection.message).toContain("商品A");
+    expect(rejection.message).not.toContain("商品B");
+  });
+
+  it("削除済みと単価解決不能が同時なら、1回の拒否に両方の原因と該当行を載せる", async () => {
+    getProductLineSnapshot.mockImplementation(async (id: string) =>
+      id === "p1" ? null : snapshotOf(id, { p2: "商品B", p3: "商品C" }[id]!)
+    );
+    // 商品B は単価が無く、商品C だけが解決できる。
+    resolveSellingPricesForDisplay.mockResolvedValue({ p2: null, p3: 300 });
+
+    const { result } = setup();
+    const rejection = expectRejection(
+      await act(() =>
+        result.current.handleProductSelect([
+          productRow({ id: "p1", name: "商品A" }),
+          productRow({ id: "p2", name: "商品B" }),
+          productRow({ id: "p3", name: "商品C" }),
+        ])
+      )
+    );
+
+    expect(result.current.nodes).toHaveLength(0);
+    // ハイライトはモーダルの表示順（＝渡された行順）で載せる。
+    expect(rejection.invalidIds).toEqual(["p1", "p2"]);
+    expect(rejection.message).toContain("有効な販売単価が無い");
+    expect(rejection.message).toContain("商品B");
+    expect(rejection.message).toContain("すでに削除されている");
+    expect(rejection.message).toContain("商品A");
+    // 解決できた商品C は原因に現れない。
+    expect(rejection.message).not.toContain("商品C");
+  });
+
+  it("原因が1つだけなら、もう一方の原因の見出しは出さない", async () => {
+    getProductLineSnapshot.mockResolvedValue(snapshotOf("p1", "商品A"));
+    resolveSellingPricesForDisplay.mockResolvedValue({ p1: null });
+
+    const { result } = setup();
+    const rejection = expectRejection(
+      await act(() => result.current.handleProductSelect([productRow()]))
+    );
+
+    expect(rejection.message).toContain("有効な販売単価が無い");
+    expect(rejection.message).not.toContain("すでに削除されている");
+  });
+
+  it("全件が削除済みなら価格解決を呼ばずに拒否する（無駄な往復を作らない）", async () => {
+    getProductLineSnapshot.mockResolvedValue(null);
+
+    const { result } = setup();
+    const rejection = expectRejection(
+      await act(() => result.current.handleProductSelect([productRow({ id: "p1", name: "商品A" })]))
+    );
+
+    expect(resolveSellingPricesForDisplay).not.toHaveBeenCalled();
+    expect(rejection.invalidIds).toEqual(["p1"]);
+    expect(rejection.message).toContain("すでに削除されている");
+  });
+
+  it("セット商品が並行削除されていた場合も拒否する", async () => {
+    expandSetComponents.mockResolvedValue(null);
+
+    const { result } = setup();
+    const rejection = expectRejection(
+      await act(() =>
+        result.current.handleProductSelect([
+          productRow({ id: "set1", name: "セットA", category: "SET" }),
+        ])
+      )
+    );
+
+    expect(rejection.invalidIds).toEqual(["set1"]);
+    expect(rejection.message).toContain("セットA");
+    expect(rejection.message).toContain("すでに削除されている");
+  });
+});

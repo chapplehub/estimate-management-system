@@ -14,7 +14,7 @@ describe("CreateCustomerCommand", () => {
   const TEST_CODES = ["CUST999911", "CUST999912"];
 
   beforeEach(async () => {
-    await prisma.company.deleteMany({
+    await prisma.customer.deleteMany({
       where: { code: { in: TEST_CODES } },
     });
 
@@ -25,7 +25,7 @@ describe("CreateCustomerCommand", () => {
   });
 
   afterEach(async () => {
-    await prisma.company.deleteMany({
+    await prisma.customer.deleteMany({
       where: { code: { in: TEST_CODES } },
     });
   });
@@ -41,7 +41,6 @@ describe("CreateCustomerCommand", () => {
     expect(saved?.name.value).toBe("テスト得意先A");
     expect(saved?.code.value).toBe(TEST_CODES[0]);
     expect(saved?.isActive).toBe(true);
-    expect(saved?.marginRate).toBeNull();
   });
 
   it("全オプション項目付きで新規登録できる", async () => {
@@ -54,7 +53,6 @@ describe("CreateCustomerCommand", () => {
       phoneNumber: "03-1234-5678",
       faxNumber: "03-1234-5679",
       contactPerson: "担当太郎",
-      marginRate: 15.5,
     });
 
     const saved = await repository.findByCode(new CompanyCode(TEST_CODES[0]));
@@ -66,7 +64,6 @@ describe("CreateCustomerCommand", () => {
     expect(saved?.phoneNumber?.value).toBe("0312345678");
     expect(saved?.faxNumber?.value).toBe("0312345679");
     expect(saved?.contactPerson).toBe("担当太郎");
-    expect(saved?.marginRate?.value).toBe(15.5);
   });
 
   it("コードが重複している場合は ValidationError", async () => {
@@ -81,5 +78,11 @@ describe("CreateCustomerCommand", () => {
         name: "重複先",
       })
     ).rejects.toThrow(ValidationError);
+    await expect(
+      command.execute({
+        code: TEST_CODES[0],
+        name: "重複先",
+      })
+    ).rejects.toThrow("既に存在する取引先コードです");
   });
 });

@@ -1,0 +1,71 @@
+# ADR-0006: 管理者専用ルートの認可チェックをproxy.tsで行う
+
+| 項目 | 値 |
+|---|---|
+| ステータス | 差替（→ ADR-20260727-gk3） |
+| 起票日 | 2026-03-26 |
+| 最終更新日 | 2026-07-27 |
+
+## コンテキスト
+
+`/employees/new`（従業員新規作成画面）は管理者のみがアクセスすべきページだが、ページレベルの認可チェックがなく、一般ユーザーでもアクセスできてしまっていた。Server Action（`createEmployeeAction`）内では`verifyAdmin()`で認可チェックしているため、実際のデータ作成は防がれるが、フォーム画面自体が表示される状態だった。
+
+## 検討した選択肢
+
+### A. `proxy.ts`に管理者専用ルートを定義する（採用）
+
+```typescript
+const adminRoutes = ["/employees/new"];
+
+if (session && adminRoutes.includes(path) && !isAdmin(session)) {
+  return NextResponse.redirect(new URL(`/signin?reason=${REDIRECT_REASON.FORBIDDEN}`, request.url));
+}
+```
+
+### B. `page.tsx`で`verifyAdmin()`を呼ぶ（不採用）
+
+```typescript
+// src/app/(features)/employees/new/page.tsx
+export default async function EmployeeNewPage() {
+  await verifyAdmin();
+  // ...
+}
+```
+
+### C. `layout.tsx`で`verifyAdmin()`を呼ぶ（不採用）
+
+```typescript
+// src/app/(features)/employees/layout.tsx
+export default async function EmployeesLayout({ children }) {
+  // ルートに応じた認可チェック
+}
+```
+
+## 決定
+
+`proxy.ts`に管理者専用ルートの配列を定義し、認可チェックを行う。
+
+## 根拠
+
+### 認証/認可の一貫性
+
+proxy.tsは既に認証チェック（未ログインユーザーのリダイレクト）を担っている。認可チェック（権限のないユーザーのリダイレクト）も同じレイヤーに置くことで、リクエストの認証・認可フローが一箇所で完結する。
+
+```
+リクエスト → proxy.ts（認証 + 認可） → ページレンダリング
+```
+
+### ページレンダリング前にブロックできる
+
+proxy.ts（Next.js 16のミドルウェア相当）はページのServer Componentが実行される前に動作する。不正なアクセスをページレンダリングの前段でブロックでき、不要なDB問い合わせやコンポーネントのレンダリングが発生しない。
+
+### 不採用理由
+
+- **選択肢B（page.tsx）**: 各ページに`verifyAdmin()`を追加する必要があり、管理者専用ページが増えるたびに追加漏れのリスクがある。また、ページのレンダリングが開始された後にリダイレクトするため、無駄な処理が発生する
+- **選択肢C（layout.tsx）**: employeesのlayout.tsxは一覧・詳細・新規作成で共有されるが、一覧と詳細は一般ユーザーもアクセス可能であり、layoutレベルでの一律チェックは不適切。ルートに応じた条件分岐をlayoutに入れると責務が複雑化する
+
+## 影響
+
+- 管理者専用ルートを追加する際は`proxy.ts`の`adminRoutes`配列に追加するだけでよい
+- Server Action内の`verifyAdmin()`は多層防御として引き続き残す（proxyをバイパスされた場合の安全策）
+- **副作用として、ページ本体から`verifySession()`が消えたことでレンダリングが静的化された**（#644）。当時のコードベースは動的化を`verifySession()`のcookie読み取りという副作用にのみ依存しており、proxyはアクセス制御はするがレンダリングのキャッシュ判定には関与しないため、認可は効くのに画面内容がビルド時のまま古い、という状態を招いた。本ADRの「認可をproxyに置く」判断自体は有効だが、**proxyに寄せただけでは動的レンダリングは保証されない**。動的化の明示はADR-20260727-2fbで`(features)/layout.tsx`に分離して担保している

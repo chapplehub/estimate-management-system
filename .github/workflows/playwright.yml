@@ -3,15 +3,75 @@ on:
   workflow_dispatch:
   pull_request:
     branches: [main, develop]
-    paths-ignore:
-      - "docs/**"
-      - "*.md"
-      - ".gitignore"
+    # paths フィルタは付けない（#704）。ワークフローレベルで間引くと、起動しなかった run の
+    # チェックが「Expected — Waiting」のまま永遠に pending となり、required status check に
+    # できない。実行可否はジョブレベルの changes ゲート（.github/actions/changes）が判定し、
+    # `if:` で skip されたジョブは required check を「skipped = 合格」で満たすため、
+    # docs のみの PR をマージ可能に保ったまま e2e report を required にできる。
+    # かつての許可リスト（14 項目）はリスト更新忘れで「e2e が黙って走らなくなる」方向に
+    # 壊れるため、除外リスト方式（定義は composite action 内の 1 箇所）に反転した。
+
+# 同一 PR への連続 push で古い run をキャンセルし、ランナーの空費を防ぐ。
+# run 単位（トップレベル）に置くのは、shard と統合ジョブをまとめて畳むため。
+# github.ref は pull_request では refs/pull/{N}/merge に解決されるため PR ごとに一意で、
+# workflow_dispatch は別グループになり巻き添えキャンセルが起きない。
+# github.workflow を前置するのは、他ワークフローと同じレーンに入って殺し合うのを防ぐため
+# （#643 で追加するワークフローでも同じ 2 行を直書きして方針を揃える）。
+# 本ワークフローに push トリガーは無いため、develop / main への push は対象にならない。
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# ci.yml と同じ理由で GITHUB_TOKEN を読み取りのみに絞る（#643）。宣言が無いと
+# リポジトリ設定の default_workflow_permissions に従うため、ワークフロー側で閉じる。
+# artifact の upload / download は ACTIONS_RUNTIME_TOKEN を使うため contents: read で足りる。
+permissions:
+  contents: read
 
 jobs:
-  test:
-    timeout-minutes: 60
+  # CI を回すか一切回さないかの判定（#704）。判定基準（除外リスト）の定義は
+  # .github/actions/changes に一元化されており、ci.yml と共有する。
+  # ジョブ名は ci.yml 側の changes と区別できるよう (e2e) を付ける
+  # （PR のマージボックスにはチェック名しか出ないため、同名だと見分けられない）。
+  changes:
+    name: changes (e2e)
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      product: ${{ steps.filter.outputs.product }}
+    steps:
+      # ローカル action の読み込みに checkout が必要
+      - uses: actions/checkout@v7.0.1
+
+      - uses: ./.github/actions/changes
+        id: filter
+
+  test:
+    name: e2e (shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
+    needs: changes
+    # workflow_dispatch は changes の出力に関係なく必ず実行する（手動起動は常に本気の実行）
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.product == 'true'
+    # 1 shard の正当な最悪ケース（全テストが落ち retries: 2 で 3 回ずつ実行され、
+    # 準備一式込みで約 6 分 30 秒）から逆算した値。6 分割後のジョブ実測 3 分前後に対する
+    # 安全網として機能させる。shard 数を増やしても準備一式（約 70 秒）は縮まず最悪ケースの
+    # 下がり方が緩いため、4 → 6 の変更に伴う引き下げは行わない（→ #660）
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
+
+    strategy:
+      # 1 shard が落ちても残りを最後まで走らせる。既定の true だと 1 run で見つかる失敗が
+      # 1 つに切り詰められ、かつキャンセルされた shard が blob を上げず統合レポートが歯抜けになる
+      fail-fast: false
+      matrix:
+        # 分母の管理箇所を 1 つに絞るため shardTotal も matrix 軸として持つ。
+        # shard 数は可変パラメータ。実測を見て見直す（→ ADR-20260727-55f）。
+        # 6 は 45 秒の短縮を見込んで選んだ値だが、実効短縮は約 11 秒だった
+        # （run 全体 281 秒 → 270 秒）。ウォールクロックを決めるのは平均でなく最重 shard で、
+        # describe.serial が分断されないため N を増やすほど偏りが増える（1.18 倍 → 1.52 倍）。
+        # 見積系が shard 5 に集中し床になっている。これ以上 N を増やしても縮まない見込みで、
+        # 次の一手は準備一式の短縮（→ #663）か手動振り分け（→ ADR 選択肢 D）（→ #660）
+        shardIndex: [1, 2, 3, 4, 5, 6]
+        shardTotal: [6]
 
     # PostgreSQLサービスコンテナ
     services:
@@ -24,8 +84,9 @@ jobs:
         ports:
           - 5432:5432
         # ヘルスチェック（PostgreSQL起動完了まで待機）
+        # -U postgres を明示し、ロール未指定時の "role root does not exist" ログノイズを抑止
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U postgres"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -34,17 +95,21 @@ jobs:
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
       BETTER_AUTH_SECRET: test-secret-for-ci-only
-      BETTER_AUTH_URL: http://localhost:3000
+      BETTER_AUTH_URL: http://localhost:3001
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7.0.1
 
-      - uses: actions/setup-node@v5
+      - uses: pnpm/action-setup@v6.0.9
+
+      - uses: actions/setup-node@v7.0.0
         with:
-          node-version: lts/*
+          # Node の版は .nvmrc が単一ソース（→ ADR-20260728-44b）
+          node-version-file: .nvmrc
+          cache: pnpm
 
       - name: Install dependencies
-        run: npm install -g pnpm && pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Generate Prisma Client
         run: pnpm db:generate
@@ -52,18 +117,90 @@ jobs:
       - name: Run database migrations
         run: pnpm exec prisma migrate deploy
 
-      - name: Seed database (if needed)
-        run: pnpm db:seed
+      - name: Seed database for E2E tests
+        run: pnpm e2e:seed
 
+      # CDN ストール等で固まった際、ジョブ全体(20分)を待たず早期失敗させる安全網
       - name: Install Playwright Browsers
+        timeout-minutes: 10
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Run Playwright tests
-        run: pnpm exec playwright test
+        run: pnpm exec playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
 
-      - uses: actions/upload-artifact@v5
+      # run_attempt を含めるのは、upload-artifact v4 以降は同一 run 内で同名 artifact を
+      # 二度アップロードできず、artifact が再実行の attempt をまたいで保持されるため。
+      # 含めないと「Re-run failed jobs」がアップロードエラーで落ちる（再実行は「Re-run all jobs」前提）
+      - name: Upload blob report
+        uses: actions/upload-artifact@v7.0.1
         if: ${{ !cancelled() }}
         with:
-          name: playwright-report
+          name: blob-report-${{ matrix.shardIndex }}-${{ github.run_attempt }}
+          path: blob-report/
+          # merge ジョブが同一 run 内で消費するだけの中間生成物
+          retention-days: 1
+
+  # ジョブ名 e2e report は required status check の照合キー（ci.yml の static / test と同様）。
+  # リネームは保護が無言で外れることを意味するため、識別子として扱う。
+  # required にするのは shard ジョブ名（e2e (shard 1/6) 等）ではなくこの集約点 1 つ。
+  # shard 名は matrix 依存で、shard 数変更のたびに保護が無言で外れるため。
+  merge-reports:
+    name: e2e report
+    # shard が落ちても統合レポートは必要なので、キャンセル以外は必ず走らせる。
+    # ただし changes ゲートで shard ごと skip されたときはこのジョブも skip する
+    # （skipped は required check の合格扱いなので docs のみの PR はマージ可能）。
+    # !cancelled() は needs の暗黙 success() 条件を上書き消去するため、この明示条件が
+    # 無いと test の skip 時にここだけ走り出し、blob 不在で赤くなる。
+    if: ${{ !cancelled() && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.product == 'true') }}
+    needs: [changes, test]
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - uses: pnpm/action-setup@v6.0.9
+
+      - uses: actions/setup-node@v7.0.0
+        with:
+          # Node の版は .nvmrc が単一ソース（→ ADR-20260728-44b）
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download blob reports
+        uses: actions/download-artifact@v8.0.1
+        with:
+          path: all-blob-reports
+          pattern: blob-report-*-${{ github.run_attempt }}
+          merge-multiple: true
+
+      - name: Merge into single HTML report
+        run: pnpm exec playwright merge-reports --reporter=html ./all-blob-reports
+
+      # blob と同じ理由で run_attempt を含める。このジョブは shard が赤いと
+      # 後続の Fail ステップで自分も失敗するため「Re-run all jobs」の対象になり、
+      # 固定名だと再実行で前 attempt の同名 artifact と衝突して upload が落ちる
+      # （artifact 名の一意性は attempt ではなく run 単位。overwrite の既定は false）。
+      # overwrite: true を採らないのは、前 attempt の統合レポートを消してしまい
+      # 失敗した run の証跡を追えなくなるため
+      - name: Upload merged report
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: playwright-report-${{ github.run_attempt }}
           path: playwright-report/
           retention-days: 30
+
+      # merge-reports はテストが失敗していても exit 0 で終わるため、shard の結果を
+      # ここで集約して伝播させる。upload の「後」に置くのは、逆順だと赤いときに
+      # 統合レポートが上がらず、いちばん必要な場面で参照できなくなるため。
+      # 条件に !cancelled() を置くのは、これが無いと暗黙の success() が AND され、
+      # 全 shard が seed 等で落ちて blob が 1 つも無いとき merge が空ディレクトリで
+      # 落ちた巻き添えでこのステップ自身がスキップされ、原因メッセージが出ないため
+      - name: Fail if any shard failed
+        if: ${{ !cancelled() && needs.test.result != 'success' }}
+        run: |
+          echo "::error::E2E shard job result: ${{ needs.test.result }}"
+          exit 1

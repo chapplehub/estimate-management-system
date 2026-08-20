@@ -1,5 +1,8 @@
+import { ensureTestDepartment } from "@server/__tests__/helpers/ensureTestDepartment";
 import prisma from "@server/prisma";
+import { employeeTestCodes } from "@server/__tests__/helpers/test-codes/employeeTestCodes";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
+import { DepartmentId } from "@subdomains/department/domain/values/DepartmentId";
 import { Employee } from "@subdomains/employee/domain/entities/Employee";
 import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
 import { EmployeeName } from "@subdomains/employee/domain/values/EmployeeName";
@@ -11,8 +14,8 @@ describe("MailAddressDuplicationCheckDomainService", () => {
   let service: MailAddressDuplicationCheckDomainService;
   let repository: PrismaEmployeeRepository;
 
-  const TEST_CODES = ["EMP999831"];
-  const TEST_DEPT_ID = "dept-001";
+  const TEST_CODES = employeeTestCodes["employee.mailDuplication"].codes;
+  let TEST_DEPT_ID: DepartmentId;
 
   async function cleanup() {
     await prisma.employee.deleteMany({
@@ -23,18 +26,7 @@ describe("MailAddressDuplicationCheckDomainService", () => {
   beforeEach(async () => {
     await cleanup();
 
-    // 外部キー依存のフィクスチャ（upsert で冪等に作成）
-    await prisma.department.upsert({
-      where: { id: TEST_DEPT_ID },
-      update: {},
-      create: {
-        id: TEST_DEPT_ID,
-        departmentCd: "DEPT001",
-        name: "テスト部署",
-        abbreviation: "テスト",
-        isActive: true,
-      },
-    });
+    TEST_DEPT_ID = new DepartmentId(await ensureTestDepartment());
 
     repository = new PrismaEmployeeRepository();
     service = new MailAddressDuplicationCheckDomainService(repository);
@@ -54,7 +46,7 @@ describe("MailAddressDuplicationCheckDomainService", () => {
       new EmployeeName("テスト太郎"),
       TEST_DEPT_ID
     );
-    await repository.save(employee);
+    await repository.insert(employee);
 
     const isDuplicated = await service.execute(new MailAddress("ds-mail-dup-existing@example.com"));
     expect(isDuplicated).toBe(true);
@@ -67,7 +59,7 @@ describe("MailAddressDuplicationCheckDomainService", () => {
       new EmployeeName("テスト太郎"),
       TEST_DEPT_ID
     );
-    await repository.save(employee);
+    await repository.insert(employee);
 
     const isDuplicated = await service.execute(new MailAddress("ds-mail-dup-new@example.com"));
     expect(isDuplicated).toBe(false);

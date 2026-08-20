@@ -9,6 +9,8 @@ export type DepartmentDTO = {
   abbreviation: string;
   isActive: boolean;
   parentId: string | null;
+  /** 楽観ロックトークン（ADR-0039）。編集フォームへ往復させる */
+  version: number;
   createdAt: Date;
   updatedAt: Date;
 };

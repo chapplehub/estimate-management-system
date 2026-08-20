@@ -1,0 +1,39 @@
+# 開発環境用 Docker Compose（Phase 1: DB のみ）
+#
+# name: プロジェクト名を実行ディレクトリに依らず固定する。
+# これが無いと worktree 内で docker compose up した際にディレクトリ名由来の
+# 別プロジェクト扱いとなり、空ボリューム + 5432 ポート競合の事故になる。
+#
+# Next.js アプリはホストで `pnpm dev` を実行する（コンテナ化しない）。
+# 理由: husky フック・Playwright・単体テストがホストの Node 環境で動くため、
+# アプリをコンテナ化しても二重管理になるだけで利益がない。
+# 参考: https://nextjs.org/docs/app/guides/local-development#8-consider-local-development-over-docker
+name: estimate-management-system
+
+services:
+  db:
+    # バージョンは移行元のネイティブ PostgreSQL と一致させる。
+    # OS サフィックス（-trixie）まで明示するのは、無印タグはベース Debian の
+    # 切替で glibc が黙って変わり、pgdata の照合順序依存インデックスを
+    # 壊しうるため。更新は Renovate の PR で意図的に取り込む
+    image: postgres:16.14-trixie
+    ports:
+      # 127.0.0.1 バインドで LAN に晒さない（ネイティブ版の listen_addresses と等価）。
+      # ホストの prisma / createdb / psql はこれまで通り localhost:5432 で接続できる
+      - "127.0.0.1:5432:5432"
+    environment:
+      POSTGRES_USER: dev_user
+      POSTGRES_PASSWORD: dev_password
+      POSTGRES_DB: estimate_management_dev
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # unit / e2e 用 DB の作成スクリプト。データボリュームが空の初回起動時のみ実行される
+      - ./docker/db/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dev_user -d estimate_management_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:

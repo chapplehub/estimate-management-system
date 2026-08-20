@@ -1,14 +1,15 @@
+import { DataTable } from "@/app/_components/shared/DataTable";
+import { SearchForm, type SearchFieldDef } from "@/app/_components/shared/SearchForm";
+import { LIST_FETCH_LIMIT, getStringParam, type SearchParams } from "@/app/_lib/searchParams";
 import { verifySession } from "@/app/_lib/verifyAuthentication";
 import { isAdmin } from "@server/shared/auth";
 import { USER_ROLES, type UserRole } from "@server/shared/auth/types";
 import { SearchEmployeesQuery } from "@subdomains/employee/application/queries/SearchEmployeesQuery";
 import type { EmployeeSearchCriteria } from "@subdomains/employee/application/queries/dto/EmployeeSearchCriteria";
 import { PrismaEmployeeQueryService } from "@subdomains/employee/infrastructure/queries/PrismaEmployeeQueryService";
+import { getActiveDepartmentsQueryFactory } from "@subdomains/department/application/factories";
 import Link from "next/link";
-import { SearchForm, type SearchFieldDef } from "@/app/_components/shared/SearchForm";
-import { DataTable } from "@/app/_components/shared/DataTable";
 import { columns } from "./_components/columns";
-import { type SearchParams, LIST_FETCH_LIMIT, getStringParam } from "@/app/_lib/searchParams";
 
 // NOTE: このページの検索機能の実装としては、URLのパスパラメタに基づいて検索を実行する。そのため初期検索は全件取得。
 // NOTE: 検索条件を入力して検索ボタンを押すと直接検索APIが実行されるのではなく、まず入力した検索条件をパスパラメタに設定してナビゲーションし、レンダリング時に検索処理が実行される。
@@ -21,21 +22,31 @@ function validateRole(value: string | undefined): UserRole | undefined {
   return undefined;
 }
 
-// 検索フォームのフィールド定義
-const searchFields: SearchFieldDef[] = [
-  { type: "text", key: "name", label: "名前", placeholder: "部分一致" },
-  { type: "text", key: "employeeCd", label: "従業員コード", placeholder: "完全一致" },
-  { type: "text", key: "email", label: "メールアドレス", placeholder: "部分一致" },
-  {
-    type: "select",
-    key: "role",
-    label: "権限",
-    options: [
-      { value: USER_ROLES.USER, label: "一般ユーザー" },
-      { value: USER_ROLES.ADMIN, label: "管理者" },
-    ],
-  },
-];
+// 検索フォームのフィールド定義（部署セレクトボックスはサーバー側で動的生成）
+function buildSearchFields(
+  departmentOptions: { value: string; label: string }[]
+): SearchFieldDef[] {
+  return [
+    { type: "text", key: "name", label: "名前", placeholder: "部分一致" },
+    { type: "text", key: "employeeCd", label: "従業員コード", placeholder: "完全一致" },
+    { type: "text", key: "email", label: "メールアドレス", placeholder: "部分一致" },
+    {
+      type: "select",
+      key: "departmentId",
+      label: "部署",
+      options: departmentOptions,
+    },
+    {
+      type: "select",
+      key: "role",
+      label: "権限",
+      options: [
+        { value: USER_ROLES.USER, label: "一般ユーザー" },
+        { value: USER_ROLES.ADMIN, label: "管理者" },
+      ],
+    },
+  ];
+}
 
 export default async function EmployeePage({
   searchParams,
@@ -45,11 +56,17 @@ export default async function EmployeePage({
   const session = await verifySession();
   const params = await searchParams;
 
+  // 部署データの取得（ドロップダウン選択肢用）
+  const getActiveDepartmentsQuery = getActiveDepartmentsQueryFactory();
+  const departments = await getActiveDepartmentsQuery.execute({});
+  const departmentOptions = departments.map((d) => ({ value: d.id, label: d.name }));
+
   // 検索条件の構築
   const criteria: EmployeeSearchCriteria = {
     name: getStringParam(params, "name"),
     email: getStringParam(params, "email"),
     employeeCd: getStringParam(params, "employeeCd"),
+    departmentId: getStringParam(params, "departmentId"),
     role: validateRole(getStringParam(params, "role")),
   };
 
@@ -58,14 +75,18 @@ export default async function EmployeePage({
   const searchQuery = new SearchEmployeesQuery(queryService);
   const employees = await searchQuery.execute({
     criteria,
-    options: { limit: LIST_FETCH_LIMIT },
+    options: { limit: LIST_FETCH_LIMIT, orderBy: { field: "employeeCd", direction: "asc" } },
   });
+
+  // 検索フォームのフィールド定義
+  const searchFields = buildSearchFields(departmentOptions);
 
   // Client Componentに渡すdefaultValues
   const defaultSearchValues = {
     name: getStringParam(params, "name") ?? "",
     email: getStringParam(params, "email") ?? "",
     employeeCd: getStringParam(params, "employeeCd") ?? "",
+    departmentId: getStringParam(params, "departmentId") ?? "",
     role: getStringParam(params, "role") ?? "",
   };
 

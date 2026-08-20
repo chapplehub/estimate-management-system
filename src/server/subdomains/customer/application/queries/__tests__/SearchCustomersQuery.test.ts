@@ -1,51 +1,35 @@
-import { createId } from "@paralleldrive/cuid2";
+import { generateId } from "@server/shared/generateId";
 import prisma from "@server/prisma";
-import { CompanyType } from "@generated/prisma/client";
 import { PrismaCustomerQueryService } from "@subdomains/customer/infrastructure/queries/PrismaCustomerQueryService";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { SearchCustomersQuery } from "../SearchCustomersQuery";
 
 describe("SearchCustomersQuery", () => {
   let query: SearchCustomersQuery;
-  const testCompanyIds: string[] = [];
+  const testCustomerIds: string[] = [];
 
   const TEST_CODES = ["CUST999924", "CUST999925", "CUST999926", "CUST999927"];
 
-  async function createTestCustomer(data: {
-    code: string;
-    name: string;
-    marginRate?: number;
-    isActive?: boolean;
-  }) {
-    const companyId = createId();
-    const customerId = createId();
-
-    await prisma.company.create({
-      data: {
-        id: companyId,
-        code: data.code,
-        name: data.name,
-        type: CompanyType.CUSTOMER,
-        isActive: data.isActive ?? true,
-      },
-    });
+  async function createTestCustomer(data: { code: string; name: string; isActive?: boolean }) {
+    const customerId = generateId();
 
     await prisma.customer.create({
       data: {
         id: customerId,
-        companyId,
-        marginRate: data.marginRate ?? null,
+        code: data.code,
+        name: data.name,
+        isActive: data.isActive ?? true,
       },
     });
 
-    testCompanyIds.push(companyId);
-    return { companyId, customerId };
+    testCustomerIds.push(customerId);
+    return { customerId };
   }
 
   beforeEach(async () => {
-    testCompanyIds.length = 0;
+    testCustomerIds.length = 0;
 
-    await prisma.company.deleteMany({
+    await prisma.customer.deleteMany({
       where: { code: { in: TEST_CODES } },
     });
 
@@ -53,9 +37,9 @@ describe("SearchCustomersQuery", () => {
   });
 
   afterEach(async () => {
-    if (testCompanyIds.length > 0) {
-      await prisma.company.deleteMany({
-        where: { id: { in: testCompanyIds } },
+    if (testCustomerIds.length > 0) {
+      await prisma.customer.deleteMany({
+        where: { id: { in: testCustomerIds } },
       });
     }
   });
@@ -133,66 +117,6 @@ describe("SearchCustomersQuery", () => {
     expect(result.length).toBe(1);
     expect(result[0].code).toBe(TEST_CODES[0]);
     expect(result[0].name).toBe("複合検索得意先A");
-  });
-
-  describe("executeWithPagination", () => {
-    beforeEach(async () => {
-      await createTestCustomer({ code: TEST_CODES[0], name: "SQページ得意先A" });
-      await createTestCustomer({ code: TEST_CODES[1], name: "SQページ得意先B" });
-      await createTestCustomer({ code: TEST_CODES[2], name: "SQページ得意先C" });
-    });
-
-    it("正常にページネーション結果を返す", async () => {
-      const result = await query.executeWithPagination({
-        criteria: { name: "SQページ得意先" },
-        pagination: { page: 1, pageSize: 2 },
-        orderBy: { field: "code", direction: "asc" },
-      });
-
-      expect(result.items.length).toBe(2);
-      expect(result.totalCount).toBe(3);
-      expect(result.totalPages).toBe(2);
-      expect(result.currentPage).toBe(1);
-      expect(result.pageSize).toBe(2);
-      expect(result.hasNextPage).toBe(true);
-      expect(result.hasPreviousPage).toBe(false);
-    });
-
-    it("2ページ目を取得できる", async () => {
-      const result = await query.executeWithPagination({
-        criteria: { name: "SQページ得意先" },
-        pagination: { page: 2, pageSize: 2 },
-        orderBy: { field: "code", direction: "asc" },
-      });
-
-      expect(result.items.length).toBe(1);
-      expect(result.hasNextPage).toBe(false);
-      expect(result.hasPreviousPage).toBe(true);
-    });
-
-    it("ページ範囲外の場合は空配列を返す", async () => {
-      const result = await query.executeWithPagination({
-        criteria: { name: "SQページ得意先" },
-        pagination: { page: 99, pageSize: 2 },
-      });
-
-      expect(result.items).toEqual([]);
-      expect(result.totalCount).toBe(3);
-      expect(result.hasNextPage).toBe(false);
-    });
-
-    it("0件の場合のページネーション", async () => {
-      const result = await query.executeWithPagination({
-        criteria: { name: "存在しないSQページ名前" },
-        pagination: { page: 1, pageSize: 10 },
-      });
-
-      expect(result.items).toEqual([]);
-      expect(result.totalCount).toBe(0);
-      expect(result.totalPages).toBe(0);
-      expect(result.hasNextPage).toBe(false);
-      expect(result.hasPreviousPage).toBe(false);
-    });
   });
 
   it("createdAfterで指定日時以降の得意先を取得できる", async () => {

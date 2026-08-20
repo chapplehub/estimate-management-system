@@ -3,6 +3,16 @@ import Link from "next/link";
 
 const navigationItems = [
   {
+    href: "/estimates",
+    title: "見積管理",
+    description: "見積の一覧表示・閲覧を行います。",
+  },
+  {
+    href: "/estimate-applications",
+    title: "見積申請一覧",
+    description: "見積申請の全社横断での参照・検索を行います。",
+  },
+  {
     href: "/employees",
     title: "従業員管理",
     description: "従業員の一覧表示、登録、編集、削除を行います。",
@@ -11,6 +21,46 @@ const navigationItems = [
     href: "/departments",
     title: "部署管理",
     description: "部署の一覧表示、登録、編集、削除を行います。",
+  },
+  {
+    href: "/roles",
+    title: "役割管理",
+    description: "役割の一覧表示、登録、編集、削除を行います。",
+  },
+  {
+    href: "/products",
+    title: "商品管理",
+    description: "商品の一覧表示、登録、編集、削除を行います。",
+  },
+  {
+    href: "/common-selling-prices",
+    title: "共通販売単価管理",
+    description: "共通販売単価の一覧表示・編集を行います。",
+  },
+  {
+    href: "/customer-selling-prices",
+    title: "得意先別販売単価管理",
+    description: "得意先別販売単価の一覧表示・編集を行います。",
+  },
+  {
+    href: "/delivery-location-selling-prices",
+    title: "納品先別販売単価管理",
+    description: "納品先別販売単価の一覧表示・編集を行います。",
+  },
+  {
+    href: "/cost-prices",
+    title: "原価管理",
+    description: "原価の一覧表示・編集を行います。",
+  },
+  {
+    href: "/customers",
+    title: "得意先管理",
+    description: "得意先の一覧表示を行います。",
+  },
+  {
+    href: "/delivery-locations",
+    title: "納品先管理",
+    description: "納品先の一覧表示を行います。",
   },
 ] as const;
 

@@ -1,4 +1,4 @@
-import { createId } from "@paralleldrive/cuid2";
+import { generateId } from "@server/shared/generateId";
 import prisma from "@server/prisma";
 import { PrismaDepartmentQueryService } from "@subdomains/department/infrastructure/queries/PrismaDepartmentQueryService";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -17,7 +17,7 @@ describe("SearchDepartmentsQuery", () => {
     isActive?: boolean;
     parentId?: string | null;
   }): Promise<string> {
-    const id = createId();
+    const id = generateId();
     await prisma.department.create({ data: { id, ...data } });
     testDepartmentIds.push(id);
     return id;
@@ -194,77 +194,5 @@ describe("SearchDepartmentsQuery", () => {
     });
 
     expect(result).toEqual([]);
-  });
-
-  describe("executeWithPagination", () => {
-    beforeEach(async () => {
-      await createTestDepartment({
-        departmentCd: TEST_CODES[0],
-        name: "SQページ部署A",
-        abbreviation: "SQページA",
-      });
-      await createTestDepartment({
-        departmentCd: TEST_CODES[1],
-        name: "SQページ部署B",
-        abbreviation: "SQページB",
-      });
-      await createTestDepartment({
-        departmentCd: TEST_CODES[2],
-        name: "SQページ部署C",
-        abbreviation: "SQページC",
-      });
-    });
-
-    it("正常にページネーション結果を返す", async () => {
-      const result = await query.executeWithPagination({
-        criteria: { name: "SQページ部署" },
-        pagination: { page: 1, pageSize: 2 },
-        orderBy: { field: "departmentCd", direction: "asc" },
-      });
-
-      expect(result.items.length).toBe(2);
-      expect(result.totalCount).toBe(3);
-      expect(result.totalPages).toBe(2);
-      expect(result.currentPage).toBe(1);
-      expect(result.pageSize).toBe(2);
-      expect(result.hasNextPage).toBe(true);
-      expect(result.hasPreviousPage).toBe(false);
-    });
-
-    it("2ページ目を取得できる", async () => {
-      const result = await query.executeWithPagination({
-        criteria: { name: "SQページ部署" },
-        pagination: { page: 2, pageSize: 2 },
-        orderBy: { field: "departmentCd", direction: "asc" },
-      });
-
-      expect(result.items.length).toBe(1);
-      expect(result.hasNextPage).toBe(false);
-      expect(result.hasPreviousPage).toBe(true);
-    });
-
-    it("ページ範囲外の場合は空配列を返す", async () => {
-      const result = await query.executeWithPagination({
-        criteria: { name: "SQページ部署" },
-        pagination: { page: 99, pageSize: 2 },
-      });
-
-      expect(result.items).toEqual([]);
-      expect(result.totalCount).toBe(3);
-      expect(result.hasNextPage).toBe(false);
-    });
-
-    it("0件の場合のページネーション", async () => {
-      const result = await query.executeWithPagination({
-        criteria: { name: "存在しないSQページ部署名" },
-        pagination: { page: 1, pageSize: 10 },
-      });
-
-      expect(result.items).toEqual([]);
-      expect(result.totalCount).toBe(0);
-      expect(result.totalPages).toBe(0);
-      expect(result.hasNextPage).toBe(false);
-      expect(result.hasPreviousPage).toBe(false);
-    });
   });
 });

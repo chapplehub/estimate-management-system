@@ -23,10 +23,12 @@ describe("Address", () => {
   describe("異常系", () => {
     it("空文字を拒否する", () => {
       expect(() => new Address("")).toThrow(ValidationError);
+      expect(() => new Address("")).toThrow("住所は必須です");
     });
 
     it("201文字以上を拒否する", () => {
       expect(() => new Address("あ".repeat(201))).toThrow(ValidationError);
+      expect(() => new Address("あ".repeat(201))).toThrow("住所は200文字以内で入力してください");
     });
   });
 });

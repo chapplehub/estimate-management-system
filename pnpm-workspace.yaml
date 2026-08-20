@@ -1,8 +1,16 @@
-onlyBuiltDependencies:
-  - "@prisma/engines"
-  - argon2
-  - bcrypt
-  - esbuild
-  - prisma
-  - sharp
-  - unrs-resolver
+allowBuilds:
+  "@prisma/engines": true
+  esbuild: true
+  prisma: true
+  sharp: true
+  unrs-resolver: true
+minimumReleaseAge: 4320 # 3 days (分単位)
+minimumReleaseAgeExclude:
+  # Renovate security update: uuid@13.0.1
+  - uuid@13.0.1
+  # Renovate security update: better-auth@1.6.13
+  - better-auth@1.6.13
+  # Renovate security update: vitest@4.1.0
+  - vitest@4.1.0
+  # Renovate security update: next@16.2.11
+  - next@16.2.11

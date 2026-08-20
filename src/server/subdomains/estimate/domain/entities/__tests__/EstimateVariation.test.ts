@@ -1,0 +1,885 @@
+import { BusinessRuleViolationError, ValidationError } from "@server/shared/errors/DomainError";
+import { ProductId } from "@subdomains/product/domain/values/ProductId";
+import { describe, expect, it } from "vitest";
+import { DiscountRate } from "../../values/DiscountRate";
+import { ItemName } from "../../values/ItemName";
+import { Memo } from "../../values/Memo";
+import { Money } from "@server/shared/domain/values/Money";
+import { Quantity } from "../../values/Quantity";
+import { EstimateVariationId } from "../../values/EstimateVariationId";
+import { SubmissionType } from "../../values/SubmissionType";
+import { TaxRate } from "../../values/TaxRate";
+import { Unit } from "../../values/Unit";
+import { TaxRoundingType } from "../../values/TaxRoundingType";
+import { VariationStatus } from "../../values/VariationStatus";
+import { EstimateItem } from "../EstimateItem";
+import { EstimateSetGroup } from "../EstimateSetGroup";
+import { EstimateVariation, type TaxContext } from "../EstimateVariation";
+
+const TAX: TaxContext = {
+  taxRate: new TaxRate(0.1),
+  taxRoundingType: TaxRoundingType.ROUND_DOWN,
+};
+
+function makeItem(opts?: {
+  itemName?: string;
+  quantity?: number;
+  unitPrice?: number;
+  itemDiscount?: number;
+  sortOrder?: number;
+}): EstimateItem {
+  return EstimateItem.create({
+    productId: ProductId.generate(),
+    sortOrder: opts?.sortOrder ?? 1,
+    itemName: new ItemName(opts?.itemName ?? "テスト商品"),
+    quantity: new Quantity(opts?.quantity ?? 1),
+    unit: new Unit("個"),
+    unitPrice: Money.fromMajorUnits(opts?.unitPrice ?? 1000),
+    itemDiscount: Money.fromMajorUnits(opts?.itemDiscount ?? 0),
+  });
+}
+
+function makeSetGroup(memberItemIds: EstimateItem[]): EstimateSetGroup {
+  return EstimateSetGroup.create({
+    productId: ProductId.generate(),
+    itemName: new ItemName("セット商品"),
+    unit: new Unit("式"),
+    memberItemIds: memberItemIds.map((i) => i.id),
+  });
+}
+
+describe("EstimateVariation", () => {
+  describe("create() - 初期化と集計の自動算出", () => {
+    it("最低限の必須項目で作成できる（items 空、overallDiscount 0 既定）", () => {
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+      });
+
+      expect(v.variationNumber).toBe(1);
+      expect(v.items).toHaveLength(0);
+      expect(v.status).toBe(VariationStatus.ACTIVE);
+      expect(v.overallDiscount.isZero()).toBe(true);
+    });
+
+    it("明細なしなら全集計が 0 円", () => {
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+      });
+      expect(v.subtotal.isZero()).toBe(true);
+      expect(v.finalTotal.isZero()).toBe(true);
+      expect(v.taxAmount.isZero()).toBe(true);
+    });
+
+    it("subtotal = Σ(各明細 finalAmount)", () => {
+      const items = [
+        makeItem({ quantity: 1, unitPrice: 1000 }),
+        makeItem({ quantity: 2, unitPrice: 500 }),
+      ];
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items,
+      });
+      // 1000 + 1000 = 2000
+      expect(v.subtotal.equals(Money.fromMajorUnits(2000))).toBe(true);
+    });
+
+    it("discountSubtotal = Σ(各明細 itemDiscount)", () => {
+      const items = [
+        makeItem({ unitPrice: 1000, itemDiscount: 100 }),
+        makeItem({ unitPrice: 2000, itemDiscount: 300 }),
+      ];
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items,
+      });
+      expect(v.discountSubtotal.equals(Money.fromMajorUnits(400))).toBe(true);
+    });
+
+    it("finalSubtotal = subtotal − overallDiscount（§8.1(5)）", () => {
+      const items = [makeItem({ unitPrice: 1000 })];
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items,
+        overallDiscount: Money.fromMajorUnits(100),
+      });
+      expect(v.finalSubtotal.equals(Money.fromMajorUnits(900))).toBe(true);
+    });
+
+    it("taxAmount は finalSubtotal × 税率（切捨）", () => {
+      const items = [makeItem({ unitPrice: 1000 })];
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items,
+      });
+      // 1000 * 0.1 = 100
+      expect(v.taxAmount.equals(Money.fromMajorUnits(100))).toBe(true);
+    });
+
+    it("finalTotal = finalSubtotal + taxAmount", () => {
+      const items = [makeItem({ unitPrice: 1000 })];
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items,
+      });
+      expect(v.finalTotal.equals(Money.fromMajorUnits(1100))).toBe(true);
+    });
+
+    it("全体値引きが小計を超えるとエラー", () => {
+      const items = [makeItem({ unitPrice: 1000 })];
+      expect(() =>
+        EstimateVariation.create({
+          variationNumber: 1,
+          submissionType: SubmissionType.CUSTOMER,
+          tax: TAX,
+          items,
+          overallDiscount: Money.fromMajorUnits(2000),
+        })
+      ).toThrow("値引き後の金額がマイナス");
+    });
+  });
+
+  describe("バリデーション", () => {
+    it("variationNumber が 0 はエラー", () => {
+      expect(() =>
+        EstimateVariation.create({
+          variationNumber: 0,
+          submissionType: SubmissionType.CUSTOMER,
+          tax: TAX,
+        })
+      ).toThrow(ValidationError);
+    });
+
+    it("variationNumber が 100 はエラー", () => {
+      expect(() =>
+        EstimateVariation.create({
+          variationNumber: 100,
+          submissionType: SubmissionType.CUSTOMER,
+          tax: TAX,
+        })
+      ).toThrow("1〜99");
+    });
+
+    it("variationNumber が小数はエラー", () => {
+      expect(() =>
+        EstimateVariation.create({
+          variationNumber: 1.5,
+          submissionType: SubmissionType.CUSTOMER,
+          tax: TAX,
+        })
+      ).toThrow(ValidationError);
+    });
+
+    // 注: メモの長さバリデーションは Memo VO のコンストラクタに移譲済み。
+    // 境界値テストは Memo の単体テストを参照。
+  });
+
+  describe("addItem / removeItem - 明細追加削除と自動再計算", () => {
+    it("addItem で集計が再計算される", () => {
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+      });
+      expect(v.subtotal.isZero()).toBe(true);
+
+      v.addItem(makeItem({ unitPrice: 5000 }), TAX);
+
+      expect(v.subtotal.equals(Money.fromMajorUnits(5000))).toBe(true);
+      expect(v.finalTotal.equals(Money.fromMajorUnits(5500))).toBe(true);
+    });
+
+    it("removeItem で集計が再計算される", () => {
+      const item = makeItem({ unitPrice: 5000 });
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items: [item],
+      });
+      expect(v.subtotal.equals(Money.fromMajorUnits(5000))).toBe(true);
+
+      v.removeItem(item.id, TAX);
+
+      expect(v.subtotal.isZero()).toBe(true);
+      expect(v.items).toHaveLength(0);
+    });
+
+    it("存在しない明細を削除しようとするとエラー", () => {
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+      });
+      const someItem = makeItem();
+      expect(() => v.removeItem(someItem.id, TAX)).toThrow(BusinessRuleViolationError);
+    });
+  });
+
+  describe("changeItem* - 委譲メソッドと自動再計算", () => {
+    it("changeItemQuantity で集計が再計算される", () => {
+      const item = makeItem({ quantity: 1, unitPrice: 1000 });
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items: [item],
+      });
+      expect(v.subtotal.equals(Money.fromMajorUnits(1000))).toBe(true);
+
+      v.changeItemQuantity(item.id, new Quantity(3), TAX);
+
+      expect(v.subtotal.equals(Money.fromMajorUnits(3000))).toBe(true);
+      expect(v.finalTotal.equals(Money.fromMajorUnits(3300))).toBe(true);
+    });
+
+    it("存在しない明細を変更しようとするとエラー", () => {
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+      });
+      const otherItem = makeItem();
+      expect(() => v.changeItemQuantity(otherItem.id, new Quantity(5), TAX)).toThrow(
+        BusinessRuleViolationError
+      );
+    });
+  });
+
+  describe("changeOverallDiscount", () => {
+    it("全体値引を変更すると集計が再計算される", () => {
+      const item = makeItem({ unitPrice: 1000 });
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items: [item],
+      });
+
+      v.changeOverallDiscount(Money.fromMajorUnits(200), TAX);
+
+      expect(v.finalSubtotal.equals(Money.fromMajorUnits(800))).toBe(true);
+      expect(v.taxAmount.equals(Money.fromMajorUnits(80))).toBe(true);
+      expect(v.finalTotal.equals(Money.fromMajorUnits(880))).toBe(true);
+    });
+  });
+
+  describe("adjustPricing - 価格バッチ調整（掛率・明細値引・全体値引）", () => {
+    it("複数明細の掛率・明細値引と全体値引を一括適用し集計が再計算される（単価は不変）", () => {
+      const item1 = makeItem({ quantity: 2, unitPrice: 1000 });
+      const item2 = makeItem({ quantity: 1, unitPrice: 500, sortOrder: 2 });
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items: [item1, item2],
+      });
+
+      v.adjustPricing(
+        [
+          {
+            itemId: item1.id,
+            discountRate: new DiscountRate(1.0),
+            itemDiscount: Money.fromMajorUnits(100),
+          },
+          {
+            itemId: item2.id,
+            discountRate: new DiscountRate(0.5),
+            itemDiscount: Money.zero(),
+          },
+        ],
+        Money.fromMajorUnits(300),
+        TAX
+      );
+
+      // 単価は不変（item1=1000, item2=500）。
+      // item1: base 2000, 掛率1.0, 値引100 → final 1900
+      // item2: base 500, 掛率0.5 → 250, 値引0 → final 250
+      expect(item1.unitPrice.equals(Money.fromMajorUnits(1000))).toBe(true);
+      expect(item1.finalAmount.equals(Money.fromMajorUnits(1900))).toBe(true);
+      expect(item2.finalAmount.equals(Money.fromMajorUnits(250))).toBe(true);
+      expect(v.subtotal.equals(Money.fromMajorUnits(2150))).toBe(true);
+      expect(v.overallDiscount.equals(Money.fromMajorUnits(300))).toBe(true);
+      expect(v.finalSubtotal.equals(Money.fromMajorUnits(1850))).toBe(true);
+      expect(v.taxAmount.equals(Money.fromMajorUnits(185))).toBe(true);
+      expect(v.finalTotal.equals(Money.fromMajorUnits(2035))).toBe(true);
+    });
+
+    it("数量・単価は adjustPricing の対象外で据え置かれる（数量固定・単価固定）", () => {
+      const item = makeItem({ quantity: 2, unitPrice: 1000 });
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items: [item],
+      });
+
+      v.adjustPricing(
+        [
+          {
+            itemId: item.id,
+            discountRate: new DiscountRate(1.0),
+            itemDiscount: Money.zero(),
+          },
+        ],
+        Money.zero(),
+        TAX
+      );
+
+      expect(item.quantity.value).toBe(2);
+      // 単価は入力に持たず不変（ADR-0064）。
+      expect(item.unitPrice.equals(Money.fromMajorUnits(1000))).toBe(true);
+    });
+
+    it("無効状態のバリエーションでは弾かれる（assertEditable）", () => {
+      const item = makeItem({ unitPrice: 1000 });
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items: [item],
+        status: VariationStatus.INACTIVE,
+      });
+
+      expect(() =>
+        v.adjustPricing(
+          [
+            {
+              itemId: item.id,
+              discountRate: new DiscountRate(1.0),
+              itemDiscount: Money.zero(),
+            },
+          ],
+          Money.zero(),
+          TAX
+        )
+      ).toThrow(BusinessRuleViolationError);
+    });
+
+    it("存在しない明細を指定するとエラー", () => {
+      const item = makeItem({ unitPrice: 1000 });
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items: [item],
+      });
+      const ghost = makeItem();
+
+      expect(() =>
+        v.adjustPricing(
+          [
+            {
+              itemId: ghost.id,
+              discountRate: new DiscountRate(1.0),
+              itemDiscount: Money.zero(),
+            },
+          ],
+          Money.zero(),
+          TAX
+        )
+      ).toThrow(BusinessRuleViolationError);
+    });
+  });
+
+  describe("recalculateForTaxChange - 税率変更時の再計算", () => {
+    it("税率だけ変えると tax/finalTotal のみ変わる", () => {
+      const item = makeItem({ unitPrice: 1000 });
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items: [item],
+      });
+
+      const newTax: TaxContext = {
+        taxRate: new TaxRate(0.08),
+        taxRoundingType: TaxRoundingType.ROUND_DOWN,
+      };
+      v.recalculateForTaxChange(newTax);
+
+      expect(v.subtotal.equals(Money.fromMajorUnits(1000))).toBe(true);
+      expect(v.taxAmount.equals(Money.fromMajorUnits(80))).toBe(true);
+      expect(v.finalTotal.equals(Money.fromMajorUnits(1080))).toBe(true);
+    });
+  });
+
+  describe("状態遷移", () => {
+    it("activate / deactivate で status が変わる", () => {
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+      });
+      expect(v.isActive()).toBe(true);
+
+      v.deactivate();
+      expect(v.isActive()).toBe(false);
+      expect(v.status).toBe(VariationStatus.INACTIVE);
+
+      v.activate();
+      expect(v.isActive()).toBe(true);
+    });
+  });
+
+  describe("replaceContent - 内容一括差替えと§3.4ガード", () => {
+    it("既存明細を別の明細セットに全置換し、集計が新セットで再計算される", () => {
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items: [makeItem({ quantity: 1, unitPrice: 1000 })],
+      });
+      expect(v.subtotal.equals(Money.fromMajorUnits(1000))).toBe(true);
+
+      v.replaceContent(
+        {
+          items: [
+            makeItem({ quantity: 2, unitPrice: 500 }),
+            makeItem({ quantity: 1, unitPrice: 3000 }),
+          ],
+        },
+        TAX
+      );
+
+      // 500×2 + 3000 = 4000、税10% で finalTotal 4400
+      expect(v.items).toHaveLength(2);
+      expect(v.subtotal.equals(Money.fromMajorUnits(4000))).toBe(true);
+      expect(v.finalTotal.equals(Money.fromMajorUnits(4400))).toBe(true);
+    });
+
+    it("無効状態のバリエーションは replaceContent できない（§3.4）", () => {
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+      });
+      v.deactivate();
+
+      expect(() => v.replaceContent({ items: [makeItem()] }, TAX)).toThrow(
+        BusinessRuleViolationError
+      );
+    });
+
+    it("overallDiscount とメモを更新し、全体値引が finalSubtotal に反映される", () => {
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+      });
+
+      v.replaceContent(
+        {
+          items: [makeItem({ quantity: 1, unitPrice: 10000 })],
+          overallDiscount: Money.fromMajorUnits(1000),
+          customerMemo: Memo.create("客先メモ"),
+        },
+        TAX
+      );
+
+      // 10000 - 1000(全体値引) = 9000
+      expect(v.overallDiscount.equals(Money.fromMajorUnits(1000))).toBe(true);
+      expect(v.finalSubtotal.equals(Money.fromMajorUnits(9000))).toBe(true);
+      expect(v.customerMemo.value).toBe("客先メモ");
+    });
+
+    it("空配列で全置換すると全集計が 0 に戻る", () => {
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items: [makeItem({ unitPrice: 5000 })],
+      });
+
+      v.replaceContent({ items: [] }, TAX);
+
+      expect(v.items).toHaveLength(0);
+      expect(v.subtotal.isZero()).toBe(true);
+      expect(v.finalTotal.isZero()).toBe(true);
+    });
+  });
+
+  describe("改訂出自（revisedFrom）の保持", () => {
+    it("改訂で生まれたバリエーションは改訂元の出自を保持する", () => {
+      const sourceId = EstimateVariationId.generate();
+      const v = EstimateVariation.create({
+        variationNumber: 2,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        revisedFrom: sourceId,
+      });
+
+      expect(v.revisedFrom?.equals(sourceId)).toBe(true);
+    });
+
+    it("通常作成のバリエーションは出自を持たない（revisedFrom = null）", () => {
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.DELIVERY_LOCATION,
+        tax: TAX,
+      });
+
+      expect(v.revisedFrom).toBeNull();
+    });
+  });
+
+  describe("行構成固定（改訂先は明細の追加・削除不可）", () => {
+    function makeRevisedVariation(items?: EstimateItem[]): EstimateVariation {
+      return EstimateVariation.create({
+        variationNumber: 2,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        revisedFrom: EstimateVariationId.generate(),
+        items: items ?? [makeItem()],
+      });
+    }
+
+    it("改訂で生まれたバリエーションには明細を追加できない", () => {
+      const v = makeRevisedVariation();
+
+      expect(() => v.addItem(makeItem({ itemName: "追加商品" }), TAX)).toThrow(
+        BusinessRuleViolationError
+      );
+      expect(v.items).toHaveLength(1);
+    });
+
+    it("改訂で生まれたバリエーションの明細は削除できない", () => {
+      const item = makeItem();
+      const v = makeRevisedVariation([item]);
+
+      expect(() => v.removeItem(item.id, TAX)).toThrow(BusinessRuleViolationError);
+      expect(v.items).toHaveLength(1);
+    });
+
+    it("改訂で生まれたバリエーションは内容の一括差替え（C4）ができない", () => {
+      const v = makeRevisedVariation();
+
+      expect(() => v.replaceContent({ items: [makeItem()] }, TAX)).toThrow(
+        BusinessRuleViolationError
+      );
+    });
+
+    it("改訂で生まれたバリエーションでも掛率・値引・メモの調整はできる（単価は不変）", () => {
+      const item = makeItem({ quantity: 2, unitPrice: 1200 });
+      const v = makeRevisedVariation([item]);
+
+      v.changeItemDiscountRate(item.id, new DiscountRate(0.5), TAX);
+      v.changeOverallDiscount(Money.fromMajorUnits(100), TAX);
+      v.changeCustomerMemo(Memo.create("得意先向けに調整"));
+
+      // 単価は不変の 1200。base 2400, 掛率0.5 → 1200
+      expect(item.unitPrice.equals(Money.fromMajorUnits(1200))).toBe(true);
+      expect(item.finalAmount.equals(Money.fromMajorUnits(1200))).toBe(true);
+      expect(v.subtotal.equals(Money.fromMajorUnits(1200))).toBe(true);
+      expect(v.customerMemo.value).toBe("得意先向けに調整");
+    });
+
+    it("改訂で生まれたバリエーションは数量を変更できない（数量固定・粗利スナップショット保全・ADR-0060）", () => {
+      const item = makeItem({ quantity: 2, unitPrice: 1000 });
+      const v = makeRevisedVariation([item]);
+
+      expect(() => v.changeItemQuantity(item.id, new Quantity(3), TAX)).toThrow(
+        BusinessRuleViolationError
+      );
+      // 数量は据え置かれ集計も動かない
+      expect(item.quantity.value).toBe(2);
+      expect(v.subtotal.equals(Money.fromMajorUnits(2000))).toBe(true);
+    });
+
+    it("通常バリエーションでは従来どおり数量を変更できる", () => {
+      const item = makeItem({ quantity: 1, unitPrice: 1000 });
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items: [item],
+      });
+
+      v.changeItemQuantity(item.id, new Quantity(3), TAX);
+
+      expect(item.quantity.value).toBe(3);
+      expect(v.subtotal.equals(Money.fromMajorUnits(3000))).toBe(true);
+    });
+  });
+
+  describe("getters の防御", () => {
+    it("items は ReadonlyArray<Readonly<EstimateItem>> 型で外部変更が型レベルで禁止される", () => {
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+      });
+      const items = v.items;
+
+      // ランタイムでは push は呼べてしまうが（JS の制約）、型レベルでは禁止される。
+      // @ts-expect-error: ReadonlyArray<T> に push() は存在しない（型エラー）
+      items.push(makeItem());
+
+      // 注: @ts-expect-error が将来不要になった（push が型上呼べる状態に
+      // 退化した）場合、TS2578 で CI が落ちる仕組み。
+      expect(items.length).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe("セット群（ADR-0047 / Shape ③-a）", () => {
+    it("セット群を保持し、computeTotals は構成明細を二重計上しない", () => {
+      const m1 = makeItem({ unitPrice: 1000 });
+      const m2 = makeItem({ unitPrice: 500 });
+      const normal = makeItem({ unitPrice: 2000 });
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items: [m1, m2, normal],
+        setGroups: [makeSetGroup([m1, m2])],
+      });
+
+      expect(v.setGroups).toHaveLength(1);
+      // 群は _items に行を持たないため、subtotal は全明細 finalAmount の単純合計
+      // 1000 + 500 + 2000 = 3500（構成明細の二重計上なし）
+      expect(v.subtotal.equals(Money.fromMajorUnits(3500))).toBe(true);
+    });
+
+    it("構成明細がバリエーションに存在しないとエラー（参照整合）", () => {
+      const inItem = makeItem({ unitPrice: 1000 });
+      const orphan = makeItem({ unitPrice: 500 }); // items に含めない
+
+      expect(() =>
+        EstimateVariation.create({
+          variationNumber: 1,
+          submissionType: SubmissionType.CUSTOMER,
+          tax: TAX,
+          items: [inItem],
+          setGroups: [makeSetGroup([inItem, orphan])],
+        })
+      ).toThrow("参照整合");
+    });
+
+    it("構成明細が複数のセット群に所属するとエラー（排他所属）", () => {
+      const shared = makeItem({ unitPrice: 1000 });
+      const other = makeItem({ unitPrice: 500 });
+
+      expect(() =>
+        EstimateVariation.create({
+          variationNumber: 1,
+          submissionType: SubmissionType.CUSTOMER,
+          tax: TAX,
+          items: [shared, other],
+          setGroups: [makeSetGroup([shared]), makeSetGroup([shared, other])],
+        })
+      ).toThrow("排他所属");
+    });
+
+    it("deriveSetGroup で金額（構成明細合計）と表示位置（最小 sortOrder）を導出する", () => {
+      const m1 = makeItem({ unitPrice: 1000, sortOrder: 5 });
+      const m2 = makeItem({ unitPrice: 500, sortOrder: 2 });
+      const group = makeSetGroup([m1, m2]);
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items: [m1, m2],
+        setGroups: [group],
+      });
+
+      const derived = v.deriveSetGroup(group.id);
+
+      expect(derived.amount.equals(Money.fromMajorUnits(1500))).toBe(true);
+      expect(derived.sortOrder).toBe(2);
+    });
+
+    it("reconstruct はセット群を再検証せず保存値を信頼する（create との非対称）", () => {
+      const item = makeItem({ unitPrice: 1000 });
+      // items に存在しない構成明細を含む（参照整合的に不正な）群でも reconstruct は通る。
+      // 保存済み集計を信頼するのと同じく、再構築時は再検証しない。
+      const inconsistentGroup = makeSetGroup([makeItem({ unitPrice: 999 })]);
+
+      const v = EstimateVariation.reconstruct({
+        id: EstimateVariationId.generate(),
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        revisedFrom: null,
+        status: VariationStatus.ACTIVE,
+        customerMemo: Memo.empty(),
+        internalMemo: Memo.empty(),
+        overallDiscount: Money.zero(),
+        items: [item],
+        setGroups: [inconsistentGroup],
+        subtotal: Money.fromMajorUnits(1000),
+        discountSubtotal: Money.zero(),
+        finalSubtotal: Money.fromMajorUnits(1000),
+        taxAmount: Money.fromMajorUnits(100),
+        finalTotal: Money.fromMajorUnits(1100),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      expect(v.setGroups).toHaveLength(1);
+    });
+  });
+
+  describe("lineStructure - 平坦な items をセット群で仕分ける（#602）", () => {
+    it("セット群が無ければ全明細が通常明細として返る", () => {
+      const a = makeItem({ itemName: "商品A" });
+      const b = makeItem({ itemName: "商品B" });
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items: [a, b],
+      });
+
+      const structure = v.lineStructure;
+
+      expect(structure.normalItems.map((i) => i.itemName.value)).toEqual(["商品A", "商品B"]);
+      expect(structure.setGroups).toHaveLength(0);
+    });
+
+    it("構成明細は通常明細から除かれ、所属する群の components に実体として現れる", () => {
+      const m1 = makeItem({ itemName: "構成1" });
+      const m2 = makeItem({ itemName: "構成2" });
+      const normal = makeItem({ itemName: "通常" });
+      const group = makeSetGroup([m1, m2]);
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items: [m1, m2, normal],
+        setGroups: [group],
+      });
+
+      const structure = v.lineStructure;
+
+      expect(structure.normalItems.map((i) => i.itemName.value)).toEqual(["通常"]);
+      expect(structure.setGroups).toHaveLength(1);
+      expect(structure.setGroups[0].group.id.equals(group.id)).toBe(true);
+      expect(structure.setGroups[0].components.map((c) => c.itemName.value)).toEqual([
+        "構成1",
+        "構成2",
+      ]);
+    });
+
+    it("群が複数あってもそれぞれの構成明細に仕分けられる", () => {
+      const a1 = makeItem({ itemName: "A構成1" });
+      const a2 = makeItem({ itemName: "A構成2" });
+      const b1 = makeItem({ itemName: "B構成1" });
+      const normal = makeItem({ itemName: "通常" });
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items: [a1, a2, b1, normal],
+        setGroups: [makeSetGroup([a1, a2]), makeSetGroup([b1])],
+      });
+
+      const structure = v.lineStructure;
+
+      expect(structure.normalItems.map((i) => i.itemName.value)).toEqual(["通常"]);
+      expect(structure.setGroups.map((g) => g.components.map((c) => c.itemName.value))).toEqual([
+        ["A構成1", "A構成2"],
+        ["B構成1"],
+      ]);
+    });
+
+    it("構成明細は items の並びではなく memberItemIds の順（正準順序）で返る", () => {
+      const first = makeItem({ itemName: "先頭", sortOrder: 1 });
+      const second = makeItem({ itemName: "次", sortOrder: 2 });
+      const group = EstimateSetGroup.create({
+        productId: ProductId.generate(),
+        itemName: new ItemName("セット商品"),
+        unit: new Unit("式"),
+        memberItemIds: [first.id, second.id],
+      });
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        // items 側はあえて逆順で保持する
+        items: [second, first],
+        setGroups: [group],
+      });
+
+      expect(v.lineStructure.setGroups[0].components.map((c) => c.itemName.value)).toEqual([
+        "先頭",
+        "次",
+      ]);
+    });
+  });
+
+  describe("replaceContent とセット群（C4 全置換）", () => {
+    it("セット群も新セットで全置換され、構成明細が二重計上されない", () => {
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items: [makeItem({ unitPrice: 1000 })],
+      });
+      expect(v.setGroups).toHaveLength(0);
+
+      const m1 = makeItem({ unitPrice: 1000 });
+      const m2 = makeItem({ unitPrice: 500 });
+      v.replaceContent(
+        {
+          items: [m1, m2],
+          setGroups: [makeSetGroup([m1, m2])],
+        },
+        TAX
+      );
+
+      expect(v.setGroups).toHaveLength(1);
+      // 1000 + 500 = 1500（群は _items に行を持たないため二重計上なし）
+      expect(v.subtotal.equals(Money.fromMajorUnits(1500))).toBe(true);
+    });
+
+    it("置換後のセット群でも参照整合が再検証される（孤児構成はエラー）", () => {
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items: [makeItem({ unitPrice: 1000 })],
+      });
+
+      const inItem = makeItem({ unitPrice: 1000 });
+      const orphan = makeItem({ unitPrice: 500 }); // items に含めない
+
+      expect(() =>
+        v.replaceContent(
+          {
+            items: [inItem],
+            setGroups: [makeSetGroup([inItem, orphan])],
+          },
+          TAX
+        )
+      ).toThrow("参照整合");
+    });
+
+    it("セット群を省略すると既存のセット群がクリアされる", () => {
+      const m1 = makeItem({ unitPrice: 1000 });
+      const v = EstimateVariation.create({
+        variationNumber: 1,
+        submissionType: SubmissionType.CUSTOMER,
+        tax: TAX,
+        items: [m1],
+        setGroups: [makeSetGroup([m1])],
+      });
+      expect(v.setGroups).toHaveLength(1);
+
+      v.replaceContent({ items: [makeItem({ unitPrice: 2000 })] }, TAX);
+
+      expect(v.setGroups).toHaveLength(0);
+    });
+  });
+});

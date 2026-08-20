@@ -1,3 +1,4 @@
+import { generateId } from "@server/shared/generateId";
 import prisma from "@server/prisma";
 import type { UserRole } from "@server/shared/auth/types";
 import { betterAuth } from "better-auth";
@@ -14,6 +15,11 @@ export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: "postgresql",
   }),
+  advanced: {
+    database: {
+      generateId: () => generateId(),
+    },
+  },
   emailAndPassword: {
     enabled: true,
   },

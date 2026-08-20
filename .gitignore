@@ -33,6 +33,9 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 !.env.example
+!.env.e2e.example
+!.env.unit.example
+!.env.production.example
 
 # vercel
 .vercel
@@ -45,6 +48,7 @@ next-env.d.ts
 
 # Worktrees
 /worktrees/
+.claude/worktrees/
 
 # Playwright
 node_modules/
@@ -53,3 +57,7 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+.playwright-mcp/
+
+# .eslintcache
+.eslintcache

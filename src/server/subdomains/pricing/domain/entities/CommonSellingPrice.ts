@@ -1,0 +1,225 @@
+import { ApplicablePeriod } from "@server/shared/domain/values/ApplicablePeriod";
+import { BusinessRuleViolationError, ValidationError } from "@server/shared/errors/DomainError";
+import { ProductCategory } from "@subdomains/product/domain/values/ProductCategory";
+import { ProductId } from "@subdomains/product/domain/values/ProductId";
+import { CommonSellingPricePeriodId } from "../values/CommonSellingPricePeriodId";
+import { SellingUnitPrice } from "../values/SellingUnitPrice";
+import { CommonSellingPricePeriod } from "./CommonSellingPricePeriod";
+
+/** 永続化からの再構成に渡す適用期間行の記述子（子エンティティ型を露出しないため VO で受ける）。 */
+export interface CommonSellingPricePeriodSnapshot {
+  id: CommonSellingPricePeriodId;
+  period: ApplicablePeriod;
+  price: SellingUnitPrice;
+}
+
+/**
+ * 共通販売単価集約（集約ルート）。
+ *
+ * 商品単位（identity = {@link ProductId}）で適用期間行のコレクションを内包する。
+ * 「同一商品内で適用期間が重複してはならない」という不変条件を `addPeriod` の
+ * `overlaps` 判定で集約内に構造保証する（ADR-0066・0029）。DB の EXCLUDE 制約
+ * （ADR-0067）は並行競合に対する二重防御の最後の砦。
+ */
+export class CommonSellingPrice {
+  static readonly ENTITY_NAME = "共通販売単価";
+
+  private constructor(
+    private readonly _productId: ProductId,
+    private readonly _periods: CommonSellingPricePeriod[]
+  ) {}
+
+  /**
+   * 空の集約を生成する。価格を持てない商品（現状はセット商品。自前の売単価を持たず常に
+   * 構成商品から導出される）を生成入口で拒否する（#515/#531）。判定は「価格を持てるか」
+   * という責務そのものを表す canHavePrice に委ねる。区分不変ゆえ生成入口を塞げば以後の
+   * 追加・改定・削除も既存集約が存在しないことで構造的に到達不能になる。区分は集約越えの
+   * 事実のためアプリ層が取得して引数で渡す（ADR-0030）。
+   */
+  static create(productId: ProductId, category: ProductCategory): CommonSellingPrice {
+    if (!category.canHavePrice()) {
+      throw new ValidationError(`セット商品には${CommonSellingPrice.ENTITY_NAME}を登録できません`);
+    }
+    return new CommonSellingPrice(productId, []);
+  }
+
+  /**
+   * 永続化から再構成する。DB の EXCLUDE 制約で重複ゼロが保証済みのため、
+   * ここでは overlaps を再検証しない（状態の復元に徹する）。
+   */
+  static reconstruct(
+    productId: ProductId,
+    rows: ReadonlyArray<CommonSellingPricePeriodSnapshot>
+  ): CommonSellingPrice {
+    const periods = rows.map((row) =>
+      CommonSellingPricePeriod.reconstruct(row.id, row.period, row.price)
+    );
+    return new CommonSellingPrice(productId, periods);
+  }
+
+  /**
+   * 適用期間行を追加する。既存のどの期間とも重ならず、かつ開始日が参照日（今日）以降の場合のみ許す。
+   *
+   * 過去にさかのぼった行の後付け登録は「過去不変」を破るため禁止する（ADR-20260627-86b）。
+   * 過去日データの投入は移行用の {@link reconstruct} 経路に限定し、業務操作からは閉じる。
+   * 重複・過去開始は不変条件違反として {@link BusinessRuleViolationError} を投げ、集約は変更しない。
+   *
+   * @param referenceDate 参照日（今日・JST 暦日 `"YYYY-MM-DD"`）。保存実行時にサーバー生成して注入する。
+   */
+  addPeriod(period: ApplicablePeriod, price: SellingUnitPrice, referenceDate: string): void {
+    this.assertStartNotPast(period.start, referenceDate);
+    this.assertNoOverlap(period);
+    this._periods.push(CommonSellingPricePeriod.create(period, price));
+  }
+
+  /**
+   * 将来行（今日 < 開始）の期間・単価を差し替える。将来行はまだどの見積も時点解決していないため
+   * 全項目訂正できる（ADR-20260627-86b 軸1）。現在有効・失効の行は編集できない。
+   * 新しい開始日も今日以降であり、他の行と重ならない必要がある。
+   *
+   * @param referenceDate 参照日（今日・JST 暦日 `"YYYY-MM-DD"`）。
+   */
+  editPeriod(
+    periodId: CommonSellingPricePeriodId,
+    changes: { period: ApplicablePeriod; price: SellingUnitPrice },
+    referenceDate: string
+  ): void {
+    const row = this.requireRow(periodId);
+    if (!this.isFuture(row.period, referenceDate)) {
+      throw new BusinessRuleViolationError(
+        `${CommonSellingPrice.ENTITY_NAME}は将来行のみ編集できます（現在有効・失効の行は変更不可）`
+      );
+    }
+    this.assertStartNotPast(changes.period.start, referenceDate);
+    this.assertNoOverlap(changes.period, row);
+    row.changeTo(changes.period, changes.price);
+  }
+
+  /**
+   * 現在有効行（開始 ≤ 今日 < 終了）に終了日を設定して打ち切る（適用終了・end-dating）。
+   * 単価・開始日は変えず、終了日のみを未来方向に確定する（現在有効行に許される唯一の編集）。
+   * 単価改定は「適用終了＋新規期間追加」で表現し、各行を不変の履歴として残す（ADR-20260627-86b）。
+   *
+   * 終了日は今日より後でなければならない（半開区間 `[開始, 終了)` ゆえ終了日=今日は今日を被覆外にし
+   * 遡及削除になるため）。また「適用終了」は打ち切り＝短縮であり延長ではないため、既存終了日が有界なら
+   * 新しい終了日はそれより手前でなければならない（延長は本来失効すべき単価を生かし未来見積の単価判定を
+   * 誤らせる）。既存が無期限（end=null）なら任意の未来日が正当な短縮として許される。
+   *
+   * @param referenceDate 参照日（今日・JST 暦日 `"YYYY-MM-DD"`）。
+   */
+  endDatePeriod(
+    periodId: CommonSellingPricePeriodId,
+    endDate: string,
+    referenceDate: string
+  ): void {
+    const row = this.requireRow(periodId);
+    if (!row.period.contains(referenceDate)) {
+      throw new BusinessRuleViolationError(
+        `${CommonSellingPrice.ENTITY_NAME}は現在有効行のみ適用終了できます`
+      );
+    }
+    // 業務ルール（今日比較・短縮限定）の前に endDate の形式・実在性を検証する。後回しにすると
+    // 不正値が文字列比較で「短縮のみ」「今日より後」などの無関係なメッセージへ誤って落ちるため、
+    // ここで ApplicablePeriod を生成して形式エラー（ValidationError）を前倒しする。
+    const ended = ApplicablePeriod.create({ start: row.period.start, end: endDate });
+    if (endDate <= referenceDate) {
+      throw new BusinessRuleViolationError(
+        `${CommonSellingPrice.ENTITY_NAME}の適用終了日は今日より後である必要があります: ${endDate} <= ${referenceDate}`
+      );
+    }
+    if (row.period.end !== null && endDate >= row.period.end) {
+      throw new BusinessRuleViolationError(
+        `${CommonSellingPrice.ENTITY_NAME}の適用終了は短縮のみ可能です（既存終了日より後へは延長できません）: ${endDate} >= ${row.period.end}`
+      );
+    }
+    this.assertNoOverlap(ended, row);
+    row.endDateOn(endDate);
+  }
+
+  /**
+   * 未来開始行（今日 < 開始）を削除する（誤入力の訂正）。現在有効・失効の行は過去そのもの／
+   * 既発行見積が時点解決した履歴のため削除できない（ADR-20260627-86b 軸1）。
+   *
+   * @param referenceDate 参照日（今日・JST 暦日 `"YYYY-MM-DD"`）。
+   */
+  deletePeriod(periodId: CommonSellingPricePeriodId, referenceDate: string): void {
+    const row = this.requireRow(periodId);
+    if (!this.isFuture(row.period, referenceDate)) {
+      throw new BusinessRuleViolationError(
+        `${CommonSellingPrice.ENTITY_NAME}は未来開始行のみ削除できます（現在有効・失効の行は削除不可）`
+      );
+    }
+    this._periods.splice(this._periods.indexOf(row), 1);
+  }
+
+  /**
+   * 参照日（今日）時点で現在有効な期間行（開始 ≤ 今日 < 終了）を返す。無ければ undefined。
+   *
+   * 「現在有効」という述語を集約に集約するクエリ（read-only）。単価改定はこの行を `endDatePeriod`
+   * の対象として特定するために使う。半開区間の被覆判定はそのまま `ApplicablePeriod.contains` に委ねる。
+   * 集約内の重複ゼロ不変条件（`addPeriod`）により、被覆する行は高々1つに定まる。
+   *
+   * @param referenceDate 参照日（今日・JST 暦日 `"YYYY-MM-DD"`）。
+   */
+  currentValidPeriod(referenceDate: string): CommonSellingPricePeriod | undefined {
+    return this._periods.find((row) => row.period.contains(referenceDate));
+  }
+
+  /** identity で期間行を引く。存在しなければ不変条件違反として投げる。 */
+  private requireRow(periodId: CommonSellingPricePeriodId): CommonSellingPricePeriod {
+    const row = this._periods.find((r) => r.id.equals(periodId));
+    if (row === undefined) {
+      throw new BusinessRuleViolationError(
+        `${CommonSellingPrice.ENTITY_NAME}に指定された適用期間行が存在しません`
+      );
+    }
+    return row;
+  }
+
+  /** 将来行か（今日 < 開始）。 */
+  private isFuture(period: ApplicablePeriod, referenceDate: string): boolean {
+    return referenceDate < period.start;
+  }
+
+  /** 適用開始日が参照日（今日）より前なら過去不変違反として投げる（ADR-20260627-86b）。 */
+  private assertStartNotPast(start: string, referenceDate: string): void {
+    if (start < referenceDate) {
+      throw new BusinessRuleViolationError(
+        `${CommonSellingPrice.ENTITY_NAME}の適用開始日は今日以降である必要があります: ${start} < ${referenceDate}`
+      );
+    }
+  }
+
+  /**
+   * 指定期間が既存のどの行とも重ならないことを保証する。重なれば不変条件違反として投げる。
+   * `excludeRow` を渡すと自分自身（編集・適用終了の対象行）を比較から除外する。
+   */
+  private assertNoOverlap(period: ApplicablePeriod, excludeRow?: CommonSellingPricePeriod): void {
+    const overlapping = this._periods.find(
+      (row) => row !== excludeRow && row.period.overlaps(period)
+    );
+    if (overlapping !== undefined) {
+      throw new BusinessRuleViolationError(
+        `${CommonSellingPrice.ENTITY_NAME}の適用期間が既存の期間と重複しています`
+      );
+    }
+  }
+
+  get productId(): ProductId {
+    return this._productId;
+  }
+
+  /**
+   * 期間行を1件も持たない空集約（＝未設定）か。CONTEXT.md の「未設定＝期間行0件」の派生状態を
+   * 集約自身の語彙で表す。最終期間の削除で 0 件になった器を「集約ごと片付ける」判断に使い、
+   * 不変条件「親行の存在 ⟺ 期間行≥1件」を回復する（#512・B案）。
+   */
+  get isEmpty(): boolean {
+    return this._periods.length === 0;
+  }
+
+  /** 適用期間行（読み取り専用ビュー）。 */
+  get periods(): readonly CommonSellingPricePeriod[] {
+    return this._periods;
+  }
+}

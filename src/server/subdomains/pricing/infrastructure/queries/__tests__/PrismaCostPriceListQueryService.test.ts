@@ -1,0 +1,217 @@
+import prisma from "@server/prisma";
+import { ApplicablePeriod } from "@server/shared/domain/values/ApplicablePeriod";
+import { Money } from "@server/shared/domain/values/Money";
+import { CostPrice } from "@subdomains/pricing/domain/entities";
+import { CostUnitPrice } from "@subdomains/pricing/domain/values/CostUnitPrice";
+import { PrismaCostPriceRepository } from "@subdomains/pricing/infrastructure/prisma/PrismaCostPriceRepository";
+import { Product } from "@subdomains/product/domain/entities/Product";
+import { ProductCategory } from "@subdomains/product/domain/values/ProductCategory";
+import { ProductCode } from "@subdomains/product/domain/values/ProductCode";
+import { ProductName } from "@subdomains/product/domain/values/ProductName";
+import { ProductUnit } from "@subdomains/product/domain/values/ProductUnit";
+import { ProductId } from "@subdomains/product/domain/values/ProductId";
+import { PrismaProductRepository } from "@subdomains/product/infrastructure/prisma/PrismaProductRepository";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { PrismaCostPriceListQueryService } from "../PrismaCostPriceListQueryService";
+
+// CPLST{01..05} = cost-price 一覧読みモデルのテスト用予約コード。
+const CODES = {
+  active: "CPLST01",
+  unset: "CPLST02",
+  futureOnly: "CPLST03",
+  expiredOnly: "CPLST04",
+  set: "CPLST05",
+} as const;
+
+const price = (yen: number) => CostUnitPrice.fromMoney(Money.fromMajorUnits(yen));
+const period = (start: string, end: string | null) => ApplicablePeriod.create({ start, end });
+
+async function cleanup(): Promise<void> {
+  await prisma.product.deleteMany({ where: { code: { in: Object.values(CODES) } } });
+}
+
+async function makeProduct(
+  code: string,
+  name: string,
+  category: ProductCategory = ProductCategory.INDIVIDUAL
+): Promise<ProductId> {
+  const product = await new PrismaProductRepository().insert(
+    Product.create(
+      new ProductCode(code),
+      // products.name は @unique。他テストファイルとの並列実行衝突を code 接尾で防ぐ（#517）
+      new ProductName(`${name}${code}`),
+      category,
+      ProductUnit.UNIT
+    )
+  );
+  return product.id;
+}
+
+describe("PrismaCostPriceListQueryService", () => {
+  let queryService: PrismaCostPriceListQueryService;
+  let repository: PrismaCostPriceRepository;
+
+  beforeEach(async () => {
+    await cleanup();
+    queryService = new PrismaCostPriceListQueryService();
+    repository = new PrismaCostPriceRepository();
+  });
+
+  afterEach(cleanup);
+
+  it("現在有効な原価がある商品は currentCostPrice を値で返し priceStatus=active", async () => {
+    const productId = await makeProduct(CODES.active, "現在有効商品");
+    const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
+    aggregate.addPeriod(period("2025-01-01", null), price(1000), "2025-01-01");
+    await repository.insert(aggregate);
+
+    const items = await queryService.list({ referenceDate: "2025-06-15" });
+    const item = items.find((i) => i.productCode === CODES.active);
+
+    expect(item).toBeDefined();
+    expect(item!.currentCostPrice).toBe("1000.00");
+    expect(item!.priceStatus).toBe("active");
+  });
+
+  it("現在有効行が無期限なら currentPeriodStart は開始日・currentPeriodEnd は null", async () => {
+    const productId = await makeProduct(CODES.active, "現在有効・無期限商品");
+    const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
+    aggregate.addPeriod(period("2025-01-01", null), price(1000), "2025-01-01");
+    await repository.insert(aggregate);
+
+    const items = await queryService.list({ referenceDate: "2025-06-15" });
+    const item = items.find((i) => i.productCode === CODES.active);
+
+    expect(item!.currentPeriodStart).toBe("2025-01-01");
+    expect(item!.currentPeriodEnd).toBeNull();
+  });
+
+  it("現在有効行が有界なら currentPeriodStart/End に半開区間の生値（排他上端）を返す", async () => {
+    const productId = await makeProduct(CODES.futureOnly, "現在有効・有界商品");
+    const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
+    aggregate.addPeriod(period("2025-01-01", "2025-12-31"), price(1000), "2025-01-01");
+    await repository.insert(aggregate);
+
+    const items = await queryService.list({ referenceDate: "2025-06-15" });
+    const item = items.find((i) => i.productCode === CODES.futureOnly);
+
+    expect(item!.currentPeriodStart).toBe("2025-01-01");
+    expect(item!.currentPeriodEnd).toBe("2025-12-31");
+  });
+
+  it("期間行が無い商品は currentCostPrice=null・priceStatus=unset（未設定）", async () => {
+    await makeProduct(CODES.unset, "未設定商品");
+
+    const items = await queryService.list({ referenceDate: "2025-06-15" });
+    const item = items.find((i) => i.productCode === CODES.unset);
+
+    expect(item).toBeDefined();
+    expect(item!.currentCostPrice).toBeNull();
+    expect(item!.priceStatus).toBe("unset");
+    expect(item!.currentPeriodStart).toBeNull();
+    expect(item!.currentPeriodEnd).toBeNull();
+  });
+
+  it("将来行のみの商品は currentCostPrice=null・priceStatus=lapsed（失効中）", async () => {
+    const productId = await makeProduct(CODES.futureOnly, "将来のみ商品");
+    const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
+    aggregate.addPeriod(period("2030-01-01", null), price(1000), "2030-01-01");
+    await repository.insert(aggregate);
+
+    const items = await queryService.list({ referenceDate: "2025-06-15" });
+    const item = items.find((i) => i.productCode === CODES.futureOnly);
+
+    expect(item!.currentCostPrice).toBeNull();
+    expect(item!.priceStatus).toBe("lapsed");
+  });
+
+  it("失効行のみの商品は currentCostPrice=null・priceStatus=lapsed（失効中）", async () => {
+    const productId = await makeProduct(CODES.expiredOnly, "失効のみ商品");
+    const aggregate = CostPrice.create(productId, ProductCategory.INDIVIDUAL);
+    aggregate.addPeriod(period("2025-01-01", "2025-03-01"), price(1000), "2025-01-01");
+    await repository.insert(aggregate);
+
+    const items = await queryService.list({ referenceDate: "2025-06-15" });
+    const item = items.find((i) => i.productCode === CODES.expiredOnly);
+
+    expect(item!.currentCostPrice).toBeNull();
+    expect(item!.priceStatus).toBe("lapsed");
+    expect(item!.currentPeriodStart).toBeNull();
+    expect(item!.currentPeriodEnd).toBeNull();
+  });
+
+  it("セット商品は価格保守対象外なので一覧に現れない（#514）", async () => {
+    // セット商品はそれ自体は原価を持たない（母集合＝価格保守対象商品に含めない）。
+    // 母集合が全商品だと unset として並んでしまうため、区分で除外することを担保する。
+    await makeProduct(CODES.set, "セット商品", ProductCategory.SET);
+
+    const items = await queryService.list({ referenceDate: "2025-06-15" });
+    const codes = items.map((i) => i.productCode);
+
+    expect(codes).not.toContain(CODES.set);
+  });
+
+  describe("検索条件で絞り込む", () => {
+    it("code は部分一致（大小無視）で絞り込む", async () => {
+      await makeProduct(CODES.active, "現在有効商品");
+      await makeProduct(CODES.unset, "未設定商品");
+
+      const items = await queryService.list({
+        referenceDate: "2025-06-15",
+        code: "cplst02",
+      });
+      const codes = items.map((i) => i.productCode);
+
+      expect(codes).toContain(CODES.unset);
+      expect(codes).not.toContain(CODES.active);
+    });
+
+    it("name は部分一致（大小無視）で絞り込む", async () => {
+      await makeProduct(CODES.active, "現在有効商品");
+      await makeProduct(CODES.unset, "未設定商品");
+
+      const items = await queryService.list({
+        referenceDate: "2025-06-15",
+        name: "未設定",
+      });
+      const codes = items.map((i) => i.productCode);
+
+      expect(codes).toContain(CODES.unset);
+      expect(codes).not.toContain(CODES.active);
+    });
+
+    it("name の LIKE メタ文字 _ はリテラルとして扱い、ワイルドカード解釈しない（#518）", async () => {
+      // 検索語 "SPECIAL_ITEM" の _ を ILIKE がワイルドカード解釈すると、任意1文字の
+      // "SPECIALXITEM" もヒットしてしまう。エスケープ済みならリテラル _ のみに一致する。
+      await makeProduct(CODES.active, "SPECIAL_ITEM"); // リテラル _ を含む→一致すべき
+      await makeProduct(CODES.unset, "SPECIALXITEM"); // _ をワイルドカード化した時のみ一致するデコイ
+
+      const items = await queryService.list({
+        referenceDate: "2025-06-15",
+        name: "SPECIAL_ITEM",
+      });
+      const codes = items.map((i) => i.productCode);
+
+      expect(codes).toContain(CODES.active);
+      expect(codes).not.toContain(CODES.unset);
+    });
+
+    it("priceStatus=unset は未設定のみへ絞り込む", async () => {
+      const activeId = await makeProduct(CODES.active, "現在有効商品");
+      const aggregate = CostPrice.create(activeId, ProductCategory.INDIVIDUAL);
+      aggregate.addPeriod(period("2025-01-01", null), price(1000), "2025-01-01");
+      await repository.insert(aggregate);
+      await makeProduct(CODES.unset, "未設定商品");
+
+      const items = await queryService.list({
+        referenceDate: "2025-06-15",
+        priceStatus: "unset",
+      });
+      const reserved = items.filter((i) =>
+        (Object.values(CODES) as string[]).includes(i.productCode)
+      );
+
+      expect(reserved.map((i) => i.productCode)).toEqual([CODES.unset]);
+    });
+  });
+});

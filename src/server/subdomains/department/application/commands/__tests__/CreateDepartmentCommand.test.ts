@@ -1,4 +1,4 @@
-import { createId } from "@paralleldrive/cuid2";
+import { generateId } from "@server/shared/generateId";
 import prisma from "@server/prisma";
 import { ValidationError } from "@server/shared/errors/DomainError";
 import { DepartmentCdDuplicationCheckDomainService } from "@subdomains/department/domain/services/DepartmentCdDuplicationCheckDomainService";
@@ -50,7 +50,7 @@ describe("CreateDepartmentCommand", () => {
   });
 
   it("親部署を指定して登録できる", async () => {
-    const parentId = createId();
+    const parentId = generateId();
     await prisma.department.create({
       data: {
         id: parentId,
@@ -70,7 +70,7 @@ describe("CreateDepartmentCommand", () => {
 
     const saved = await repository.findByDepartmentCd(new DepartmentCd(TEST_CODES[1]));
     expect(saved).not.toBeNull();
-    expect(saved?.parentId).toBe(parentId);
+    expect(saved?.parentId?.value).toBe(parentId);
   });
 
   it("既に存在する部署コードの場合はエラー", async () => {
@@ -87,6 +87,13 @@ describe("CreateDepartmentCommand", () => {
         abbreviation: "重複",
       })
     ).rejects.toThrow(ValidationError);
+    await expect(
+      command.execute({
+        departmentCd: TEST_CODES[0],
+        name: "重複部署",
+        abbreviation: "重複",
+      })
+    ).rejects.toThrow("既に存在する部署コードです");
   });
 
   it("存在しない親部署を指定するとエラー", async () => {
@@ -95,13 +102,21 @@ describe("CreateDepartmentCommand", () => {
         departmentCd: TEST_CODES[0],
         name: "営業部",
         abbreviation: "営業",
-        parentId: "non-existent-id",
+        parentId: "00000000-0000-7000-8000-000000000000",
       })
     ).rejects.toThrow(ValidationError);
+    await expect(
+      command.execute({
+        departmentCd: TEST_CODES[0],
+        name: "営業部",
+        abbreviation: "営業",
+        parentId: "00000000-0000-7000-8000-000000000000",
+      })
+    ).rejects.toThrow("親部署が存在しません");
   });
 
   it("無効な部署を親部署に指定するとエラー", async () => {
-    const inactiveParentId = createId();
+    const inactiveParentId = generateId();
     await prisma.department.create({
       data: {
         id: inactiveParentId,
@@ -120,5 +135,13 @@ describe("CreateDepartmentCommand", () => {
         parentId: inactiveParentId,
       })
     ).rejects.toThrow(ValidationError);
+    await expect(
+      command.execute({
+        departmentCd: TEST_CODES[1],
+        name: "子部署",
+        abbreviation: "子",
+        parentId: inactiveParentId,
+      })
+    ).rejects.toThrow("無効な部署を親部署に設定することはできません");
   });
 });

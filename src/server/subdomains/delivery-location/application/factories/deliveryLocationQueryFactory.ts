@@ -1,5 +1,5 @@
 import { GetDeliveryLocationByIdQuery } from "../queries/GetDeliveryLocationByIdQuery";
-import { GetDeliveryLocationsByCustomerIdQuery } from "../queries/GetDeliveryLocationsByCustomerIdQuery";
+import { GetDeliveryLocationByCodeQuery } from "../queries/GetDeliveryLocationByCodeQuery";
 import { SearchDeliveryLocationsQuery } from "../queries/SearchDeliveryLocationsQuery";
 import { PrismaDeliveryLocationQueryService } from "../../infrastructure/queries/PrismaDeliveryLocationQueryService";
 
@@ -7,8 +7,8 @@ export function getDeliveryLocationByIdQueryFactory(): GetDeliveryLocationByIdQu
   return new GetDeliveryLocationByIdQuery(new PrismaDeliveryLocationQueryService());
 }
 
-export function getDeliveryLocationsByCustomerIdQueryFactory(): GetDeliveryLocationsByCustomerIdQuery {
-  return new GetDeliveryLocationsByCustomerIdQuery(new PrismaDeliveryLocationQueryService());
+export function getDeliveryLocationByCodeQueryFactory(): GetDeliveryLocationByCodeQuery {
+  return new GetDeliveryLocationByCodeQuery(new PrismaDeliveryLocationQueryService());
 }
 
 export function searchDeliveryLocationsQueryFactory(): SearchDeliveryLocationsQuery {

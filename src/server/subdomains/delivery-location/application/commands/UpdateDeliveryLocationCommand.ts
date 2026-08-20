@@ -7,10 +7,13 @@ import { Prefecture } from "@server/shared/domain/values/Prefecture";
 import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { DeliveryLocation } from "@subdomains/delivery-location/domain/entities/DeliveryLocation";
 import { DeliveryLocationRepository } from "@subdomains/delivery-location/domain/repositories/DeliveryLocationRepository";
+import { DeliveryLocationId } from "@subdomains/delivery-location/domain/values/DeliveryLocationId";
 import { DeliveryNotes } from "@subdomains/delivery-location/domain/values/DeliveryNotes";
 
 export type UpdateDeliveryLocationInput = {
   id: string;
+  /** 編集画面表示時の version（楽観ロックトークン / ADR-0039）。リポジトリへ素通しする。 */
+  expectedVersion: number;
   name: string;
   postalCode?: string | null;
   prefecture?: string | null;
@@ -19,7 +22,6 @@ export type UpdateDeliveryLocationInput = {
   faxNumber?: string | null;
   contactPerson?: string | null;
   deliveryNotes?: string | null;
-  isActive?: boolean;
 };
 
 /**
@@ -31,7 +33,8 @@ export class UpdateDeliveryLocationCommand {
   constructor(private readonly deliveryLocationRepository: DeliveryLocationRepository) {}
 
   async execute(input: UpdateDeliveryLocationInput): Promise<void> {
-    const deliveryLocation = await this.deliveryLocationRepository.findById(input.id);
+    const deliveryLocationId = new DeliveryLocationId(input.id);
+    const deliveryLocation = await this.deliveryLocationRepository.findById(deliveryLocationId);
     if (!deliveryLocation) {
       throw new NotFoundEntityError(DeliveryLocation, { id: input.id });
     }
@@ -54,14 +57,6 @@ export class UpdateDeliveryLocationCommand {
       input.deliveryNotes ? new DeliveryNotes(input.deliveryNotes) : null
     );
 
-    if (input.isActive !== undefined) {
-      if (input.isActive) {
-        deliveryLocation.activate();
-      } else {
-        deliveryLocation.deactivate();
-      }
-    }
-
-    await this.deliveryLocationRepository.save(deliveryLocation);
+    await this.deliveryLocationRepository.update(deliveryLocation, input.expectedVersion);
   }
 }

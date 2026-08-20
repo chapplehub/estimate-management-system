@@ -23,18 +23,26 @@ describe("PhoneNumber", () => {
   describe("異常系", () => {
     it("9桁を拒否する", () => {
       expect(() => new PhoneNumber("031234567")).toThrow(ValidationError);
+      expect(() => new PhoneNumber("031234567")).toThrow("電話番号は10文字以上で入力してください");
     });
 
     it("12桁を拒否する", () => {
       expect(() => new PhoneNumber("031234567890")).toThrow(ValidationError);
+      expect(() => new PhoneNumber("031234567890")).toThrow(
+        "電話番号は11文字以内で入力してください"
+      );
     });
 
     it("英字を含む場合を拒否する", () => {
       expect(() => new PhoneNumber("03-ABCD-5678")).toThrow(ValidationError);
+      expect(() => new PhoneNumber("03-ABCD-5678")).toThrow(
+        "電話番号は10〜11桁の数字で入力してください"
+      );
     });
 
     it("空文字を拒否する", () => {
       expect(() => new PhoneNumber("")).toThrow(ValidationError);
+      expect(() => new PhoneNumber("")).toThrow("電話番号は10文字以上で入力してください");
     });
   });
 });

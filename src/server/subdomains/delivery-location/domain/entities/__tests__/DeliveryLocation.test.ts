@@ -5,12 +5,14 @@ import { FaxNumber } from "@server/shared/domain/values/FaxNumber";
 import { PhoneNumber } from "@server/shared/domain/values/PhoneNumber";
 import { PostalCode } from "@server/shared/domain/values/PostalCode";
 import { Prefecture } from "@server/shared/domain/values/Prefecture";
+import { CustomerId } from "@subdomains/customer/domain/values/CustomerId";
+import { DeliveryLocationId } from "@subdomains/delivery-location/domain/values/DeliveryLocationId";
 import { DeliveryNotes } from "@subdomains/delivery-location/domain/values/DeliveryNotes";
 import { describe, expect, it } from "vitest";
 import { DeliveryLocation } from "../DeliveryLocation";
 
 describe("DeliveryLocation Entity", () => {
-  const CUSTOMER_ID = "test-customer-id";
+  const CUSTOMER_ID = CustomerId.generate();
 
   const createTestDeliveryLocation = () =>
     DeliveryLocation.create(new CompanyCode("DL001"), new CompanyName("テスト納品先"), CUSTOMER_ID);
@@ -20,11 +22,9 @@ describe("DeliveryLocation Entity", () => {
       const dl = createTestDeliveryLocation();
 
       expect(dl.id).toBeTruthy();
-      expect(dl.companyId).toBeTruthy();
-      expect(dl.id).not.toBe(dl.companyId);
       expect(dl.code.value).toBe("DL001");
       expect(dl.name.value).toBe("テスト納品先");
-      expect(dl.customerId).toBe(CUSTOMER_ID);
+      expect(dl.customerId.value).toBe(CUSTOMER_ID.value);
       expect(dl.isActive).toBe(true);
       expect(dl.deliveryNotes).toBeNull();
     });
@@ -54,9 +54,9 @@ describe("DeliveryLocation Entity", () => {
   describe("reconstruct", () => {
     it("DBからの再構築が正しく動作する", () => {
       const now = new Date();
+      const id = DeliveryLocationId.generate();
       const dl = DeliveryLocation.reconstruct(
-        "test-id",
-        "test-company-id",
+        id,
         new CompanyCode("DL001"),
         new CompanyName("テスト納品先"),
         null,
@@ -72,9 +72,8 @@ describe("DeliveryLocation Entity", () => {
         now
       );
 
-      expect(dl.id).toBe("test-id");
-      expect(dl.companyId).toBe("test-company-id");
-      expect(dl.customerId).toBe(CUSTOMER_ID);
+      expect(dl.id.value).toBe(id.value);
+      expect(dl.customerId.value).toBe(CUSTOMER_ID.value);
     });
   });
 

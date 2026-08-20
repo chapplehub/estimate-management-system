@@ -1,0 +1,106 @@
+name: Release Image
+# 本番イメージ（Dockerfile の runner / migrate）をビルドし GHCR へ push する（#763）。
+# main はリリースブランチ（develop → main の PR マージ = リリース）であり、
+# 「latest = main の写像」を本ワークフローの不変条件とする。
+# EC2 側は pull のみ（EC2 上ではビルドしない。→ #761 で compose.prod.yaml の build: を削除予定）。
+on:
+  push:
+    branches: [main]
+  # 再発行用（GHCR 障害後のリトライ等）。main 以外からの起動はジョブレベルの if で弾く
+  workflow_dispatch:
+
+# ref 単位でキューイングする。cancel-in-progress を false にするのは、連続リリース時に
+# 途中の run をキャンセルすると「先行 run が app だけ push して migrate が旧版のまま」の
+# 中途半端な状態で止まりうるため。全 run を順に完走させれば、最後に走った run（= 最新の
+# main）が latest を上書きして終わることが保証される。
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+# ci.yml と同じ方針で GITHUB_TOKEN の権限を明示する。packages: write は GHCR への push に
+# 必要な最小権限。ci.yml の「pnpm install を実行する run に書き込みトークンを置かない」
+# 原則（ci.yml:38-44）とは両立している: 本ワークフローはランナー上で pnpm install を
+# 実行せず、依存インストールは docker build の内側（ネットワーク的に隔離されたビルド
+# コンテナ内）でのみ行われるため、依存のビルドスクリプトがこのトークンに触れる経路が無い。
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-push:
+    name: build and push
+    # workflow_dispatch が main 以外の ref（develop 等）から起動された場合に push しない
+    # ガード。push トリガーは branches: [main] で絞済みだが、dispatch は任意 ref から
+    # 起動できるため、ここで「latest = main の写像」の不変条件を守る。
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04-arm
+    # arm64 ネイティブビルド。EC2 は Graviton（t4g 系）前提（→ ADR-20260818-7pn）。
+    # リポジトリを private 化すると arm ランナーが課金対象になる点に注意（同 ADR）。
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      # builder は 1 個だけ作る。後続の 2 回の build-push が同一 builder のローカル
+      # キャッシュを共有し、Dockerfile の base / deps ステージ（pnpm install を含む）が
+      # 1 回のビルドで済む。run をまたぐ外部キャッシュ（type=gha / type=registry）は
+      # 持たない: キャッシュキーの実体は pnpm-lock.yaml だが Renovate の高頻度更新で
+      # リリース間ヒット率が低く、GHA Cache は 7 日で消え、レジストリキャッシュは毎回
+      # 数百 MB の転送が逆ザヤのため。必要になれば cache-from/to を後付けできる。
+      - uses: docker/setup-buildx-action@v4.2.0
+
+      - uses: docker/login-action@v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # タグは latest + sha-<short> の二重付け。latest は EC2 の既定参照
+      # （compose.prod.yaml の APP_IMAGE / MIGRATE_IMAGE 既定値）、sha タグは
+      # ロールバック用の不変ポインタ。SHA タグは無制限に残す（public パッケージは
+      # ストレージ無料。刈り込み機構は誤削除リスクだけ持ち込むため作らない）。
+      - uses: docker/metadata-action@v6.2.0
+        id: meta-app
+        with:
+          images: ghcr.io/chapplehub/estimate-management-system/app
+          tags: |
+            type=raw,value=latest
+            type=sha
+
+      - uses: docker/metadata-action@v6.2.0
+        id: meta-migrate
+        with:
+          images: ghcr.io/chapplehub/estimate-management-system/migrate
+          tags: |
+            type=raw,value=latest
+            type=sha
+
+      # runner → migrate の順に同一 builder で順次ビルドする。2 ターゲットは Dockerfile の
+      # base / deps ステージを共有しており、1 回目のビルド結果が builder のローカル
+      # キャッシュに残るため、2 回目は差分ステージ（prune 等）だけが走る。
+      # platforms は arm ネイティブランナーの既定と同じだが、ランナー変更時に
+      # アーキテクチャが無言で変わらないよう明示する。
+      # provenance: false は attestation 付与を止め、単一アーキの素朴なマニフェストにする
+      # （既定の provenance はマニフェストリスト化し、GHCR 上に unknown/unknown の
+      # 偽アーキ行が並ぶ混乱のもとになる）。
+      - name: Build and push app image
+        uses: docker/build-push-action@v7.3.0
+        with:
+          context: .
+          target: runner
+          platforms: linux/arm64
+          provenance: false
+          push: true
+          tags: ${{ steps.meta-app.outputs.tags }}
+          labels: ${{ steps.meta-app.outputs.labels }}
+
+      - name: Build and push migrate image
+        uses: docker/build-push-action@v7.3.0
+        with:
+          context: .
+          target: migrate
+          platforms: linux/arm64
+          provenance: false
+          push: true
+          tags: ${{ steps.meta-migrate.outputs.tags }}
+          labels: ${{ steps.meta-migrate.outputs.labels }}

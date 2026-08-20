@@ -1,6 +1,6 @@
-import { createId } from "@paralleldrive/cuid2";
+import { generateId } from "@server/shared/generateId";
 import prisma from "@server/prisma";
-import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
+import { ConflictError, NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
 import { PrismaDepartmentRepository } from "@subdomains/department/infrastructure/prisma/PrismaDepartmentRepository";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -28,7 +28,7 @@ describe("UpdateDepartmentCommand", () => {
     repository = new PrismaDepartmentRepository();
     command = new UpdateDepartmentCommand(repository);
 
-    baseDeptId = createId();
+    baseDeptId = generateId();
     await prisma.department.create({
       data: {
         id: baseDeptId,
@@ -47,6 +47,7 @@ describe("UpdateDepartmentCommand", () => {
   it("部署名を更新できる", async () => {
     const result = await command.execute({
       id: baseDeptId,
+      version: 1,
       name: "新営業部",
     });
 
@@ -56,6 +57,7 @@ describe("UpdateDepartmentCommand", () => {
   it("略称を更新できる", async () => {
     const result = await command.execute({
       id: baseDeptId,
+      version: 1,
       abbreviation: "新営業",
     });
 
@@ -65,10 +67,18 @@ describe("UpdateDepartmentCommand", () => {
   it("存在しない部署を更新しようとするとエラー", async () => {
     await expect(
       command.execute({
-        id: "non-existent-id",
+        id: "00000000-0000-7000-8000-000000000000",
+        version: 1,
         name: "新営業部",
       })
     ).rejects.toThrow(NotFoundEntityError);
+    await expect(
+      command.execute({
+        id: "00000000-0000-7000-8000-000000000000",
+        version: 1,
+        name: "新営業部",
+      })
+    ).rejects.toThrow("部署が見つかりません");
   });
 
   it("部署を有効化できる", async () => {
@@ -80,6 +90,7 @@ describe("UpdateDepartmentCommand", () => {
 
     const result = await command.execute({
       id: baseDeptId,
+      version: 1,
       isActive: true,
     });
 
@@ -89,6 +100,7 @@ describe("UpdateDepartmentCommand", () => {
   it("部署を無効化できる", async () => {
     const result = await command.execute({
       id: baseDeptId,
+      version: 1,
       isActive: false,
     });
 
@@ -96,7 +108,7 @@ describe("UpdateDepartmentCommand", () => {
   });
 
   it("有効な子部署がある場合は無効化できない", async () => {
-    const childId = createId();
+    const childId = generateId();
     await prisma.department.create({
       data: {
         id: childId,
@@ -111,13 +123,21 @@ describe("UpdateDepartmentCommand", () => {
     await expect(
       command.execute({
         id: baseDeptId,
+        version: 1,
         isActive: false,
       })
     ).rejects.toThrow(BusinessRuleViolationError);
+    await expect(
+      command.execute({
+        id: baseDeptId,
+        version: 1,
+        isActive: false,
+      })
+    ).rejects.toThrow("有効な子部署が存在するため、この部署を無効化できません");
   });
 
   it("親部署を変更できる", async () => {
-    const newParentId = createId();
+    const newParentId = generateId();
     await prisma.department.create({
       data: {
         id: newParentId,
@@ -130,32 +150,49 @@ describe("UpdateDepartmentCommand", () => {
 
     const result = await command.execute({
       id: baseDeptId,
+      version: 1,
       parentId: newParentId,
     });
 
-    expect(result.parentId).toBe(newParentId);
+    expect(result.parentId?.value).toBe(newParentId);
   });
 
   it("自分自身を親部署に設定するとエラー", async () => {
     await expect(
       command.execute({
         id: baseDeptId,
+        version: 1,
         parentId: baseDeptId,
       })
     ).rejects.toThrow(BusinessRuleViolationError);
+    await expect(
+      command.execute({
+        id: baseDeptId,
+        version: 1,
+        parentId: baseDeptId,
+      })
+    ).rejects.toThrow("自分自身を親部署にすることはできません");
   });
 
   it("存在しない部署を親部署に設定するとエラー", async () => {
     await expect(
       command.execute({
         id: baseDeptId,
-        parentId: "non-existent-parent-id",
+        version: 1,
+        parentId: "00000000-0000-7000-8000-000000000001",
       })
     ).rejects.toThrow(BusinessRuleViolationError);
+    await expect(
+      command.execute({
+        id: baseDeptId,
+        version: 1,
+        parentId: "00000000-0000-7000-8000-000000000001",
+      })
+    ).rejects.toThrow("親部署が存在しません");
   });
 
   it("無効な部署を親部署に設定するとエラー", async () => {
-    const inactiveParentId = createId();
+    const inactiveParentId = generateId();
     await prisma.department.create({
       data: {
         id: inactiveParentId,
@@ -169,15 +206,23 @@ describe("UpdateDepartmentCommand", () => {
     await expect(
       command.execute({
         id: baseDeptId,
+        version: 1,
         parentId: inactiveParentId,
       })
     ).rejects.toThrow(BusinessRuleViolationError);
+    await expect(
+      command.execute({
+        id: baseDeptId,
+        version: 1,
+        parentId: inactiveParentId,
+      })
+    ).rejects.toThrow("無効な部署を親部署に設定することはできません");
   });
 
   it("循環参照になる親部署を設定するとエラー", async () => {
     // A → B → C の3階層を作成し、AのparentをCに変更 → 循環参照
-    const deptBId = createId();
-    const deptCId = createId();
+    const deptBId = generateId();
+    const deptCId = generateId();
 
     await prisma.department.create({
       data: {
@@ -203,8 +248,40 @@ describe("UpdateDepartmentCommand", () => {
     await expect(
       command.execute({
         id: baseDeptId,
+        version: 1,
         parentId: deptCId,
       })
     ).rejects.toThrow(BusinessRuleViolationError);
+    await expect(
+      command.execute({
+        id: baseDeptId,
+        version: 1,
+        parentId: deptCId,
+      })
+    ).rejects.toThrow("循環参照が発生するため、この親部署は設定できません");
+  });
+
+  it("古い version で更新すると ConflictError（expectedVersion がリポジトリへ素通しされる / ADR-0039）", async () => {
+    // 1 回目の更新は version 1 で成功し、DB の version は 2 へ進む
+    const updated = await command.execute({
+      id: baseDeptId,
+      version: 1,
+      name: "第1版",
+    });
+    expect(updated.name.value).toBe("第1版");
+
+    // 同じ古いトークン（version 1）で再度更新 → コマンドが素通しした expectedVersion が
+    // リポジトリの条件付き UPDATE で弾かれ、ConflictError になる
+    await expect(
+      command.execute({
+        id: baseDeptId,
+        version: 1,
+        name: "第2版",
+      })
+    ).rejects.toThrow(ConflictError);
+
+    // 先行の変更（第1版）が残っている（lost update なし）
+    const found = await repository.findById(updated.id);
+    expect(found?.name.value).toBe("第1版");
   });
 });

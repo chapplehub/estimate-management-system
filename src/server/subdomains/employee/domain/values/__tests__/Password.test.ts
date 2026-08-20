@@ -105,6 +105,7 @@ describe("Password 値オブジェクト", () => {
 
     it("スペースのみの場合はエラー", () => {
       expect(() => new Password("          ")).toThrow(ValidationError);
+      expect(() => new Password("          ")).toThrow("パスワードは10文字以上で入力してください");
     });
   });
 

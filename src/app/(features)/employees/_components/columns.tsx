@@ -23,6 +23,22 @@ export const columns: ColumnDef<EmployeeDTO, unknown>[] = [
     header: "名前",
   },
   {
+    accessorKey: "departmentName",
+    header: "部署",
+  },
+  {
+    accessorKey: "assignedRoleName",
+    header: "担当役割",
+    // 役割なし（課員）は null → "-" 表示
+    cell: ({ row }) => row.original.assignedRoleName ?? "-",
+  },
+  {
+    accessorKey: "superiorRoleName",
+    header: "上位役割",
+    // 上位役割なし（社長など階層最上位）は null → "-" 表示
+    cell: ({ row }) => row.original.superiorRoleName ?? "-",
+  },
+  {
     accessorKey: "email",
     header: "メールアドレス",
   },

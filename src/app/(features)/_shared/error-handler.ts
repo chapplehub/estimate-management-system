@@ -1,4 +1,8 @@
-import { NotFoundEntityError, NotFoundError } from "@server/shared/errors/ApplicationError";
+import {
+  ConflictError,
+  NotFoundEntityError,
+  NotFoundError,
+} from "@server/shared/errors/ApplicationError";
 import { BusinessRuleViolationError, ValidationError } from "@server/shared/errors/DomainError";
 import type { ActionResult } from "@shared/types/ActionResult";
 
@@ -45,6 +49,12 @@ export function handleCommandError(error: unknown): ActionResult {
 
   if (error instanceof NotFoundEntityError || error instanceof NotFoundError) {
     return { success: false, error: "指定されたリソースが見つかりません" };
+  }
+
+  // 楽観ロック競合（ADR-0039）・採番衝突（ADR-0035）はいずれもユーザー向けに
+  // 整形済みの文言を持つため、メッセージをそのまま表面化する。
+  if (error instanceof ConflictError) {
+    return { success: false, error: error.message };
   }
 
   return {

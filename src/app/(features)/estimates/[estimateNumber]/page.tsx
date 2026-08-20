@@ -1,0 +1,95 @@
+import { verifySession } from "@/app/_lib/verifyAuthentication";
+import { REDIRECT_REASON } from "@shared/constants/redirect-reasons";
+import { getActiveDepartmentsQueryFactory } from "@subdomains/department/application/factories/departmentQueryFactory";
+import {
+  getEstimateDetailQueryFactory,
+  getVariationApplicationStatesQueryFactory,
+  resolveEffectiveTaxRateQueryFactory,
+} from "@subdomains/estimate/application/factories/estimateQueryFactory";
+import { notFound } from "next/navigation";
+import { fromDateInputValue, toDateInputValue } from "@/app/_lib/date";
+import { DuplicateEstimateModal } from "./DuplicateEstimateModal";
+import { EstimateHeaderSection } from "./EstimateHeaderSection";
+import { VariationPanel } from "./VariationPanel";
+
+/**
+ * 見積詳細画面 S2 閲覧 / S3 ヘッダー編集。
+ *
+ * RSC（本ファイル・薄い）が見積詳細 DTO と部署一覧を取得し、②③ ヘッダー領域を
+ * クライアントアイランド EstimateHeaderSection（閲覧⇄編集トグル・C2 配線）へ渡す。
+ * ④〜⑨ は従来どおり VariationPanel（RSC）へ委譲する。
+ */
+export default async function EstimateDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ estimateNumber: string }>;
+  searchParams: Promise<{ reason?: string }>;
+}) {
+  const { estimateNumber } = await params;
+  const { reason } = await searchParams;
+  await verifySession();
+
+  // 追加/複製成功の専用 reason が付いて戻ってきた再描画では、新規（末尾）バリのタブを
+  // 初期選択させる（#370）。reason 自体が「追加直後」のシグナルを兼ねる。
+  const focusLastVariation = reason === REDIRECT_REASON.ESTIMATE_VARIATION_ADDED;
+
+  const estimate = await getEstimateDetailQueryFactory().execute({ estimateNumber });
+  if (!estimate) {
+    notFound();
+  }
+
+  // 複製モーダルの既定日付は今日（JST・新規見積のため）。
+  const today = toDateInputValue(new Date());
+  // 部署プルダウン（編集フォーム・複製モーダル用・有効な部署のみ Q6）と既定日付の有効税率
+  // （複製モーダルの read-only 初期値）は互いに独立なため並列解決する（詳細はホットパスで
+  // 逐次 I/O を避ける）。
+  // 申請状態（#493・#494）も見積 ID が定まれば独立に読めるため同じ並列束で解決する。
+  const [departments, initialTaxRate, applicationStates] = await Promise.all([
+    getActiveDepartmentsQueryFactory().execute({}),
+    resolveEffectiveTaxRateQueryFactory().execute({ date: fromDateInputValue(today) }),
+    getVariationApplicationStatesQueryFactory().execute({ estimateId: estimate.estimateId }),
+  ]);
+  const departmentOptions = departments.map((d) => ({ id: d.id, name: d.name }));
+
+  return (
+    <div className="container mx-auto p-8">
+      {/* ②③ ヘッダー（閲覧⇄編集トグル・S3）。操作エリアに見積複製モーダル（C6・ADR-0057）を差す。 */}
+      <EstimateHeaderSection
+        estimate={estimate}
+        departments={departmentOptions}
+        headerActions={
+          // この要素は RSC（本ページ）→ Client island（EstimateHeaderSection）境界を越えて
+          // 渡され、操作エリアで「編集」ボタンと兄弟リストに並ぶ。RSC ペイロード由来の要素は
+          // _store.validated を持たず React の key 検証に掛かるため、生成箇所で安定 key を付与し
+          // unique key prop 警告を抑止する（#410）。
+          <DuplicateEstimateModal
+            key="header-action-duplicate"
+            sourceEstimateNumber={estimate.estimateNumber}
+            variations={estimate.variations}
+            sourceDepartmentId={estimate.departmentId}
+            departments={departmentOptions}
+            defaultEstimateDate={today}
+            defaultDeadline={today}
+            initialTaxRate={initialTaxRate}
+          />
+        }
+      />
+
+      {/* ④〜⑨ バリエーション（タブ・明細・値引・メモ・金額サマリー・S4 内容編集） */}
+      <VariationPanel
+        estimateNumber={estimate.estimateNumber}
+        version={estimate.version}
+        variations={estimate.variations}
+        estimateDate={toDateInputValue(estimate.estimateDate)}
+        customerId={estimate.customerId}
+        deliveryLocationId={estimate.deliveryLocationId}
+        applicationStates={applicationStates}
+        taxRate={estimate.taxRate}
+        taxRoundingType={estimate.taxRoundingType}
+        hasRevision={estimate.hasRevision}
+        focusLastVariation={focusLastVariation}
+      />
+    </div>
+  );
+}

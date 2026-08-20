@@ -1,4 +1,3 @@
-import { createId } from "@paralleldrive/cuid2";
 import { Address } from "@server/shared/domain/values/Address";
 import { CompanyCode } from "@server/shared/domain/values/CompanyCode";
 import { CompanyName } from "@server/shared/domain/values/CompanyName";
@@ -6,6 +5,8 @@ import { FaxNumber } from "@server/shared/domain/values/FaxNumber";
 import { PhoneNumber } from "@server/shared/domain/values/PhoneNumber";
 import { PostalCode } from "@server/shared/domain/values/PostalCode";
 import { Prefecture } from "@server/shared/domain/values/Prefecture";
+import { CustomerId } from "@subdomains/customer/domain/values/CustomerId";
+import { DeliveryLocationId } from "@subdomains/delivery-location/domain/values/DeliveryLocationId";
 import { DeliveryNotes } from "@subdomains/delivery-location/domain/values/DeliveryNotes";
 
 export type DeliveryLocationCreateOptions = {
@@ -21,15 +22,14 @@ export type DeliveryLocationCreateOptions = {
 /**
  * 納品先エンティティ
  *
- * Company（取引先基底）の情報を埋め込んだ集約ルート。
+ * 取引先共通属性（コード・名称・住所・連絡先・有効フラグ）を自テーブルに持つ集約ルート（ADR-0043）。
  * 必ず1つの得意先（Customer）に紐づく。
  */
 export class DeliveryLocation {
   static readonly ENTITY_NAME = "納品先";
 
   private constructor(
-    private readonly _id: string,
-    private readonly _companyId: string,
+    private readonly _id: DeliveryLocationId,
     private readonly _code: CompanyCode,
     private _name: CompanyName,
     private _postalCode: PostalCode | null,
@@ -39,7 +39,7 @@ export class DeliveryLocation {
     private _faxNumber: FaxNumber | null,
     private _contactPerson: string | null,
     private _isActive: boolean,
-    private readonly _customerId: string,
+    private readonly _customerId: CustomerId,
     private _deliveryNotes: DeliveryNotes | null,
     private readonly _createdAt: Date,
     private _updatedAt: Date
@@ -56,14 +56,13 @@ export class DeliveryLocation {
   static create(
     code: CompanyCode,
     name: CompanyName,
-    customerId: string,
+    customerId: CustomerId,
     options?: DeliveryLocationCreateOptions
   ): DeliveryLocation {
     const now = new Date();
 
     return new DeliveryLocation(
-      createId(),
-      createId(),
+      DeliveryLocationId.generate(),
       code,
       name,
       options?.postalCode ?? null,
@@ -84,8 +83,7 @@ export class DeliveryLocation {
    * DBから納品先を再構築
    */
   static reconstruct(
-    id: string,
-    companyId: string,
+    id: DeliveryLocationId,
     code: CompanyCode,
     name: CompanyName,
     postalCode: PostalCode | null,
@@ -95,14 +93,13 @@ export class DeliveryLocation {
     faxNumber: FaxNumber | null,
     contactPerson: string | null,
     isActive: boolean,
-    customerId: string,
+    customerId: CustomerId,
     deliveryNotes: DeliveryNotes | null,
     createdAt: Date,
     updatedAt: Date
   ): DeliveryLocation {
     return new DeliveryLocation(
       id,
-      companyId,
       code,
       name,
       postalCode,
@@ -169,12 +166,8 @@ export class DeliveryLocation {
   // ゲッター
   // ========================================
 
-  get id(): string {
+  get id(): DeliveryLocationId {
     return this._id;
-  }
-
-  get companyId(): string {
-    return this._companyId;
   }
 
   get code(): CompanyCode {
@@ -213,7 +206,7 @@ export class DeliveryLocation {
     return this._isActive;
   }
 
-  get customerId(): string {
+  get customerId(): CustomerId {
     return this._customerId;
   }
 

@@ -2,6 +2,7 @@ import prisma from "@server/prisma";
 import { CompanyCode } from "@server/shared/domain/values/CompanyCode";
 import { CompanyName } from "@server/shared/domain/values/CompanyName";
 import { Customer } from "@subdomains/customer/domain/entities/Customer";
+import { CustomerId } from "@subdomains/customer/domain/values/CustomerId";
 import { PrismaCustomerRepository } from "@subdomains/customer/infrastructure/prisma/PrismaCustomerRepository";
 import { DeliveryLocation } from "@subdomains/delivery-location/domain/entities/DeliveryLocation";
 import { PrismaDeliveryLocationRepository } from "@subdomains/delivery-location/infrastructure/prisma/PrismaDeliveryLocationRepository";
@@ -12,17 +13,17 @@ describe("DeliveryLocationCodeDuplicationCheckDomainService", () => {
   let service: DeliveryLocationCodeDuplicationCheckDomainService;
   let dlRepository: PrismaDeliveryLocationRepository;
   let customerRepository: PrismaCustomerRepository;
-  let customerId: string;
+  let customerId: CustomerId;
 
   const DL_TEST_CODES = ["DL999801", "DL999802"];
   const CUSTOMER_TEST_CODE = "CUST999811";
 
-  // クリーンアップ（FK制約考慮: DL の Company → Customer の Company の順）
+  // クリーンアップ（FK制約考慮: 納品先 → 得意先の順）
   async function cleanup() {
-    await prisma.company.deleteMany({
+    await prisma.deliveryLocation.deleteMany({
       where: { code: { in: DL_TEST_CODES } },
     });
-    await prisma.company.deleteMany({
+    await prisma.customer.deleteMany({
       where: { code: CUSTOMER_TEST_CODE },
     });
   }
@@ -36,7 +37,7 @@ describe("DeliveryLocationCodeDuplicationCheckDomainService", () => {
       new CompanyCode(CUSTOMER_TEST_CODE),
       new CompanyName("テスト得意先")
     );
-    const savedCustomer = await customerRepository.save(customer);
+    const savedCustomer = await customerRepository.insert(customer);
     customerId = savedCustomer.id;
 
     dlRepository = new PrismaDeliveryLocationRepository();
@@ -54,7 +55,7 @@ describe("DeliveryLocationCodeDuplicationCheckDomainService", () => {
   it("重複がある場合、trueを返す", async () => {
     const code = new CompanyCode(DL_TEST_CODES[0]);
     const dl = DeliveryLocation.create(code, new CompanyName("テスト倉庫"), customerId);
-    await dlRepository.save(dl);
+    await dlRepository.insert(dl);
 
     const isDuplicated = await service.execute(code);
     expect(isDuplicated).toBe(true);
@@ -63,7 +64,7 @@ describe("DeliveryLocationCodeDuplicationCheckDomainService", () => {
   it("異なるコードで重複がない場合、falseを返す", async () => {
     const existingCode = new CompanyCode(DL_TEST_CODES[0]);
     const dl = DeliveryLocation.create(existingCode, new CompanyName("テスト倉庫"), customerId);
-    await dlRepository.save(dl);
+    await dlRepository.insert(dl);
 
     const newCode = new CompanyCode(DL_TEST_CODES[1]);
     const isDuplicated = await service.execute(newCode);

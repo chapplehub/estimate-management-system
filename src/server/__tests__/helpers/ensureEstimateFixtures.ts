@@ -1,0 +1,115 @@
+import prisma from "@server/prisma";
+import { generateId } from "@server/shared/generateId";
+import { ProductCategory, ProductUnit } from "@generated/prisma/enums";
+
+import { ensureTestDepartment } from "./ensureTestDepartment";
+import { ensureCommonSellingPrice } from "./sellingPriceScenario";
+
+/**
+ * フィクスチャ商品（productId）に与える正準の共通販売単価（円）。#430 以降、見積明細の単価は
+ * 入力ではなく販売単価マスタから解決されるため、種として作る見積の明細商品に単価が必要になる。
+ * 全テストファイルで共有するため単一の値に固定する（金額を検証するテストは専用商品を用意すること）。
+ */
+export const FIXTURE_PRODUCT_UNIT_PRICE = 1000;
+
+/**
+ * 見積集約の永続化テストに必要な FK マスタ（部署・作成者従業員・得意先・納品先・商品）を
+ * 確実に用意し、その ID を返す。すべて予約コードで冪等 upsert する（並列実行に耐える）。
+ *
+ * これらは Estimate の create 時に連鎖作成されない共有マスタなので、テスト見積の保存前に
+ * 存在している必要がある。
+ */
+export type EstimateFixtureIds = {
+  departmentId: string;
+  employeeId: string;
+  customerId: string;
+  deliveryLocationId: string;
+  productId: string;
+  /** セット群（ADR-0047）テスト用の SET 区分商品。構成明細は productId（個別）を使う。 */
+  setProductId: string;
+};
+
+const EMPLOYEE_CD = "EMP999091";
+const CUSTOMER_COMPANY_CODE = "CFX99901";
+const DELIVERY_COMPANY_CODE = "DFX99901";
+const PRODUCT_CODE = "PRDFX99901";
+const PRODUCT_NAME = "見積永続化テスト商品";
+const SET_PRODUCT_CODE = "PRDFX99902";
+const SET_PRODUCT_NAME = "見積永続化テストセット商品";
+
+export async function ensureEstimateFixtures(): Promise<EstimateFixtureIds> {
+  const departmentId = await ensureTestDepartment();
+
+  const employee = await prisma.employee.upsert({
+    where: { employeeCd: EMPLOYEE_CD },
+    update: { name: "見積テスト作成者" },
+    create: {
+      id: generateId(),
+      employeeCd: EMPLOYEE_CD,
+      email: "estimate-fixture@example.com",
+      name: "見積テスト作成者",
+      departmentId,
+    },
+  });
+
+  // 得意先（Customer）
+  const customer = await prisma.customer.upsert({
+    where: { code: CUSTOMER_COMPANY_CODE },
+    update: { name: "見積テスト得意先" },
+    create: {
+      id: generateId(),
+      code: CUSTOMER_COMPANY_CODE,
+      name: "見積テスト得意先",
+    },
+  });
+
+  // 納品先（DeliveryLocation。親得意先は上記 customer）
+  const deliveryLocation = await prisma.deliveryLocation.upsert({
+    where: { code: DELIVERY_COMPANY_CODE },
+    update: { name: "見積テスト納品先" },
+    create: {
+      id: generateId(),
+      code: DELIVERY_COMPANY_CODE,
+      name: "見積テスト納品先",
+      customerId: customer.id,
+    },
+  });
+
+  const product = await prisma.product.upsert({
+    where: { code: PRODUCT_CODE },
+    update: { name: PRODUCT_NAME },
+    create: {
+      id: generateId(),
+      code: PRODUCT_CODE,
+      name: PRODUCT_NAME,
+      category: ProductCategory.INDIVIDUAL,
+      unit: ProductUnit.PIECE,
+    },
+  });
+
+  // セット群（ADR-0047）テスト用の SET 区分商品。
+  const setProduct = await prisma.product.upsert({
+    where: { code: SET_PRODUCT_CODE },
+    update: { name: SET_PRODUCT_NAME },
+    create: {
+      id: generateId(),
+      code: SET_PRODUCT_CODE,
+      name: SET_PRODUCT_NAME,
+      category: ProductCategory.SET,
+      unit: ProductUnit.SET,
+    },
+  });
+
+  // 明細商品（productId）に正準の共通販売単価を用意する（#430。単価はマスタから解決される）。
+  // セット商品（setProductId）は自前の売単価を持てず、構成明細は productId を使うためここで足りる。
+  await ensureCommonSellingPrice(product.id, { yen: FIXTURE_PRODUCT_UNIT_PRICE });
+
+  return {
+    departmentId,
+    employeeId: employee.id,
+    customerId: customer.id,
+    deliveryLocationId: deliveryLocation.id,
+    productId: product.id,
+    setProductId: setProduct.id,
+  };
+}

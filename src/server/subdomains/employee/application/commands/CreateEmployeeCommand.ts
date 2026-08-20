@@ -2,12 +2,15 @@ import type { UserManagementService } from "@server/shared/auth/UserManagementSe
 import type { UserRole } from "@server/shared/auth/types";
 import { MailAddress } from "@server/shared/domain/values/MailAddress";
 import { ValidationError } from "@server/shared/errors/DomainError";
+import { DepartmentId } from "@subdomains/department/domain/values/DepartmentId";
 import { Employee } from "@subdomains/employee/domain/entities/Employee";
 import { EmployeeRepository } from "@subdomains/employee/domain/repositories/EmployeeRepository";
 import { EmployeeCdDuplicationCheckDomainService } from "@subdomains/employee/domain/services/EmployeeCdDuplicationCheckDomainService";
 import { MailAddressDuplicationCheckDomainService } from "@subdomains/employee/domain/services/MailAddressDuplicationCheckDomainService";
 import { EmployeeCd } from "@subdomains/employee/domain/values/EmployeeCd";
 import { EmployeeName } from "@subdomains/employee/domain/values/EmployeeName";
+import { SuperiorRoleKachouTierValidationDomainService } from "@subdomains/role/domain/services/SuperiorRoleKachouTierValidationDomainService";
+import { RoleId } from "@subdomains/role/domain/values/RoleId";
 
 export type CreateEmployeeInput = {
   employeeCd: string;
@@ -19,6 +22,13 @@ export type CreateEmployeeInput = {
   role: UserRole;
   /** 認証用パスワード（better-auth User作成用） */
   password: string;
+  /** 担当役割ID（省略時は役割なし＝課員）。割当先の存在検証は行わず FK に委ねる。 */
+  roleId?: string;
+  /**
+   * 課員の明示上位役割ID（承認起点・ADR-20260707-k4e）。課員のみ有効で課長級に限る。
+   * roleId 指定時は役割から上位役割を導出するため無視する（正規化）。
+   */
+  superiorRoleId?: string;
 };
 
 /**
@@ -32,7 +42,8 @@ export class CreateEmployeeCommand {
     private readonly employeeRepository: EmployeeRepository,
     private readonly employeeCdDuplicationCheckDomainService: EmployeeCdDuplicationCheckDomainService,
     private readonly mailAddressDuplicationCheckDomainService: MailAddressDuplicationCheckDomainService,
-    private readonly userManagementService: UserManagementService
+    private readonly userManagementService: UserManagementService,
+    private readonly superiorRoleKachouTierValidationDomainService: SuperiorRoleKachouTierValidationDomainService
   ) {}
 
   async execute(input: CreateEmployeeInput): Promise<void> {
@@ -53,17 +64,35 @@ export class CreateEmployeeCommand {
     }
 
     const employeeName = new EmployeeName(input.name);
-    const newEmployee = Employee.create(employeeCd, mailAddress, employeeName, input.departmentId);
+    const departmentId = new DepartmentId(input.departmentId);
+    const assignedRoleId = input.roleId ? new RoleId(input.roleId) : null;
+
+    // 上位役割の正規化: 役割持ちは担当役割から導出するため明示値は無視する（I1）。
+    // 課員のときのみ明示上位役割を受け取り、課長級であることを検証する。
+    const explicitSuperiorRoleId =
+      assignedRoleId === null && input.superiorRoleId ? new RoleId(input.superiorRoleId) : null;
+    if (explicitSuperiorRoleId) {
+      await this.superiorRoleKachouTierValidationDomainService.execute(explicitSuperiorRoleId);
+    }
+
+    const newEmployee = Employee.create(
+      employeeCd,
+      mailAddress,
+      employeeName,
+      departmentId,
+      assignedRoleId,
+      explicitSuperiorRoleId
+    );
 
     // Employee を保存
-    await this.employeeRepository.save(newEmployee);
+    await this.employeeRepository.insert(newEmployee);
 
     // 認証ユーザー（User/Account）を作成（roleはUser側で管理）
     const userResult = await this.userManagementService.createUser({
       email: input.email,
       password: input.password,
       name: input.name,
-      employeeId: newEmployee.id,
+      employeeId: newEmployee.id.value,
       role: input.role,
     });
 

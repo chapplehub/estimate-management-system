@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>レッスン 01 — ALS による ambient トランザクション：どこで何をしているか</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+
+<p class="eyebrow">レッスン 01 · 集約またぎトランザクション</p>
+<h1>引数なしで tx を流す</h1>
+<p class="subtitle">AsyncLocalStorage による ambient トランザクションの「どこで・何を」</p>
+
+<p>
+今回 issue-440 で入れたのは、<b>「申請 submit の version bump（見積）＋ 申請挿入」を単一トランザクションで原子化する</b>仕組み（ADR-20260626-dee）。
+狙いは、bump コミット〜insert コミットの間に開く <b>TOCTOU 窓</b>（別バリエーションが二重に前進する隙）を閉じること。
+ここで難しいのは <em>DDD のレイヤー規律</em> を破らずにそれをやる点 — トランザクションは Prisma の概念で、アプリ層・ドメイン層に漏らしたくない。
+その解が <b>AsyncLocalStorage（ALS）による ambient トランザクション伝播</b>です。
+</p>
+
+<div class="note">
+<b>このレッスンのゴール（スキル）：</b> 1本の「集約またぎ原子書き込み」を、コマンド → ポート → アダプタ → ALS → リポジトリ
+と<b>レイヤーを跨いで指でたどれる</b>ようになる。どのファイルがどの責務を持つかを、見ずに言えるようになる。
+</div>
+
+<h2>核心のアイデア</h2>
+<p>
+普通にやるなら、リポジトリのメソッドに <code>tx</code> を引数で渡して回す。だがそれは全シグネチャを汚染し、ドメインインターフェースに Prisma 型が滲み出す。
+ALS は <b>「非同期呼び出しの連鎖に、引数を経由せず暗黙の文脈を流す」</b> Node 標準機構。
+これで <code>tx</code> を箱（ALS）に載せておき、リポジトリは <code>currentClient()</code> でその箱を覗くだけにする。
+</p>
+
+<blockquote>
+ambient（アンビエント）＝「その場の空気に溶けている」。tx を手渡しせず、実行文脈に漂わせて拾わせる、という発想。
+</blockquote>
+
+<h2>6人の登場人物</h2>
+<div class="cast">
+
+  <div class="role">
+    <h3>① TransactionRunner <span class="layer layer-app">app 層・ポート</span></h3>
+    <span class="where">src/server/shared/application/transaction/TransactionRunner.ts</span>
+    <code>run&lt;T&gt;(work)</code> だけのインターフェース。<b>Prisma 型ゼロ</b>。
+    「この work は1単位で原子的」とアプリ層が<em>宣言</em>するための抽象。トランザクションは非業務概念なので
+    ドメイン層ではなく <code>shared/application</code> に置く（ADR-0039 と同型の論法）。
+  </div>
+
+  <div class="role">
+    <h3>② txContext.ts <span class="layer layer-infra">infra 層・ALS の心臓</span></h3>
+    <span class="where">src/server/shared/infrastructure/transaction/txContext.ts</span>
+    <ul>
+      <li><code>als</code> … 「今の tx ハンドル」を載せる箱（<code>AsyncLocalStorage&lt;TransactionClient&gt;</code>）</li>
+      <li><code>currentClient()</code> … ambient tx があればそれ、無ければ global <code>prisma</code>。<b>リポジトリが触る唯一の入口</b></li>
+      <li><code>runInTx(tx, work)</code> … <code>als.run(tx, work)</code>。tx を seed して work を走らせる（Runner が使う）</li>
+      <li><code>runAtomically(work)</code> … <b>join-or-open</b>：ambient があれば相乗り、無ければ自分で <code>$transaction</code></li>
+    </ul>
+  </div>
+
+  <div class="role">
+    <h3>③ PrismaTransactionRunner <span class="layer layer-infra">infra 層・アダプタ</span></h3>
+    <span class="where">src/server/shared/infrastructure/transaction/PrismaTransactionRunner.ts</span>
+    <code>prisma.$transaction((tx) =&gt; runInTx(tx, work))</code> の1行。<code>$transaction</code> を開き、その tx を ALS に seed。
+    DIP：具象（infra）がポート（app）を実装し、ソース依存が infra→app に向く。
+  </div>
+
+  <div class="role">
+    <h3>④ リポジトリ群 <span class="layer layer-infra">infra 層・参加者</span></h3>
+    <span class="where">PrismaEstimateRepository / …ApplicationRepository / …ApprovalExemptionRepository</span>
+    <code>prisma.xxx</code> → <code>currentClient().xxx</code> に総置換。自前 <code>prisma.$transaction</code> していた多文メソッド（<code>update</code>）は
+    <code>runAtomically</code> に。単独でも原子的、Runner 配下では外側に合流する二面性を獲得。
+  </div>
+
+  <div class="role">
+    <h3>⑤ SubmitApplicationCommand <span class="layer layer-app">app 層・利用者</span></h3>
+    <span class="where">src/server/subdomains/estimate/application/commands/SubmitApplicationCommand.ts</span>
+    <code>TransactionRunner</code> を注入（ポートのみに依存）。
+    <code>txRunner.run(async () =&gt; { version 関門(update) → 挿入(insert) })</code> で bump と insert を1 tx に包む。
+    bump 後の挿入失敗は丸ごとロールバック＝無害な version 空振りすら起きない。
+  </div>
+
+  <div class="role">
+    <h3>⑥ ESLint オーバーライド <span class="layer layer-tool">ガードレール</span></h3>
+    <span class="where">eslint.config.mjs（atomicSubmitRepositoryFiles）</span>
+    参加3リポジトリで素の <code>@server/prisma</code> import を<b>追加禁止</b>。
+    うっかり global prisma を使って ambient tx を逃げ、原子性を<em>静かに</em>壊す事故を機械的に防ぐ。
+  </div>
+
+</div>
+
+<h2>1リクエストの流れ</h2>
+<pre><code>SubmitApplicationCommand.execute
+ └─ txRunner.run(work)                      [① app: ポート呼び出し]
+     └─ PrismaTransactionRunner.run         [③ infra: アダプタ]
+         └─ prisma.$transaction((tx) =&gt;
+              runInTx(tx, work))             [② infra: als.run で tx を seed]
+               └─ work 実行中は als.getStore() === tx
+                    ├─ estimateRepository.update(...)    → currentClient() = tx
+                    └─ applicationRepository.insert(...) → currentClient() = tx
+              （同一 tx で両方が走る／throw で全部ロールバック）</code></pre>
+
+<p>
+肝は <code>update</code> も <code>insert</code> も <b>引数で tx を受け取っていない</b>こと。ALS が非同期連鎖を構造的に隔離するため、
+可変ホルダ（ClientManager 方式）が抱えるリクエストスコープ規律やシングルトン化の罠なしに<b>並行安全</b>になる。
+</p>
+
+<div class="note ok">
+<b>なぜ join-or-open（④の runAtomically）が要るのか：</b> リポジトリの <code>update</code> は単独でも呼ばれる（他のユースケース）。
+そのとき ambient が無ければ自分でトランザクションを開いて原子性を守り、ある（＝submit 配下）ときは外側に相乗りする。
+1つの関数で「単独でも安全・合流もできる」を両立させている。
+</div>
+
+<h2 id="recall">想起練習</h2>
+<p class="recall">答えを開く前に、声に出して言ってみること（fluency ではなく storage strength を作るため）。</p>
+<div class="recall">
+  <details>
+    <summary>1. リポジトリが tx を拾う「唯一の入口」の関数名は？ そのファイルは？</summary>
+    <code>currentClient()</code>。<code>txContext.ts</code>。ambient tx があればそれ、無ければ global prisma を返す。
+  </details>
+  <details>
+    <summary>2. tx を ALS に「seed」しているのはどの行か？</summary>
+    <code>PrismaTransactionRunner</code> の <code>prisma.$transaction((tx) =&gt; runInTx(tx, work))</code>。
+    <code>runInTx</code> の実体は <code>als.run(tx, work)</code>。
+  </details>
+  <details>
+    <summary>3. TransactionRunner をドメイン層ではなく shared/application に置いた理由は？</summary>
+    トランザクションは非ドメイン（非業務）概念だから。version=非業務概念ゆえアプリ層に置いた ADR-0039 と同型の論法。
+  </details>
+  <details>
+    <summary>4. ESLint で素 prisma import を禁止したのは何を防ぐためか？</summary>
+    global prisma を使うと ambient tx を逃げ、bump+insert の原子性を<em>静かに</em>壊すため。currentClient()/runAtomically 経由を強制する。
+  </details>
+</div>
+
+<div class="source">
+<p class="eyebrow">まず読むべき一次資料</p>
+<p>
+<a href="https://nodejs.org/api/async_context.html">Node.js 公式：Asynchronous context tracking（<code>AsyncLocalStorage</code>）</a>
+— <code>als.run(store, callback)</code> と <code>als.getStore()</code> の正確な意味論、なぜ非同期連鎖をまたいで文脈が保たれるのかを、まず一次情報で押さえる。
+</p>
+</div>
+
+<p class="teacher">
+分からない箇所があれば、いつでも教師（このエージェント）に質問してください。<br>
+「もし2つの submit が同時に来たら ALS の箱はどう分離される？」のような踏み込んだ問いも歓迎です。
+</p>
+
+<footer>
+関連：<a href="../reference/transaction-architecture.html">リファレンス：トランザクション構成の地図</a> ·
+ADR-20260626-dee（atomic submit）· ADR-0068（version 関門）· ADR-0039（version=非業務概念）
+</footer>
+
+</body>
+</html>

@@ -1876,17 +1876,30 @@ describe("Email", () => {
 - `it()` を使用する（`test()` は使わない）
 - `describe()` の第一引数はクラス名のみ（例: `describe("Employee", ...)`）
 - テスト記述はすべて日本語（例: `it("従業員を新規登録できる", ...)`）
-- エラーテストはエラー型のみ検証する（メッセージ文言は検証しない）
+- エラーの発生源では**型 + ハードコード文字列**でメッセージもテストする
+- バブルアップするエラー（下位層で発生し上位層に伝播するだけのもの）はテスト不要
 
 ```typescript
-// ✅ Good
+// ✅ Good - 発生源で型 + メッセージの両方を検証
 it("社員コードが重複している場合エラー", async () => {
-  await expect(command.execute(input)).rejects.toThrow(DuplicationError);
+  await expect(command.execute(input)).rejects.toThrow(ValidationError);
+  await expect(command.execute(input)).rejects.toThrow("既に存在する従業員CDです");
 });
 
-// ❌ Bad - メッセージを検証している
+// ✅ Good - VOの発生源でメッセージを検証
+it("空文字列はエラー", () => {
+  expect(() => new EmployeeCd("")).toThrow(ValidationError);
+  expect(() => new EmployeeCd("")).toThrow("社員コードは必須です");
+});
+
+// ❌ Bad - 発生源なのにメッセージを検証していない
 it("社員コードが重複している場合エラー", async () => {
-  await expect(command.execute(input)).rejects.toThrow("社員コードが重複しています");
+  await expect(command.execute(input)).rejects.toThrow(ValidationError);
+});
+
+// ❌ Bad - 共有定数を使ってメッセージを検証（テストが実装に結合する）
+it("空文字列はエラー", () => {
+  expect(() => new EmployeeCd("")).toThrow(EmployeeCd.ERROR_MESSAGES.REQUIRED);
 });
 ```
 

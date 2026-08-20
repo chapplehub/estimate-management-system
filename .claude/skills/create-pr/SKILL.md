@@ -1,6 +1,6 @@
 ---
 name: create-pr
-description: GitHub PRを作成する。Use when PRの作成、プルリクエストの作成を依頼されたとき。実装振り返りレポート付きで作成する。
+description: GitHub PRを高速に作成する。Use when PRを作成・プルリクエストを作成したいとき。plan/逸脱は実ファイルをそのまま埋め込み、モデルはSummaryのみ生成する。設計判断のADR起票チェックや振り返りレポートまで含めて締めたいときは finalize-work を使う。
 user-invocable: true
 context: fork
 ---
@@ -8,128 +8,100 @@ context: fork
 # プロンプト内容
 
 あなたは GitHub PR 作成の専門家です。
-#$ARGUMENTS について振り返りレポート付きの PR を作成してください。
+#$ARGUMENTS について PR を**最小手数**で作成してください。
 
-## ステップ 1: 対象 issue の特定
+このスキルは最小手数でのPR作成に特化しています（ADR起票チェックや振り返りレポートまで含めて締めたい場合は `finalize-work` を使う）。速度のため次の方針を厳守すること:
 
-`$ARGUMENTS` から issue 番号を特定する。
+- **plan・逸脱記録はモデルで再出力しない**。実ファイルを `cat` で `--body-file` に流し込む
+- **モデルが生成するのは Summary（1〜3行）のみ**
+- 設計判断の ADR 起票チェックは**行わない**
+- `commit-types.md` は**読まない**（接頭辞は恒等写像で解決する）
+- Test Plan セクションは**出力しない**
 
-- `#123` や `123` のような番号が含まれていればそれを使う
-- 番号がない場合はブランチ名（`feat/issue-87` など）から issue 番号を抽出する
-- どちらでも特定できない場合はエラーとして処理を終了し、理由を返す
+## ステップ 1: コンテキストを1回のコマンドで収集
 
-```bash
-gh issue view {番号}
-```
-
-- issue のタイトル・本文を取得して後続ステップで使用する
-
-## ステップ 2: 実装コンテキストの収集
-
-以下の情報を収集する。
-
-### コミット履歴
+以下を **1回の bash 呼び出し**でまとめて取得する（ターン数を減らすため個別実行しない）。
 
 ```bash
-git log --oneline develop..HEAD
+BRANCH=$(git branch --show-current)
+ISSUE=$(echo "$BRANCH" | grep -oE 'issue-[0-9]+' | grep -oE '[0-9]+')
+# $ARGUMENTS に #123 / 123 が含まれる場合はそちらを優先して ISSUE に採用する
+echo "=== branch ==="; echo "$BRANCH"
+echo "=== issue ==="; echo "$ISSUE"
+echo "=== issue detail ==="; gh issue view "$ISSUE" 2>/dev/null | head -40
+echo "=== commits ==="; git log --oneline develop..HEAD
+echo "=== changed files ==="; git diff develop..HEAD --stat
+echo "=== plan files ==="; ls -1 docs/claude-plans/issue-$ISSUE/*.md 2>/dev/null
 ```
 
-### 変更ファイル一覧
+- issue 番号が `$ARGUMENTS`・ブランチ名のどちらからも取れない場合はエラー終了し理由を返す
+- 出力から issue タイトル・コミット履歴を把握し、後続で使う
 
-```bash
-git diff develop..HEAD --stat
-```
-
-### 実装計画・逸脱記録
-
-`.claude/settings.local.json` を読み、`plansDirectory` の値を取得する。
-
-1. `plansDirectory` が設定されていて、ディレクトリ内に `.md` ファイルがある場合:
-   - `deviations.md` 以外の `.md` ファイルを全て **planファイル** として読み取る
-   - `deviations.md` があれば **逸脱記録** として読み取る
-2. 未設定 or ディレクトリが空 → 計画なしとして扱う
-
-## ステップ 3: PR タイトル生成
+## ステップ 2: タイトル決定（読み取り不要）
 
 優先順位:
 
-1. `$ARGUMENTS` に明示的なタイトルがあればそれを使用
-2. ブランチ接頭辞 + issue タイトルから生成する
+1. `$ARGUMENTS` に明示タイトルがあればそれを使用
+2. ブランチ接頭辞をそのまま接頭辞に使う（`feat/`→`feat:`, `fix/`→`fix:`, `docs/`→`docs:` … すべて恒等写像）＋ issue タイトル
 
-ブランチ接頭辞マッピング:
+例: ブランチ `feat/issue-87` + issue「振り返りレポート付きPR作成スキル」→ `feat: 振り返りレポート付きPR作成スキル`
 
-| ブランチ接頭辞 | タイトル接頭辞 |
-|---------------|---------------|
-| `feat/` | `feat:` |
-| `fix/` | `fix:` |
-| `docs/` | `docs:` |
-| `refactor/` | `refactor:` |
+## ステップ 3: body 構築 → push → PR 作成（1回のコマンド）
 
-例: ブランチ `feat/issue-87` + issue タイトル「振り返りレポート付きPR作成スキル」→ `feat: 振り返りレポート付きPR作成スキル`
+Summary だけをモデルが書き、plan/逸脱は `cat` で埋め込む。
+`<<'SUMMARY_EOF'` は**クォート付きヒアドキュメント**なので `` ` `` や `$` を含んでも安全（区切り行 `SUMMARY_EOF` 自体だけは Summary 本文に書かないこと）。
 
-## ステップ 4: PR description 生成
+以下のテンプレートの `{...}` を埋めて **1回の bash 呼び出し**で実行する:
 
-以下のテンプレートに沿って PR description を生成する。
-条件に応じてセクションの出力を制御すること。
+```bash
+set -e
+ISSUE={issue_number}
+BRANCH=$(git branch --show-current)
+PLAN_DIR="docs/claude-plans/issue-$ISSUE"
+BODY=$(mktemp)
 
-```markdown
+# --- Summary（モデルが1〜3行で記述） ---
+cat > "$BODY" <<'SUMMARY_EOF'
 ## Summary
 
-(コミット履歴と issue 内容から1-3行の概要を記述)
+{コミット履歴とissue内容から1〜3行の概要}
 
 Closes #{issue_number}
+SUMMARY_EOF
 
-## 実装計画
+# --- 実装計画（deviations.md 以外の .md をそのまま埋め込む） ---
+PLANS=$(ls -1 "$PLAN_DIR"/*.md 2>/dev/null | grep -v '/deviations\.md$' || true)
+if [ -n "$PLANS" ]; then
+  {
+    printf '\n## 実装計画\n\n<details>\n<summary>plan mode で作成した実装計画（クリックで展開）</summary>\n\n'
+    for f in $PLANS; do
+      printf '### %s\n\n' "$(basename "$f")"
+      cat "$f"
+      printf '\n'
+    done
+    printf '</details>\n'
+  } >> "$BODY"
+fi
 
-<details>
-<summary>plan mode で作成した実装計画（クリックで展開）</summary>
+# --- 計画からの逸脱（deviations.md をそのまま埋め込む） ---
+if [ -f "$PLAN_DIR/deviations.md" ]; then
+  { printf '\n## 計画からの逸脱\n\n'; cat "$PLAN_DIR/deviations.md"; printf '\n'; } >> "$BODY"
+elif [ -n "$PLANS" ]; then
+  printf '\n## 計画からの逸脱\n\n計画通りに実装が完了しました。特筆すべき逸脱はありません。\n' >> "$BODY"
+fi
 
-（plansDirectory 内の plan ファイルの内容）
-（複数ファイルがある場合はファイル名を見出しにして掲載）
+# --- footer ---
+printf '\n---\n\nGenerated with [Claude Code](https://claude.ai/code)\n' >> "$BODY"
 
-</details>
-
-※計画ファイルが存在しない場合はこのセクション自体を省略
-
-## 計画からの逸脱
-
-（plansDirectory/deviations.md の内容を整理して記述）
-
-※逸脱記録がなく計画がある場合:
-「計画通りに実装が完了しました。特筆すべき逸脱はありません。」
-
-※計画も逸脱記録もない場合:
-「実装計画なしで実装を行いました。」
-
-## Test Plan
-
-(テスト関連のコミットや変更ファイルからテスト方針をまとめる)
-
-- [ ] テスト項目
-
----
-
-Generated with [Claude Code](https://claude.ai/code)
+# --- push & PR 作成 ---
+git push -u origin "$BRANCH"
+gh pr create --base develop --title "{title}" --body-file "$BODY"
 ```
 
-- Summary はコミット履歴と issue 内容を元に簡潔にまとめる
-- 実装計画は `<details>` で折りたたんでレビュアーが必要に応じて展開できるようにする
-- 計画からの逸脱は逸脱記録を開発者が読みやすい形に整理する
-- Test Plan はテスト関連の変更から自動生成し、不足があれば追記する
+- base は必ず `develop`（CLAUDE.md 規約）
+- `$ARGUMENTS` に `--draft` があれば `gh pr create` に `--draft` を付与する
+- plan も deviations も無い場合は「実装計画」「計画からの逸脱」セクションは出力されない（それでよい）
 
-## ステップ 5: Push & PR 作成（確認不要）
-
-```bash
-git push -u origin {current_branch}
-```
-
-```bash
-gh pr create --base develop --title "{title}" --body "{body}"
-```
-
-- base は必ず `develop`（CLAUDE.md の規約）
-- `$ARGUMENTS` に `--draft` が含まれている場合は `gh pr create --draft` フラグを使用する
-
-## ステップ 6: 結果を返す
+## ステップ 4: 結果を返す
 
 - 作成した PR の番号と URL を簡潔に返す

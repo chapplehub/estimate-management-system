@@ -40,3 +40,16 @@ export class NotFoundEntityError extends ApplicationError {
     super(`${entityName}が見つかりません: ${identifierStr}`);
   }
 }
+
+/**
+ * 一意制約衝突など、リソースの競合により処理を完了できないエラー。
+ *
+ * 並行作成で同一の一意キー（例: 見積番号）が衝突した場合などに用いる。
+ * インフラ層の一意制約違反（Prisma P2002 等）をアプリ層の語彙へ翻訳し、
+ * プレゼンテーション層では「再試行可能な競合（409 Conflict 相当）」として扱う。
+ */
+export class ConflictError extends ApplicationError {
+  constructor(message: string) {
+    super(message);
+  }
+}

@@ -1,7 +1,7 @@
 ---
 name: testing-backend
 description: バックエンドテスト作成パターン。Use when Domain層・Application層のテスト作成時に使用。Value Object, Entity, Domain Service, Command, Query のテスト規約とパターンを提供
-user-invokable: true
+user-invocable: true
 ---
 
 # Backend Testing Patterns
@@ -38,18 +38,31 @@ application/queries/__tests__/CountEmployeesQuery.test.ts
 - `it()` を使用する（`test()` は使わない）
 - `describe()` の第一引数はクラス名のみ（例: `describe("EmployeeCd", ...)`）
 - テスト記述はすべて日本語
-- エラーテストはエラー**型のみ**検証する（メッセージは検証しない）
+- エラーの発生源では**型 + ハードコード文字列**でメッセージもテストする
+- バブルアップするエラー（下位層で発生し上位層に伝播するだけのもの）はテスト不要
 - AAA パターン（Arrange-Act-Assert）を基本とする
 
 ```typescript
-// ✅ Good
+// ✅ Good - 発生源で型 + メッセージの両方を検証
 it("社員コードが重複している場合エラー", async () => {
-  await expect(command.execute(input)).rejects.toThrow(DuplicationError);
+  await expect(command.execute(input)).rejects.toThrow(ValidationError);
+  await expect(command.execute(input)).rejects.toThrow("既に存在する従業員CDです");
 });
 
-// ❌ Bad - メッセージを検証
+// ✅ Good - VOの発生源でメッセージを検証
+it("空文字列はエラー", () => {
+  expect(() => new EmployeeCd("")).toThrow(ValidationError);
+  expect(() => new EmployeeCd("")).toThrow("社員コードは必須です");
+});
+
+// ❌ Bad - 発生源なのにメッセージを検証していない
 it("社員コードが重複している場合エラー", async () => {
-  await expect(command.execute(input)).rejects.toThrow("社員コードが重複しています");
+  await expect(command.execute(input)).rejects.toThrow(ValidationError);
+});
+
+// ❌ Bad - 共有定数を使ってメッセージを検証（テストが実装に結合する）
+it("空文字列はエラー", () => {
+  expect(() => new EmployeeCd("")).toThrow(EmployeeCd.ERROR_MESSAGES.REQUIRED);
 });
 ```
 
@@ -57,6 +70,23 @@ it("社員コードが重複している場合エラー", async () => {
 
 - cleanup 条件とテスト本体の両方で使う値（`employeeCd`, `departmentId` 等）は必ず定数化する
 - テスト本体でしか使わない値（`email`, `name` 等）はインラインで可
+
+### ユニーク制約列はファイル別プレフィックス必須
+
+DB を叩くテストでは、**ユニーク制約を持つ全ての列**（コード系に限らず `product.name` のような名称列も）に、テストファイル固有のプレフィックスを付ける。
+
+- vitest はテストファイルを並列実行し、全ワーカーが同一のテスト DB を共有する
+- 各ファイルのクリーンアップは自ファイルのキーでしか削除できないため、ファイル間で同じ値を使うと並列実行のタイミング次第で P2002（unique constraint failed）が発生する flaky テストになる（実例: #327）
+- プレフィックスは TEST_CODES のコード体系と揃える（例: `UPDPD998` のファイルなら `UPD競合テスト商品`）
+- 対象列はスキーマの `@unique` / `@@unique` で確認する。インメモリ単体テスト（VO・Entity）は対象外
+
+```typescript
+// ✅ Good - ファイル別プレフィックスで他ファイルと衝突しない
+new ProductName("UPD競合テスト商品");
+
+// ❌ Bad - 複数ファイルで同名を使うと並列実行で P2002 になりうる
+new ProductName("競合テスト商品");
+```
 
 ### パスエイリアス
 
@@ -96,10 +126,14 @@ describe("EmployeeCd", () => {
   describe("異常系", () => {
     it("空文字列の場合はエラー", () => {
       expect(() => new EmployeeCd("")).toThrow(ValidationError);
+      expect(() => new EmployeeCd("")).toThrow("社員コードは必須です");
     });
 
     it("形式が不正な場合はエラー", () => {
       expect(() => new EmployeeCd("INVALID")).toThrow(ValidationError);
+      expect(() => new EmployeeCd("INVALID")).toThrow(
+        "社員コードは EMP + 6桁の数字である必要があります"
+      );
     });
   });
 });

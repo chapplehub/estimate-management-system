@@ -1,0 +1,23 @@
+# フルスイート: 全テストを実行する（import グラフで絞らない）
+# 変更分だけの高速チェックは pre-commit（vitest related）で実施済み
+
+# push されるコミット範囲を特定する
+# upstream 未設定（新規ブランチの初回 push）なら origin/develop を基準にする
+BASE=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || echo "origin/develop")
+
+# その範囲でコードファイルが変更されているかを判定（pre-commit と同じ正規表現）
+CHANGED_FILES=$(git diff --name-only --diff-filter=ACMR "$BASE"...HEAD)
+CODE_FILES=$(echo "$CHANGED_FILES" | grep -E '^(src/|prisma/|[^/]*\.(ts|js|mjs|tsx|jsx)$)' || true)
+
+if [ -z "$CODE_FILES" ]; then
+  echo "📝 No code changes in push range. Skipping tsc and full test suite."
+  exit 0
+fi
+
+# 全体型チェック → フルスイート（どちらも全プログラム検査なのでここに集約）
+# 裸の tsc ではなく pnpm typecheck（= next typegen && tsc --noEmit）を呼ぶ。
+# next-env.d.ts と .next/types/ は .gitignore された生成物なので、clean clone や
+# rm -rf .next/（E2E のトラブルシュートで実行する）の直後は裸の tsc が TS2307 で落ちる。
+# CI の static ジョブと同じスクリプトを共有し、ローカル緑 / CI 赤の乖離を作らない（#643）
+pnpm typecheck
+tsx prisma/seed-unit.ts && vitest run

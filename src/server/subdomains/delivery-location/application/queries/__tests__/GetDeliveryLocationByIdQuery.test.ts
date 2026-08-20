@@ -1,15 +1,13 @@
-import { createId } from "@paralleldrive/cuid2";
+import { generateId } from "@server/shared/generateId";
 import prisma from "@server/prisma";
-import { CompanyType } from "@generated/prisma/client";
 import { PrismaDeliveryLocationQueryService } from "@subdomains/delivery-location/infrastructure/queries/PrismaDeliveryLocationQueryService";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { GetDeliveryLocationByIdQuery } from "../GetDeliveryLocationByIdQuery";
 
 describe("GetDeliveryLocationByIdQuery", () => {
   let query: GetDeliveryLocationByIdQuery;
-  const testCompanyIds: string[] = [];
+  const testDeliveryLocationIds: string[] = [];
   let testCustomerId: string;
-  let customerCompanyId: string;
 
   const DL_TEST_CODES = ["DL999921"];
   const CUSTOMER_TEST_CODE = "CUST999941";
@@ -19,60 +17,42 @@ describe("GetDeliveryLocationByIdQuery", () => {
     name: string;
     deliveryNotes?: string;
   }) {
-    const companyId = createId();
-    const dlId = createId();
-
-    await prisma.company.create({
-      data: {
-        id: companyId,
-        code: data.code,
-        name: data.name,
-        type: CompanyType.DELIVERY_LOCATION,
-        isActive: true,
-      },
-    });
+    const dlId = generateId();
 
     await prisma.deliveryLocation.create({
       data: {
         id: dlId,
-        companyId,
+        code: data.code,
+        name: data.name,
+        isActive: true,
         customerId: testCustomerId,
         deliveryNotes: data.deliveryNotes ?? null,
       },
     });
 
-    testCompanyIds.push(companyId);
-    return { companyId, dlId };
+    testDeliveryLocationIds.push(dlId);
+    return { dlId };
   }
 
   beforeEach(async () => {
-    testCompanyIds.length = 0;
+    testDeliveryLocationIds.length = 0;
 
-    await prisma.company.deleteMany({
+    await prisma.deliveryLocation.deleteMany({
       where: { code: { in: DL_TEST_CODES } },
     });
-    await prisma.company.deleteMany({
+    await prisma.customer.deleteMany({
       where: { code: CUSTOMER_TEST_CODE },
     });
 
     // テスト用得意先をDB直接投入
-    customerCompanyId = createId();
-    testCustomerId = createId();
-
-    await prisma.company.create({
-      data: {
-        id: customerCompanyId,
-        code: CUSTOMER_TEST_CODE,
-        name: "DLクエリテスト用得意先",
-        type: CompanyType.CUSTOMER,
-        isActive: true,
-      },
-    });
+    testCustomerId = generateId();
 
     await prisma.customer.create({
       data: {
         id: testCustomerId,
-        companyId: customerCompanyId,
+        code: CUSTOMER_TEST_CODE,
+        name: "DLクエリテスト用得意先",
+        isActive: true,
       },
     });
 
@@ -80,12 +60,12 @@ describe("GetDeliveryLocationByIdQuery", () => {
   });
 
   afterEach(async () => {
-    if (testCompanyIds.length > 0) {
-      await prisma.company.deleteMany({
-        where: { id: { in: testCompanyIds } },
+    if (testDeliveryLocationIds.length > 0) {
+      await prisma.deliveryLocation.deleteMany({
+        where: { id: { in: testDeliveryLocationIds } },
       });
     }
-    await prisma.company.deleteMany({
+    await prisma.customer.deleteMany({
       where: { code: CUSTOMER_TEST_CODE },
     });
   });
@@ -106,7 +86,7 @@ describe("GetDeliveryLocationByIdQuery", () => {
   });
 
   it("存在しないIDの場合は null を返す", async () => {
-    const result = await query.execute({ id: "non-existent-id" });
+    const result = await query.execute({ id: "00000000-0000-7000-8000-000000000000" });
 
     expect(result).toBeNull();
   });

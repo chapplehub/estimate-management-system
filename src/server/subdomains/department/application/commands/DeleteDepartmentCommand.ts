@@ -1,10 +1,13 @@
 import { Department } from "@subdomains/department/domain/entities/Department";
 import { DepartmentRepository } from "@subdomains/department/domain/repositories/DepartmentRepository";
+import { DepartmentId } from "@subdomains/department/domain/values/DepartmentId";
 import { BusinessRuleViolationError } from "@server/shared/errors/DomainError";
 import { NotFoundEntityError } from "@server/shared/errors/ApplicationError";
 
 export type DeleteDepartmentInput = {
   id: string;
+  /** 削除画面表示時の version（楽観ロックトークン / ADR-0039）。リポジトリへ素通しする。 */
+  expectedVersion: number;
 };
 
 /**
@@ -17,13 +20,14 @@ export class DeleteDepartmentCommand {
   public constructor(private readonly departmentRepository: DepartmentRepository) {}
 
   async execute(input: DeleteDepartmentInput): Promise<void> {
-    const department = await this.departmentRepository.findById(input.id);
+    const departmentId = new DepartmentId(input.id);
+    const department = await this.departmentRepository.findById(departmentId);
     if (!department) {
       throw new NotFoundEntityError(Department, { id: input.id });
     }
 
     // 子部署がある場合は削除できない
-    const children = await this.departmentRepository.findChildren(input.id);
+    const children = await this.departmentRepository.findChildren(departmentId);
     if (children.length > 0) {
       throw new BusinessRuleViolationError(
         "子部署が存在するため、この部署を削除できません。先に子部署を削除してください。"
@@ -34,6 +38,6 @@ export class DeleteDepartmentCommand {
     // 従業員側のドメインサービスまたはアプリケーションサービスで実装する
     // ここでは部署ドメイン内で完結する制約のみをチェック
 
-    await this.departmentRepository.delete(input.id);
+    await this.departmentRepository.delete(departmentId, input.expectedVersion);
   }
 }

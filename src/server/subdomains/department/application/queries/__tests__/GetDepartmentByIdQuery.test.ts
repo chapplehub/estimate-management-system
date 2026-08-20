@@ -1,4 +1,4 @@
-import { createId } from "@paralleldrive/cuid2";
+import { generateId } from "@server/shared/generateId";
 import prisma from "@server/prisma";
 import { PrismaDepartmentQueryService } from "@subdomains/department/infrastructure/queries/PrismaDepartmentQueryService";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -17,7 +17,7 @@ describe("GetDepartmentByIdQuery", () => {
     isActive?: boolean;
     parentId?: string | null;
   }): Promise<string> {
-    const id = createId();
+    const id = generateId();
     await prisma.department.create({ data: { id, ...data } });
     testDepartmentIds.push(id);
     return id;
@@ -62,7 +62,7 @@ describe("GetDepartmentByIdQuery", () => {
   });
 
   it("存在しないIDの場合nullを返す", async () => {
-    const result = await query.execute({ id: "non-existent-id" });
+    const result = await query.execute({ id: "00000000-0000-7000-8000-000000000000" });
     expect(result).toBeNull();
   });
 });

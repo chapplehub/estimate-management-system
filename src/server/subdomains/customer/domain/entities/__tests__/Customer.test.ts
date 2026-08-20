@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Customer } from "../Customer";
 import { CompanyCode } from "@server/shared/domain/values/CompanyCode";
 import { CompanyName } from "@server/shared/domain/values/CompanyName";
-import { MarginRate } from "@subdomains/customer/domain/values/MarginRate";
+import { CustomerId } from "@subdomains/customer/domain/values/CustomerId";
 import { PostalCode } from "@server/shared/domain/values/PostalCode";
 import { Prefecture } from "@server/shared/domain/values/Prefecture";
 import { Address } from "@server/shared/domain/values/Address";
@@ -11,9 +11,7 @@ import { FaxNumber } from "@server/shared/domain/values/FaxNumber";
 
 describe("Customer Entity", () => {
   const createTestCustomer = () =>
-    Customer.create(new CompanyCode("CUST001"), new CompanyName("株式会社テスト"), {
-      marginRate: new MarginRate(10),
-    });
+    Customer.create(new CompanyCode("CUST001"), new CompanyName("株式会社テスト"));
 
   describe("create", () => {
     it("必須項目のみで得意先を作成できる", () => {
@@ -23,12 +21,9 @@ describe("Customer Entity", () => {
       );
 
       expect(customer.id).toBeTruthy();
-      expect(customer.companyId).toBeTruthy();
-      expect(customer.id).not.toBe(customer.companyId);
       expect(customer.code.value).toBe("CUST001");
       expect(customer.name.value).toBe("株式会社テスト");
       expect(customer.isActive).toBe(true);
-      expect(customer.marginRate).toBeNull();
       expect(customer.postalCode).toBeNull();
     });
 
@@ -40,7 +35,6 @@ describe("Customer Entity", () => {
         phoneNumber: new PhoneNumber("0312345678"),
         faxNumber: new FaxNumber("0312345679"),
         contactPerson: "田中太郎",
-        marginRate: new MarginRate(15.5),
       });
 
       expect(customer.postalCode?.value).toBe("1234567");
@@ -49,16 +43,15 @@ describe("Customer Entity", () => {
       expect(customer.phoneNumber?.value).toBe("0312345678");
       expect(customer.faxNumber?.value).toBe("0312345679");
       expect(customer.contactPerson).toBe("田中太郎");
-      expect(customer.marginRate?.value).toBe(15.5);
     });
   });
 
   describe("reconstruct", () => {
     it("DBからの再構築が正しく動作する", () => {
       const now = new Date();
+      const id = CustomerId.generate();
       const customer = Customer.reconstruct(
-        "test-id",
-        "test-company-id",
+        id,
         new CompanyCode("CUST001"),
         new CompanyName("株式会社テスト"),
         null,
@@ -68,13 +61,11 @@ describe("Customer Entity", () => {
         null,
         null,
         true,
-        new MarginRate(10),
         now,
         now
       );
 
-      expect(customer.id).toBe("test-id");
-      expect(customer.companyId).toBe("test-company-id");
+      expect(customer.id.value).toBe(id.value);
       expect(customer.createdAt).toBe(now);
     });
   });
@@ -130,24 +121,6 @@ describe("Customer Entity", () => {
       expect(customer.phoneNumber?.value).toBe("0612345678");
       expect(customer.faxNumber?.value).toBe("0612345679");
       expect(customer.contactPerson).toBe("佐藤花子");
-    });
-  });
-
-  describe("changeMarginRate", () => {
-    it("マージン率を変更できる", () => {
-      const customer = createTestCustomer();
-
-      customer.changeMarginRate(new MarginRate(20));
-
-      expect(customer.marginRate?.value).toBe(20);
-    });
-
-    it("マージン率をnullにクリアできる", () => {
-      const customer = createTestCustomer();
-
-      customer.changeMarginRate(null);
-
-      expect(customer.marginRate).toBeNull();
     });
   });
 
