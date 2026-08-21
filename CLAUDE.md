@@ -1,32 +1,33 @@
 # CLAUDE.md
 
+> このファイルには**規範**（知らないと逸脱するもの）だけを書く。
+> 手順は `README.md` / `docs/` へ、詳細仕様は `.claude/references/` へ置き、ここからはポインタで指す。
+
 ## Major premise
 
 常に日本語で対話すること
 
 ## Git Branch Strategy
 
-- defalut branch: `develop`
+- default branch: `develop`
 - branch naming rule: `feat/issue-{number}`, `fix/issue-{number}`, `docs/issue-{number}`
+- worktree の運用ルール: `docs/git-worktree-rule.md`
 
 ## Git Hooks (husky)
 
 コミット・プッシュ時に husky が自動でチェックを走らせる。エージェントはこのコストを前提にコミット単位を設計すること。
 
-- **pre-commit**: `lint-staged`（eslint --fix + prettier --write）→ staged コードの**関連テストのみ** `vitest related` を実行。`src/`・`prisma/`・ルートの `.ts/js/mjs/tsx/jsx` が staged された時だけ走り、docs のみのコミットはスキップされる。
-  - → **各コミットは関連テストが緑になる単位で区切る**こと。テストが割れる中間状態でコミットしない。
-- **commit-msg**: `commitlint` で type を検証（許可 type は `.claude/references/commit-types.md`）。
-- **pre-push**: `tsc --noEmit`（全体型チェック）+ `vitest run`（フルスイート）。個別コミットでは型全体・全テストは担保されない点に注意。
-- フックを無効化（`--no-verify`）してコミット／プッシュしないこと。
+- **各コミットは関連テストが緑になる単位で区切る**こと。テストが割れる中間状態でコミットしない
+- フックを無効化（`--no-verify`）してコミット／プッシュしないこと
+- `git push` は pre-push のフルスイート（約 135 秒）で既定のタイムアウトを超える。`timeout` を長めに指定すること
+- 各フックが何を実行するか: `.claude/references/git-hooks.md`
 
 ## Commit Rule
 
 - **Commit at each meaningful change**: コードの編集・追加をしたら、意味のあるまとまりの時点でコミットする。一括実装してまとめてコミットしない。
 - **Record design decisions in commit body**: コミット対象に設計判断（実装方式の選択、レイヤー配置、データ構造の決定など）が含まれる場合、その判断理由をコミットボディに記載する。
-  - 例: 「バリデーションをドメイン層ではなくアプリケーション層に配置。理由: 外部API依存のチェックを含むため」
-  - 例: 「Mapではなく配列で管理。理由: 要素数が常に少なく、順序保証が必要なため」
 - **Record deviations from plan**: 実装中に計画と異なる対応をした場合、作業完了時に `docs/claude-plans/issue-{number}/deviations.md` に{元の計画内容}、{実際の実装内容}、{逸脱の理由}を記録すること。
-- Commit types: `.claude/references/commit-types.md` を参照
+- Commit type の一覧とメッセージの書き方: `.claude/references/commit-types.md`
 
 ## Critical: DDD Layering Rules
 
@@ -45,25 +46,11 @@
 - プロダクション構成のローカル検証: 作業前に `docs/ops/prod-docker-local.md` を読むこと
 - 公開デモ環境の初期データ投入: 実行前に `docs/ops/demo-seed.md` を**必ず読むこと**。seed は全テーブルを `deleteMany` する**破壊的操作**であり、既存データは残らない
 
-## Unit Tests
+## Tests
 
-単体テスト（vitest）は開発DBと分離した専用DB（`.env.unit` の `DATABASE_URL`）を使う（Issue #584）。
+開発DB・単体テストDB・E2EテストDB は**すべて別DB**。セットアップと実行方法は `docs/testing.md`。
 
-```bash
-pnpm test:setup   # 単体テスト用DB初期化（DB作成 → migrate deploy → 正準マスタseed投入）。初回・schema変更時に実行
-pnpm test         # 正準マスタ再シード + 単体テスト実行
-```
-
-- 初回は `cp .env.unit.example .env.unit` で env を用意してから `pnpm test:setup` を実行する
-- seed（`prisma/seed-unit.ts`）は正準マスタ（役職・役割・消費税率）のみ。シナリオデータは各テストが自前生成する
-
-## E2E Tests
-
-```bash
-pnpm e2e          # テストデータ再シード + E2Eテスト実行
-pnpm e2e:setup    # テストDB初期化
-pnpm e2e:seed     # テストデータ再シード
-```
-
-- CRUDテストは `test.describe.serial` で直列化（create→update→delete）
-- テスト内でPrismaクライアントを直接使わない（技術制約: ADR-0012参照）
+- **ローカルで E2E 全体を回さない**こと。変更に関係するスペックのみ実行し、全体は CI に任せる
+- E2E テスト内で Prisma クライアントを直接使わないこと（技術制約: ADR-0012）
+- CRUD の E2E は `test.describe.serial` で直列化する（create→update→delete）
+- テストを書く順序（TDD / 実装後 / 不要）の判断: `.claude/references/test-strategy.md`
