@@ -23,7 +23,9 @@ const prisma = new PrismaClient({ adapter });
 // NOTE: この seed は開発環境と公開デモ環境で共用する（ADR-20260821-4f1）。共用にあたり
 // 持ち込んでよいのは「値の外出し」までで、環境による挙動分岐（本番かどうかで処理を変える）は
 // 持ち込まない。既定値を据え置いているため env 未設定の開発環境では従来と同一の挙動になる。
-const DEFAULT_PASSWORD = process.env.SEED_DEFAULT_PASSWORD ?? "pass123!";
+// ?? ではなく || で判定するのは、env ファイルに空値（KEY=）が書かれた場合も未設定として
+// 扱うため（?? だと空パスワードや件数 0 がそのまま採用されてしまう）。
+const DEFAULT_PASSWORD = process.env.SEED_DEFAULT_PASSWORD || "pass123!";
 
 // 生成する従業員数（公開デモ環境では SEED_TOTAL_EMPLOYEES で上書きする）
 const TOTAL_EMPLOYEES = Number(process.env.SEED_TOTAL_EMPLOYEES) || 2000;

@@ -102,7 +102,7 @@ EC2 上のデプロイ先を「本番」ではなく**公開デモ環境**と定
 - コミットメッセージ: `ci: migrate ステージに seed 実行アーティファクトを載せる`
 
 ### Step 3: compose.prod.yaml に profile 付き seed one-shot サービスを追加する
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: `compose.prod.yaml`, `.env.production.example`
 - テスト戦略: テスト不要（設定ファイル）
 - 作業内容:
