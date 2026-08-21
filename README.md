@@ -8,11 +8,11 @@
 
 ## 必要環境
 
-| ツール | バージョン | 備考 |
-| --- | --- | --- |
-| Node.js | `.nvmrc` の値（現在 24.18.1） | `nvm use` で切り替える |
-| pnpm | `package.json` の `packageManager`（現在 11.18.0） | npm / yarn は `preinstall` の `only-allow` で拒否される |
-| Docker / Docker Compose | - | PostgreSQL の起動に使う |
+| ツール                  | バージョン                                         | 備考                                                    |
+| ----------------------- | -------------------------------------------------- | ------------------------------------------------------- |
+| Node.js                 | `.nvmrc` の値（現在 24.18.1）                      | `nvm use` で切り替える                                  |
+| pnpm                    | `package.json` の `packageManager`（現在 11.18.0） | npm / yarn は `preinstall` の `only-allow` で拒否される |
+| Docker / Docker Compose | -                                                  | PostgreSQL の起動に使う                                 |
 
 ## セットアップ
 
@@ -83,16 +83,16 @@ docker compose down -v        # 完全リセット（ボリューム削除。次
 
 ## 主なコマンド
 
-| コマンド | 内容 |
-| --- | --- |
-| `pnpm dev` | 開発サーバー起動 |
-| `pnpm build` | 本番ビルド |
-| `pnpm lint` | ESLint |
-| `pnpm typecheck` | 型チェック（`next typegen` + `tsc --noEmit`） |
-| `pnpm format` | Prettier |
-| `pnpm test` | 単体テスト（[docs/testing.md](docs/testing.md)） |
-| `pnpm e2e` | E2E テスト（[docs/testing.md](docs/testing.md)） |
-| `pnpm db:studio` | Prisma Studio |
+| コマンド         | 内容                                             |
+| ---------------- | ------------------------------------------------ |
+| `pnpm dev`       | 開発サーバー起動                                 |
+| `pnpm build`     | 本番ビルド                                       |
+| `pnpm lint`      | ESLint                                           |
+| `pnpm typecheck` | 型チェック（`next typegen` + `tsc --noEmit`）    |
+| `pnpm format`    | Prettier                                         |
+| `pnpm test`      | 単体テスト（[docs/testing.md](docs/testing.md)） |
+| `pnpm e2e`       | E2E テスト（[docs/testing.md](docs/testing.md)） |
+| `pnpm db:studio` | Prisma Studio                                    |
 
 ## テスト
 
