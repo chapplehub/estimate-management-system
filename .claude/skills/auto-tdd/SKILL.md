@@ -86,7 +86,7 @@ git branch --show-current
 
 1. 計画ファイルの当該 step のチェックボックスを `- [ ]` → `- [x]` に更新する
 2. **step の変更と、そのチェックボックス更新を同一コミットに含める**（計画テンプレの実行規約）
-3. コミットメッセージは計画の `コミットメッセージ` 欄の案を使う（type は `.claude/references/commit-types.md` に従う）
+3. コミットメッセージは計画の `コミットメッセージ` 欄の案を使う（type は `.claude/references/commit-types.md` の **`commit` 列**に従う）
 4. **設計判断を含む step は、その判断理由をコミットボディに記載する**（CLAUDE.md のルール）
 
 ```bash
