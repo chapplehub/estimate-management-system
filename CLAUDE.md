@@ -55,6 +55,8 @@ docker compose down -v        # DB完全リセット（ボリューム削除。�
 
 プロダクション用構成は `Dockerfile`（standalone + migrate ステージ）+ `compose.prod.yaml` + `docker/nginx/`（Issue #758）。EC2 デプロイ前提だが、ローカルで一式検証できる。
 
+デプロイ先は**本番ではなく公開デモ環境**と定義している（ADR-20260821-4f1）。実業務データを扱わず、ダミーデータ込みで動きを見せる場所であるため、初期データ投入には開発 seed（`prisma/seed-dev.ts`）をそのまま流用する。
+
 ```bash
 # 1. env 準備（値を埋める。git 管理外・キー名は example 参照）
 cp .env.production.example .env.production
@@ -77,6 +79,26 @@ docker compose -f compose.prod.yaml --env-file .env.production down -v
 - dev 用 compose とはプロジェクト名・ボリュームが分離されており同時起動可（ポート衝突なし）
 - `--env-file` を明示すること（省略すると `.env`（dev 用）が読まれる）
 - HTTPS/certbot はドメイン取得後に有効化（手順は `docker/nginx/conf.d/app-ssl.conf.example`）
+
+### 初期データ投入（公開デモ環境 / Issue #765）
+
+`up -d` では seed は走らない（`profiles: ["seed"]` で除外）。**初回デプロイ後に下記を叩き忘れると、DB が空のままのアプリが公開される。**
+
+```bash
+C="docker compose -f compose.prod.yaml --env-file .env.production"
+
+$C stop app                          # 中間状態を外から読ませない
+$C --profile seed run --rm seed      # 全テーブル削除 → 再構築（数分かかる）
+$C start app
+```
+
+- **破壊的**: seed は全テーブルを `deleteMany` してから作り直す。既存データは残らない。何度叩いても同じ結果になる代わりに、投入済みの内容は毎回失われる
+- `deleteMany` は 1 トランザクションに包まれていないため、実行中は DB の中間状態が読める。だから app を止めてから叩く（止めている間 Nginx は 502 を返す）
+- seed は `migrate` イメージに相乗りしている（`command` を `tsx prisma/seed-dev.ts` に上書き）。専用イメージ・専用 `*_IMAGE` 変数は無い
+- `.env.production` の任意キー（未設定なら seed 内の既定値を使う）:
+  - `SEED_DEFAULT_PASSWORD` — デモアカウント共通のパスワード。未設定だとリポジトリに書かれた既定値がそのまま実環境の値になる
+  - `SEED_TOTAL_EMPLOYEES` — 生成するダミー従業員数（既定 2000）。所要時間が件数にほぼ線形なので、小さいインスタンスでは減らす
+- 空値（`KEY=`）は未設定として扱われる
 
 ## Unit Tests
 
