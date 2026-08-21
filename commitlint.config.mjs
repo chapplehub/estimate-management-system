@@ -19,8 +19,6 @@ const config = {
         "style",
         "test",
         // custom
-        // 依存更新は chore(deps) を使う（Renovate の :semanticCommitTypeAll(chore)）。
-        // deps type は追加しない
         "agent",
       ],
     ],
