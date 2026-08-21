@@ -315,6 +315,17 @@ const DEPARTMENT_SUPERIOR_ROLE_CDS = new Map<string, string[]>([
 /** 固定ログインアカウント総数（役割持ち＋固定課員）。ランダム一般従業員はこの後の連番。 */
 const FIXED_ACCOUNT_COUNT = ROLE_EMPLOYEES.length + FIXED_STAFF.length;
 
+// TOTAL_EMPLOYEES の下限チェック。ここを下回ると連番の割当が固定課員まで届かず、
+// 「営業 課員」が作られないまま seedDevEstimates が前提マスタ不足で落ちる。
+// main() の deleteMany より前（モジュール評価時）に落とし、DB を壊してから
+// 失敗する事故を防ぐ。SEED_TOTAL_EMPLOYEES を小さくして試すときに踏む。
+if (TOTAL_EMPLOYEES < FIXED_ACCOUNT_COUNT) {
+  throw new Error(
+    `従業員数は ${FIXED_ACCOUNT_COUNT} 以上にすること（固定ログインアカウントが ${FIXED_ACCOUNT_COUNT} 件あり、` +
+      `これを下回ると固定課員が作られず見積 seed が前提不足で失敗する）。指定値: ${TOTAL_EMPLOYEES}`
+  );
+}
+
 // 得意先・納品先データ
 const CUSTOMERS = [
   {

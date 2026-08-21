@@ -88,7 +88,7 @@ docker compose -f compose.prod.yaml --env-file .env.production down -v
 C="docker compose -f compose.prod.yaml --env-file .env.production"
 
 $C stop app                          # 中間状態を外から読ませない
-$C --profile seed run --rm seed      # 全テーブル削除 → 再構築（数分かかる）
+$C --profile seed run --rm seed      # 全テーブル削除 → 再構築（既定 2000 人でローカル実測 12 秒）
 $C start app
 ```
 
@@ -97,7 +97,7 @@ $C start app
 - seed は `migrate` イメージに相乗りしている（`command` を `tsx prisma/seed-dev.ts` に上書き）。専用イメージ・専用 `*_IMAGE` 変数は無い
 - `.env.production` の任意キー（未設定なら seed 内の既定値を使う）:
   - `SEED_DEFAULT_PASSWORD` — デモアカウント共通のパスワード。未設定だとリポジトリに書かれた既定値がそのまま実環境の値になる
-  - `SEED_TOTAL_EMPLOYEES` — 生成するダミー従業員数（既定 2000）。所要時間が件数にほぼ線形なので、小さいインスタンスでは減らす
+  - `SEED_TOTAL_EMPLOYEES` — 生成するダミー従業員数（既定 2000）。**26 未満は不可**（固定ログインアカウントが 26 件あり、下回ると固定課員が作られず見積 seed が前提不足で落ちる）。範囲外の値は `deleteMany` に到達する前に例外で止まるので DB は壊れない
 - 空値（`KEY=`）は未設定として扱われる
 
 ## Unit Tests
