@@ -18,11 +18,17 @@ const adapter = new PrismaPg({
 
 const prisma = new PrismaClient({ adapter });
 
-// デフォルトパスワード（開発環境用）
-const DEFAULT_PASSWORD = "pass123!";
+// デフォルトパスワード（既定値は開発環境用。公開デモ環境では SEED_DEFAULT_PASSWORD で上書きする）
+//
+// NOTE: この seed は開発環境と公開デモ環境で共用する（ADR-20260821-4f1）。共用にあたり
+// 持ち込んでよいのは「値の外出し」までで、環境による挙動分岐（本番かどうかで処理を変える）は
+// 持ち込まない。既定値を据え置いているため env 未設定の開発環境では従来と同一の挙動になる。
+// ?? ではなく || で判定するのは、env ファイルに空値（KEY=）が書かれた場合も未設定として
+// 扱うため（?? だと空パスワードや件数 0 がそのまま採用されてしまう）。
+const DEFAULT_PASSWORD = process.env.SEED_DEFAULT_PASSWORD || "pass123!";
 
-// 生成する従業員数
-const TOTAL_EMPLOYEES = 2000;
+// 生成する従業員数（公開デモ環境では SEED_TOTAL_EMPLOYEES で上書きする）
+const TOTAL_EMPLOYEES = Number(process.env.SEED_TOTAL_EMPLOYEES) || 2000;
 // 管理者の割合（約5%）
 const ADMIN_RATIO = 0.05;
 // バッチサイズ（進捗表示用）
@@ -308,6 +314,17 @@ const DEPARTMENT_SUPERIOR_ROLE_CDS = new Map<string, string[]>([
 
 /** 固定ログインアカウント総数（役割持ち＋固定課員）。ランダム一般従業員はこの後の連番。 */
 const FIXED_ACCOUNT_COUNT = ROLE_EMPLOYEES.length + FIXED_STAFF.length;
+
+// TOTAL_EMPLOYEES の下限チェック。ここを下回ると連番の割当が固定課員まで届かず、
+// 「営業 課員」が作られないまま seedDevEstimates が前提マスタ不足で落ちる。
+// main() の deleteMany より前（モジュール評価時）に落とし、DB を壊してから
+// 失敗する事故を防ぐ。SEED_TOTAL_EMPLOYEES を小さくして試すときに踏む。
+if (TOTAL_EMPLOYEES < FIXED_ACCOUNT_COUNT) {
+  throw new Error(
+    `従業員数は ${FIXED_ACCOUNT_COUNT} 以上にすること（固定ログインアカウントが ${FIXED_ACCOUNT_COUNT} 件あり、` +
+      `これを下回ると固定課員が作られず見積 seed が前提不足で失敗する）。指定値: ${TOTAL_EMPLOYEES}`
+  );
+}
 
 // 得意先・納品先データ
 const CUSTOMERS = [

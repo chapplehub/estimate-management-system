@@ -55,6 +55,8 @@ docker compose down -v        # DB完全リセット（ボリューム削除。�
 
 プロダクション用構成は `Dockerfile`（standalone + migrate ステージ）+ `compose.prod.yaml` + `docker/nginx/`（Issue #758）。EC2 デプロイ前提だが、ローカルで一式検証できる。
 
+デプロイ先は**本番ではなく公開デモ環境**と定義している（ADR-20260821-4f1）。実業務データを扱わず、ダミーデータ込みで動きを見せる場所であるため、初期データ投入には開発 seed（`prisma/seed-dev.ts`）をそのまま流用する。
+
 ```bash
 # 1. env 準備（値を埋める。git 管理外・キー名は example 参照）
 cp .env.production.example .env.production
@@ -77,6 +79,40 @@ docker compose -f compose.prod.yaml --env-file .env.production down -v
 - dev 用 compose とはプロジェクト名・ボリュームが分離されており同時起動可（ポート衝突なし）
 - `--env-file` を明示すること（省略すると `.env`（dev 用）が読まれる）
 - HTTPS/certbot はドメイン取得後に有効化（手順は `docker/nginx/conf.d/app-ssl.conf.example`）
+
+### 初期データ投入（公開デモ環境 / Issue #765）
+
+`up -d` では seed は走らない（`profiles: ["seed"]` で除外）。**初回デプロイ後に下記を叩き忘れると、DB が空のままのアプリが公開される。**
+
+以下の3コマンドを順に実行する（`up -d --wait` が成功した状態から始める）。
+
+```bash
+# 1. アプリだけ停止する（db は止めない。seed の接続先なので）
+docker compose -f compose.prod.yaml --env-file .env.production stop app
+
+# 2. seed を1回だけ実行する（--profile seed が無いと「サービスが無い」と言われる）
+docker compose -f compose.prod.yaml --env-file .env.production --profile seed run --rm seed
+
+# 3. アプリを再開する
+docker compose -f compose.prod.yaml --env-file .env.production start app
+```
+
+各コマンドの意味:
+
+1. **`stop app`** — seed の `deleteMany` は1トランザクションに包まれておらず、実行中は「一部テーブルだけ空」の中間状態が外から読める。それを見せないためにアプリを止める。止めている間 `http://localhost` は Nginx が **502** を返すが正常
+2. **`--profile seed run --rm seed`** — 初期データ投入の本体。`--profile seed` は必須（`up -d` で誤爆しないよう seed サービスを profile で隔離しているため）。`run --rm` は1回実行してコンテナを捨てる指定
+3. **`start app`** — 再開。数秒で healthy に戻る
+
+補足:
+
+- **破壊的**: seed は全テーブルを `deleteMany` してから作り直す。既存データは残らない。何度叩いても同じ結果になる代わりに、投入済みの内容は毎回失われる
+- 完了時に**ログインアカウント一覧**が出力される（`employee1@example.com` 〜、共通パスワードも表示される）。先頭26件が役職・役割の決まった固定アカウントで、残りはランダム生成
+- 所要時間はローカル実測で 300人 2.2秒 / 2000人 12秒
+- seed は `migrate` イメージに相乗りしている（`command` を `tsx prisma/seed-dev.ts` に上書き）。専用イメージ・専用 `*_IMAGE` 変数は無いので、**`MIGRATE_IMAGE` を指定していればそれがそのまま seed に使われる**
+- `.env.production` の任意キー（未設定なら seed 内の既定値を使う）:
+  - `SEED_DEFAULT_PASSWORD` — デモアカウント共通のパスワード。未設定だとリポジトリに書かれた既定値がそのまま実環境の値になる
+  - `SEED_TOTAL_EMPLOYEES` — 生成するダミー従業員数（既定 2000）。**26未満は不可**（固定ログインアカウントが26件あり、下回ると固定課員が作られず見積 seed が前提不足で落ちる）。範囲外の値は `deleteMany` に到達する前に例外で止まるので DB は壊れない
+  - 空値（`KEY=`）は未設定として扱われる
 
 ## Unit Tests
 
