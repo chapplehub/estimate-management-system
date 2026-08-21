@@ -23,7 +23,8 @@
 `pnpm commitlint --edit $1` で type を検証する。
 
 許可 type は `commitlint.config.mjs` の `type-enum` が正。
-対応表は [`commit-types.md`](commit-types.md) を参照（**表には commitlint が受け付けない type も含まれるため注意**）。
+作業タイプの対応表は [`commit-types.md`](commit-types.md) の **`commit` 列**を参照する。
+同じ表の `Issue` 列 / `branch` 列とは値の集合が異なり、`question` / `architecture` は commit-msg フックが拒否する。
 
 ## pre-push（`.husky/pre-push`）
 
