@@ -67,5 +67,10 @@ docker compose -f compose.prod.yaml --env-file .env.production down -v
 
 - **`--env-file` を必ず明示する**。省略すると dev 用の `.env` が読まれる
 - dev 用 compose とはプロジェクト名・ボリュームが分離されており、同時起動できる（ポート衝突なし）
-- HTTPS / certbot はドメイン取得後に有効化する。手順は `docker/nginx/conf.d/app-ssl.conf.example`
+- **この構成はそのままではローカルで起動しない**。nginx が `/etc/letsencrypt/live/chapple-esm.duckdns.org/`
+  の証明書を読むため、ホストに証明書がない環境では起動に失敗する。ローカルで検証する場合は
+  `docker/nginx/conf.d/app-ssl.conf` を一時的に退避し、`app.conf` の `location /` を
+  301 リダイレクトから `proxy_pass http://$upstream_app:3000;` に戻す（コミットはしない）
+- 証明書はホスト側 certbot（webroot 方式）が発行し、nginx は read-only bind mount で参照する。
+  更新は `certbot.timer` が自動実行し、deploy-hook でコンテナ nginx を reload する
 - イメージは arm64 単一アーキテクチャでビルドする（[ADR-20260818-7pn](../adr/20260818-7pn-production-images-arm64-single-arch-bind-ec2-to-graviton.md)）
