@@ -27,10 +27,12 @@ context: fork
 
 `.claude/references/commit-types.md` を読み、マッピングテーブルを取得する。
 `$ARGUMENTS` のキーワードとテーブルの `keywords` 列を照合して issue タイプを推定する。
-テーブルの `prefix` 列をタイトル接頭辞に、`label` 列を GitHub ラベルに使用する。
+テーブルの **`Issue` 列**をタイトル接頭辞に、`label` 列を GitHub ラベルに使用する。
 
 - 複数マッチした場合は最も適切なものを選択
 - どれにも該当しない場合は `feat`（`Type: enhancement`）をデフォルトとする
+- `label` 列が `—` のタイプ（build / chore / perf など）は、対応するラベルが存在しない。ラベルを指定せずに起票する
+- **`Issue` 列と `commit` 列は値が異なる**（`question` / `architecture` はコミットでは使えない）。ここで使うのは `Issue` 列
 
 ## ステップ 2: ラベル存在チェック
 

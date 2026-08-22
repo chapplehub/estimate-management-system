@@ -61,6 +61,39 @@ services:
       db:
         condition: service_healthy
 
+  # 初期データ投入 one-shot サービス（ADR-20260821-4f1）。
+  #
+  # デプロイ先は公開デモ環境であり、初期データには開発 seed をそのまま流用する。
+  # seed-dev.ts は全テーブルを deleteMany してから作り直す破壊的スクリプトのため、
+  # profiles で up -d の対象から外し、明示的に呼んだときだけ走るようにする:
+  #
+  #   docker compose -f compose.prod.yaml --env-file .env.production stop app
+  #   docker compose -f compose.prod.yaml --env-file .env.production --profile seed run --rm seed
+  #   docker compose -f compose.prod.yaml --env-file .env.production start app
+  #
+  # image は migrate と同じものを共有する（新しいイメージ・タグ・*_IMAGE 変数を作らない）。
+  # 変数名 MIGRATE_IMAGE と実態のずれは許容する。理由: このサービスのためだけに
+  # SEED_IMAGE を増やすと、常に MIGRATE_IMAGE と同じ値を書く運用項目が増えるだけになる。
+  #
+  # depends_on は db のみ。migrate には依存させない。理由: 上記手順は up -d で
+  # migrate が完了した後に実行する前提であり、依存させると compose run のたびに
+  # migrate が起動して手順の意図（app を止めてから seed だけを叩く）がぼやけるため
+  seed:
+    image: ${MIGRATE_IMAGE:-ghcr.io/chapplehub/estimate-management-system/migrate:latest}
+    command: ["node_modules/.bin/tsx", "prisma/seed-dev.ts"]
+    profiles: ["seed"]
+    restart: "no"
+    # 他サービスと違いリスト形式。SEED_* は任意項目で、未設定なら
+    # 「コンテナにも渡さない」（= seed 側の既定値を使う）挙動が要るため。
+    # マップ形式 ${VAR} だと未設定時に空文字が渡り、既定値が効かなくなる
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - SEED_DEFAULT_PASSWORD
+      - SEED_TOTAL_EMPLOYEES
+    depends_on:
+      db:
+        condition: service_healthy
+
   app:
     image: ${APP_IMAGE:-ghcr.io/chapplehub/estimate-management-system/app:latest}
     build:
@@ -99,16 +132,11 @@ services:
       - "443:443"
     volumes:
       - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
-      # HTTPS（certbot）有効化時にコメントアウトを外す
-      # （docker/nginx/conf.d/app-ssl.conf.example の手順を参照）
-      # - letsencrypt:/etc/letsencrypt:ro
-      # - certbot-webroot:/var/www/certbot:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/certbot:/var/www/certbot:ro
     depends_on:
       app:
         condition: service_healthy
 
 volumes:
   pgdata:
-  # HTTPS（certbot）有効化時にコメントアウトを外す
-  # letsencrypt:
-  # certbot-webroot:

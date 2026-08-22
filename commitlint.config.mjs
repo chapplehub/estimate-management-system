@@ -20,7 +20,6 @@ const config = {
         "test",
         // custom
         "agent",
-        "deps",
       ],
     ],
   },
