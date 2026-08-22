@@ -42,6 +42,7 @@ gh issue view {number} --json title,body,labels
 
 `.claude/references/commit-types.md` のマッピングテーブルを参照し、ラベル（`label` 列）からブランチタイプ（`branch` 列）を決定する。
 `branch` が `—` のタイプ、またはラベルなしの場合は `feat`（デフォルト）を使用する。
+`label` 列が `—` のタイプ（build / chore / perf）はラベルから逆引きできないため、ラベルなしと同じ扱いになる。
 
 ### 1.4 複雑度チェック
 

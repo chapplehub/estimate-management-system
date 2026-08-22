@@ -250,7 +250,7 @@ EOF
 - ③cleanup は実装後に**挙動不変を再確認**する（`pnpm test` が緑のまま／public 抽出なら無状態・置き場所が計画どおりか）。挙動が変わった・基準を満たせなくなった場合は破棄し、④残課題に戻す。
 - 意味のあるまとまりごとにコミットする（一括コミットしない）。
   - ①correctness → `fix:` ／ ②方針違反 → 原則 `fix:`（DDD 配置換えなど構造変更主体なら `refactor:`）／ ③cleanup → `refactor:`（統合/共通化）でコミット。計画ファイル自体は `docs:`。
-- コミットは `.claude/references/commit-types.md` の type に従う。
+- コミットは `.claude/references/commit-types.md` の **`commit` 列**に従う（`Issue` 列とは値の集合が異なる）。
 - **設計判断を含む場合はコミットボディに理由を記載**（CLAUDE.md のルール）。
 - 修正後、テストを実行して緑を確認する:
 

@@ -1,44 +1,63 @@
-# Commit Type リファレンス
+# 作業タイプ リファレンス
 
-commit type, GitHub label, branch prefix の対応関係を定義するマスターテーブル。
+Issue / ブランチ / PR / コミットの 4 文脈にまたがる**作業タイプのマスターテーブル**。
 各スキル（create-issue, auto-dev, finalize-work 等）はこのファイルを参照すること。
+
+> [!IMPORTANT]
+> **文脈ごとに使える値の集合が異なる。** 列を取り違えると、commitlint が拒否する type を
+> コミットに使ったり、存在しないラベルを付与しようとして `gh` が失敗したりする。
+> 用途に対応する列を見ること。
 
 ## マッピングテーブル
 
-| type | prefix | label | branch | keywords |
-|------|--------|-------|--------|----------|
-| feat | `feat:` | `Type: enhancement` | `feat/` | 機能追加, 実装, 新規, 追加 |
-| fix | `fix:` | `Type: bug` | `fix/` | バグ, エラー, 不具合, 修正 |
-| refactor | `refactor:` | `Type: refactor` | `refactor/` | リファクタ, 整理, 削除, cleanup, 統合, 分離 |
-| docs | `docs:` | `Type: documentation` | `docs/` | ドキュメント, 記録, README |
-| test | `test:` | `Type: test` | `test/` | テスト, カバレッジ, spec |
-| ci | `ci:` | `Type: ci` | `ci/` | CI, pipeline, deploy, lint |
-| agent | `agent:` | `Type: agent` | `agent/` | hook, skill, AI設定, CLAUDE.md, rules |
-| build | `build:` | `Type: build` | `build/` | ビルド, webpack, バンドル, 依存関係 |
-| chore | `chore:` | `Type: chore` | `chore/` | 雑務, メンテナンス |
-| perf | `perf:` | `Type: perf` | `perf/` | パフォーマンス, 高速化, 最適化 |
-| style | `style:` | `Type: style` | — | フォーマット, 整形, スタイル |
-| revert | `revert:` | — | — | 取り消し, 巻き戻し, revert |
-| question | `question:` | `Type: question` | — | 疑問, 検討, 方針, 議論, 質問, どうすべき |
-| architecture | `arch:` | `Type: architecture` | — | アーキテクチャ, 設計判断, 設計方針 |
+| type | Issue | branch | commit | label | keywords |
+|------|-------|--------|--------|-------|----------|
+| feat | `feat:` | `feat/` | `feat:` | `Type: enhancement` | 機能追加, 実装, 新規, 追加 |
+| fix | `fix:` | `fix/` | `fix:` | `Type: bug` | バグ, エラー, 不具合, 修正 |
+| refactor | `refactor:` | `refactor/` | `refactor:` | `Type: refactor` | リファクタ, 整理, 削除, cleanup, 統合, 分離 |
+| docs | `docs:` | `docs/` | `docs:` | `Type: documentation` | ドキュメント, 記録, README |
+| test | `test:` | `test/` | `test:` | `Type: test` | テスト, カバレッジ, spec |
+| ci | `ci:` | `ci/` | `ci:` | `Type: ci` | CI, pipeline, deploy, lint |
+| agent | `agent:` | `agent/` | `agent:` | `Type: agent` | hook, skill, AI設定, CLAUDE.md, rules |
+| build | `build:` | `build/` | `build:` | — | ビルド, webpack, バンドル, 依存関係 |
+| chore | `chore:` | `chore/` | `chore:` | — | 雑務, メンテナンス |
+| perf | `perf:` | `perf/` | `perf:` | — | パフォーマンス, 高速化, 最適化 |
+| style | `style:` | — | `style:` | — | フォーマット, 整形, スタイル |
+| revert | `revert:` | — | `revert:` | — | 取り消し, 巻き戻し, revert |
+| question | `question:` | — | ❌ `docs:` を使う | `Type: question` | 疑問, 検討, 方針, 議論, 質問, どうすべき |
+| architecture | `arch:` | — | ❌ `docs:` を使う | `Type: architecture` | アーキテクチャ, 設計判断, 設計方針 |
 
-## 補足
+## 各列の意味
 
-- **prefix**: コミットメッセージ・PRタイトル・Issueタイトルの接頭辞
-- **label**: GitHub Issue に付与するラベル。`—` のものはラベル付与不要
-- **branch**: ブランチ名の接頭辞（`{branch}issue-{number}` 形式）。`—` のものはブランチ作成対象外
+- **Issue**: Issue タイトルの接頭辞
+- **branch**: ブランチ名の接頭辞（`{branch}issue-{number}` 形式）。`—` はブランチ作成対象外
+- **commit**: コミットメッセージの接頭辞。**`commitlint.config.mjs` の `type-enum` が正**であり、❌ の type は commit-msg フックが拒否する
+- **label**: GitHub Issue に付与するラベル。`—` は付与不要（対応するラベルが存在しない）
 - **keywords**: Issue 作成時のタイプ自動判定に使用するキーワード
-- commit type と GitHub label の名前が異なるもの（feat↔enhancement, fix↔bug）があるが、これはエコシステムの違いによる正常なずれ
 
-## commitlint との差異
+## 注意点
 
-**commit-msg フックが実際に許可する type は `commitlint.config.mjs` の `type-enum` が正**であり、上の表とは一致しない。
+### PR タイトルは commit 列に従う
 
-- 表にあるが commitlint が**拒否する**: `question`, `architecture`（`arch:`）
-  → 設計判断・方針の記録をコミットしたい場合は `docs:` を使う
-- commitlint にあるが表に無い: `deps`
+GitHub の squash merge は**コミットメッセージに PR タイトルをそのまま使う**ため、PR タイトルは事実上コミットメッセージになる。
+`question` / `architecture` の Issue から作った PR であっても、**PR タイトルには `docs:` を使う**こと。
 
-上の表は Issue のラベル付け・ブランチ命名を含む対応関係のマスターであり、コミット時は commitlint 側の制約が優先される。
+なお PR タイトルを検証する CI は無く、`commit-msg` フックも通らない。ここは規約でしか守れない。
+
+### label が `—` の type
+
+`build` / `chore` / `perf` に対応する GitHub ラベル（`Type: build` 等）は**存在しない**。
+`gh issue create --label` にこれらを渡すとコマンドが失敗するため、ラベルを指定せずに起票する。
+
+### 依存更新
+
+Renovate が `:semanticCommitTypeAll(chore)` で生成するため、**type は `chore`、`deps` は scope**（`chore(deps): ...`）。
+`deps` type は存在しない（`type-enum` から削除済み）。
+`dependencies` ラベルは Renovate が自動付与するので手動で付けない。
+
+### type と label の名前のずれ
+
+`feat` ↔ `Type: enhancement`、`fix` ↔ `Type: bug` のように名前が異なるものがあるが、これはエコシステムの違いによる正常なずれ。
 
 ## コミットメッセージの書き方
 

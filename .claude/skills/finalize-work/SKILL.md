@@ -70,9 +70,11 @@ git diff develop..HEAD --stat
 優先順位:
 
 1. `$ARGUMENTS` に明示的なタイトルがあればそれを使用
-2. `.claude/references/commit-types.md` のマッピングテーブルを参照し、ブランチ接頭辞（`branch` 列）からタイトル接頭辞（`prefix` 列）を決定する
+2. `.claude/references/commit-types.md` のマッピングテーブルを参照し、ブランチ接頭辞（`branch` 列）からタイトル接頭辞（**`commit` 列**）を決定する
 
 例: ブランチ `feat/issue-87` + issue タイトル「振り返りレポート付きPR作成スキル」→ `feat: 振り返りレポート付きPR作成スキル`
+
+`Issue` 列ではなく `commit` 列を使うこと。GitHub の squash merge は PR タイトルをそのままコミットメッセージにするため、PR タイトルは commitlint の `type-enum` に収まっている必要がある（`question:` / `arch:` は使えない）。
 
 ## ステップ 4: PR description 生成
 
