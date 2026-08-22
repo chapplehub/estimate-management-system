@@ -132,16 +132,11 @@ services:
       - "443:443"
     volumes:
       - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
-      # HTTPS（certbot）有効化時にコメントアウトを外す
-      # （docker/nginx/conf.d/app-ssl.conf.example の手順を参照）
-      # - letsencrypt:/etc/letsencrypt:ro
-      # - certbot-webroot:/var/www/certbot:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/certbot:/var/www/certbot:ro
     depends_on:
       app:
         condition: service_healthy
 
 volumes:
   pgdata:
-  # HTTPS（certbot）有効化時にコメントアウトを外す
-  # letsencrypt:
-  # certbot-webroot:
