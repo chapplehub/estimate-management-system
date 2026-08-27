@@ -87,7 +87,7 @@
 - コミットメッセージ: `docs: ADR-20260827-ff0 証明書更新を certbot コンテナと定期 reload の疎結合で行う判断を記録する`
 
 ### Step 2: `compose.prod.yaml` に certbot サービスを追加し、nginx を定期 reload に切り替える
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `compose.prod.yaml`
   - `docker/nginx/conf.d/app-ssl.conf`（ヘッダコメントのみ）
