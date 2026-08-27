@@ -109,7 +109,7 @@
 - コミットメッセージ: `ci: certbot をコンテナ化し nginx を 6h ごとの定期 reload に切り替える`（ボディに ADR-20260827-ff0 参照と、周期・exec・named volume の判断理由を記す）
 
 ### Step 3: 運用手順を `docs/ops/tls-certificates.md` に集約し、既存ドキュメントをポインタ化する
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `docs/ops/tls-certificates.md`（新規）
   - `docs/ops/prod-docker-local.md`
@@ -127,7 +127,7 @@
 - コミットメッセージ: `docs: TLS 証明書の運用手順を docs/ops/tls-certificates.md に集約する`
 
 ### Step 4: 証明書期限の外形監視イシューを起票する
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: なし（GitHub Issue のみ）
 - テスト戦略: テスト不要（イシュー起票）
 - 作業内容:
@@ -136,7 +136,7 @@
 - コミットメッセージ: なし（Step 3 に吸収）
 
 ### Step 5: ローカルでの起動実測
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: なし
 - テスト戦略: テスト不要（検証のみ、コミット対象なし）
 - 作業内容:
@@ -156,7 +156,7 @@
 - [ ] renewal conf から `renew_hook` 行を削除、`webroot_path = /var/www/certbot` を確認
 - [ ] `apt remove certbot`
 - [ ] `docker compose -f compose.prod.yaml --env-file .env.production pull && up -d`
-- [ ] `docker logs certbot` で初回 `renew` の結果を確認
+- [ ] `docker compose -f compose.prod.yaml --env-file .env.production logs certbot` で初回 `renew` の結果を確認
 
 ## 影響範囲
 

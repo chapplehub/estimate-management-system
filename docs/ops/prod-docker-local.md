@@ -5,7 +5,7 @@
 構成ファイル:
 
 - `Dockerfile` — `runner`（Next.js standalone）/ `migrate`（Prisma マイグレーション）の 2 ステージ
-- `compose.prod.yaml` — db / migrate / seed / app / nginx
+- `compose.prod.yaml` — db / migrate / seed / app / nginx / certbot
 - `docker/nginx/` — リバースプロキシ設定
 
 デプロイ先は本番ではなく**公開デモ環境**と定義している（[ADR-20260821-4f1](../adr/20260821-4f1-deploy-target-is-public-demo-reuse-dev-seed.md)）。実業務データを扱わず、ダミーデータ込みで動きを見せる場所であるため、初期データ投入には開発 seed（`prisma/seed-dev.ts`）をそのまま流用する。
@@ -18,7 +18,8 @@
 | `migrate` | `prisma migrate deploy` | one-shot。db が healthy になってから走り、正常終了後に app が起動する |
 | `seed` | 初期データ投入 | **`up -d` では走らない**（`profiles: ["seed"]`）。[demo-seed.md](demo-seed.md) 参照 |
 | `app` | Next.js（standalone） | migrate が正常終了してから起動 |
-| `nginx` | リバースプロキシ | 公開ポートは 80 / 443 のみ |
+| `nginx` | リバースプロキシ | 公開ポートは 80 / 443 のみ。6h ごとに `nginx -s reload` して証明書の更新を取り込む |
+| `certbot` | 証明書の自動更新 | 常駐。12h ごとに `certbot renew`。**ローカルでは更新対象が無く、何もせず sleep に入るだけ**。[tls-certificates.md](tls-certificates.md) 参照 |
 
 `seed` は専用イメージを持たず `migrate` イメージに相乗りしている（`command` を `tsx prisma/seed-dev.ts` に上書き）。
 
@@ -71,6 +72,6 @@ docker compose -f compose.prod.yaml --env-file .env.production down -v
   の証明書を読むため、ホストに証明書がない環境では起動に失敗する。ローカルで検証する場合は
   `docker/nginx/conf.d/app-ssl.conf` を一時的に退避し、`app.conf` の `location /` を
   301 リダイレクトから `proxy_pass http://$upstream_app:3000;` に戻す（コミットはしない）
-- 証明書はホスト側 certbot（webroot 方式）が発行し、nginx は read-only bind mount で参照する。
-  更新は `certbot.timer` が自動実行し、deploy-hook でコンテナ nginx を reload する
+- 証明書の発行・更新・失敗時の確認は [tls-certificates.md](tls-certificates.md) にまとめている。
+  `app-ssl.conf` 退避の手筋は、そこに書いた新規環境での初回発行手順と共通
 - イメージは arm64 単一アーキテクチャでビルドする（[ADR-20260818-7pn](../adr/20260818-7pn-production-images-arm64-single-arch-bind-ec2-to-graviton.md)）
