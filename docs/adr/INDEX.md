@@ -156,3 +156,4 @@
 | [20260730-t6e](20260730-t6e-introduce-platform-automerge-with-approval-retained.md) | Renovate automerge は platformAutomerge + squash-only リポジトリ設定で導入し、Dashboard 承認は維持する | 採用（適用は #704 マージ後） | 2026-07-30 |
 | [20260818-7pn](20260818-7pn-production-images-arm64-single-arch-bind-ec2-to-graviton.md) | 本番イメージは arm64 単一アーキテクチャでビルドし、EC2 を Graviton に拘束する | 採用 | 2026-08-18 |
 | [20260821-4f1](20260821-4f1-deploy-target-is-public-demo-reuse-dev-seed.md) | デプロイ先を公開デモ環境と定義し、初期データ投入に開発 seed を流用する | 採用 | 2026-08-21 |
+| [20260827-ff0](20260827-ff0-tls-renewal-decoupled-certbot-container-periodic-nginx-reload.md) | 証明書更新は certbot コンテナと nginx の定期 reload による疎結合で行い、deploy-hook と docker socket を用いない | 採用 | 2026-08-27 |

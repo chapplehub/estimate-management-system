@@ -126,6 +126,22 @@ services:
     # メジャー/マイナーをピン留めし、更新は Renovate で意図的に取り込む
     image: nginx:1.28.0-alpine
     restart: unless-stopped
+    # 証明書の更新を反映するため 6h ごとに reload する（ADR-20260827-ff0）。
+    # certbot サービスとは /etc/letsencrypt のファイル共有だけで繋がり、
+    # deploy-hook や docker socket で互いを参照しない（疎結合）。
+    # 周期 6h は原典 wmnnd/nginx-certbot どおり。reload は接続を切らないため
+    # 周期を伸ばして得るものが無く、独自値は説明責任を恒常的に生むだけになる。
+    #
+    # command を上書きすると公式イメージの /docker-entrypoint.sh は
+    # 「$1 = nginx」の条件を満たさず /docker-entrypoint.d/ を実行しない。
+    # 現構成ではそこにある 4 本（IPv6 listen 自動付与・resolver 環境変数・
+    # templates の envsubst・worker_processes autotune）はすべて no-op だが、
+    # これらを使うようになったら本方式（command 上書き）を見直すこと。
+    #
+    # 末尾の exec は PID 1 を nginx に固定するため。busybox ash は末尾コマンドを
+    # 暗黙に exec するが、実装依存に頼らず STOPSIGNAL SIGQUIT が nginx に
+    # 直接届くことを明示する
+    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & exec nginx -g \"daemon off;\"'"
     # 外部公開はここ（80/443）のみ
     ports:
       - "80:80"
@@ -134,9 +150,49 @@ services:
       - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - /var/www/certbot:/var/www/certbot:ro
+    # app の healthy は待たない（service_started）。リバースプロキシの可用性は
+    # app の可用性の上位集合であるべきで、app が healthy にならない障害で
+    # nginx ごと起動不能になると、ACME チャレンジ（webroot）への応答と 80 番の
+    # 301 リダイレクトまで巻き添えで止まり、「nginx は生きているが app が死んでいる」
+    # という切り分け情報も失われる。
+    # app-ssl.conf は変数経由 proxy_pass + resolver 127.0.0.11 で upstream を
+    # リクエスト時に解決するため、nginx の起動に app の DNS 名解決は不要。
+    # 初回起動時に app ready まで 502 を返す窓が生じるが、接続拒否より望ましい
+    # （TLS 終端が生き、ACME に応答でき、アクセスログに証跡が残る）。
+    # depends_on 自体を消さないのは、起動ログが依存順に並ぶ実益を取るため
     depends_on:
       app:
-        condition: service_healthy
+        condition: service_started
+
+  # 証明書の自動更新（ADR-20260827-ff0）。12h ごとに certbot renew を試み、
+  # 更新された証明書は nginx 側の 6h ごとの reload で取り込まれる。
+  # 反映まで最大 6h 遅れるが、certbot は失効 30 日前から更新するため問題にならない。
+  # 初回発行は手動（docs/ops/tls-certificates.md）。ここでは renew しかしない。
+  certbot:
+    # 無印タグは amd64 / arm64 / arm32v6 のマルチアーチマニフェストのため
+    # アーキ別タグは不要。更新は Renovate（docker-compose マネージャ）で取り込む
+    image: certbot/certbot:v5.7.0
+    # イメージの ENTRYPOINT が certbot そのものなので、ループを書くには
+    # command ではなく entrypoint を上書きする必要がある。
+    # trap exit TERM は docker stop で sleep を待たずに抜けるため
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    restart: unless-stopped
+    volumes:
+      # ホスト bind mount を維持（nginx 側と対称。既存の証明書資産をそのまま引き継ぐ）。
+      # renewal conf の webroot_path と一致させるため、webroot もホストと同じパスで
+      # マウントする
+      - /etc/letsencrypt:/etc/letsencrypt
+      - /var/www/certbot:/var/www/certbot
+      # イメージが VOLUME /var/lib/letsencrypt を宣言しているため、明示しないと
+      # コンテナ再作成のたびに匿名ボリュームが増える。中身はロック等の作業用で
+      # 引き継ぐ価値は無く、named volume にする目的は増殖防止のみ
+      - certbot-work:/var/lib/letsencrypt
+    # 初回 renew の webroot 応答を nginx が受けられるようにし、起動ログを依存順に
+    # 並べるため。renew が失敗しても 12h 後に再試行されるので healthy は待たない
+    depends_on:
+      nginx:
+        condition: service_started
 
 volumes:
   pgdata:
+  certbot-work:
