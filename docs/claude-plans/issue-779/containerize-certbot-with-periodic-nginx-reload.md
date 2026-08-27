@@ -77,7 +77,7 @@
 ## ステップ
 
 ### Step 1: ADR-20260827-ff0 をコミットする
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル:
   - `docs/adr/20260827-ff0-tls-renewal-decoupled-certbot-container-periodic-nginx-reload.md`（作成済み・未コミット）
   - `docs/adr/INDEX.md`（「開発基盤（依存管理・CI）」表に 1 行追記済み・未コミット）
