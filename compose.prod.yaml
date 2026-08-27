@@ -134,9 +134,19 @@ services:
       - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - /var/www/certbot:/var/www/certbot:ro
+    # app の healthy は待たない（service_started）。リバースプロキシの可用性は
+    # app の可用性の上位集合であるべきで、app が healthy にならない障害で
+    # nginx ごと起動不能になると、ACME チャレンジ（webroot）への応答と 80 番の
+    # 301 リダイレクトまで巻き添えで止まり、「nginx は生きているが app が死んでいる」
+    # という切り分け情報も失われる。
+    # app-ssl.conf は変数経由 proxy_pass + resolver 127.0.0.11 で upstream を
+    # リクエスト時に解決するため、nginx の起動に app の DNS 名解決は不要。
+    # 初回起動時に app ready まで 502 を返す窓が生じるが、接続拒否より望ましい
+    # （TLS 終端が生き、ACME に応答でき、アクセスログに証跡が残る）。
+    # depends_on 自体を消さないのは、起動ログが依存順に並ぶ実益を取るため
     depends_on:
       app:
-        condition: service_healthy
+        condition: service_started
 
 volumes:
   pgdata:
