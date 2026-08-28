@@ -9,6 +9,8 @@
 #
 # イメージは GHCR から pull したものだけを使う。ローカル検証では docker build で作った
 # ローカルタグを APP_IMAGE / MIGRATE_IMAGE に指定する（docs/ops/prod-docker-local.md）。
+# GHCR のイメージは arm64 単一アーキ（ADR-20260818-7pn）なので、x86_64 の開発機で
+# 指定を忘れると pull は警告付きで成功し、コンテナ起動時に exec format error で落ちる。
 #
 # app / migrate が build: を持たないのは意図的（#761）。image: と build: を併記すると
 # pull に失敗しても compose はエラー終了せず、EC2 上のチェックアウトからのビルドへ
