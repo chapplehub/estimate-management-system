@@ -7,8 +7,21 @@
 #   docker compose -f compose.prod.yaml --env-file .env.production up -d
 # キー名の一覧は .env.production.example を参照。
 #
-# イメージは GHCR からの pull を既定とし、ローカル検証では build で代替する:
-#   docker compose -f compose.prod.yaml --env-file .env.production build
+# イメージは GHCR から pull したものだけを使う。ローカル検証では docker build で作った
+# ローカルタグを APP_IMAGE / MIGRATE_IMAGE に指定する（docs/ops/prod-docker-local.md）。
+#
+# app / migrate が build: を持たないのは意図的（#761）。image: と build: を併記すると
+# pull に失敗しても compose はエラー終了せず、EC2 上のチェックアウトからのビルドへ
+# 暗黙にフォールバックする。CI がビルドしたものではないイメージが「デプロイ成功」として
+# 動き、SHA タグ指定のロールバックも無言で失敗する。build: が無ければ pull 失敗は
+# そのままエラーになる（EC2 上ビルドはイミュータブルデプロイと OOM リスクの観点から
+# 不採用。#758）。
+#
+# pull_policy: always は採らない。pull 経路の強制は GHCR 障害時に「ローカルにイメージが
+# あっても起動できない」という新しい障害モードを持ち込むため（再起動での復旧が効かなくなる）。
+#
+# up -d は既にローカルにあるタグを再 pull しない。新しいイメージを取り込むには
+# 明示的な docker compose pull が要る。
 #
 # 公開ポートは nginx の 80/443 のみ。db / app はホストへ publish しない。
 
@@ -51,9 +64,6 @@ services:
   # 正常終了すると app の起動条件（service_completed_successfully）が満たされる
   migrate:
     image: ${MIGRATE_IMAGE:-ghcr.io/chapplehub/estimate-management-system/migrate:latest}
-    build:
-      context: .
-      target: migrate
     restart: "no"
     environment:
       DATABASE_URL: ${DATABASE_URL}
@@ -96,9 +106,6 @@ services:
 
   app:
     image: ${APP_IMAGE:-ghcr.io/chapplehub/estimate-management-system/app:latest}
-    build:
-      context: .
-      target: runner
     restart: unless-stopped
     # ポートは publish しない（公開は nginx の 80/443 のみ）
     environment:
