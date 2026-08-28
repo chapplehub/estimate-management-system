@@ -105,6 +105,20 @@ healthcheck:
 
 同じ変数名でも、`$` 1 つは `--env-file` の値がホスト側で埋め込まれ、`$$` はエスケープされてコンテナ内で解決される。healthcheck は後者でないと意図がずれる。
 
+### 追記（2026-08-29・#761）
+
+**`compose.prod.yaml` の `app` / `migrate` から `build:` を削除した。** 上の「1 ファイルで本番とローカル検証を兼ねる仕掛け」で利点として挙げた「`docker compose -f compose.prod.yaml build` 一発で検証用イメージを作れる」は、もう成立しない。
+
+理由は、この併記が**利点と同時に事故の経路**でもあったため。compose のイメージ解決は「ローカルタグ → pull → build」の順で、`build:` があると pull の失敗がエラーにならず**ビルドへ暗黙にフォールバックする**。実測（Docker Engine 28.3.3 / Compose v5.4.0）では、存在しない `APP_IMAGE=ghcr.io/.../app:sha-deadbee` を指定すると `Pulling` が失敗した後に `Building` へ落ち、**ローカルビルドの成果物が `sha-deadbee` というタグを着けて起動した**（EXIT=0）。CI がビルドしたものではないイメージが「デプロイ成功」として動き、SHA タグ指定のロールバックが「名前だけ正しい別物」で無言に成功する。
+
+さらに厄介なのは、このフォールバックビルドが**ローカルタグを実際に作って残す**こと。一度これが起きた環境では、後から `build:` を消しても解決順序の 1 段目（ローカルタグ）で拾われ続ける。汚染を消してから測り直すと `Error manifest unknown` で EXIT=1 になり、意図どおり止まる。
+
+ローカル検証は `docker build --target runner -t ems-app:local .` ＋ `APP_IMAGE` 指定に一本化された（`docs/ops/prod-docker-local.md` は元々この手順で、`build:` に依存していなかった）。そもそも GHCR のイメージは arm64 単一アーキ（ADR-20260818-7pn）なので、x86_64 の開発機では `*_IMAGE` の上書きは作法ではなく必然。
+
+**「未解決」の 1 番目（GHCR に push するワークフローが未作成）は #763 で解消済み。** `.github/workflows/release-image.yml` が `main` への push で `latest` + `sha-<short>` を発行する。2 番目（`latest` 固定ではロールバックできない）も SHA タグの発行までは満たされたが、「どの SHA を `.env.production` に書くか」という運用手順は #784 が定義する。
+
+なお `build:` 削除は「古い `latest` がローカルに残っていて `up -d` がそれで起動する」経路までは塞がない（`up -d` は既にあるタグを再 pull しない）。そこは #784 が明示的な `docker compose pull` を必須手順にすることで塞ぐ。
+
 ## 未解決 / 次にやること
 
 - `.github/workflows/` は現状 `ci.yml` と `playwright.yml` のみで、**GHCR に push するワークフローは未作成**。デフォルト値の GHCR タグは「将来 CI がここに置く」という予約であり、今 EC2 で変数なしに起動すると pull に失敗する。デプロイまで通すなら build & push ワークフローが次の必要ピース
