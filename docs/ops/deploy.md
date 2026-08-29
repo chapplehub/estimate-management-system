@@ -65,7 +65,7 @@ GitHub Actions でビルドして GHCR に置く（= EC2 でビルドさせな�
 ## 3. 前提条件
 
 - **対象 commit の Release Image ワークフローが完了している**（GitHub の Actions → Release Image が緑）。完了前にデプロイすると `pull` で止まる（8 章）
-- `.env.production` は**秘密だけ**を書く。`APP_IMAGE` / `MIGRATE_IMAGE` を書かない（書くとスクリプトが導出した値を上書きし、HEAD とイメージがずれる。compose の優先順位はシェル環境変数 > `--env-file` > 既定値だが、`.env.production` に書くこと自体を禁じる）
+- `.env.production` は**秘密だけ**を書く。`APP_IMAGE` / `MIGRATE_IMAGE` を書かない。compose の優先順位はシェル環境変数 > `--env-file` > 既定値なので、スクリプト経由なら書いても導出値が勝つが、`eval "$(scripts/deploy-env.sh)"` を通らない手動コマンドでは `.env.production` の固定タグが効いてしまい、HEAD とイメージがずれる。「ずれる経路を作らない」ために書くこと自体を禁じる
 - 実行ユーザーが `docker` グループに属し、`sudo` 無しで `docker compose` を実行できる（スクリプトは `sudo` を使わない）
 - クローンから `git fetch origin` が通る
 
