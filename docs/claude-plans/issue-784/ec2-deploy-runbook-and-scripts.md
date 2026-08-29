@@ -123,7 +123,7 @@ Issue 本文からの変更点（着手時に Issue へコメントで反映す�
   - ボディに設計判断 1・3・4 の理由（detached checkout を選んだ理由、フェーズ分割の理由、`--wait` / `-T` / `cut -c1-7` の理由）を記載する
 
 ### Step 3: CI の static ジョブに shellcheck を追加する
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: `.github/workflows/ci.yml`
 - テスト戦略: テスト不要（CI 設定。PR の CI 実行で検証）
 - 作業内容:
