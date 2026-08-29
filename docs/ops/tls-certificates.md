@@ -49,8 +49,9 @@ grep -E '^(authenticator|webroot_path)' /etc/letsencrypt/renewal/chapple-esm.duc
 #    purge ではなく remove。/etc/letsencrypt（証明書・アカウント・renewal conf）は残す
 sudo apt remove certbot
 
-# 5. コンテナを起動する（certbot サービスが追加された compose.prod.yaml を pull 済みであること）
-docker compose -f compose.prod.yaml --env-file .env.production up -d
+# 5. コンテナを起動する（certbot サービスが追加された commit に checkout 済みであること）。
+#    up -d を直接打たず、HEAD 由来のイメージタグで適用する（docs/ops/deploy.md 4.1）
+scripts/deploy-apply.sh
 
 # 6. 初回 renew の結果を確認する
 docker compose -f compose.prod.yaml --env-file .env.production logs certbot
@@ -67,6 +68,7 @@ docker compose -f compose.prod.yaml --env-file .env.production logs certbot
 
 `certbot` サービスは `renew` しか行わないため、証明書が一枚も無い環境（EC2 の作り直し等）では**初回発行を手動で行う**。
 スクリプト化はしない。デモ環境一台に対し、テストの無いシェルスクリプトを保守対象に加える方が高くつくため。
+毎リリース走るデプロイは逆にスクリプト化し、CI の shellcheck で静的検査している。判断が分かれる理由は [deploy.md](deploy.md) 6.2 を参照。
 
 前提: DNS が EC2 に向いており、80 番ポートがインターネットから到達可能であること。
 
@@ -76,6 +78,9 @@ docker compose -f compose.prod.yaml --env-file .env.production logs certbot
 mv docker/nginx/conf.d/app-ssl.conf /tmp/app-ssl.conf.bak
 
 # 2. nginx を 80 番のみで起動する（app.conf の ACME location が応答する）
+#    up -d nginx は依存先（db → migrate → app）も起動するため、イメージタグを HEAD から
+#    導出してから打つ（docs/ops/deploy.md 6 章）
+eval "$(scripts/deploy-env.sh)"
 docker compose -f compose.prod.yaml --env-file .env.production up -d nginx
 
 # 3. 証明書を発行する
@@ -91,8 +96,8 @@ docker compose -f compose.prod.yaml --env-file .env.production run --rm \
 mv /tmp/app-ssl.conf.bak docker/nginx/conf.d/app-ssl.conf
 docker compose -f compose.prod.yaml --env-file .env.production exec nginx nginx -s reload
 
-# 5. 残りのサービスを起動する
-docker compose -f compose.prod.yaml --env-file .env.production up -d
+# 5. 残りのサービスを起動する（up -d を直接打たない。docs/ops/deploy.md 4.1）
+scripts/deploy-apply.sh
 ```
 
 発行後は `/etc/letsencrypt/renewal/chapple-esm.duckdns.org.conf` が自動生成され、以降の更新は `certbot` サービスが引き継ぐ。
