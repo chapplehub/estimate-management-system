@@ -103,6 +103,7 @@ docker compose down -v        # 完全リセット（ボリューム削除。次
 デプロイ先は本番ではなく**公開デモ環境**と定義している（[ADR-20260821-4f1](docs/adr/20260821-4f1-deploy-target-is-public-demo-reuse-dev-seed.md)）。
 
 - プロダクション構成のローカル検証: [`docs/ops/prod-docker-local.md`](docs/ops/prod-docker-local.md)
+- EC2 への通常デプロイ・ロールバック: [`docs/ops/deploy.md`](docs/ops/deploy.md)
 - 初期データ投入（**破壊的操作**）: [`docs/ops/demo-seed.md`](docs/ops/demo-seed.md)
 
 ## 開発フロー

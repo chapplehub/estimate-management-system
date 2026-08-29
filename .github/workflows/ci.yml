@@ -98,6 +98,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
 
+      # EC2 デプロイスクリプト（#784）は自動テストを持たない代わりに shellcheck で静的検査する。
+      # ubuntu-latest にプリインストールされている版を使う（setup action を足さない）。
+      # 対象を scripts/deploy*.sh に限定するのは、同じ scripts/ にある
+      # bashrc-worktree-functions.sh が対話シェルに source される関数群で流儀が違い
+      # （set -e 不可・グローバル汚染前提）、一括で通すには除外指示が増えるだけのため。
+      # pnpm install より前に置き、Node のセットアップを待たずに落ちるようにする
+      - name: Shellcheck deploy scripts
+        run: shellcheck --severity=warning scripts/deploy*.sh
+
       - uses: pnpm/action-setup@v6.0.9
 
       - uses: actions/setup-node@v7.0.0

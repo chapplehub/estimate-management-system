@@ -2,7 +2,7 @@ name: Release Image
 # 本番イメージ（Dockerfile の runner / migrate）をビルドし GHCR へ push する（#763）。
 # main はリリースブランチ（develop → main の PR マージ = リリース）であり、
 # 「latest = main の写像」を本ワークフローの不変条件とする。
-# EC2 側は pull のみ（EC2 上ではビルドしない。→ #761 で compose.prod.yaml の build: を削除予定）。
+# EC2 側は pull のみ（compose.prod.yaml に build: は無く、EC2 上ではビルドできない。#761）。
 on:
   push:
     branches: [main]
