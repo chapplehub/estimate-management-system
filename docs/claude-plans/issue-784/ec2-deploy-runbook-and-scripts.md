@@ -131,7 +131,7 @@ Issue 本文からの変更点（着手時に Issue へコメントで反映す�
 - コミットメッセージ: `ci: デプロイスクリプトを shellcheck で静的検査する`
 
 ### Step 4: ADR を起票する
-- [ ] **完了**
+- [x] **完了**
 - 対象ファイル: `docs/adr/20260829-<sss>-pin-ec2-release-to-head-commit-derive-image-tag.md`, `docs/adr/INDEX.md`
 - テスト戦略: テスト不要（ドキュメント）
 - 作業内容:
