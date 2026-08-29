@@ -204,7 +204,7 @@ scripts/deploy.sh <戻したい commit>
 pull 失敗: sha-xxxxxxx が GHCR に無い。Release Image ワークフローが未完了か、main に含まれない commit を指定している
 ```
 
-- **Release Image が未完了**: GitHub の Actions → Release Image で対象 commit の run が緑になるのを待ってから、`scripts/deploy-apply.sh` で適用フェーズだけをやり直す（HEAD は既に動いているので git フェーズは不要）
+- **Release Image が未完了**: GitHub の Actions → Release Image で対象 commit の run が緑になるのを待ってから、`scripts/deploy-apply.sh` で適用フェーズだけをやり直す（HEAD は既に対象 commit へ移っているので git フェーズは不要）
 - **main に含まれない commit を指定した**: イメージがあるのは main 上の commit だけ。`git branch -r --contains <commit>` に `origin/main` が出なければ対象外。正しいリリース commit を指定して `scripts/deploy.sh <commit>` からやり直す
 - **GHCR に到達できない**: 一時障害なら時間を置く。既に動いているコンテナは影響を受けない（`pull` と `up -d` を分けている理由）
 
