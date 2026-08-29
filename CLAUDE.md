@@ -45,6 +45,7 @@
 - 開発DB（起動・停止・リセット）: `docker compose up -d --wait` / 詳細は `README.md`
 - プロダクション構成のローカル検証: 作業前に `docs/ops/prod-docker-local.md` を読むこと
 - 公開デモ環境の初期データ投入: 実行前に `docs/ops/demo-seed.md` を**必ず読むこと**。seed は全テーブルを `deleteMany` する**破壊的操作**であり、既存データは残らない
+- EC2 への反映（通常デプロイ・ロールバック）: `docs/ops/deploy.md` に従う。**EC2 上で追跡ファイルを直接編集しない**（drift となり次のデプロイが止まる）
 
 ## Tests
 

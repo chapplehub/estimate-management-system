@@ -11,9 +11,12 @@
 
 ## 手順
 
-`up -d --wait` が成功した状態から始める。以下の 3 コマンドを順に実行する。
+`scripts/deploy.sh`（または `scripts/deploy-apply.sh`）が成功した状態から始める。以下の 4 コマンドを順に実行する。
 
 ```bash
+# 0. HEAD 由来のイメージタグを環境変数に載せる（省くと seed は latest で走る）
+eval "$(scripts/deploy-env.sh)"
+
 # 1. アプリだけ停止する（db は止めない。seed の接続先なので）
 docker compose -f compose.prod.yaml --env-file .env.production stop app
 
@@ -26,6 +29,7 @@ docker compose -f compose.prod.yaml --env-file .env.production start app
 
 ### 各コマンドの意味
 
+0. **`eval "$(scripts/deploy-env.sh)"`** — クローンの HEAD commit から `MIGRATE_IMAGE`（と `APP_IMAGE`）を導出してシェルに載せる。seed は migrate イメージに相乗りしており、これが無いと compose の既定値 `latest` で走る。ロールバック後の「作り直し」（[deploy.md](deploy.md) 5.2）で seed する場面では、`latest` だと**旧スキーマに最新の seed が走って落ちる**。常に付ける
 1. **`stop app`** — seed の `deleteMany` は 1 トランザクションに包まれておらず、実行中は「一部テーブルだけ空」の中間状態が外から読める。それを見せないためにアプリを止める。止めている間 `http://localhost` は Nginx が **502** を返すが、これは正常
 2. **`--profile seed run --rm seed`** — 初期データ投入の本体。`--profile seed` は必須（`up -d` で誤爆しないよう seed サービスを profile で隔離しているため）。`run --rm` は 1 回実行してコンテナを捨てる指定
 3. **`start app`** — 再開。数秒で healthy に戻る
@@ -52,3 +56,4 @@ docker compose -f compose.prod.yaml --env-file .env.production start app
 
 seed は専用イメージを持たず `migrate` イメージに相乗りしている（`command` を `tsx prisma/seed-dev.ts` に上書き）。
 専用の `*_IMAGE` 変数は無いため、**`MIGRATE_IMAGE` を指定していればそれがそのまま seed に使われる**。
+手順 0 の `scripts/deploy-env.sh` がその値を HEAD から導出するので、手で指定する必要は無い（`.env.production` に書いてはならない。[deploy.md](deploy.md) 3 章）。
